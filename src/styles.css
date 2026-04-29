@@ -1,0 +1,385 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #071527;
+  color: white;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.app {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(225,29,46,0.20), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255,255,255,0.08), transparent 28%),
+    #071527;
+}
+
+.layout {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 300px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.18);
+  padding: 20px;
+  backdrop-filter: blur(14px);
+}
+
+.main {
+  padding: 32px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: 0;
+  color: white;
+  text-align: left;
+  margin-bottom: 32px;
+  padding: 0;
+}
+
+.brand-icon {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: #e11d2e;
+  box-shadow: 0 14px 35px rgba(127, 29, 29, 0.35);
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.brand-sub {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  border: 0;
+  padding: 12px 16px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 800;
+  transition: 0.18s;
+}
+
+.nav-button:hover {
+  background: rgba(255,255,255,0.06);
+  color: white;
+}
+
+.nav-button.active {
+  background: #e11d2e;
+  color: white;
+  box-shadow: 0 14px 35px rgba(127, 29, 29, 0.35);
+}
+
+.card {
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.045);
+  padding: 24px;
+  box-shadow: 0 22px 50px rgba(0,0,0,0.25);
+}
+
+.badge {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid rgba(248,113,113,0.25);
+  background: rgba(239,68,68,0.15);
+  padding: 4px 12px;
+  color: #fee2e2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.badge.dark {
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: #e2e8f0;
+}
+
+.hero-grid {
+  display: grid;
+  align-items: center;
+  gap: 32px;
+  grid-template-columns: 1.1fr 0.9fr;
+  animation: fadeIn 0.35s ease-out;
+}
+
+.h1 {
+  margin: 24px 0 0;
+  max-width: 1000px;
+  font-size: clamp(42px, 7vw, 78px);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-weight: 950;
+}
+
+.h2 {
+  margin: 16px 0 0;
+  font-size: clamp(34px, 5vw, 60px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-weight: 950;
+}
+
+.lead {
+  margin-top: 24px;
+  max-width: 760px;
+  color: #cbd5e1;
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 18px;
+  border: 0;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 900;
+  transition: 0.18s;
+}
+
+.btn.primary {
+  background: #e11d2e;
+  color: white;
+  box-shadow: 0 14px 35px rgba(127, 29, 29, 0.35);
+}
+
+.btn.primary:hover {
+  background: #ff3347;
+}
+
+.btn.secondary {
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+  color: white;
+}
+
+.btn.secondary:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric-label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.metric-value {
+  margin-top: 10px;
+  color: white;
+  font-size: 32px;
+  font-weight: 950;
+}
+
+.metric-sub {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.field input,
+.field textarea,
+.field select,
+.select {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  padding: 12px 16px;
+  color: white;
+  outline: none;
+}
+
+.field textarea {
+  min-height: 120px;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+.select:focus {
+  border-color: #f87171;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.progress {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+}
+
+.progress > div {
+  height: 100%;
+  border-radius: 999px;
+  background: #e11d2e;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  padding: 12px 16px;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tab.active {
+  background: #e11d2e;
+  color: white;
+}
+
+.table-row {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 16px;
+  font-size: 14px;
+}
+
+.table-row:last-child {
+  border-bottom: 0;
+}
+
+.alert {
+  margin-bottom: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(248,113,113,0.3);
+  background: rgba(239,68,68,0.1);
+  padding: 16px;
+  color: #fee2e2;
+  font-size: 14px;
+}
+
+.loading {
+  margin-bottom: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  padding: 16px;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .hero-grid,
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: 20px;
+  }
+}

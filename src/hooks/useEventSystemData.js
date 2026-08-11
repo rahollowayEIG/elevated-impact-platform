@@ -442,6 +442,32 @@ export function useEventSystemData() {
       throw new Error('A sponsor purchase must be linked to a sponsorship-included team.');
     }
 
+    if (registrationSource === 'sponsorship') {
+      const { data: sponsorPurchase, error: sponsorPurchaseError } = await supabase
+        .from('sponsor_purchases')
+        .select('id, included_team_count')
+        .eq('id', payload.sponsor_purchase_id)
+        .single();
+
+      if (sponsorPurchaseError) throw sponsorPurchaseError;
+
+      const allowedTeams = Number(sponsorPurchase?.included_team_count || 0);
+      if (allowedTeams <= 0) {
+        throw new Error('This sponsorship purchase does not include a team.');
+      }
+
+      const { count: usedTeams, error: usedTeamsError } = await supabase
+        .from('team_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('sponsor_purchase_id', payload.sponsor_purchase_id)
+        .eq('registration_source', 'sponsorship');
+
+      if (usedTeamsError) throw usedTeamsError;
+      if ((usedTeams || 0) >= allowedTeams) {
+        throw new Error('All team spots included with this sponsorship have already been assigned.');
+      }
+    }
+
     const paymentStatus =
       registrationSource === 'comp'
         ? 'complimentary'

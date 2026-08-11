@@ -202,13 +202,112 @@ function Feature({ icon, title, text }) {
   );
 }
 
+const DEFAULT_EVENT_GOLFER_FIELDS = [
+  { field_key: 'first_name', label: 'First Name', field_type: 'short_text', applies_to: 'golfer', requirement_status: 'required', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 10 },
+  { field_key: 'last_name', label: 'Last Name', field_type: 'short_text', applies_to: 'golfer', requirement_status: 'required', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 20 },
+  { field_key: 'email', label: 'Email', field_type: 'email', applies_to: 'golfer', requirement_status: 'required', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 30 },
+  { field_key: 'phone', label: 'Phone', field_type: 'phone', applies_to: 'golfer', requirement_status: 'required', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: false, sort_order: 40 },
+  { field_key: 'gender', label: 'Male or Female', field_type: 'single_select', applies_to: 'golfer', requirement_status: 'required', options: ['Male', 'Female'], is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 50 },
+  { field_key: 'date_of_birth', label: 'Date of Birth', field_type: 'date', applies_to: 'golfer', requirement_status: 'required', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: false, sort_order: 60 },
+  { field_key: 'ghin_number', label: 'GHIN Number', field_type: 'short_text', applies_to: 'golfer', requirement_status: 'optional', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 70 },
+  { field_key: 'handicap_index', label: 'Handicap Index', field_type: 'number', applies_to: 'golfer', requirement_status: 'optional', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 80 },
+  { field_key: 'tee', label: 'Tee', field_type: 'short_text', applies_to: 'golfer', requirement_status: 'optional', is_system_field: true, include_in_internal_export: true, include_in_golf_genius_export: true, sort_order: 90 },
+];
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function FieldRequirementRow({ field, onChange }) {
+  return (
+    <div className="card" style={{ padding: 16 }}>
+      <div className="row">
+        <div>
+          <p style={{ margin: 0, fontWeight: 950 }}>{field.label}</p>
+          <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 12 }}>
+            {field.include_in_golf_genius_export ? 'Golf Genius export field' : 'Internal registration field'}
+          </p>
+        </div>
+        <select
+          className="select"
+          style={{ maxWidth: 170 }}
+          value={field.requirement_status}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="required">Required</option>
+          <option value="optional">Optional</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
 function EventBuilder({ createEvent, setPage, isSupabaseConfigured }) {
-  const [form, setForm] = useState({ name: '', date: '', location: '', golferCount: 120, revenueGoal: 20000, eventType: 'Golf Outing' });
+  const [form, setForm] = useState({
+    name: '',
+    eventType: 'Golf Outing',
+    date: '',
+    startTime: '',
+    location: '',
+    golferCount: 120,
+    maxGolfers: 120,
+    revenueGoal: 20000,
+    description: '',
+    registrationDeadline: '',
+    registrationStatus: 'closed',
+    organizerName: '',
+    organizerEmail: '',
+    organizerPhone: '',
+  });
+
+  const [golferFields, setGolferFields] = useState(DEFAULT_EVENT_GOLFER_FIELDS);
+  const [customFields, setCustomFields] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   function update(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateGolferField(fieldKey, requirementStatus) {
+    setGolferFields((current) =>
+      current.map((field) =>
+        field.field_key === fieldKey
+          ? { ...field, requirement_status: requirementStatus }
+          : field
+      )
+    );
+  }
+
+  function addCustomField() {
+    setCustomFields((current) => [
+      ...current,
+      {
+        id: `custom-${Date.now()}`,
+        label: '',
+        field_type: 'short_text',
+        applies_to: 'golfer',
+        requirement_status: 'optional',
+        include_in_internal_export: true,
+        include_in_golf_genius_export: false,
+        optionsText: '',
+      },
+    ]);
+  }
+
+  function updateCustomField(id, key, value) {
+    setCustomFields((current) =>
+      current.map((field) => (field.id === id ? { ...field, [key]: value } : field))
+    );
+  }
+
+  function removeCustomField(id) {
+    setCustomFields((current) => current.filter((field) => field.id !== id));
   }
 
   async function submit(e) {
@@ -221,14 +320,53 @@ function EventBuilder({ createEvent, setPage, isSupabaseConfigured }) {
         throw new Error('Supabase is not configured yet. Add the Vercel environment variables first.');
       }
 
+      if (!form.name.trim()) {
+        throw new Error('Event name is required.');
+      }
+
+      const eventYear = form.date ? new Date(`${form.date}T12:00:00`).getFullYear() : '';
+      const slug = slugify(`${form.name}${eventYear ? `-${eventYear}` : ''}`);
+
+      const customRegistrationFields = customFields
+        .filter((field) => field.label.trim())
+        .map((field, index) => ({
+          field_key: `custom_${slugify(field.label).replace(/-/g, '_')}_${index + 1}`,
+          label: field.label.trim(),
+          field_type: field.field_type,
+          applies_to: field.applies_to,
+          requirement_status: field.requirement_status,
+          options:
+            ['single_select', 'multi_select'].includes(field.field_type)
+              ? field.optionsText.split(',').map((item) => item.trim()).filter(Boolean)
+              : [],
+          is_system_field: false,
+          include_in_internal_export: field.include_in_internal_export,
+          include_in_golf_genius_export: field.include_in_golf_genius_export,
+          sort_order: 200 + index * 10,
+          status: 'active',
+        }));
+
       await createEvent({
-        name: form.name || 'New Event Request',
+        name: form.name.trim(),
         event_type: form.eventType || 'Golf Outing',
         event_date: form.date || undefined,
+        start_time: form.startTime || undefined,
         location: form.location || undefined,
         golfer_count: Number(form.golferCount) || 0,
+        max_golfers: Number(form.maxGolfers) || Number(form.golferCount) || 0,
         revenue_goal: Number(form.revenueGoal) || 0,
+        description: form.description || null,
+        registration_deadline: form.registrationDeadline
+          ? new Date(form.registrationDeadline).toISOString()
+          : null,
+        registration_status: form.registrationStatus,
+        organizer_name: form.organizerName || null,
+        organizer_email: form.organizerEmail || null,
+        organizer_phone: form.organizerPhone || null,
+        slug,
+        is_published: false,
         status: 'pending_review',
+        registration_fields: [...golferFields, ...customRegistrationFields],
       });
 
       setPage('dashboard');
@@ -239,39 +377,236 @@ function EventBuilder({ createEvent, setPage, isSupabaseConfigured }) {
     }
   }
 
+  const eventYear = form.date ? new Date(`${form.date}T12:00:00`).getFullYear() : '';
+  const slugPreview = slugify(`${form.name || 'your-event'}${eventYear ? `-${eventYear}` : ''}`);
+
   return (
     <div>
       <Badge>Build Your Event</Badge>
-      <h1 className="h2">Create the event request.</h1>
-      <p className="lead">This Phase 1 intake flow creates a pending event so you can review availability, pricing, and next steps before anything becomes final.</p>
+      <h1 className="h2">Create the event hub.</h1>
+      <p className="lead">
+        Build the event once. The platform will use these settings for the event dashboard,
+        golfer registration, roster management, sponsorships, and the future public event hub.
+      </p>
 
       {error && <div className="alert">{error}</div>}
 
-      <div className="grid grid-2">
-        <Card>
-          <form onSubmit={submit} className="grid">
+      <form onSubmit={submit} className="grid" style={{ gap: 24 }}>
+        <div className="grid grid-2">
+          <Card>
+            <h2 style={{ marginTop: 0 }}>Event details</h2>
             <div className="grid grid-2">
               <Field label="Event Name" value={form.name} onChange={(v) => update('name', v)} placeholder="Charity Golf Outing" />
               <Field label="Event Type" value={form.eventType} onChange={(v) => update('eventType', v)} placeholder="Golf Outing" />
-              <Field label="Preferred Date" type="date" value={form.date} onChange={(v) => update('date', v)} />
+              <Field label="Event Date" type="date" value={form.date} onChange={(v) => update('date', v)} />
+              <Field label="Start Time" type="time" value={form.startTime} onChange={(v) => update('startTime', v)} />
               <Field label="Location / Course" value={form.location} onChange={(v) => update('location', v)} placeholder="Primary Golf Course" />
               <Field label="Expected Golfers" type="number" value={form.golferCount} onChange={(v) => update('golferCount', v)} />
+              <Field label="Maximum Golfers" type="number" value={form.maxGolfers} onChange={(v) => update('maxGolfers', v)} />
               <Field label="Revenue Goal" type="number" value={form.revenueGoal} onChange={(v) => update('revenueGoal', v)} />
             </div>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Create Pending Event'} <Icon name="chevron" /></Button>
-          </form>
-        </Card>
+
+            <label className="field" style={{ display: 'block', marginTop: 20 }}>
+              <span>Event Description</span>
+              <textarea
+                value={form.description}
+                onChange={(e) => update('description', e.target.value)}
+                placeholder="Tell golfers and sponsors what the event supports, what is included, and what they should expect."
+              />
+            </label>
+          </Card>
+
+          <Card>
+            <h2 style={{ marginTop: 0 }}>Registration settings</h2>
+            <div className="grid">
+              <Field
+                label="Registration Deadline"
+                type="datetime-local"
+                value={form.registrationDeadline}
+                onChange={(v) => update('registrationDeadline', v)}
+              />
+
+              <label className="field">
+                <span>Registration Status</span>
+                <select value={form.registrationStatus} onChange={(e) => update('registrationStatus', e.target.value)}>
+                  <option value="draft">Draft</option>
+                  <option value="closed">Closed</option>
+                  <option value="open">Open</option>
+                  <option value="waitlist">Waitlist</option>
+                </select>
+              </label>
+
+              <div className="card" style={{ padding: 16 }}>
+                <p className="metric-label">Future Public Event URL</p>
+                <p style={{ margin: '8px 0 0', fontWeight: 900, overflowWrap: 'anywhere' }}>
+                  /events/{slugPreview}
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: 12, marginBottom: 0 }}>
+                  The event remains unpublished until approved.
+                </p>
+              </div>
+
+              <RequirementPreview label="Golfer capacity" qty={form.maxGolfers} />
+              <RequirementPreview label="Estimated foursomes" qty={Math.ceil(Number(form.maxGolfers || 0) / 4)} />
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid grid-2">
+          <Card>
+            <h2 style={{ marginTop: 0 }}>Organizer contact</h2>
+            <p style={{ color: '#cbd5e1' }}>
+              This is the primary contact for this event. We can add organizer accounts and permissions later.
+            </p>
+            <div className="grid">
+              <Field label="Organizer Name" value={form.organizerName} onChange={(v) => update('organizerName', v)} />
+              <Field label="Organizer Email" type="email" value={form.organizerEmail} onChange={(v) => update('organizerEmail', v)} />
+              <Field label="Organizer Phone" type="tel" value={form.organizerPhone} onChange={(v) => update('organizerPhone', v)} />
+            </div>
+          </Card>
+
+          <Card>
+            <h2 style={{ marginTop: 0 }}>Auto-planning preview</h2>
+            <p style={{ color: '#cbd5e1' }}>Operational quantities can continue to use the expected golfer count.</p>
+            <div className="grid">
+              <RequirementPreview label="Golfer gifts / swag" qty={form.golferCount} />
+              <RequirementPreview label="Base meals" qty={form.golferCount} />
+              <RequirementPreview label="Scorecards" qty={form.golferCount} />
+              <RequirementPreview label="Drink tickets estimate" qty={Number(form.golferCount || 0) * 2} />
+            </div>
+          </Card>
+        </div>
+
         <Card>
-          <h2 style={{ marginTop: 0, fontSize: 26, fontWeight: 950 }}>Auto-planning preview</h2>
-          <p style={{ color: '#cbd5e1' }}>Quantities are driven by registration/golfer count.</p>
-          <div className="grid">
-            <RequirementPreview label="Golfer gifts / swag" qty={form.golferCount} />
-            <RequirementPreview label="Base meals" qty={form.golferCount} />
-            <RequirementPreview label="Scorecards" qty={form.golferCount} />
-            <RequirementPreview label="Drink tickets estimate" qty={Number(form.golferCount || 0) * 2} />
+          <div className="row" style={{ alignItems: 'start', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Golfer information requirements</h2>
+              <p style={{ color: '#cbd5e1', marginBottom: 0 }}>
+                Choose what every golfer must provide. These settings will drive the registration form automatically.
+              </p>
+            </div>
+            <Badge tone="dark">Per Event</Badge>
+          </div>
+
+          <div className="grid grid-2">
+            {golferFields.map((field) => (
+              <FieldRequirementRow
+                key={field.field_key}
+                field={field}
+                onChange={(status) => updateGolferField(field.field_key, status)}
+              />
+            ))}
           </div>
         </Card>
-      </div>
+
+        <Card>
+          <div className="row" style={{ alignItems: 'start', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Custom registration fields</h2>
+              <p style={{ color: '#cbd5e1', marginBottom: 0 }}>
+                Add any event-specific question you need without changing the database.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={addCustomField}><Icon name="plus" /> Add Field</Button>
+          </div>
+
+          {customFields.length === 0 ? (
+            <div className="card" style={{ padding: 16, color: '#94a3b8' }}>
+              No custom fields added. You can add things like meal choice, membership number,
+              preferred playing partner, contest eligibility, jacket size, or any other event-specific information.
+            </div>
+          ) : (
+            <div className="grid">
+              {customFields.map((field) => (
+                <div key={field.id} className="card" style={{ padding: 16 }}>
+                  <div className="grid grid-2">
+                    <Field
+                      label="Field Label"
+                      value={field.label}
+                      onChange={(v) => updateCustomField(field.id, 'label', v)}
+                      placeholder="Example: Meal Choice"
+                    />
+
+                    <label className="field">
+                      <span>Field Type</span>
+                      <select value={field.field_type} onChange={(e) => updateCustomField(field.id, 'field_type', e.target.value)}>
+                        <option value="short_text">Short Text</option>
+                        <option value="long_text">Long Text</option>
+                        <option value="number">Number</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="date">Date</option>
+                        <option value="yes_no">Yes / No</option>
+                        <option value="single_select">Dropdown</option>
+                        <option value="multi_select">Multiple Choice</option>
+                      </select>
+                    </label>
+
+                    <label className="field">
+                      <span>Applies To</span>
+                      <select value={field.applies_to} onChange={(e) => updateCustomField(field.id, 'applies_to', e.target.value)}>
+                        <option value="golfer">Each Golfer</option>
+                        <option value="team">Team</option>
+                        <option value="captain">Team Captain</option>
+                      </select>
+                    </label>
+
+                    <label className="field">
+                      <span>Requirement</span>
+                      <select value={field.requirement_status} onChange={(e) => updateCustomField(field.id, 'requirement_status', e.target.value)}>
+                        <option value="required">Required</option>
+                        <option value="optional">Optional</option>
+                        <option value="hidden">Hidden</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {['single_select', 'multi_select'].includes(field.field_type) && (
+                    <div style={{ marginTop: 16 }}>
+                      <Field
+                        label="Choices (comma separated)"
+                        value={field.optionsText}
+                        onChange={(v) => updateCustomField(field.id, 'optionsText', v)}
+                        placeholder="Chicken, Steak, Vegetarian"
+                      />
+                    </div>
+                  )}
+
+                  <div className="row" style={{ marginTop: 16, flexWrap: 'wrap' }}>
+                    <label style={{ color: '#cbd5e1', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={field.include_in_internal_export}
+                        onChange={(e) => updateCustomField(field.id, 'include_in_internal_export', e.target.checked)}
+                        style={{ marginRight: 8 }}
+                      />
+                      Include in internal roster export
+                    </label>
+
+                    <label style={{ color: '#cbd5e1', fontSize: 14 }}>
+                      <input
+                        type="checkbox"
+                        checked={field.include_in_golf_genius_export}
+                        onChange={(e) => updateCustomField(field.id, 'include_in_golf_genius_export', e.target.checked)}
+                        style={{ marginRight: 8 }}
+                      />
+                      Include in Golf Genius export
+                    </label>
+
+                    <Button variant="secondary" onClick={() => removeCustomField(field.id)}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <div className="actions" style={{ marginTop: 0 }}>
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Creating Event...' : 'Create Pending Event'} <Icon name="chevron" />
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

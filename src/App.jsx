@@ -235,6 +235,20 @@ function statusLabel(status) {
   return labels[status] || status || 'Draft';
 }
 
+function money(value) {
+  return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+function sourceLabel(source) {
+  const labels = {
+    direct: 'Direct',
+    sponsorship: 'Sponsor Included',
+    comp: 'Comp',
+    admin: 'Admin / Manual',
+  };
+  return labels[source] || source || 'Direct';
+}
+
 function EventBuilder({
   createEvent,
   updateEvent,
@@ -438,6 +452,174 @@ function RegistrationFieldRow({ field, onChange }) {
   );
 }
 
+function RegistrationOptionsBuilder({ event, data }) {
+  const eventTypes = data.registrationTypes.filter((type) => type.event_id === event.id);
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState('team');
+  const [teamSize, setTeamSize] = useState(4);
+  const [price, setPrice] = useState('');
+  const [quantityAvailable, setQuantityAvailable] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  async function addType(payload) {
+    await data.createRegistrationType({
+      event_id: event.id,
+      name: payload.name,
+      description: payload.description || null,
+      registration_kind: payload.registration_kind,
+      team_size: payload.team_size,
+      price: Number(payload.price) || 0,
+      quantity_available:
+        payload.quantity_available === '' || payload.quantity_available == null
+          ? null
+          : Number(payload.quantity_available),
+      status: 'active',
+      sort_order: payload.sort_order ?? eventTypes.length * 10 + 10,
+    });
+  }
+
+  async function addDefaults() {
+    setSaving(true);
+    setMessage('');
+    try {
+      const names = new Set(eventTypes.map((type) => String(type.name || '').toLowerCase()));
+      if (!names.has('individual golfer')) {
+        await addType({
+          name: 'Individual Golfer',
+          description: 'One golfer registration.',
+          registration_kind: 'individual',
+          team_size: 1,
+          price: 0,
+          quantity_available: '',
+          sort_order: 10,
+        });
+      }
+      if (!names.has('foursome')) {
+        await addType({
+          name: 'Foursome',
+          description: 'One team of four golfers.',
+          registration_kind: 'team',
+          team_size: 4,
+          price: 0,
+          quantity_available: '',
+          sort_order: 20,
+        });
+      }
+      setMessage('Default registration options are ready. Set the prices before opening registration.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Unable to create default registration options.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addCustomType() {
+    if (!name.trim()) {
+      setMessage('Enter a registration option name.');
+      return;
+    }
+
+    setSaving(true);
+    setMessage('');
+    try {
+      await addType({
+        name: name.trim(),
+        description: description.trim(),
+        registration_kind: kind,
+        team_size: kind === 'individual' ? 1 : Math.max(1, Number(teamSize) || 4),
+        price,
+        quantity_available: quantityAvailable,
+      });
+      setName('');
+      setKind('team');
+      setTeamSize(4);
+      setPrice('');
+      setQuantityAvailable('');
+      setDescription('');
+      setMessage('Registration option added.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Unable to add registration option.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card style={{ marginTop: 24 }}>
+      <div className="row" style={{ alignItems: 'start', marginBottom: 20, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Registration options</h2>
+          <p style={{ color: '#cbd5e1', marginBottom: 0 }}>
+            These are the choices a golfer or team will eventually see on the public registration page.
+          </p>
+        </div>
+        <Button onClick={addDefaults} disabled={saving}>Add Individual + Foursome Defaults</Button>
+      </div>
+
+      {message && <div className="alert">{message}</div>}
+
+      {eventTypes.length > 0 ? (
+        <div className="grid grid-2" style={{ marginBottom: 24 }}>
+          {eventTypes.map((type) => (
+            <div key={type.id} className="card" style={{ padding: 16 }}>
+              <div className="row" style={{ alignItems: 'start' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 950 }}>{type.name}</p>
+                  <p style={{ margin: '5px 0 0', color: '#94a3b8', fontSize: 12 }}>
+                    {type.registration_kind === 'individual' ? 'Individual' : `Team of ${type.team_size}`}
+                  </p>
+                </div>
+                <Badge tone="dark">{type.status}</Badge>
+              </div>
+              <p style={{ fontSize: 26, fontWeight: 950, margin: '16px 0 8px' }}>{money(type.price)}</p>
+              <p style={{ color: '#cbd5e1', fontSize: 14, minHeight: 40 }}>{type.description || 'No description yet.'}</p>
+              <p style={{ color: '#94a3b8', fontSize: 12 }}>
+                Capacity: {type.quantity_available == null ? 'Unlimited / event cap' : type.quantity_available}
+              </p>
+              <div className="actions">
+                <Button
+                  variant="secondary"
+                  onClick={() => data.updateRow('registration_types', type.id, { status: type.status === 'active' ? 'inactive' : 'active' })}
+                >
+                  {type.status === 'active' ? 'Disable' : 'Enable'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 16, color: '#94a3b8', marginBottom: 24 }}>
+          No registration options yet. Start with Individual Golfer and Foursome, then add any special categories you need.
+        </div>
+      )}
+
+      <h3 style={{ marginTop: 0 }}>Add another registration option</h3>
+      <div className="grid grid-2">
+        <Field label="Option Name" value={name} onChange={setName} placeholder="Example: Senior Foursome" />
+        <label className="field">
+          <span>Registration Type</span>
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="team">Team</option>
+            <option value="individual">Individual</option>
+          </select>
+        </label>
+        {kind === 'team' && <Field label="Golfers Per Team" type="number" value={teamSize} onChange={setTeamSize} />}
+        <Field label="Price" type="number" value={price} onChange={setPrice} placeholder="0" />
+        <Field label="Quantity Available" type="number" value={quantityAvailable} onChange={setQuantityAvailable} placeholder="Leave blank for event capacity" />
+        <label className="field">
+          <span>Description</span>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is included with this registration?" />
+        </label>
+      </div>
+      <div className="actions">
+        <Button onClick={addCustomType} disabled={saving}><Icon name="plus" /> Add Registration Option</Button>
+      </div>
+    </Card>
+  );
+}
+
 function EventSetup({ event, data, setPage }) {
   const eventFields = data.registrationFields.filter((field) => field.event_id === event.id);
   const [registrationDeadline, setRegistrationDeadline] = useState(
@@ -584,6 +766,8 @@ function EventSetup({ event, data, setPage }) {
         </Card>
       </div>
 
+      <RegistrationOptionsBuilder event={event} data={data} />
+
       <Card style={{ marginTop: 24 }}>
         <div className="row" style={{ alignItems: 'start', marginBottom: 20 }}>
           <div>
@@ -684,6 +868,9 @@ function EventDashboard({ data, editEvent, openSetup }) {
   const eventPurchases = purchases.filter((p) => p.event_id === event.id);
   const eventVolunteers = volunteers.filter((v) => v.event_id === event.id);
   const eventRequests = requests.filter((r) => r.event_id === event.id);
+  const eventRegistrationTypes = data.registrationTypes.filter((type) => type.event_id === event.id);
+  const eventTeamRegistrations = data.teamRegistrations.filter((team) => team.event_id === event.id);
+  const eventGolfers = data.golfers.filter((golfer) => golfer.event_id === event.id);
 
   const revenue = eventPurchases.reduce(
     (sum, purchase) => purchase.payment_status === 'paid' ? sum + Number(purchase.amount || 0) : sum,
@@ -693,6 +880,7 @@ function EventDashboard({ data, editEvent, openSetup }) {
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: 'chart' },
+    { key: 'registrations', label: 'Registrations', icon: 'people' },
     { key: 'sponsorships', label: 'Sponsorships', icon: 'dollar' },
     { key: 'needs', label: 'Event Needs', icon: 'gift' },
     { key: 'volunteers', label: 'Volunteers', icon: 'people' },
@@ -805,11 +993,282 @@ function EventDashboard({ data, editEvent, openSetup }) {
       </div>
 
       {tab === 'overview' && <OverviewTab event={event} products={eventProducts} sponsors={eventSponsors} requests={eventRequests} />}
+      {tab === 'registrations' && (
+        <RegistrationsTab
+          event={event}
+          registrationTypes={eventRegistrationTypes}
+          teams={eventTeamRegistrations}
+          golfers={eventGolfers}
+          purchases={eventPurchases}
+          sponsors={eventSponsors}
+          data={data}
+          openSetup={() => openSetup(event)}
+        />
+      )}
       {tab === 'sponsorships' && <SponsorshipsTab products={eventProducts} sponsors={eventSponsors} purchases={eventPurchases} />}
       {tab === 'needs' && <NeedsTab event={event} requests={eventRequests} createEventRequest={data.createEventRequest} isSupabaseConfigured={data.isSupabaseConfigured} />}
       {tab === 'volunteers' && <VolunteersTab volunteers={eventVolunteers} />}
       {tab === 'uploads' && <PlaceholderTab icon="upload" title="Uploads + Google Drive" text="Sponsor logos, ad assets, signage files, and event documents will route into organized Google Drive folders in a later integration." />}
       {tab === 'comms' && <PlaceholderTab icon="mail" title="Event Communication Center" text="Email sponsors, golfers, volunteers, vendors, and generate flyer/promo templates. This is structured now and built out later." />}
+    </div>
+  );
+}
+
+function RegistrationsTab({ event, registrationTypes, teams, golfers, purchases, sponsors, data, openSetup }) {
+  const activeTypes = registrationTypes.filter((type) => type.status === 'active');
+  const eligibleSponsorPurchases = purchases.filter((purchase) => Number(purchase.included_team_count || 0) > 0);
+  const incompleteTeams = teams.filter((team) => team.roster_status !== 'complete').length;
+  const capacity = Number(event.max_golfers || event.golfer_count || 0);
+  const remaining = capacity > 0 ? Math.max(0, capacity - golfers.filter((g) => g.status !== 'cancelled').length) : null;
+
+  const [source, setSource] = useState('direct');
+  const [registrationTypeId, setRegistrationTypeId] = useState(activeTypes[0]?.id || '');
+  const [teamName, setTeamName] = useState('');
+  const [captainName, setCaptainName] = useState('');
+  const [captainEmail, setCaptainEmail] = useState('');
+  const [captainPhone, setCaptainPhone] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('pending');
+  const [amountCharged, setAmountCharged] = useState('');
+  const [sponsorPurchaseId, setSponsorPurchaseId] = useState('');
+  const [compReason, setCompReason] = useState('');
+  const [compApprovedBy, setCompApprovedBy] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const selectedType = registrationTypes.find((type) => type.id === registrationTypeId);
+
+  function sponsorPurchaseLabel(purchase) {
+    const sponsor = sponsors.find((item) => item.id === purchase.sponsor_id);
+    const used = teams.filter((team) => team.sponsor_purchase_id === purchase.id).length;
+    const allowed = Number(purchase.included_team_count || 0);
+    return `${sponsor?.business_name || 'Sponsor'} — ${purchase.product_name || 'Sponsorship'} (${Math.max(0, allowed - used)} of ${allowed} teams remaining)`;
+  }
+
+  async function addManualRegistration() {
+    if (!registrationTypeId) {
+      setMessage('Create and select a registration option first.');
+      return;
+    }
+    if (!captainName.trim()) {
+      setMessage(selectedType?.registration_kind === 'individual' ? 'Enter the golfer name.' : 'Enter the team captain name.');
+      return;
+    }
+    if (source === 'comp' && (!compReason.trim() || !compApprovedBy.trim())) {
+      setMessage('Comp teams require both a comp reason and who approved it.');
+      return;
+    }
+    if (source === 'sponsorship' && !sponsorPurchaseId) {
+      setMessage('Choose the sponsorship purchase that includes this team.');
+      return;
+    }
+
+    setSaving(true);
+    setMessage('');
+    const payload = {
+      event_id: event.id,
+      registration_type_id: registrationTypeId,
+      team_name: selectedType?.registration_kind === 'individual' ? captainName.trim() : (teamName.trim() || null),
+      captain_name: captainName.trim(),
+      captain_email: captainEmail.trim() || null,
+      captain_phone: captainPhone.trim() || null,
+      registered_golfer_count: 0,
+      roster_status: 'empty',
+      notes: notes.trim() || null,
+    };
+
+    try {
+      if (source === 'comp') {
+        await data.createCompTeam({
+          ...payload,
+          comp_reason: compReason.trim(),
+          comp_approved_by: compApprovedBy.trim(),
+        });
+      } else if (source === 'sponsorship') {
+        await data.createSponsorIncludedTeam({
+          ...payload,
+          sponsor_purchase_id: sponsorPurchaseId,
+        });
+      } else {
+        await data.createTeamRegistration({
+          ...payload,
+          registration_source: source,
+          payment_status: paymentStatus,
+          amount_charged: Number(amountCharged) || 0,
+        });
+      }
+
+      setTeamName('');
+      setCaptainName('');
+      setCaptainEmail('');
+      setCaptainPhone('');
+      setPaymentStatus('pending');
+      setAmountCharged('');
+      setSponsorPurchaseId('');
+      setCompReason('');
+      setCompApprovedBy('');
+      setNotes('');
+      setMessage('Registration added. Add golfers to the roster in the next registration-form step.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Unable to add registration.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="grid">
+      <div className="grid grid-4">
+        <Metric label="Registration Options" value={registrationTypes.length} sub={`${activeTypes.length} active`} />
+        <Metric label="Teams / Entries" value={teams.length} sub={`${incompleteTeams} incomplete rosters`} />
+        <Metric label="Golfers" value={golfers.filter((g) => g.status !== 'cancelled').length} sub={remaining == null ? 'no event cap' : `${remaining} spots remaining`} />
+        <Metric label="Sponsor Teams" value={teams.filter((team) => team.registration_source === 'sponsorship').length} sub="included with sponsorships" />
+      </div>
+
+      <div className="grid grid-2">
+        <Card>
+          <div className="row" style={{ alignItems: 'start', marginBottom: 18 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Registration options</h2>
+              <p style={{ color: '#cbd5e1', marginBottom: 0 }}>Prices and team sizes configured for this event.</p>
+            </div>
+            <Button variant="secondary" onClick={openSetup}>Edit Setup</Button>
+          </div>
+          <div className="grid">
+            {registrationTypes.length ? registrationTypes.map((type) => (
+              <div key={type.id} className="card" style={{ padding: 16 }}>
+                <div className="row">
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 950 }}>{type.name}</p>
+                    <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 12 }}>
+                      {type.registration_kind === 'individual' ? 'Individual golfer' : `Team of ${type.team_size}`}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ margin: 0, fontWeight: 950 }}>{money(type.price)}</p>
+                    <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 12 }}>{type.status}</p>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="card" style={{ padding: 16, color: '#94a3b8' }}>No registration options yet.</div>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 style={{ marginTop: 0 }}>Add a registration manually</h2>
+          <p style={{ color: '#cbd5e1' }}>
+            Use this for phone registrations, admin-entered teams, true comps, or teams included with a sponsorship.
+          </p>
+          {message && <div className="alert">{message}</div>}
+
+          <div className="grid">
+            <label className="field">
+              <span>Registration Source</span>
+              <select value={source} onChange={(e) => setSource(e.target.value)}>
+                <option value="direct">Direct Registration</option>
+                <option value="admin">Admin / Manual</option>
+                <option value="sponsorship">Included With Sponsorship</option>
+                <option value="comp">Complimentary / Comp</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Registration Option</span>
+              <select value={registrationTypeId} onChange={(e) => setRegistrationTypeId(e.target.value)}>
+                <option value="">Select an option</option>
+                {activeTypes.map((type) => (
+                  <option key={type.id} value={type.id}>{type.name} — {money(type.price)}</option>
+                ))}
+              </select>
+            </label>
+
+            {selectedType?.registration_kind !== 'individual' && (
+              <Field label="Team Name" value={teamName} onChange={setTeamName} placeholder="Optional team name" />
+            )}
+            <Field label={selectedType?.registration_kind === 'individual' ? 'Golfer Name' : 'Captain Name'} value={captainName} onChange={setCaptainName} />
+            <Field label="Email" type="email" value={captainEmail} onChange={setCaptainEmail} />
+            <Field label="Phone" value={captainPhone} onChange={setCaptainPhone} />
+
+            {['direct', 'admin'].includes(source) && (
+              <>
+                <label className="field">
+                  <span>Payment Status</span>
+                  <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="invoiced">Invoiced</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </label>
+                <Field label="Amount Charged" type="number" value={amountCharged} onChange={setAmountCharged} placeholder={String(selectedType?.price || 0)} />
+              </>
+            )}
+
+            {source === 'sponsorship' && (
+              <label className="field">
+                <span>Sponsorship Purchase</span>
+                <select value={sponsorPurchaseId} onChange={(e) => setSponsorPurchaseId(e.target.value)}>
+                  <option value="">Select an eligible sponsorship</option>
+                  {eligibleSponsorPurchases.map((purchase) => (
+                    <option key={purchase.id} value={purchase.id}>{sponsorPurchaseLabel(purchase)}</option>
+                  ))}
+                </select>
+                {eligibleSponsorPurchases.length === 0 && (
+                  <small style={{ color: '#94a3b8' }}>No sponsor purchases currently include a team entitlement.</small>
+                )}
+              </label>
+            )}
+
+            {source === 'comp' && (
+              <>
+                <Field label="Comp Reason" value={compReason} onChange={setCompReason} placeholder="Required — why is this team complimentary?" />
+                <Field label="Approved By" value={compApprovedBy} onChange={setCompApprovedBy} placeholder="Required approver name" />
+              </>
+            )}
+
+            <label className="field">
+              <span>Notes</span>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+            <Button onClick={addManualRegistration} disabled={saving}>{saving ? 'Saving...' : 'Add Registration'}</Button>
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <h2 style={{ marginTop: 0 }}>Current registrations</h2>
+        {teams.length === 0 ? (
+          <div className="card" style={{ padding: 16, color: '#94a3b8' }}>No registrations have been added yet.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ minWidth: 850 }}>
+              {teams.map((team) => {
+                const type = registrationTypes.find((item) => item.id === team.registration_type_id);
+                const sponsorPurchase = purchases.find((item) => item.id === team.sponsor_purchase_id);
+                const sponsor = sponsors.find((item) => item.id === sponsorPurchase?.sponsor_id);
+                return (
+                  <div key={team.id} className="table-row" style={{ gridTemplateColumns: '1.4fr 1.2fr 1.1fr .8fr .9fr 1.1fr' }}>
+                    <div>
+                      <div style={{ fontWeight: 950 }}>{team.team_name || team.captain_name}</div>
+                      <div style={{ color: '#94a3b8', fontSize: 12 }}>{team.captain_email || 'No email'}</div>
+                    </div>
+                    <div style={{ color: '#cbd5e1' }}>{type?.name || 'Registration'}</div>
+                    <div style={{ color: '#cbd5e1' }}>{sourceLabel(team.registration_source)}</div>
+                    <div style={{ color: '#cbd5e1' }}>{team.registered_golfer_count || 0}/{type?.team_size || 4}</div>
+                    <div style={{ color: '#cbd5e1' }}>{team.roster_status}</div>
+                    <div>
+                      <div style={{ color: '#cbd5e1' }}>{team.payment_status}</div>
+                      {sponsor && <div style={{ color: '#94a3b8', fontSize: 12 }}>{sponsor.business_name}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

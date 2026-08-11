@@ -233,9 +233,8 @@ export function useEventSystemData() {
         location: payload.location || null,
         golfer_count: payload.golfer_count ?? 0,
         revenue_goal: payload.revenue_goal ?? 0,
-        status: payload.status ?? 'pending_review',
+        status: payload.status ?? 'draft',
         notes: payload.notes ?? null,
-
         slug: payload.slug ?? null,
         description: payload.description ?? null,
         start_time: payload.start_time || null,
@@ -252,38 +251,82 @@ export function useEventSystemData() {
       .single();
 
     if (error) throw error;
+    await loadData();
+    setSelectedEventId(data.id);
+    return data;
+  }
 
-    await createDefaultRegistrationFields(data.id);
+  async function updateEvent(id, patch) {
+    if (!supabase) throw new Error('Supabase is not configured.');
 
-    if (Array.isArray(payload.registration_fields) && payload.registration_fields.length) {
-      const overrides = payload.registration_fields.map((field) => ({
-        event_id: data.id,
-        field_key: field.field_key,
-        label: field.label,
-        field_type: field.field_type,
-        applies_to: field.applies_to ?? 'golfer',
-        requirement_status: field.requirement_status ?? 'optional',
+    const allowed = {
+      name: patch.name,
+      event_type: patch.event_type,
+      event_date: patch.event_date,
+      location: patch.location,
+      golfer_count: patch.golfer_count,
+      revenue_goal: patch.revenue_goal,
+      status: patch.status,
+      notes: patch.notes,
+      slug: patch.slug,
+      description: patch.description,
+      start_time: patch.start_time,
+      registration_deadline: patch.registration_deadline,
+      max_golfers: patch.max_golfers,
+      registration_status: patch.registration_status,
+      is_published: patch.is_published,
+      banner_url: patch.banner_url,
+      organizer_name: patch.organizer_name,
+      organizer_email: patch.organizer_email,
+      organizer_phone: patch.organizer_phone,
+    };
+
+    const cleanPatch = Object.fromEntries(
+      Object.entries(allowed).filter(([, value]) => value !== undefined)
+    );
+
+    const { data, error } = await supabase
+      .from('events')
+      .update(cleanPatch)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    await loadData();
+    setSelectedEventId(data.id);
+    return data;
+  }
+
+  async function ensureDefaultRegistrationFields(eventId) {
+    if (!supabase) throw new Error('Supabase is not configured.');
+
+    const { data: existing, error: existingError } = await supabase
+      .from('event_registration_fields')
+      .select('field_key')
+      .eq('event_id', eventId);
+
+    if (existingError) throw existingError;
+
+    const existingKeys = new Set((existing ?? []).map((row) => row.field_key));
+    const missing = DEFAULT_GOLFER_FIELDS
+      .filter((field) => !existingKeys.has(field.field_key))
+      .map((field) => ({
+        event_id: eventId,
+        ...field,
         options: field.options ?? [],
-        placeholder: field.placeholder ?? null,
-        help_text: field.help_text ?? null,
-        is_system_field: field.is_system_field ?? true,
-        include_in_internal_export: field.include_in_internal_export ?? true,
-        include_in_golf_genius_export: field.include_in_golf_genius_export ?? false,
-        sort_order: field.sort_order ?? 0,
-        status: field.status ?? 'active',
+        status: 'active',
       }));
 
-      const { error: fieldsError } = await supabase
+    if (missing.length) {
+      const { error: insertError } = await supabase
         .from('event_registration_fields')
-        .upsert(overrides, { onConflict: 'event_id,field_key' });
+        .insert(missing);
 
-      if (fieldsError) throw fieldsError;
+      if (insertError) throw insertError;
     }
 
     await loadData();
-    setSelectedEventId(data.id);
-
-    return data;
   }
 
   async function createEventRequest(payload) {
@@ -652,6 +695,7 @@ export function useEventSystemData() {
 
     loadData,
     createEvent,
+    updateEvent,
     createEventRequest,
     createSponsor,
     createVolunteer,
@@ -664,6 +708,7 @@ export function useEventSystemData() {
     refreshTeamRosterStatus,
 
     createDefaultRegistrationFields,
+    ensureDefaultRegistrationFields,
     createRegistrationField,
     saveRegistrationFieldValue,
 

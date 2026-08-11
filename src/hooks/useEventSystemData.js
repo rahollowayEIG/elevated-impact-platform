@@ -254,6 +254,32 @@ export function useEventSystemData() {
     if (error) throw error;
 
     await createDefaultRegistrationFields(data.id);
+
+    if (Array.isArray(payload.registration_fields) && payload.registration_fields.length) {
+      const overrides = payload.registration_fields.map((field) => ({
+        event_id: data.id,
+        field_key: field.field_key,
+        label: field.label,
+        field_type: field.field_type,
+        applies_to: field.applies_to ?? 'golfer',
+        requirement_status: field.requirement_status ?? 'optional',
+        options: field.options ?? [],
+        placeholder: field.placeholder ?? null,
+        help_text: field.help_text ?? null,
+        is_system_field: field.is_system_field ?? true,
+        include_in_internal_export: field.include_in_internal_export ?? true,
+        include_in_golf_genius_export: field.include_in_golf_genius_export ?? false,
+        sort_order: field.sort_order ?? 0,
+        status: field.status ?? 'active',
+      }));
+
+      const { error: fieldsError } = await supabase
+        .from('event_registration_fields')
+        .upsert(overrides, { onConflict: 'event_id,field_key' });
+
+      if (fieldsError) throw fieldsError;
+    }
+
     await loadData();
     setSelectedEventId(data.id);
 
@@ -644,4 +670,3 @@ export function useEventSystemData() {
     updateRow,
   };
 }
-

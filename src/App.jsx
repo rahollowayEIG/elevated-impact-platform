@@ -308,6 +308,7 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
     confirmed_package: request.confirmed_package || '',
     venue_response: request.venue_response || '',
     venue_internal_notes: request.venue_internal_notes || '',
+    deposit_amount: request.deposit_amount ?? '',
     lock_date: request.locked_fields?.includes('confirmed_date') ?? true,
     lock_start: request.locked_fields?.includes('confirmed_start') ?? true,
     lock_capacity: request.locked_fields?.includes('confirmed_capacity') ?? true,
@@ -315,15 +316,27 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    if (!request.hold_expires_at || request.status !== 'hold') return undefined;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [request.hold_expires_at, request.status]);
 
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
 
-  async function save(nextStatus = form.status) {
-    setBusy(true);
-    setError('');
-    const lockedFields = [form.lock_date && 'confirmed_date', form.lock_start && 'confirmed_start', form.lock_capacity && 'confirmed_capacity', form.lock_package && 'confirmed_package'].filter(Boolean);
-    const payload = {
-      status: nextStatus,
+  function lockedFields() {
+    return [
+      form.lock_date && 'confirmed_date',
+      form.lock_start && 'confirmed_start',
+      form.lock_capacity && 'confirmed_capacity',
+      form.lock_package && 'confirmed_package',
+    ].filter(Boolean);
+  }
+
+  function commonPayload() {
+    return {
       confirmed_date: form.confirmed_date || null,
       confirmed_start_type: form.confirmed_start_type || null,
       confirmed_start_time: form.confirmed_start_time || null,
@@ -331,19 +344,108 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
       confirmed_package: form.confirmed_package || null,
       venue_response: form.venue_response || null,
       venue_internal_notes: form.venue_internal_notes || null,
-      locked_fields: lockedFields,
+      deposit_amount: form.deposit_amount === '' ? null : Number(form.deposit_amount),
+      locked_fields: lockedFields(),
       venue_reviewed_at: new Date().toISOString(),
-      confirmed_at: nextStatus === 'confirmed' ? new Date().toISOString() : request.confirmed_at || null,
     };
+  }
+
+  async function updateRequest(payload) {
+    setBusy(true);
+    setError('');
     const { error: updateError } = await supabase.from('event_requests').update(payload).eq('id', request.id);
     if (updateError) setError(updateError.message);
     else onSaved();
     setBusy(false);
   }
 
+  async function save(nextStatus = form.status) {
+    await updateRequest({
+      ...commonPayload(),
+      status: nextStatus,
+    });
+  }
+
+  async function placeHold() {
+    if (!form.confirmed_date) {
+      setError('Choose the date the venue is placing on hold.');
+      return;
+    }
+
+    const startedAt = new Date();
+    const expiresAt = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000);
+    const depositAmount = form.deposit_amount === '' ? null : Number(form.deposit_amount);
+    const depositRequired = depositAmount !== null && depositAmount > 0;
+
+    await updateRequest({
+      ...commonPayload(),
+      status: 'hold',
+      hold_started_at: startedAt.toISOString(),
+      hold_expires_at: expiresAt.toISOString(),
+      hold_released_at: null,
+      contract_status: request.contract_status === 'signed' ? 'signed' : 'not_sent',
+      deposit_status: request.deposit_status === 'paid' || request.deposit_status === 'waived'
+        ? request.deposit_status
+        : depositRequired ? 'pending' : 'not_required',
+      deposit_due_at: depositRequired ? expiresAt.toISOString() : null,
+      calendar_status: request.calendar_status || 'not_created',
+    });
+  }
+
+  async function extendHold() {
+    const currentExpiration = request.hold_expires_at ? new Date(request.hold_expires_at) : new Date();
+    const base = currentExpiration.getTime() > Date.now() ? currentExpiration : new Date();
+    const nextExpiration = new Date(base.getTime() + 24 * 60 * 60 * 1000);
+
+    await updateRequest({
+      ...commonPayload(),
+      status: 'hold',
+      hold_extended_at: new Date().toISOString(),
+      hold_expires_at: nextExpiration.toISOString(),
+      deposit_due_at: request.deposit_status === 'pending' ? nextExpiration.toISOString() : request.deposit_due_at,
+    });
+  }
+
+  async function releaseHold() {
+    await updateRequest({
+      ...commonPayload(),
+      status: 'hold_expired',
+      hold_released_at: new Date().toISOString(),
+      calendar_status: request.calendar_status === 'hold' ? 'released' : request.calendar_status,
+    });
+  }
+
+  function formatCountdown(expiresAt) {
+    if (!expiresAt) return '';
+    const remaining = new Date(expiresAt).getTime() - nowMs;
+    if (remaining <= 0) return 'Hold time has expired';
+    const totalSeconds = Math.floor(remaining / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}h ${minutes}m ${seconds}s remaining`;
+  }
+
+  const holdIsActive = request.status === 'hold' && request.hold_expires_at;
+
   return (
     <div className="review-panel">
       <div className="review-panel-heading"><div><p className="platform-eyebrow">Venue Review</p><h2>{request.group_name || request.contact_full_name || 'Outing Request'}</h2></div><button className="platform-secondary-button" onClick={onClose}>Close</button></div>
+
+      {holdIsActive && (
+        <div style={{ marginBottom: 22, padding: 18, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)', background: 'rgba(255,255,255,.06)' }}>
+          <p className="platform-eyebrow" style={{ marginBottom: 6 }}>24-Hour Venue Hold</p>
+          <h3 style={{ margin: 0 }}>{formatCountdown(request.hold_expires_at)}</h3>
+          <p style={{ margin: '8px 0 0', opacity: .8 }}>
+            Held until {new Date(request.hold_expires_at).toLocaleString()}. The event is not finally confirmed until the contract and deposit requirements are complete.
+          </p>
+          <div className="review-actions" style={{ marginTop: 14 }}>
+            <button className="platform-secondary-button" disabled={busy} onClick={extendHold}>Extend Another 24 Hours</button>
+            <button className="platform-secondary-button danger-outline" disabled={busy} onClick={releaseHold}>Release Hold</button>
+          </div>
+        </div>
+      )}
+
       <div className="review-summary-grid">
         <div><span>Contact</span><strong>{request.contact_full_name || '—'}</strong><small>{request.contact_email}<br />{request.contact_phone}</small></div>
         <div><span>Players</span><strong>{request.estimated_participants || '—'}</strong><small>{request.event_type || 'Golf Outing'}</small></div>
@@ -358,18 +460,20 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
       </div>
 
       <div className="form-grid two review-fields">
-        <label>Confirmed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label>
+        <label>Held / Proposed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label>
         <label>Confirmed Start Type<select value={form.confirmed_start_type} onChange={(e) => update('confirmed_start_type', e.target.value)}><option value="">Select</option><option>Shotgun</option><option>Tee Times</option><option>Not Sure</option></select></label>
         <label>Confirmed Start Time<input type="time" value={form.confirmed_start_time || ''} onChange={(e) => update('confirmed_start_time', e.target.value)} /></label>
         <label>Confirmed Capacity<input type="number" min="1" value={form.confirmed_capacity} onChange={(e) => update('confirmed_capacity', e.target.value)} /></label>
+        <label>Deposit Amount<input type="number" min="0" step="0.01" value={form.deposit_amount} onChange={(e) => update('deposit_amount', e.target.value)} placeholder="0.00" /></label>
+        <label>Deposit Status<input value={request.deposit_status?.replaceAll('_', ' ') || 'not required'} disabled /></label>
         <label className="full-span">Venue Package / Pricing Summary<input value={form.confirmed_package} onChange={(e) => update('confirmed_package', e.target.value)} placeholder="Example: Golf + cart + lunch package" /></label>
-        <label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Confirmation details, questions, or alternate plan..." /></label>
+        <label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Hold details, pricing, questions, or alternate plan..." /></label>
         <label className="full-span">Internal Venue Notes<textarea rows="3" value={form.venue_internal_notes} onChange={(e) => update('venue_internal_notes', e.target.value)} placeholder="Private notes not intended for the organizer." /></label>
       </div>
 
       <div className="locked-fields-box">
-        <div><h3>Lock confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div>
-        <label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Confirmed date</label>
+        <div><h3>Lock venue-confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div>
+        <label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Date</label>
         <label><input type="checkbox" checked={form.lock_start} onChange={(e) => update('lock_start', e.target.checked)} /> Start type / time</label>
         <label><input type="checkbox" checked={form.lock_capacity} onChange={(e) => update('lock_capacity', e.target.checked)} /> Capacity</label>
         <label><input type="checkbox" checked={form.lock_package} onChange={(e) => update('lock_package', e.target.checked)} /> Venue package / pricing</label>
@@ -380,7 +484,9 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
         <button className="platform-secondary-button" disabled={busy} onClick={() => save('needs_response')}>Ask a Question</button>
         <button className="platform-secondary-button" disabled={busy} onClick={() => save('tentative')}>Mark Tentative</button>
         <button className="platform-secondary-button danger-outline" disabled={busy} onClick={() => save('declined')}>Decline</button>
-        <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={() => save('confirmed')}>{busy ? 'Saving...' : 'Confirm Event'}</button>
+        {!holdIsActive && (
+          <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={placeHold}>{busy ? 'Saving...' : 'Confirm Terms + Place 24-Hour Hold'}</button>
+        )}
       </div>
     </div>
   );
@@ -409,7 +515,7 @@ function EventRequestsSection({ organization, requests, loading, onReload }) {
             <button key={request.id} className="request-row" onClick={() => setSelected(request)}>
               <div><strong>{request.group_name || request.contact_full_name || 'New Outing Inquiry'}</strong><span>{request.contact_full_name} · {request.contact_email}</span></div>
               <div><strong>{request.preferred_date ? new Date(`${request.preferred_date}T12:00:00`).toLocaleDateString() : 'No date'}</strong><span>{request.estimated_participants ? `${request.estimated_participants} players` : 'Player count pending'}</span></div>
-              <div><span className={`request-status ${request.status}`}>{request.status?.replaceAll('_', ' ')}</span><b>Review →</b></div>
+              <div><span className={`request-status ${request.status}`}>{request.status?.replaceAll('_', ' ')}</span>{request.status === 'hold' && request.hold_expires_at && <small>Hold until {new Date(request.hold_expires_at).toLocaleString()}</small>}<b>Review →</b></div>
             </button>
           ))}
           {!requests.length && <div className="empty-state"><strong>No outing inquiries yet.</strong><span>Share the public inquiry link to start collecting requests.</span></div>}

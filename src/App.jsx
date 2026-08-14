@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
-import LegacyApp from './LegacyApp';
 
 const EIG_SLUG = 'elevated-impact-group';
+const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
 
 function LoadingScreen({ message = 'Loading EIG Platform...' }) {
   return (
@@ -175,13 +175,13 @@ function ProductCard({ product, enabled, onLaunch }) {
       <h3>{product.name}</h3>
       <p>{product.description}</p>
       {enabled && product.product_key === 'golf_event_registration' && (
-        <button className="platform-primary-button inline" onClick={onLaunch}>Open Golf Event Platform</button>
+        <button className="platform-primary-button inline" onClick={onLaunch}>Open Golf Event Registration</button>
       )}
     </div>
   );
 }
 
-function OrganizationDashboard({ organization, role, products, entitlements, onLaunchLegacy }) {
+function OrganizationDashboard({ organization, role, products, entitlements, onLaunchGolfRegistration }) {
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
 
@@ -215,7 +215,7 @@ function OrganizationDashboard({ organization, role, products, entitlements, onL
               key={product.id}
               product={product}
               enabled={enabledIds.has(product.id)}
-              onLaunch={onLaunchLegacy}
+              onLaunch={onLaunchGolfRegistration}
             />
           ))}
         </div>
@@ -234,7 +234,6 @@ export default function App() {
   const [organizations, setOrganizations] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
   const [dataError, setDataError] = useState('');
-  const [legacyMode, setLegacyMode] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -250,7 +249,6 @@ export default function App() {
       if (!nextSession) {
         setMemberships([]);
         setActiveOrganizationId('');
-        setLegacyMode(false);
       }
     });
     return () => listener.subscription.unsubscribe();
@@ -357,17 +355,6 @@ export default function App() {
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  if (legacyMode) {
-    return (
-      <div className="platform-legacy-wrap">
-        <div className="platform-legacy-bar">
-          <button className="platform-secondary-button" onClick={() => setLegacyMode(false)}>← Back to {activeOrganization?.name}</button>
-          <span>Golf Event Registration — Powered by EIG</span>
-        </div>
-        <LegacyApp />
-      </div>
-    );
-  }
 
   return (
     <PlatformShell
@@ -375,7 +362,6 @@ export default function App() {
       memberships={memberships}
       activeOrganizationId={activeOrganizationId}
       setActiveOrganizationId={(id) => {
-        setLegacyMode(false);
         setActiveOrganizationId(id);
       }}
       onSignOut={signOut}
@@ -394,7 +380,9 @@ export default function App() {
           role={activeMembership?.role}
           products={products}
           entitlements={entitlements}
-          onLaunchLegacy={() => setLegacyMode(true)}
+          onLaunchGolfRegistration={() => {
+            window.location.href = GOLF_REGISTRATION_URL;
+          }}
         />
       )}
     </PlatformShell>

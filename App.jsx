@@ -118,6 +118,8 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('EIG Test Organization');
   const [organizationType, setOrganizationType] = useState('business');
+  const [primaryContactName, setPrimaryContactName] = useState('');
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
   const [isTest, setIsTest] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -129,10 +131,18 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
     setCreateError('');
     setCreating(true);
     try {
-      await onCreateOrganization({ name, organizationType, isTest });
+      await onCreateOrganization({
+        name,
+        organizationType,
+        primaryContactName,
+        primaryContactEmail,
+        isTest,
+      });
       setShowCreate(false);
       setName('');
       setOrganizationType('business');
+      setPrimaryContactName('');
+      setPrimaryContactEmail('');
       setIsTest(false);
     } catch (error) {
       setCreateError(error.message || 'Unable to create organization.');
@@ -184,16 +194,24 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
                 <option value="nonprofit">Nonprofit</option>
               </select>
             </label>
+            <label>
+              Primary company contact
+              <input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" />
+            </label>
+            <label>
+              Primary contact email
+              <input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" />
+            </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />
               Mark as test/demo organization
             </label>
             <p className="platform-login-copy" style={{ margin: 0 }}>
-              The platform will generate the organization slug, workspace, and your organization-admin access automatically.
+              EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Organization Admin.
             </p>
             {createError && <div className="platform-error">{createError}</div>}
-            <button className="platform-primary-button" disabled={creating || !name.trim()} type="submit">
-              {creating ? 'Creating workspace...' : 'Create Organization Workspace'}
+            <button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">
+              {creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}
             </button>
           </form>
         )}
@@ -205,7 +223,9 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
                 <div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div>
                 <div>
                   <strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong>
-                  <span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span>
+                  <span>
+                    {org.organization_type?.replaceAll('_', ' ') || 'Organization'} · {org.onboarding_status?.replaceAll('_', ' ') || 'profile incomplete'}
+                  </span>
                 </div>
                 <b>Open →</b>
               </button>
@@ -240,6 +260,7 @@ function ProductCard({ product, enabled, onLaunch }) {
 function OrganizationDashboard({ organization, role, products, entitlements, onLaunchLegacy }) {
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
+  const onboardingLabel = organization?.onboarding_status?.replaceAll('_', ' ') || 'profile incomplete';
 
   return (
     <div className="platform-page">
@@ -254,8 +275,20 @@ function OrganizationDashboard({ organization, role, products, entitlements, onL
 
       <section className="platform-stats-grid">
         <StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" />
-        <StatCard label="EIG Credits" value="$0.00" detail="Credit ledger connected; balance UI next" />
+        <StatCard label="Setup Status" value={onboardingLabel} detail="Organization onboarding foundation" />
         <StatCard label="Workspace" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled products" />
+      </section>
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div>
+            <p className="platform-eyebrow">Organization Setup</p>
+            <h2>Profile & Onboarding</h2>
+          </div>
+        </div>
+        <p className="platform-login-copy" style={{ marginTop: 0 }}>
+          Company info, contacts, locations, venues, calendar, ecommerce, billing and payments, agreement, and users are now part of the shared Organization Profile foundation. Guided editing comes next.
+        </p>
       </section>
 
       <section className="platform-section-card">
@@ -327,7 +360,7 @@ export default function App() {
     setDataError('');
     const { data, error } = await supabase
       .from('organization_memberships')
-      .select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test)')
+      .select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test,onboarding_status)')
       .eq('user_id', userId)
       .eq('status', 'active');
 
@@ -375,12 +408,14 @@ export default function App() {
     setLoadingData(false);
   }
 
-  async function createOrganization({ name, organizationType, isTest }) {
+  async function createOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest }) {
     setDataError('');
     const { data, error } = await supabase.rpc('create_organization_workspace', {
       p_name: name.trim(),
       p_organization_type: organizationType,
       p_is_test: isTest,
+      p_primary_contact_name: primaryContactName.trim() || null,
+      p_primary_contact_email: primaryContactEmail.trim(),
     });
 
     if (error) throw error;

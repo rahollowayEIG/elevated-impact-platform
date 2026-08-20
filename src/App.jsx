@@ -274,14 +274,60 @@ function StatCard({ label, value, detail }) {
   return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>;
 }
 
-function EigAdminDashboard({ organizations, products, onOpenOrganization, loading }) {
+function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, loading }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState('EIG Test Organization');
+  const [organizationType, setOrganizationType] = useState('business');
+  const [primaryContactName, setPrimaryContactName] = useState('');
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
+  const [isTest, setIsTest] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const clients = organizations.filter((org) => org.slug !== EIG_SLUG);
   const activeProducts = products.filter((product) => product.status === 'active').length;
+
+  async function submitOrganization(event) {
+    event.preventDefault();
+    setCreateError('');
+    setCreating(true);
+    try {
+      await onCreateOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest });
+      setShowCreate(false);
+      setName('');
+      setOrganizationType('business');
+      setPrimaryContactName('');
+      setPrimaryContactEmail('');
+      setIsTest(false);
+    } catch (error) {
+      setCreateError(error.message || 'Unable to create organization.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <div className="platform-page">
       <section className="platform-hero"><div><p className="platform-eyebrow">EIG Master Workspace</p><h1>Platform Control Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-role-pill">EIG Admin</div></section>
       <section className="platform-stats-grid"><StatCard label="Client Organizations" value={clients.length} detail="Organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section>
-      <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Organizations</h2></div><button className="platform-secondary-button" disabled title="Next build step">+ Add Organization</button></div>{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section>
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Clients</p><h2>Organizations</h2></div>
+          <button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button>
+        </div>
+        {showCreate && (
+          <form className="platform-login-form" onSubmit={submitOrganization}>
+            <label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label>
+            <label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label>
+            <label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" /></label>
+            <label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" /></label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label>
+            <p className="platform-login-copy" style={{ margin: 0 }}>EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Organization Admin.</p>
+            {createError && <div className="platform-error">{createError}</div>}
+            <button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}</button>
+          </form>
+        )}
+        {loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}
+      </section>
     </div>
   );
 }
@@ -327,12 +373,7 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
 
   function lockedFields() {
-    return [
-      form.lock_date && 'confirmed_date',
-      form.lock_start && 'confirmed_start',
-      form.lock_capacity && 'confirmed_capacity',
-      form.lock_package && 'confirmed_package',
-    ].filter(Boolean);
+    return [form.lock_date && 'confirmed_date', form.lock_start && 'confirmed_start', form.lock_capacity && 'confirmed_capacity', form.lock_package && 'confirmed_package'].filter(Boolean);
   }
 
   function commonPayload() {
@@ -351,69 +392,31 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
   }
 
   async function updateRequest(payload) {
-    setBusy(true);
-    setError('');
+    setBusy(true); setError('');
     const { error: updateError } = await supabase.from('event_requests').update(payload).eq('id', request.id);
-    if (updateError) setError(updateError.message);
-    else onSaved();
+    if (updateError) setError(updateError.message); else onSaved();
     setBusy(false);
   }
 
-  async function save(nextStatus = form.status) {
-    await updateRequest({
-      ...commonPayload(),
-      status: nextStatus,
-    });
-  }
+  async function save(nextStatus = form.status) { await updateRequest({ ...commonPayload(), status: nextStatus }); }
 
   async function placeHold() {
-    if (!form.confirmed_date) {
-      setError('Choose the date the venue is placing on hold.');
-      return;
-    }
-
+    if (!form.confirmed_date) { setError('Choose the date the venue is placing on hold.'); return; }
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000);
     const depositAmount = form.deposit_amount === '' ? null : Number(form.deposit_amount);
     const depositRequired = depositAmount !== null && depositAmount > 0;
-
-    await updateRequest({
-      ...commonPayload(),
-      status: 'hold',
-      hold_started_at: startedAt.toISOString(),
-      hold_expires_at: expiresAt.toISOString(),
-      hold_released_at: null,
-      contract_status: request.contract_status === 'signed' ? 'signed' : 'not_sent',
-      deposit_status: request.deposit_status === 'paid' || request.deposit_status === 'waived'
-        ? request.deposit_status
-        : depositRequired ? 'pending' : 'not_required',
-      deposit_due_at: depositRequired ? expiresAt.toISOString() : null,
-      calendar_status: request.calendar_status || 'not_created',
-    });
+    await updateRequest({ ...commonPayload(), status: 'hold', hold_started_at: startedAt.toISOString(), hold_expires_at: expiresAt.toISOString(), hold_released_at: null, contract_status: request.contract_status === 'signed' ? 'signed' : 'not_sent', deposit_status: request.deposit_status === 'paid' || request.deposit_status === 'waived' ? request.deposit_status : depositRequired ? 'pending' : 'not_required', deposit_due_at: depositRequired ? expiresAt.toISOString() : null, calendar_status: request.calendar_status || 'not_created' });
   }
 
   async function extendHold() {
     const currentExpiration = request.hold_expires_at ? new Date(request.hold_expires_at) : new Date();
     const base = currentExpiration.getTime() > Date.now() ? currentExpiration : new Date();
     const nextExpiration = new Date(base.getTime() + 24 * 60 * 60 * 1000);
-
-    await updateRequest({
-      ...commonPayload(),
-      status: 'hold',
-      hold_extended_at: new Date().toISOString(),
-      hold_expires_at: nextExpiration.toISOString(),
-      deposit_due_at: request.deposit_status === 'pending' ? nextExpiration.toISOString() : request.deposit_due_at,
-    });
+    await updateRequest({ ...commonPayload(), status: 'hold', hold_extended_at: new Date().toISOString(), hold_expires_at: nextExpiration.toISOString(), deposit_due_at: request.deposit_status === 'pending' ? nextExpiration.toISOString() : request.deposit_due_at });
   }
 
-  async function releaseHold() {
-    await updateRequest({
-      ...commonPayload(),
-      status: 'hold_expired',
-      hold_released_at: new Date().toISOString(),
-      calendar_status: request.calendar_status === 'hold' ? 'released' : request.calendar_status,
-    });
-  }
+  async function releaseHold() { await updateRequest({ ...commonPayload(), status: 'hold_expired', hold_released_at: new Date().toISOString(), calendar_status: request.calendar_status === 'hold' ? 'released' : request.calendar_status }); }
 
   function formatCountdown(expiresAt) {
     if (!expiresAt) return '';
@@ -431,63 +434,13 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
   return (
     <div className="review-panel">
       <div className="review-panel-heading"><div><p className="platform-eyebrow">Venue Review</p><h2>{request.group_name || request.contact_full_name || 'Outing Request'}</h2></div><button className="platform-secondary-button" onClick={onClose}>Close</button></div>
-
-      {holdIsActive && (
-        <div style={{ marginBottom: 22, padding: 18, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)', background: 'rgba(255,255,255,.06)' }}>
-          <p className="platform-eyebrow" style={{ marginBottom: 6 }}>24-Hour Venue Hold</p>
-          <h3 style={{ margin: 0 }}>{formatCountdown(request.hold_expires_at)}</h3>
-          <p style={{ margin: '8px 0 0', opacity: .8 }}>
-            Held until {new Date(request.hold_expires_at).toLocaleString()}. The event is not finally confirmed until the contract and deposit requirements are complete.
-          </p>
-          <div className="review-actions" style={{ marginTop: 14 }}>
-            <button className="platform-secondary-button" disabled={busy} onClick={extendHold}>Extend Another 24 Hours</button>
-            <button className="platform-secondary-button danger-outline" disabled={busy} onClick={releaseHold}>Release Hold</button>
-          </div>
-        </div>
-      )}
-
-      <div className="review-summary-grid">
-        <div><span>Contact</span><strong>{request.contact_full_name || '—'}</strong><small>{request.contact_email}<br />{request.contact_phone}</small></div>
-        <div><span>Players</span><strong>{request.estimated_participants || '—'}</strong><small>{request.event_type || 'Golf Outing'}</small></div>
-        <div><span>Start</span><strong>{request.preferred_start_type || 'Not Sure'}</strong><small>{request.preferred_start_time || 'Time not specified'}</small></div>
-        <div><span>Golf Format</span><strong>{request.golf_format || 'Not Sure'}</strong><small>{request.food_needed === true ? 'Food / banquet requested' : request.food_needed === false ? 'No food requested' : 'Food needs not decided'}</small></div>
-      </div>
-
-      <div className="review-date-choices">
-        <h3>Requested Dates</h3>
-        <div>{dateOptions.map((date, index) => <button key={date} type="button" className={form.confirmed_date === date ? 'selected' : ''} onClick={() => update('confirmed_date', date)}><span>Choice {index + 1}</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString()}</strong></button>)}</div>
-        {request.unavailable_date_notes && <p><strong>Date not shown note:</strong> {request.unavailable_date_notes}</p>}
-      </div>
-
-      <div className="form-grid two review-fields">
-        <label>Held / Proposed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label>
-        <label>Confirmed Start Type<select value={form.confirmed_start_type} onChange={(e) => update('confirmed_start_type', e.target.value)}><option value="">Select</option><option>Shotgun</option><option>Tee Times</option><option>Not Sure</option></select></label>
-        <label>Confirmed Start Time<input type="time" value={form.confirmed_start_time || ''} onChange={(e) => update('confirmed_start_time', e.target.value)} /></label>
-        <label>Confirmed Capacity<input type="number" min="1" value={form.confirmed_capacity} onChange={(e) => update('confirmed_capacity', e.target.value)} /></label>
-        <label>Deposit Amount<input type="number" min="0" step="0.01" value={form.deposit_amount} onChange={(e) => update('deposit_amount', e.target.value)} placeholder="0.00" /></label>
-        <label>Deposit Status<input value={request.deposit_status?.replaceAll('_', ' ') || 'not required'} disabled /></label>
-        <label className="full-span">Venue Package / Pricing Summary<input value={form.confirmed_package} onChange={(e) => update('confirmed_package', e.target.value)} placeholder="Example: Golf + cart + lunch package" /></label>
-        <label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Hold details, pricing, questions, or alternate plan..." /></label>
-        <label className="full-span">Internal Venue Notes<textarea rows="3" value={form.venue_internal_notes} onChange={(e) => update('venue_internal_notes', e.target.value)} placeholder="Private notes not intended for the organizer." /></label>
-      </div>
-
-      <div className="locked-fields-box">
-        <div><h3>Lock venue-confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div>
-        <label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Date</label>
-        <label><input type="checkbox" checked={form.lock_start} onChange={(e) => update('lock_start', e.target.checked)} /> Start type / time</label>
-        <label><input type="checkbox" checked={form.lock_capacity} onChange={(e) => update('lock_capacity', e.target.checked)} /> Capacity</label>
-        <label><input type="checkbox" checked={form.lock_package} onChange={(e) => update('lock_package', e.target.checked)} /> Venue package / pricing</label>
-      </div>
-
+      {holdIsActive && <div style={{ marginBottom: 22, padding: 18, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)', background: 'rgba(255,255,255,.06)' }}><p className="platform-eyebrow" style={{ marginBottom: 6 }}>24-Hour Venue Hold</p><h3 style={{ margin: 0 }}>{formatCountdown(request.hold_expires_at)}</h3><p style={{ margin: '8px 0 0', opacity: .8 }}>Held until {new Date(request.hold_expires_at).toLocaleString()}. The event is not finally confirmed until the contract and deposit requirements are complete.</p><div className="review-actions" style={{ marginTop: 14 }}><button className="platform-secondary-button" disabled={busy} onClick={extendHold}>Extend Another 24 Hours</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={releaseHold}>Release Hold</button></div></div>}
+      <div className="review-summary-grid"><div><span>Contact</span><strong>{request.contact_full_name || '—'}</strong><small>{request.contact_email}<br />{request.contact_phone}</small></div><div><span>Players</span><strong>{request.estimated_participants || '—'}</strong><small>{request.event_type || 'Golf Outing'}</small></div><div><span>Start</span><strong>{request.preferred_start_type || 'Not Sure'}</strong><small>{request.preferred_start_time || 'Time not specified'}</small></div><div><span>Golf Format</span><strong>{request.golf_format || 'Not Sure'}</strong><small>{request.food_needed === true ? 'Food / banquet requested' : request.food_needed === false ? 'No food requested' : 'Food needs not decided'}</small></div></div>
+      <div className="review-date-choices"><h3>Requested Dates</h3><div>{dateOptions.map((date, index) => <button key={date} type="button" className={form.confirmed_date === date ? 'selected' : ''} onClick={() => update('confirmed_date', date)}><span>Choice {index + 1}</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString()}</strong></button>)}</div>{request.unavailable_date_notes && <p><strong>Date not shown note:</strong> {request.unavailable_date_notes}</p>}</div>
+      <div className="form-grid two review-fields"><label>Held / Proposed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label><label>Confirmed Start Type<select value={form.confirmed_start_type} onChange={(e) => update('confirmed_start_type', e.target.value)}><option value="">Select</option><option>Shotgun</option><option>Tee Times</option><option>Not Sure</option></select></label><label>Confirmed Start Time<input type="time" value={form.confirmed_start_time || ''} onChange={(e) => update('confirmed_start_time', e.target.value)} /></label><label>Confirmed Capacity<input type="number" min="1" value={form.confirmed_capacity} onChange={(e) => update('confirmed_capacity', e.target.value)} /></label><label>Deposit Amount<input type="number" min="0" step="0.01" value={form.deposit_amount} onChange={(e) => update('deposit_amount', e.target.value)} placeholder="0.00" /></label><label>Deposit Status<input value={request.deposit_status?.replaceAll('_', ' ') || 'not required'} disabled /></label><label className="full-span">Venue Package / Pricing Summary<input value={form.confirmed_package} onChange={(e) => update('confirmed_package', e.target.value)} placeholder="Example: Golf + cart + lunch package" /></label><label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Hold details, pricing, questions, or alternate plan..." /></label><label className="full-span">Internal Venue Notes<textarea rows="3" value={form.venue_internal_notes} onChange={(e) => update('venue_internal_notes', e.target.value)} placeholder="Private notes not intended for the organizer." /></label></div>
+      <div className="locked-fields-box"><div><h3>Lock venue-confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div><label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Date</label><label><input type="checkbox" checked={form.lock_start} onChange={(e) => update('lock_start', e.target.checked)} /> Start type / time</label><label><input type="checkbox" checked={form.lock_capacity} onChange={(e) => update('lock_capacity', e.target.checked)} /> Capacity</label><label><input type="checkbox" checked={form.lock_package} onChange={(e) => update('lock_package', e.target.checked)} /> Venue package / pricing</label></div>
       {error && <div className="platform-error">{error}</div>}
-      <div className="review-actions">
-        <button className="platform-secondary-button" disabled={busy} onClick={() => save('needs_response')}>Ask a Question</button>
-        <button className="platform-secondary-button" disabled={busy} onClick={() => save('tentative')}>Mark Tentative</button>
-        <button className="platform-secondary-button danger-outline" disabled={busy} onClick={() => save('declined')}>Decline</button>
-        {!holdIsActive && (
-          <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={placeHold}>{busy ? 'Saving...' : 'Confirm Terms + Place 24-Hour Hold'}</button>
-        )}
-      </div>
+      <div className="review-actions"><button className="platform-secondary-button" disabled={busy} onClick={() => save('needs_response')}>Ask a Question</button><button className="platform-secondary-button" disabled={busy} onClick={() => save('tentative')}>Mark Tentative</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={() => save('declined')}>Decline</button>{!holdIsActive && <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={placeHold}>{busy ? 'Saving...' : 'Confirm Terms + Place 24-Hour Hold'}</button>}</div>
     </div>
   );
 }
@@ -495,32 +448,13 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
 function EventRequestsSection({ organization, requests, loading, onReload }) {
   const [selected, setSelected] = useState(null);
   const inquiryUrl = `${window.location.origin}${window.location.pathname}#inquiry/${organization.slug}`;
-
-  function copyInquiryLink() {
-    navigator.clipboard?.writeText(inquiryUrl);
-  }
-
+  function copyInquiryLink() { navigator.clipboard?.writeText(inquiryUrl); }
   if (selected) return <VenueConfirmationForm request={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); onReload(); }} />;
-
   return (
     <section className="platform-section-card">
-      <div className="platform-section-heading">
-        <div><p className="platform-eyebrow">Venue Workflow</p><h2>Outing Inquiries</h2></div>
-        <div className="section-actions"><button className="platform-secondary-button" onClick={() => window.open(inquiryUrl, '_blank')}>Open Inquiry Page</button><button className="platform-secondary-button" onClick={copyInquiryLink}>Copy Inquiry Link</button></div>
-      </div>
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Venue Workflow</p><h2>Outing Inquiries</h2></div><div className="section-actions"><button className="platform-secondary-button" onClick={() => window.open(inquiryUrl, '_blank')}>Open Inquiry Page</button><button className="platform-secondary-button" onClick={copyInquiryLink}>Copy Inquiry Link</button></div></div>
       <div className="inquiry-link-box"><div><strong>Public inquiry link</strong><span>{inquiryUrl}</span></div><small>Use this on the venue website, in email, or anywhere someone wants to request an outing.</small></div>
-      {loading ? <p>Loading inquiries...</p> : (
-        <div className="request-list">
-          {requests.map((request) => (
-            <button key={request.id} className="request-row" onClick={() => setSelected(request)}>
-              <div><strong>{request.group_name || request.contact_full_name || 'New Outing Inquiry'}</strong><span>{request.contact_full_name} · {request.contact_email}</span></div>
-              <div><strong>{request.preferred_date ? new Date(`${request.preferred_date}T12:00:00`).toLocaleDateString() : 'No date'}</strong><span>{request.estimated_participants ? `${request.estimated_participants} players` : 'Player count pending'}</span></div>
-              <div><span className={`request-status ${request.status}`}>{request.status?.replaceAll('_', ' ')}</span>{request.status === 'hold' && request.hold_expires_at && <small>Hold until {new Date(request.hold_expires_at).toLocaleString()}</small>}<b>Review →</b></div>
-            </button>
-          ))}
-          {!requests.length && <div className="empty-state"><strong>No outing inquiries yet.</strong><span>Share the public inquiry link to start collecting requests.</span></div>}
-        </div>
-      )}
+      {loading ? <p>Loading inquiries...</p> : <div className="request-list">{requests.map((request) => <button key={request.id} className="request-row" onClick={() => setSelected(request)}><div><strong>{request.group_name || request.contact_full_name || 'New Outing Inquiry'}</strong><span>{request.contact_full_name} · {request.contact_email}</span></div><div><strong>{request.preferred_date ? new Date(`${request.preferred_date}T12:00:00`).toLocaleDateString() : 'No date'}</strong><span>{request.estimated_participants ? `${request.estimated_participants} players` : 'Player count pending'}</span></div><div><span className={`request-status ${request.status}`}>{request.status?.replaceAll('_', ' ')}</span>{request.status === 'hold' && request.hold_expires_at && <small>Hold until {new Date(request.hold_expires_at).toLocaleString()}</small>}<b>Review →</b></div></button>)}{!requests.length && <div className="empty-state"><strong>No outing inquiries yet.</strong><span>Share the public inquiry link to start collecting requests.</span></div>}</div>}
     </section>
   );
 }
@@ -529,11 +463,10 @@ function OrganizationDashboard({ organization, role, products, entitlements, eve
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
   const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
-
   return (
     <div className="platform-page">
       <section className="platform-hero organization"><div><p className="platform-eyebrow">Organization Workspace</p><h1>{organization?.name || 'Organization'}</h1><p>Manage venue inquiries, EIG products, events, network, billing, and future services from one workspace.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section>
-      <section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Open Inquiries" value={eventRequests.filter((r) => !['confirmed', 'declined', 'cancelled'].includes(r.status)).length} detail="Awaiting venue workflow" /><StatCard label="Workspace" value="Active" detail="One login across enabled products" /></section>
+      <section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Open Inquiries" value={eventRequests.filter((r) => !['confirmed', 'declined', 'cancelled'].includes(r.status)).length} detail="Awaiting venue workflow" /><StatCard label="Workspace" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled products" /></section>
       {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
       <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Your EIG Products</p><h2>Products & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section>
     </div>
@@ -569,12 +502,12 @@ export default function App() {
   useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) loadWorkspaceData(activeOrganizationId); }, [activeOrganizationId]);
 
-  async function loadMemberships(userId) {
+  async function loadMemberships(userId, preferredOrganizationId = '') {
     setLoadingData(true); setDataError('');
-    const { data, error } = await supabase.from('organization_memberships').select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status)').eq('user_id', userId).eq('status', 'active');
+    const { data, error } = await supabase.from('organization_memberships').select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test,onboarding_status)').eq('user_id', userId).eq('status', 'active');
     if (error) { setDataError(error.message); setMemberships([]); setLoadingData(false); return; }
     const ordered = [...(data || [])].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
-    setMemberships(ordered); setActiveOrganizationId((current) => current || ordered[0]?.organization_id || ''); setLoadingData(false);
+    setMemberships(ordered); setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || ''); setLoadingData(false);
   }
 
   async function loadEventRequests(organizationId) {
@@ -607,6 +540,21 @@ export default function App() {
     setLoadingData(false);
   }
 
+  async function createOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest }) {
+    setDataError('');
+    const { data, error } = await supabase.rpc('create_organization_workspace', {
+      p_name: name.trim(),
+      p_organization_type: organizationType,
+      p_is_test: isTest,
+      p_primary_contact_name: primaryContactName.trim() || null,
+      p_primary_contact_email: primaryContactEmail.trim(),
+    });
+    if (error) throw error;
+    if (!data?.id) throw new Error('Organization was created but no workspace was returned.');
+    await loadMemberships(session.user.id, data.id);
+    return data;
+  }
+
   async function signOut() { await supabase.auth.signOut(); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
@@ -623,7 +571,7 @@ export default function App() {
     <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {isEigAdminWorkspace ? (
-        <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} />
+        <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} />
       ) : (
         <OrganizationDashboard
           organization={activeOrganization}

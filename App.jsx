@@ -114,9 +114,33 @@ function StatCard({ label, value, detail }) {
   );
 }
 
-function EigAdminDashboard({ organizations, products, onOpenOrganization, loading }) {
+function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, loading }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState('EIG Test Organization');
+  const [organizationType, setOrganizationType] = useState('business');
+  const [isTest, setIsTest] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const clients = organizations.filter((org) => org.slug !== EIG_SLUG);
   const activeProducts = products.filter((product) => product.status === 'active').length;
+
+  async function submitOrganization(event) {
+    event.preventDefault();
+    setCreateError('');
+    setCreating(true);
+    try {
+      await onCreateOrganization({ name, organizationType, isTest });
+      setShowCreate(false);
+      setName('');
+      setOrganizationType('business');
+      setIsTest(false);
+    } catch (error) {
+      setCreateError(error.message || 'Unable to create organization.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <div className="platform-page">
       <section className="platform-hero">
@@ -140,15 +164,47 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, loadin
             <p className="platform-eyebrow">Clients</p>
             <h2>Organizations</h2>
           </div>
-          <button className="platform-secondary-button" disabled title="Next build step">+ Add Organization</button>
+          <button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>
+            {showCreate ? 'Cancel' : '+ Add Organization'}
+          </button>
         </div>
+
+        {showCreate && (
+          <form className="platform-login-form" onSubmit={submitOrganization}>
+            <label>
+              Organization name
+              <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" />
+            </label>
+            <label>
+              Organization type
+              <select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}>
+                <option value="business">Business</option>
+                <option value="golf_course">Golf Course</option>
+                <option value="venue">Venue</option>
+                <option value="nonprofit">Nonprofit</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />
+              Mark as test/demo organization
+            </label>
+            <p className="platform-login-copy" style={{ margin: 0 }}>
+              The platform will generate the organization slug, workspace, and your organization-admin access automatically.
+            </p>
+            {createError && <div className="platform-error">{createError}</div>}
+            <button className="platform-primary-button" disabled={creating || !name.trim()} type="submit">
+              {creating ? 'Creating workspace...' : 'Create Organization Workspace'}
+            </button>
+          </form>
+        )}
+
         {loading ? <p>Loading organizations...</p> : (
           <div className="platform-org-grid">
             {clients.map((org) => (
               <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}>
                 <div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div>
                 <div>
-                  <strong>{org.name}</strong>
+                  <strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong>
                   <span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span>
                 </div>
                 <b>Open →</b>
@@ -189,7 +245,7 @@ function OrganizationDashboard({ organization, role, products, entitlements, onL
     <div className="platform-page">
       <section className="platform-hero organization">
         <div>
-          <p className="platform-eyebrow">Organization Workspace</p>
+          <p className="platform-eyebrow">{organization?.is_test ? 'Test Organization Workspace' : 'Organization Workspace'}</p>
           <h1>{organization?.name || 'Organization'}</h1>
           <p>Your EIG products, event tools, network, billing, and future services will live here.</p>
         </div>
@@ -199,7 +255,7 @@ function OrganizationDashboard({ organization, role, products, entitlements, onL
       <section className="platform-stats-grid">
         <StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" />
         <StatCard label="EIG Credits" value="$0.00" detail="Credit ledger connected; balance UI next" />
-        <StatCard label="Workspace" value="Active" detail="One login across enabled products" />
+        <StatCard label="Workspace" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled products" />
       </section>
 
       <section className="platform-section-card">
@@ -266,12 +322,12 @@ export default function App() {
     loadWorkspaceData(activeOrganizationId);
   }, [activeOrganizationId]);
 
-  async function loadMemberships(userId) {
+  async function loadMemberships(userId, preferredOrganizationId = '') {
     setLoadingData(true);
     setDataError('');
     const { data, error } = await supabase
       .from('organization_memberships')
-      .select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status)')
+      .select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test)')
       .eq('user_id', userId)
       .eq('status', 'active');
 
@@ -288,7 +344,7 @@ export default function App() {
       return (a.organization?.name || '').localeCompare(b.organization?.name || '');
     });
     setMemberships(ordered);
-    setActiveOrganizationId((current) => current || ordered[0]?.organization_id || '');
+    setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || '');
     setLoadingData(false);
   }
 
@@ -317,6 +373,21 @@ export default function App() {
       setOrganizations([]);
     }
     setLoadingData(false);
+  }
+
+  async function createOrganization({ name, organizationType, isTest }) {
+    setDataError('');
+    const { data, error } = await supabase.rpc('create_organization_workspace', {
+      p_name: name.trim(),
+      p_organization_type: organizationType,
+      p_is_test: isTest,
+    });
+
+    if (error) throw error;
+    if (!data?.id) throw new Error('Organization was created but no workspace was returned.');
+
+    await loadMemberships(session.user.id, data.id);
+    return data;
   }
 
   async function signOut() {
@@ -387,6 +458,7 @@ export default function App() {
           products={products}
           loading={loadingData}
           onOpenOrganization={setActiveOrganizationId}
+          onCreateOrganization={createOrganization}
         />
       ) : (
         <OrganizationDashboard

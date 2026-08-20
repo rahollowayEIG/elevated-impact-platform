@@ -169,14 +169,15 @@ function EventRequestsSection({ organization, requests, loading, onReload }) {
 const SETUP_LABELS = {
   company_info: 'Company Info', business_info: 'Business Info', contacts: 'Contacts', locations: 'Locations', venues: 'Venues', calendar: 'Calendar', ecommerce: 'Ecommerce', billing_payments: 'Billing & Payments', agreement: 'Agreement', users: 'Users',
 };
+const SETUP_KEYS = Object.keys(SETUP_LABELS);
 
 function OrganizationProfileSection({ organization, profile, role, onSave }) {
   const canEdit = ['eig_admin', 'organization_admin'].includes(role);
   const sections = profile?.setup_sections || {};
-  const sectionKeys = Object.keys(SETUP_LABELS);
-  const completeCount = sectionKeys.filter((key) => sections[key] === 'complete').length;
-  const progress = Math.round((completeCount / sectionKeys.length) * 100);
-  const [editing, setEditing] = useState(false);
+  const completeCount = SETUP_KEYS.filter((key) => sections[key] === 'complete').length;
+  const progress = Math.round((completeCount / SETUP_KEYS.length) * 100);
+  const firstOpenStep = SETUP_KEYS.find((key) => sections[key] !== 'complete') || SETUP_KEYS[0];
+  const [activeSection, setActiveSection] = useState(firstOpenStep);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: organization?.name || '', legal_name: profile?.legal_name || '', website_url: profile?.website_url || '', phone: profile?.phone || '', timezone: profile?.timezone || '', primary_contact_name: profile?.primary_contact_name || '', primary_contact_email: profile?.primary_contact_email || '' });
@@ -185,24 +186,47 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
     setForm({ name: organization?.name || '', legal_name: profile?.legal_name || '', website_url: profile?.website_url || '', phone: profile?.phone || '', timezone: profile?.timezone || '', primary_contact_name: profile?.primary_contact_name || '', primary_contact_email: profile?.primary_contact_email || '' });
   }, [organization?.id, organization?.name, profile?.updated_at]);
 
+  useEffect(() => {
+    setActiveSection(SETUP_KEYS.find((key) => (profile?.setup_sections || {})[key] !== 'complete') || SETUP_KEYS[0]);
+  }, [organization?.id]);
+
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
-  async function save(event) {
+  function nextSection() {
+    const currentIndex = SETUP_KEYS.indexOf(activeSection);
+    setActiveSection(SETUP_KEYS[Math.min(currentIndex + 1, SETUP_KEYS.length - 1)]);
+  }
+  async function saveAndContinue(event) {
     event.preventDefault(); setBusy(true); setError('');
-    try { await onSave(form); setEditing(false); }
+    try { await onSave(form); nextSection(); }
     catch (saveError) { setError(saveError.message || 'Unable to save organization profile.'); }
     finally { setBusy(false); }
   }
 
   const statusStyle = (status) => ({ display: 'inline-block', padding: '5px 9px', borderRadius: 999, fontSize: 12, fontWeight: 800, textTransform: 'capitalize', background: status === 'complete' ? 'rgba(63,185,80,.16)' : status === 'in_progress' ? 'rgba(88,166,255,.16)' : 'rgba(255,255,255,.08)' });
+  const cardStyle = (key) => ({ width: '100%', textAlign: 'left', color: 'inherit', padding: 13, border: activeSection === key ? '1px solid rgba(88,166,255,.8)' : '1px solid rgba(255,255,255,.09)', borderRadius: 12, background: activeSection === key ? 'rgba(88,166,255,.11)' : 'rgba(255,255,255,.02)', cursor: 'pointer' });
+
+  function renderActiveSection() {
+    if (!canEdit) return <p className="platform-login-copy">You can view this organization profile. An Organization Admin or EIG Admin can update setup details.</p>;
+
+    if (activeSection === 'company_info') return <form className="platform-login-form" onSubmit={saveAndContinue}><div><p className="platform-eyebrow">Step 1</p><h3>Company Info</h3><p>Start with the identity that should appear across EIG workspaces and customer-facing tools.</p></div><div className="form-grid two"><label>Organization display name<input value={form.name} onChange={(e) => update('name', e.target.value)} required /></label><label>Legal business name<input value={form.legal_name} onChange={(e) => update('legal_name', e.target.value)} /></label></div>{error && <div className="platform-error">{error}</div>}<div className="review-actions"><button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving...' : 'Save & Continue'}</button></div></form>;
+
+    if (activeSection === 'business_info') return <form className="platform-login-form" onSubmit={saveAndContinue}><div><p className="platform-eyebrow">Step 2</p><h3>Business Info</h3><p>These shared details will feed calendars, events, ecommerce, billing, and other enabled EIG technology.</p></div><div className="form-grid two"><label>Website<input type="url" value={form.website_url} onChange={(e) => update('website_url', e.target.value)} placeholder="https://" /></label><label>Phone<input value={form.phone} onChange={(e) => update('phone', e.target.value)} /></label><label>Timezone<input value={form.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="America/New_York" /></label></div>{error && <div className="platform-error">{error}</div>}<div className="review-actions"><button className="platform-secondary-button" type="button" onClick={() => setActiveSection('company_info')}>Back</button><button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving...' : 'Save & Continue'}</button></div></form>;
+
+    if (activeSection === 'contacts') return <form className="platform-login-form" onSubmit={saveAndContinue}><div><p className="platform-eyebrow">Step 3</p><h3>Primary Contact</h3><p>This is the main company contact for onboarding and organization administration.</p></div><div className="form-grid two"><label>Primary contact name<input value={form.primary_contact_name} onChange={(e) => update('primary_contact_name', e.target.value)} /></label><label>Primary contact email<input type="email" value={form.primary_contact_email} onChange={(e) => update('primary_contact_email', e.target.value)} required /></label></div>{error && <div className="platform-error">{error}</div>}<div className="review-actions"><button className="platform-secondary-button" type="button" onClick={() => setActiveSection('business_info')}>Back</button><button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving...' : 'Save & Continue'}</button></div></form>;
+
+    const currentIndex = SETUP_KEYS.indexOf(activeSection);
+    const previousKey = SETUP_KEYS[Math.max(currentIndex - 1, 0)];
+    const nextKey = SETUP_KEYS[Math.min(currentIndex + 1, SETUP_KEYS.length - 1)];
+    return <div style={{ padding: 4 }}><p className="platform-eyebrow">Step {currentIndex + 1}</p><h3>{SETUP_LABELS[activeSection]}</h3><p>This section is now part of the guided onboarding flow. Its dedicated setup tools will be built in the next milestone without blocking you from working on any other section.</p><div className="review-actions" style={{ marginTop: 18 }}><button className="platform-secondary-button" onClick={() => setActiveSection(previousKey)}>Back</button>{activeSection !== SETUP_KEYS[SETUP_KEYS.length - 1] && <button className="platform-primary-button" onClick={() => setActiveSection(nextKey)}>Continue</button>}</div></div>;
+  }
 
   return <section className="platform-section-card">
-    <div className="platform-section-heading"><div><p className="platform-eyebrow">Organization Setup</p><h2>Profile & Setup Progress</h2></div>{canEdit && <button className="platform-secondary-button" onClick={() => setEditing((current) => !current)}>{editing ? 'Cancel' : 'Edit Profile'}</button>}</div>
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">Organization Setup</p><h2>Profile & Setup Progress</h2></div><div className="platform-role-pill">{SETUP_LABELS[activeSection]}</div></div>
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,.7fr) 2fr', gap: 18, marginBottom: 22 }}>
-      <div style={{ padding: 18, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14 }}><span style={{ opacity: .7 }}>Setup Progress</span><div style={{ fontSize: 36, fontWeight: 900, marginTop: 6 }}>{progress}%</div><small>{completeCount} of {sectionKeys.length} sections complete</small></div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(145px,1fr))', gap: 10 }}>{sectionKeys.map((key) => <div key={key} style={{ padding: 13, border: '1px solid rgba(255,255,255,.09)', borderRadius: 12 }}><strong style={{ display: 'block', marginBottom: 8 }}>{SETUP_LABELS[key]}</strong><span style={statusStyle(sections[key] || 'incomplete')}>{(sections[key] || 'incomplete').replaceAll('_', ' ')}</span></div>)}</div>
+      <div style={{ padding: 18, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14 }}><span style={{ opacity: .7 }}>Setup Progress</span><div style={{ fontSize: 36, fontWeight: 900, marginTop: 6 }}>{progress}%</div><small>{completeCount} of {SETUP_KEYS.length} sections complete</small><p style={{ margin: '12px 0 0', opacity: .72 }}>Use Save & Continue for the guided flow, or click any setup block.</p></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(145px,1fr))', gap: 10 }}>{SETUP_KEYS.map((key) => <button key={key} type="button" style={cardStyle(key)} onClick={() => setActiveSection(key)}><strong style={{ display: 'block', marginBottom: 8 }}>{SETUP_LABELS[key]}</strong><span style={statusStyle(sections[key] || 'incomplete')}>{(sections[key] || 'incomplete').replaceAll('_', ' ')}</span>{activeSection === key && <small style={{ display: 'block', marginTop: 7, opacity: .75 }}>Active</small>}</button>)}</div>
     </div>
-    {editing ? <form className="platform-login-form" onSubmit={save}><div className="form-grid two"><label>Organization display name<input value={form.name} onChange={(e) => update('name', e.target.value)} required /></label><label>Legal business name<input value={form.legal_name} onChange={(e) => update('legal_name', e.target.value)} /></label><label>Website<input type="url" value={form.website_url} onChange={(e) => update('website_url', e.target.value)} placeholder="https://" /></label><label>Phone<input value={form.phone} onChange={(e) => update('phone', e.target.value)} /></label><label>Timezone<input value={form.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="America/New_York" /></label><label>Primary contact name<input value={form.primary_contact_name} onChange={(e) => update('primary_contact_name', e.target.value)} /></label><label>Primary contact email<input type="email" value={form.primary_contact_email} onChange={(e) => update('primary_contact_email', e.target.value)} required /></label></div>{error && <div className="platform-error">{error}</div>}<button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving profile...' : 'Save Organization Profile'}</button></form> : <div className="review-summary-grid"><div><span>Primary Contact</span><strong>{profile?.primary_contact_name || 'Not set'}</strong><small>{profile?.primary_contact_email || 'Email not set'}</small></div><div><span>Legal Name</span><strong>{profile?.legal_name || 'Not completed'}</strong><small>{organization?.organization_type?.replaceAll('_', ' ')}</small></div><div><span>Website / Phone</span><strong>{profile?.website_url || 'Website not set'}</strong><small>{profile?.phone || 'Phone not set'}</small></div><div><span>Timezone</span><strong>{profile?.timezone || 'Not set'}</strong><small>Used by calendars and events</small></div></div>}
-    {!canEdit && <p className="platform-login-copy" style={{ marginBottom: 0 }}>You can view this organization profile. An Organization Admin or EIG Admin can update setup details.</p>}
+    <div style={{ padding: 20, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(0,0,0,.12)' }}>{renderActiveSection()}</div>
   </section>;
 }
 
@@ -257,12 +281,12 @@ export default function App() {
 
   async function saveOrganizationProfile(form) {
     const currentSections = organizationProfile?.setup_sections || {};
-    const companyInfoStatus = form.name.trim() && form.primary_contact_email.trim() ? 'complete' : 'in_progress';
-    const businessValues = [form.legal_name, form.website_url, form.phone, form.timezone].map((value) => value.trim());
+    const companyInfoStatus = form.name.trim() && form.legal_name.trim() ? 'complete' : form.name.trim() ? 'in_progress' : 'incomplete';
+    const businessValues = [form.website_url, form.phone, form.timezone].map((value) => value.trim());
     const businessInfoStatus = businessValues.every(Boolean) ? 'complete' : businessValues.some(Boolean) ? 'in_progress' : 'incomplete';
     const contactStatus = form.primary_contact_name.trim() && form.primary_contact_email.trim() ? 'complete' : form.primary_contact_email.trim() ? 'in_progress' : 'incomplete';
     const nextSections = { ...currentSections, company_info: companyInfoStatus, business_info: businessInfoStatus, contacts: contactStatus };
-    const allComplete = Object.keys(SETUP_LABELS).every((key) => nextSections[key] === 'complete');
+    const allComplete = SETUP_KEYS.every((key) => nextSections[key] === 'complete');
     const nextOnboardingStatus = allComplete ? 'ready' : 'profile_incomplete';
 
     const { error: profileError } = await supabase.from('organization_profiles').upsert({ organization_id: activeOrganizationId, primary_contact_name: form.primary_contact_name.trim() || null, primary_contact_email: form.primary_contact_email.trim().toLowerCase(), legal_name: form.legal_name.trim() || null, website_url: form.website_url.trim() || null, phone: form.phone.trim() || null, timezone: form.timezone.trim() || null, setup_sections: nextSections }, { onConflict: 'organization_id' });

@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
 
-function LoadingScreen({ message = 'Loading EIG Platform...' }) {
+function LoadingScreen({ message = 'Loading ElevationPilot...' }) {
   return (
     <div className="platform-auth-screen">
       <div className="platform-login-card compact">
@@ -35,8 +35,8 @@ function LoginScreen() {
       <div className="platform-login-card">
         <div className="platform-logo-mark">EIG</div>
         <p className="platform-eyebrow">Elevated Impact Group</p>
-        <h1>One login. Every EIG workspace.</h1>
-        <p className="platform-login-copy">Sign in to access the organizations, products, events, and tools assigned to your account.</p>
+        <h1>One login. Every ElevationPilot workspace.</h1>
+        <p className="platform-login-copy">Sign in to ElevationPilot to access the Hangars, events, products, and tools assigned to your account.</p>
         <form onSubmit={submit} className="platform-login-form">
           <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" required /></label>
           <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
@@ -230,11 +230,94 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
   </section>;
 }
 
+function CockpitLaunchCard({ eyebrow, title, description, actionLabel, onAction, status = 'Available' }) {
+  return <div className="cockpit-launch-card"><div className="platform-product-topline"><span>{eyebrow}</span><span className={`platform-status-pill ${status === 'Available' ? 'enabled' : 'soon'}`}>{status}</span></div><h3>{title}</h3><p>{description}</p>{onAction && <button className="platform-primary-button inline" onClick={onAction}>{actionLabel}</button>}</div>;
+}
+
+const SQUAWK_TEMPLATES = {
+  payment_reminder: { subject: 'Registration payment reminder', message: 'Hi {{first_name}}, your registration balance for {{event_name}} is still open. Use the secure payment link below to complete payment.\n\n{{payment_link}}' },
+  invoice: { subject: 'Invoice for {{event_name}}', message: 'Hi {{first_name}}, your invoice for {{event_name}} is ready. You can review it and submit payment using the link below.\n\n{{invoice_link}}' },
+  registration_confirmation: { subject: 'You are registered for {{event_name}}', message: 'Hi {{first_name}}, your registration for {{event_name}} is confirmed. We will keep you updated here as the event gets closer.' },
+  event_update: { subject: 'Update for {{event_name}}', message: 'Hi {{first_name}}, we have an update for {{event_name}}:\n\n' },
+};
+
+function SquawkBox({ organization, eventRequests, onClose }) {
+  const [channel, setChannel] = useState('email');
+  const [audience, setAudience] = useState('passengers_open_balance');
+  const [eventId, setEventId] = useState(eventRequests[0]?.id || '');
+  const [templateKey, setTemplateKey] = useState('payment_reminder');
+  const [subject, setSubject] = useState(SQUAWK_TEMPLATES.payment_reminder.subject);
+  const [message, setMessage] = useState(SQUAWK_TEMPLATES.payment_reminder.message);
+  const [saved, setSaved] = useState(false);
+
+  function applyTemplate(key) {
+    const template = SQUAWK_TEMPLATES[key];
+    setTemplateKey(key); setSubject(template.subject); setMessage(template.message); setSaved(false);
+  }
+
+  function saveDraft() {
+    const draft = { organizationId: organization?.id, eventId, channel, audience, templateKey, subject, message, savedAt: new Date().toISOString() };
+    window.localStorage.setItem(`eig-squawk-draft-${organization?.id || 'workspace'}`, JSON.stringify(draft));
+    setSaved(true);
+  }
+
+  return <section className="platform-section-card squawk-box">
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Communications</p><h2>Squawk Box</h2><p>Prepare email and text messages in the correct Hangar and event context.</p></div><button className="platform-secondary-button" onClick={onClose}>Back to Cockpit</button></div>
+    <div className="squawk-notice"><strong>Preview mode:</strong> drafts can be prepared safely, but sending stays locked until Registration recipients and messaging providers are connected.</div>
+    <div className="squawk-layout">
+      <div className="squawk-composer">
+        <div className="form-grid two">
+          <label>Event context<select value={eventId} onChange={(e) => { setEventId(e.target.value); setSaved(false); }}><option value="">Select an event</option>{eventRequests.map((event) => <option key={event.id} value={event.id}>{event.event_name || event.name || 'Event request'}</option>)}</select></label>
+          <label>Audience<select value={audience} onChange={(e) => { setAudience(e.target.value); setSaved(false); }}><option value="passengers_open_balance">Passengers with open balances</option><option value="all_passengers">All registered passengers</option><option value="atc_crew">ATC and Crew</option><option value="sponsors">Sponsors</option><option value="volunteers">Volunteers</option></select></label>
+          <label>Channel<select value={channel} onChange={(e) => { setChannel(e.target.value); setSaved(false); }}><option value="email">Email</option><option value="sms">Text message</option><option value="both">Email + text</option></select></label>
+          <label>Message template<select value={templateKey} onChange={(e) => applyTemplate(e.target.value)}><option value="payment_reminder">Registration payment reminder</option><option value="invoice">Invoice and payment link</option><option value="registration_confirmation">Registration confirmation</option><option value="event_update">Event update</option></select></label>
+        </div>
+        {channel !== 'sms' && <label>Subject<input value={subject} onChange={(e) => { setSubject(e.target.value); setSaved(false); }} /></label>}
+        <label>Message<textarea rows="9" value={message} onChange={(e) => { setMessage(e.target.value); setSaved(false); }} /></label>
+        <div className="squawk-token-list"><span>Available merge fields:</span><code>{'{{first_name}}'}</code><code>{'{{event_name}}'}</code><code>{'{{payment_link}}'}</code><code>{'{{invoice_link}}'}</code></div>
+        <div className="review-actions"><button className="platform-secondary-button" onClick={saveDraft}>Save Draft</button><button className="platform-primary-button" disabled title="Sending will unlock after Registration and provider connections are complete">Send Squawk</button>{saved && <span className="squawk-saved">Draft saved on this device</span>}</div>
+      </div>
+      <aside className="squawk-side">
+        <p className="platform-eyebrow">Delivery Check</p><h3>Before takeoff</h3>
+        <ul><li className={eventId ? 'ready' : ''}>Event selected</li><li>Registration recipients connected</li><li>Email provider connected</li><li>Text provider connected</li><li>Payment and invoice links verified</li></ul>
+        <div className="squawk-history"><p className="platform-eyebrow">Communication Log</p><p>No Squawks sent yet. Every future email and text will record the sender, recipients, event, delivery status, and time.</p></div>
+      </aside>
+    </div>
+  </section>;
+}
+
 function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+  const [workspaceView, setWorkspaceView] = useState('hangar');
+  const [cockpitTool, setCockpitTool] = useState('home');
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
   const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
-  return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Organization Workspace' : 'Organization Workspace'}</p><h1>{organization?.name || 'Organization'}</h1><p>Manage venue inquiries, EIG products, events, network, billing, and future services from one workspace.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared organization onboarding" /><StatCard label="Workspace" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled products" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Your EIG Products</p><h2>Products & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
+  const roleLabel = role === 'organization_admin' ? 'Pilot' : role === 'organization_staff' ? 'Co-Pilot / Crew' : role?.replaceAll('_', ' ') || 'member';
+
+  return <div className="platform-page">
+    <section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar' : 'Organization Hangar'}</p><h1>{organization?.name || 'Organization'}</h1><p>{workspaceView === 'hangar' ? 'Review the organization, setup, permissions and readiness before entering its operational workspace.' : 'Operate events, apps, communications and assigned work from the organization Cockpit.'}</p></div><div className="platform-role-pill">{roleLabel}</div></section>
+
+    <div className="hangar-cockpit-switch" role="tablist" aria-label="Organization workspace view">
+      <button className={workspaceView === 'hangar' ? 'active' : ''} role="tab" aria-selected={workspaceView === 'hangar'} onClick={() => setWorkspaceView('hangar')}><span>Hangar Overview</span><small>Organization information and readiness</small></button>
+      <button className={workspaceView === 'cockpit' ? 'active' : ''} role="tab" aria-selected={workspaceView === 'cockpit'} onClick={() => setWorkspaceView('cockpit')}><span>Enter Cockpit</span><small>Events, apps and operations</small></button>
+    </div>
+
+    {workspaceView === 'hangar' ? <>
+      <section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared organization onboarding" /><StatCard label="Hangar" value={organization?.is_test ? 'Test' : 'Active'} detail="Organization information and access" /></section>
+      <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
+      <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Assigned Capabilities</p><h2>Apps & Readiness</h2></div><button className="platform-primary-button inline" onClick={() => setWorkspaceView('cockpit')}>Enter Cockpit</button></div><p className="platform-login-copy">EIG controls which apps are assigned to this Hangar. Enter the Cockpit to operate enabled apps and event tools.</p><div className="platform-product-grid compact-products">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} />)}</div></section>
+    </> : cockpitTool === 'squawk' ? <SquawkBox organization={organization} eventRequests={eventRequests} onClose={() => setCockpitTool('home')} /> : <>
+      <section className="platform-stats-grid"><StatCard label="Operating As" value={roleLabel} detail={organization?.name} /><StatCard label="Active Inquiries" value={eventRequests.filter((request) => !['declined', 'cancelled'].includes(request.status)).length} detail="Venue and event workflow" /><StatCard label="Squawk Box" value="Draft Ready" detail="Email, text, invoice and payment messages" /></section>
+      <section className="platform-section-card cockpit-welcome"><div><p className="platform-eyebrow">Cockpit</p><h2>{organization?.name} Operations</h2><p>Choose an event tool or review the work currently moving through this Hangar. Event Registration opens the existing event system and Coordinator Hub.</p></div></section>
+      <section className="cockpit-launch-grid">
+        <CockpitLaunchCard eyebrow="Events" title="Golf Event Registration" description="Open registration, rosters, the current Coordinator Hub and its connected public Event Hub." actionLabel="Open Event Registration" onAction={onLaunchGolfRegistration} />
+        <CockpitLaunchCard eyebrow="Communications" title="Squawk Box" description="Prepare email, text, invoice and payment messages for ATC, Crew, Passengers, sponsors and volunteers." actionLabel="Open Squawk Box" onAction={() => setCockpitTool('squawk')} status="Preview" />
+        <CockpitLaunchCard eyebrow="Operations" title="Tasks & Alerts" description="See missing setup, upcoming deadlines, approvals and event items that need attention." status="Coming Soon" />
+      </section>
+      {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
+      <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section>
+    </>}
+  </div>;
 }
 
 export default function App() {

@@ -103,8 +103,25 @@ button {
 .squawk-side li.ready::before { content: '✓'; color: #4fd1a1; }
 .squawk-history { border-top: 1px solid rgba(255,255,255,.1); padding-top: 18px; color: #9fb0c3; }
 .squawk-saved { color: #4fd1a1; font-size: 13px; font-weight: 750; align-self: center; }
+.squawk-recipient-panel { margin-top: 18px; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; overflow: hidden; }
+.squawk-recipient-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border-bottom: 1px solid rgba(255,255,255,.09); }
+.squawk-recipient-heading .platform-eyebrow { margin: 0 0 4px; }
+.squawk-recipient-heading h3 { margin: 0; }
+.squawk-recipient-list { max-height: 360px; overflow: auto; }
+.squawk-recipient-row { display: grid !important; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px !important; margin: 0 !important; padding: 13px 15px; border-bottom: 1px solid rgba(255,255,255,.07); cursor: pointer; }
+.squawk-recipient-row:last-child { border-bottom: 0; }
+.squawk-recipient-row input { width: auto; margin: 0; }
+.squawk-recipient-row strong,.squawk-recipient-row small { display: block; }
+.squawk-recipient-row small { color: #9fb0c3; margin-top: 3px; font-weight: 500; }
+.squawk-recipient-row .balance { border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 850; }
+.squawk-recipient-row .balance.open { background: rgba(214,170,67,.13); color: #f2d88c; }
+.squawk-recipient-row .balance.paid { background: rgba(79,209,161,.12); color: #83e5c0; }
+.cockpit-event-list { display: grid; gap: 12px; }
+.cockpit-event-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; border: 1px solid rgba(255,255,255,.09); border-radius: 16px; background: rgba(0,0,0,.12); }
+.cockpit-event-row h3 { margin: 9px 0 4px; }
+.cockpit-event-row p { margin: 0; color: #9fb0c3; }
 
-@media (max-width: 850px) { .squawk-layout { grid-template-columns: 1fr; } }
+@media (max-width: 850px) { .squawk-layout { grid-template-columns: 1fr; } .cockpit-event-row { align-items: stretch; flex-direction: column; } }
 
 .compact-products .platform-product-card {
   min-height: 0;

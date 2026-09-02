@@ -106,9 +106,25 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
+function GlobalSquawkDrawer({ organization, messages, onClose }) {
+  const unreadCount = messages.filter((message) => !message.read).length;
+  return <div className="global-squawk-layer" role="dialog" aria-modal="true" aria-label="Squawk Box">
+    <button className="global-squawk-backdrop" aria-label="Close Squawk Box" onClick={onClose} />
+    <aside className="global-squawk-drawer">
+      <div className="global-squawk-heading"><div><p className="platform-eyebrow">ElevationPilot Communications</p><h2>Squawk Box</h2><span>{organization?.name || 'All permitted workspaces'}</span></div><button className="global-squawk-close" onClick={onClose} aria-label="Close Squawk Box">×</button></div>
+      <div className="global-squawk-filters"><button className="active">All Permitted</button><button>Unread {unreadCount ? `(${unreadCount})` : ''}</button><button>Restricted</button></div>
+      {messages.length ? <div className="global-squawk-list">{messages.map((message) => <article key={message.id} className={`global-squawk-message ${message.restricted ? 'restricted' : ''}`}><div className="global-squawk-message-top"><span>{message.contextLabel}</span>{!message.read && <b>Unread</b>}</div><h3>{message.restricted ? `${message.requiredRole} Message — Restricted` : message.subject}</h3><p>{message.restricted ? `${message.requiredRole} or another authorized user must review this message.` : message.preview}</p><small>{message.sentAt}</small></article>)}</div> : <div className="global-squawk-empty"><div className="global-squawk-radio">SB</div><h3>No Squawks yet</h3><p>Readable and restricted message notices for this Hangar and its assigned events will appear here.</p></div>}
+      <div className="global-squawk-permission-note"><strong>Permission aware</strong><span>Messages outside this Hangar or your assigned events stay hidden. Restricted items reveal only their safe context and required role.</span></div>
+    </aside>
+  </div>;
+}
+
 function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  const [squawkOpen, setSquawkOpen] = useState(false);
+  const messages = [];
+  const unreadCount = messages.filter((message) => !message.read).length;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" onClick={() => setSquawkOpen(true)} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main>{squawkOpen && <GlobalSquawkDrawer organization={active?.organization} messages={messages} onClose={() => setSquawkOpen(false)} />}</div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }

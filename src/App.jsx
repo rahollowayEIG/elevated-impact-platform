@@ -106,14 +106,22 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function GlobalSquawkDrawer({ organization, messages, onClose }) {
+function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, onReview, actionError, onClose }) {
+  const [activeFilter, setActiveFilter] = useState('all');
   const unreadCount = messages.filter((message) => !message.read).length;
+  const filteredMessages = messages.filter((message) => {
+    if (activeFilter === 'unread') return !message.read;
+    if (activeFilter === 'restricted') return message.restricted;
+    return true;
+  });
+  const canReview = ['eig_admin', 'organization_admin'].includes(currentRole);
   return <div className="global-squawk-layer" role="dialog" aria-modal="true" aria-label="Squawk Box">
     <button className="global-squawk-backdrop" aria-label="Close Squawk Box" onClick={onClose} />
     <aside className="global-squawk-drawer">
       <div className="global-squawk-heading"><div><p className="platform-eyebrow">ElevationPilot Communications</p><h2>Squawk Box</h2><span>{organization?.name || 'All permitted workspaces'}</span></div><button className="global-squawk-close" onClick={onClose} aria-label="Close Squawk Box">×</button></div>
-      <div className="global-squawk-filters"><button className="active">All Permitted</button><button>Unread {unreadCount ? `(${unreadCount})` : ''}</button><button>Restricted</button></div>
-      {messages.length ? <div className="global-squawk-list">{messages.map((message) => <article key={message.id} className={`global-squawk-message ${message.restricted ? 'restricted' : ''}`}><div className="global-squawk-message-top"><span>{message.contextLabel}</span>{!message.read && <b>Unread</b>}</div><h3>{message.restricted ? `${message.requiredRole} Message — Restricted` : message.subject}</h3><p>{message.restricted ? `${message.requiredRole} or another authorized user must review this message.` : message.preview}</p><small>{message.sentAt}</small></article>)}</div> : <div className="global-squawk-empty"><div className="global-squawk-radio">SB</div><h3>No Squawks yet</h3><p>Readable and restricted message notices for this Hangar and its assigned events will appear here.</p></div>}
+      <div className="global-squawk-filters"><button className={activeFilter === 'all' ? 'active' : ''} onClick={() => setActiveFilter('all')}>All Permitted</button><button className={activeFilter === 'unread' ? 'active' : ''} onClick={() => setActiveFilter('unread')}>Unread {unreadCount ? `(${unreadCount})` : ''}</button><button className={activeFilter === 'restricted' ? 'active' : ''} onClick={() => setActiveFilter('restricted')}>Restricted</button></div>
+      {actionError && <div className="platform-error global-squawk-action-error">{actionError}</div>}
+      {filteredMessages.length ? <div className="global-squawk-list">{filteredMessages.map((message) => <article key={message.id} className={`global-squawk-message ${message.restricted ? 'restricted' : ''}`}><div className="global-squawk-message-top"><span>{message.contextLabel}</span>{message.reviewed ? <b className="reviewed">{message.reviewedLabel}</b> : !message.read && <b>Unread</b>}</div><h3>{message.restricted ? `${message.requiredRole} Message — Restricted` : message.subject}</h3><p>{message.restricted ? `${message.requiredRole} or another authorized user must review this message.` : message.preview}</p><div className="global-squawk-message-footer"><small>{message.sentAt}</small><div className="global-squawk-message-actions">{!message.read && !message.restricted && <button onClick={() => onMarkRead(message.id)}>Mark Read</button>}{message.requiresReview && !message.reviewed && canReview && <button className="review" onClick={() => onReview(message.id)}>Review as {currentRole === 'eig_admin' ? 'EIG' : 'Pilot'}</button>}{message.requiresReview && !message.reviewed && !canReview && <span>Pilot review required</span>}</div></div></article>)}</div> : <div className="global-squawk-empty"><div className="global-squawk-radio">SB</div><h3>{messages.length ? 'No matching Squawks' : 'No Squawks yet'}</h3><p>{messages.length ? 'Choose another filter to see your permitted messages.' : 'Readable and restricted message notices for this Hangar and its assigned events will appear here.'}</p></div>}
       <div className="global-squawk-permission-note"><strong>Permission aware</strong><span>Messages outside this Hangar or your assigned events stay hidden. Restricted items reveal only their safe context and required role.</span></div>
     </aside>
   </div>;
@@ -123,6 +131,8 @@ function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrgan
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const [squawkOpen, setSquawkOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [squawkRefresh, setSquawkRefresh] = useState(0);
+  const [squawkActionError, setSquawkActionError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -131,21 +141,43 @@ function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrgan
       const { data: threads, error: threadError } = await supabase.from('squawk_threads').select('id,organization_id,event_id,context_type,context_label').eq('organization_id', activeOrganizationId);
       if (cancelled || threadError || !threads?.length) { if (!cancelled) setMessages([]); return; }
       const threadMap = new Map(threads.map((thread) => [thread.id, thread]));
-      const { data: messageRows, error: messageError } = await supabase.from('squawk_messages').select('id,thread_id,message_kind,visibility,required_roles,safe_label,requires_review,status,sent_at,created_at,reviewed_at,squawk_message_content(subject,body),squawk_message_receipts(user_id,read_at)').in('thread_id', threads.map((thread) => thread.id)).in('status', ['queued','sent','partially_sent','failed']).order('created_at', { ascending: false }).limit(100);
+      const { data: messageRows, error: messageError } = await supabase.from('squawk_messages').select('id,thread_id,message_kind,visibility,required_roles,safe_label,requires_review,status,sent_at,created_at,reviewed_at,squawk_message_content(subject,body),squawk_message_receipts(user_id,read_at),squawk_message_reviews(reviewed_at,reviewer_role,reviewed_by)').in('thread_id', threads.map((thread) => thread.id)).in('status', ['queued','sent','partially_sent','failed']).order('created_at', { ascending: false }).limit(100);
       if (cancelled || messageError) { if (!cancelled) setMessages([]); return; }
       setMessages((messageRows || []).map((message) => {
         const thread = threadMap.get(message.thread_id);
         const content = Array.isArray(message.squawk_message_content) ? message.squawk_message_content[0] : message.squawk_message_content;
         const ownReceipt = (message.squawk_message_receipts || []).find((receipt) => receipt.user_id === user?.id);
+        const review = Array.isArray(message.squawk_message_reviews) ? message.squawk_message_reviews[0] : message.squawk_message_reviews;
         const restricted = !content;
-        return { id: message.id, contextLabel: thread?.context_label || 'ElevationPilot', subject: content?.subject || message.safe_label, preview: content?.body?.slice(0, 180) || '', restricted, requiredRole: message.required_roles?.length ? message.required_roles.map((role) => role.replaceAll('_', ' ')).join(' / ') : 'Authorized', read: Boolean(ownReceipt?.read_at || message.reviewed_at), reviewed: Boolean(message.reviewed_at), sentAt: new Date(message.sent_at || message.created_at).toLocaleString() };
+        const reviewed = Boolean(review?.reviewed_at || message.reviewed_at);
+        return { id: message.id, contextLabel: thread?.context_label || 'ElevationPilot', subject: content?.subject || message.safe_label, preview: content?.body?.slice(0, 180) || '', restricted, requiredRole: message.required_roles?.length ? message.required_roles.map((role) => role.replaceAll('_', ' ')).join(' / ') : 'Authorized', requiresReview: message.requires_review, read: Boolean(ownReceipt?.read_at || reviewed), reviewed, reviewedLabel: review?.reviewer_role === 'eig_admin' ? 'Reviewed by EIG' : 'Reviewed by Pilot', sentAt: new Date(message.sent_at || message.created_at).toLocaleString() };
       }));
     }
     loadSquawks();
     return () => { cancelled = true; };
-  }, [activeOrganizationId, user?.id, squawkOpen]);
+  }, [activeOrganizationId, user?.id, squawkOpen, squawkRefresh]);
+
+  async function markSquawkRead(messageId, reviewedAt = null) {
+    setSquawkActionError('');
+    const now = new Date().toISOString();
+    const receipt = { message_id: messageId, user_id: user.id, read_at: now };
+    if (reviewedAt) receipt.reviewed_at = reviewedAt;
+    const { error } = await supabase.from('squawk_message_receipts').upsert(receipt, { onConflict: 'message_id,user_id' });
+    if (error) { setSquawkActionError('That Squawk could not be updated. Please try again.'); return false; }
+    setSquawkRefresh((value) => value + 1);
+    return true;
+  }
+
+  async function reviewSquawk(messageId) {
+    setSquawkActionError('');
+    const reviewedAt = new Date().toISOString();
+    const reviewerRole = active?.role === 'eig_admin' ? 'eig_admin' : 'organization_admin';
+    const { error } = await supabase.from('squawk_message_reviews').insert({ message_id: messageId, reviewed_by: user.id, reviewer_role: reviewerRole, reviewed_at: reviewedAt });
+    if (error && error.code !== '23505') { setSquawkActionError('The Pilot review could not be recorded. Please try again.'); return; }
+    await markSquawkRead(messageId, reviewedAt);
+  }
   const unreadCount = messages.filter((message) => !message.read).length;
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" onClick={() => setSquawkOpen(true)} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main>{squawkOpen && <GlobalSquawkDrawer organization={active?.organization} messages={messages} onClose={() => setSquawkOpen(false)} />}</div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" onClick={() => setSquawkOpen(true)} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main>{squawkOpen && <GlobalSquawkDrawer organization={active?.organization} messages={messages} currentRole={active?.role} onMarkRead={markSquawkRead} onReview={reviewSquawk} actionError={squawkActionError} onClose={() => setSquawkOpen(false)} />}</div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }

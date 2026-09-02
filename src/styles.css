@@ -592,6 +592,35 @@ button {
 .platform-brand-wrap strong { font-size: 14px; }
 .platform-brand-wrap span, .platform-user-block span { font-size: 12px; color: #91a3b7; }
 .platform-user-block button { background: none; border: 0; color: #fca5a5; font-size: 12px; font-weight: 800; }
+.global-squawk-trigger { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; border: 1px solid rgba(255,255,255,.13); border-radius: 13px; background: rgba(255,255,255,.055); color: #fff; padding: 7px 11px; font-weight: 850; cursor: pointer; }
+.global-squawk-trigger:hover { border-color: rgba(248,113,113,.5); background: rgba(255,255,255,.08); }
+.global-squawk-trigger-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: #e11d2e; font-size: 10px; letter-spacing: .04em; }
+.global-squawk-trigger-label { font-size: 12px; }
+.global-squawk-trigger > b { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 999px; background: #ef233c; color: #fff; border: 2px solid #071527; font-size: 10px; }
+.global-squawk-layer { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: flex-end; }
+.global-squawk-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(1,7,14,.68); backdrop-filter: blur(3px); }
+.global-squawk-drawer { position: relative; z-index: 1; width: min(480px,100%); height: 100%; overflow-y: auto; padding: 24px; border-left: 1px solid rgba(255,255,255,.12); background: #091728; box-shadow: -25px 0 70px rgba(0,0,0,.45); }
+.global-squawk-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.global-squawk-heading .platform-eyebrow { margin: 0 0 7px; }
+.global-squawk-heading h2 { margin: 0 0 5px; font-size: 30px; }
+.global-squawk-heading span { color: #9fb0c3; font-size: 13px; }
+.global-squawk-close { border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: rgba(255,255,255,.06); color: #fff; width: 38px; height: 38px; font-size: 25px; cursor: pointer; }
+.global-squawk-filters { display: flex; gap: 8px; margin: 18px 0; overflow-x: auto; }
+.global-squawk-filters button { white-space: nowrap; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.04); color: #9fb0c3; padding: 8px 11px; font-weight: 800; }
+.global-squawk-filters button.active { background: rgba(225,29,46,.16); border-color: rgba(248,113,113,.35); color: #fecaca; }
+.global-squawk-list { display: grid; gap: 10px; }
+.global-squawk-message { padding: 15px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(255,255,255,.035); }
+.global-squawk-message.restricted { border-color: rgba(214,170,67,.28); background: rgba(214,170,67,.06); }
+.global-squawk-message-top { display: flex; justify-content: space-between; gap: 12px; color: #9fb0c3; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.global-squawk-message-top b { color: #fca5a5; }
+.global-squawk-message h3 { margin: 10px 0 6px; }
+.global-squawk-message p,.global-squawk-message small { color: #9fb0c3; }
+.global-squawk-empty { min-height: 310px; display: grid; place-items: center; align-content: center; text-align: center; padding: 30px; border: 1px dashed rgba(255,255,255,.13); border-radius: 16px; }
+.global-squawk-empty h3 { margin: 14px 0 5px; }
+.global-squawk-empty p { max-width: 330px; margin: 0; color: #9fb0c3; }
+.global-squawk-radio { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 18px; background: #e11d2e; font-weight: 950; }
+.global-squawk-permission-note { display: grid; gap: 4px; margin-top: 16px; padding: 14px; border-radius: 13px; background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.18); }
+.global-squawk-permission-note span { color: #9fb0c3; font-size: 12px; line-height: 1.5; }
 .platform-workspace-select {
   min-width: 230px;
   border-radius: 12px;
@@ -698,6 +727,8 @@ button {
   .platform-hero { align-items: flex-start; flex-direction: column; padding: 24px; }
   .platform-stats-grid, .platform-product-grid { grid-template-columns: 1fr; }
   .platform-login-card { padding: 26px; }
+  .global-squawk-trigger-label { display: none; }
+  .global-squawk-drawer { padding: 18px; }
 }
 
 /* Phase 3: venue inquiry + confirmation workflow */

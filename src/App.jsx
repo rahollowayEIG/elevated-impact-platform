@@ -241,14 +241,46 @@ const SQUAWK_TEMPLATES = {
   event_update: { subject: 'Update for {{event_name}}', message: 'Hi {{first_name}}, we have an update for {{event_name}}:\n\n' },
 };
 
-function SquawkBox({ organization, eventRequests, onClose }) {
+function SquawkBox({ organization, golfEvents, onClose }) {
   const [channel, setChannel] = useState('email');
   const [audience, setAudience] = useState('passengers_open_balance');
-  const [eventId, setEventId] = useState(eventRequests[0]?.id || '');
+  const [eventId, setEventId] = useState(golfEvents[0]?.id || '');
   const [templateKey, setTemplateKey] = useState('payment_reminder');
   const [subject, setSubject] = useState(SQUAWK_TEMPLATES.payment_reminder.subject);
   const [message, setMessage] = useState(SQUAWK_TEMPLATES.payment_reminder.message);
   const [saved, setSaved] = useState(false);
+  const [recipients, setRecipients] = useState([]);
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState(new Set());
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
+  const [recipientError, setRecipientError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRecipients() {
+      if (!eventId) { setRecipients([]); setSelectedRecipientIds(new Set()); return; }
+      setLoadingRecipients(true); setRecipientError('');
+      const { data, error } = await supabase.from('golf_registrations').select('id,event_id,event_name,first_name,last_name,email,phone,price,amount_paid,payment_status').eq('event_id', eventId).order('last_name').order('first_name');
+      if (cancelled) return;
+      if (error) { setRecipientError(error.message); setRecipients([]); setSelectedRecipientIds(new Set()); }
+      else { setRecipients(data || []); }
+      setLoadingRecipients(false);
+    }
+    loadRecipients();
+    return () => { cancelled = true; };
+  }, [eventId]);
+
+  const eligibleRecipients = useMemo(() => recipients.filter((recipient) => {
+    const hasOpenBalance = Number(recipient.amount_paid || 0) < Number(recipient.price || 0) || recipient.payment_status !== 'paid';
+    if (audience === 'passengers_open_balance' && !hasOpenBalance) return false;
+    if (audience !== 'passengers_open_balance' && audience !== 'all_passengers') return false;
+    if (channel === 'email') return Boolean(recipient.email);
+    if (channel === 'sms') return Boolean(recipient.phone);
+    return Boolean(recipient.email || recipient.phone);
+  }), [recipients, audience, channel]);
+
+  useEffect(() => { setSelectedRecipientIds(new Set(eligibleRecipients.map((recipient) => recipient.id))); }, [eventId, audience, channel, recipients.length]);
+  function toggleRecipient(id) { setSelectedRecipientIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
+  function toggleAllRecipients() { setSelectedRecipientIds((current) => current.size === eligibleRecipients.length ? new Set() : new Set(eligibleRecipients.map((recipient) => recipient.id))); }
 
   function applyTemplate(key) {
     const template = SQUAWK_TEMPLATES[key];
@@ -267,7 +299,7 @@ function SquawkBox({ organization, eventRequests, onClose }) {
     <div className="squawk-layout">
       <div className="squawk-composer">
         <div className="form-grid two">
-          <label>Event context<select value={eventId} onChange={(e) => { setEventId(e.target.value); setSaved(false); }}><option value="">Select an event</option>{eventRequests.map((event) => <option key={event.id} value={event.id}>{event.event_name || event.name || 'Event request'}</option>)}</select></label>
+          <label>Event context<select value={eventId} onChange={(e) => { setEventId(e.target.value); setSaved(false); }}><option value="">Select an event</option>{golfEvents.map((event) => <option key={event.id} value={event.id}>{event.name}</option>)}</select></label>
           <label>Audience<select value={audience} onChange={(e) => { setAudience(e.target.value); setSaved(false); }}><option value="passengers_open_balance">Passengers with open balances</option><option value="all_passengers">All registered passengers</option><option value="atc_crew">ATC and Crew</option><option value="sponsors">Sponsors</option><option value="volunteers">Volunteers</option></select></label>
           <label>Channel<select value={channel} onChange={(e) => { setChannel(e.target.value); setSaved(false); }}><option value="email">Email</option><option value="sms">Text message</option><option value="both">Email + text</option></select></label>
           <label>Message template<select value={templateKey} onChange={(e) => applyTemplate(e.target.value)}><option value="payment_reminder">Registration payment reminder</option><option value="invoice">Invoice and payment link</option><option value="registration_confirmation">Registration confirmation</option><option value="event_update">Event update</option></select></label>
@@ -275,18 +307,22 @@ function SquawkBox({ organization, eventRequests, onClose }) {
         {channel !== 'sms' && <label>Subject<input value={subject} onChange={(e) => { setSubject(e.target.value); setSaved(false); }} /></label>}
         <label>Message<textarea rows="9" value={message} onChange={(e) => { setMessage(e.target.value); setSaved(false); }} /></label>
         <div className="squawk-token-list"><span>Available merge fields:</span><code>{'{{first_name}}'}</code><code>{'{{event_name}}'}</code><code>{'{{payment_link}}'}</code><code>{'{{invoice_link}}'}</code></div>
+        <div className="squawk-recipient-panel">
+          <div className="squawk-recipient-heading"><div><p className="platform-eyebrow">Recipient Preview</p><h3>{selectedRecipientIds.size} of {eligibleRecipients.length} selected</h3></div><button className="platform-secondary-button" type="button" onClick={toggleAllRecipients} disabled={!eligibleRecipients.length}>{selectedRecipientIds.size === eligibleRecipients.length && eligibleRecipients.length ? 'Clear All' : 'Select All'}</button></div>
+          {loadingRecipients ? <p className="platform-login-copy">Loading authorized Registration recipients...</p> : recipientError ? <div className="platform-error">{recipientError}</div> : !eventId ? <p className="platform-login-copy">Select an event to preview recipients.</p> : !eligibleRecipients.length ? <p className="platform-login-copy">No recipients match this audience and channel.</p> : <div className="squawk-recipient-list">{eligibleRecipients.map((recipient) => { const balance = Math.max(Number(recipient.price || 0) - Number(recipient.amount_paid || 0), 0); return <label key={recipient.id} className="squawk-recipient-row"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} /><span><strong>{recipient.first_name} {recipient.last_name}</strong><small>{recipient.email || 'No email'} · {recipient.phone || 'No phone'}</small></span><span className={balance > 0 ? 'balance open' : 'balance paid'}>{balance > 0 ? `$${balance.toFixed(2)} due` : 'Paid'}</span></label>; })}</div>}
+        </div>
         <div className="review-actions"><button className="platform-secondary-button" onClick={saveDraft}>Save Draft</button><button className="platform-primary-button" disabled title="Sending will unlock after Registration and provider connections are complete">Send Squawk</button>{saved && <span className="squawk-saved">Draft saved on this device</span>}</div>
       </div>
       <aside className="squawk-side">
         <p className="platform-eyebrow">Delivery Check</p><h3>Before takeoff</h3>
-        <ul><li className={eventId ? 'ready' : ''}>Event selected</li><li>Registration recipients connected</li><li>Email provider connected</li><li>Text provider connected</li><li>Payment and invoice links verified</li></ul>
+        <ul><li className={eventId ? 'ready' : ''}>Event selected</li><li className={recipients.length ? 'ready' : ''}>Registration recipients connected</li><li>Email provider connected</li><li>Text provider connected</li><li>Payment and invoice links verified</li></ul>
         <div className="squawk-history"><p className="platform-eyebrow">Communication Log</p><p>No Squawks sent yet. Every future email and text will record the sender, recipients, event, delivery status, and time.</p></div>
       </aside>
     </div>
   </section>;
 }
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, golfEvents, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
   const [workspaceView, setWorkspaceView] = useState('hangar');
   const [cockpitTool, setCockpitTool] = useState('home');
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
@@ -306,7 +342,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
       <section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared organization onboarding" /><StatCard label="Hangar" value={organization?.is_test ? 'Test' : 'Active'} detail="Organization information and access" /></section>
       <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
       <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Assigned Capabilities</p><h2>Apps & Readiness</h2></div><button className="platform-primary-button inline" onClick={() => setWorkspaceView('cockpit')}>Enter Cockpit</button></div><p className="platform-login-copy">EIG controls which apps are assigned to this Hangar. Enter the Cockpit to operate enabled apps and event tools.</p><div className="platform-product-grid compact-products">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} />)}</div></section>
-    </> : cockpitTool === 'squawk' ? <SquawkBox organization={organization} eventRequests={eventRequests} onClose={() => setCockpitTool('home')} /> : <>
+    </> : cockpitTool === 'squawk' ? <SquawkBox organization={organization} golfEvents={golfEvents} onClose={() => setCockpitTool('home')} /> : <>
       <section className="platform-stats-grid"><StatCard label="Operating As" value={roleLabel} detail={organization?.name} /><StatCard label="Active Inquiries" value={eventRequests.filter((request) => !['declined', 'cancelled'].includes(request.status)).length} detail="Venue and event workflow" /><StatCard label="Squawk Box" value="Draft Ready" detail="Email, text, invoice and payment messages" /></section>
       <section className="platform-section-card cockpit-welcome"><div><p className="platform-eyebrow">Cockpit</p><h2>{organization?.name} Operations</h2><p>Choose an event tool or review the work currently moving through this Hangar. Event Registration opens the existing event system and Coordinator Hub.</p></div></section>
       <section className="cockpit-launch-grid">
@@ -314,6 +350,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
         <CockpitLaunchCard eyebrow="Communications" title="Squawk Box" description="Prepare email, text, invoice and payment messages for ATC, Crew, Passengers, sponsors and volunteers." actionLabel="Open Squawk Box" onAction={() => setCockpitTool('squawk')} status="Preview" />
         <CockpitLaunchCard eyebrow="Operations" title="Tasks & Alerts" description="See missing setup, upcoming deadlines, approvals and event items that need attention." status="Coming Soon" />
       </section>
+      <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Flight Board</p><h2>Events</h2></div><button className="platform-secondary-button" onClick={onLaunchGolfRegistration}>Open Registration</button></div>{golfEvents.length ? <div className="cockpit-event-list">{golfEvents.map((event) => <div key={event.id} className="cockpit-event-row"><div><span className={`request-status ${event.status}`}>{event.status}</span><h3>{event.name}</h3><p>{event.course || organization?.name} · {(event.event_dates || []).join(' and ')}</p></div><div className="section-actions"><button className="platform-secondary-button" onClick={() => setCockpitTool('squawk')}>Open Squawk Box</button><button className="platform-primary-button" onClick={onLaunchGolfRegistration}>Enter ATC Center</button></div></div>)}</div> : <div className="empty-state"><strong>No Registration events are assigned to this Hangar yet.</strong><span>Create or assign an event from Event Registration.</span></div>}</section>
       {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
       <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section>
     </>}
@@ -324,7 +361,7 @@ export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [golfEvents, setGolfEvents] = useState([]); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
@@ -344,13 +381,14 @@ export default function App() {
     setLoadingData(true); setDataError('');
     const activeMembership = memberships.find((m) => m.organization_id === organizationId);
     const isEig = activeMembership?.organization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
-    const [{ data: productRows, error: productError }, { data: entitlementRows, error: entitlementError }, { data: profileRow, error: profileError }] = await Promise.all([
+    const [{ data: productRows, error: productError }, { data: entitlementRows, error: entitlementError }, { data: profileRow, error: profileError }, { data: golfEventRows, error: golfEventError }] = await Promise.all([
       supabase.from('products').select('*').neq('status', 'retired').order('sort_order'),
       supabase.from('organization_product_entitlements').select('*').eq('organization_id', organizationId),
       supabase.from('organization_profiles').select('*').eq('organization_id', organizationId).maybeSingle(),
+      supabase.from('golf_registration_events').select('id,organization_id,event_key,name,course,event_dates,status').eq('organization_id', organizationId).order('created_at', { ascending: false }),
     ]);
-    if (productError || entitlementError || profileError) setDataError(productError?.message || entitlementError?.message || profileError?.message || 'Unable to load workspace data.');
-    setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null);
+    if (productError || entitlementError || profileError || golfEventError) setDataError(productError?.message || entitlementError?.message || profileError?.message || golfEventError?.message || 'Unable to load workspace data.');
+    setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null); setGolfEvents(golfEventRows || []);
     if (isEig) { const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name'); if (orgError) setDataError(orgError.message); setOrganizations(orgRows || []); setEventRequests([]); }
     else { setOrganizations([]); if (['organization_admin', 'organization_staff'].includes(activeMembership?.role)) await loadEventRequests(organizationId); else setEventRequests([]); }
     setLoadingData(false);
@@ -392,5 +430,5 @@ export default function App() {
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} golfEvents={golfEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
 }

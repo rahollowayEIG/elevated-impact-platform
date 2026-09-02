@@ -17,7 +17,7 @@ function EIGAppHeader() {
         @media(max-width:720px){.eig-global-header{min-height:54px;padding:9px 14px}.eig-global-home img{width:50px;height:34px}.eig-global-home span{display:none}}
       `}</style>
       <header className="eig-global-header">
-        <a className="eig-global-home" href="/" aria-label="EIG Platform home">
+        <a className="eig-global-home" href="/" aria-label="ElevationPilot home">
           <img src={EIG_ICON} alt="Elevated Impact Group" />
           <span>Elevated Impact Group</span>
         </a>

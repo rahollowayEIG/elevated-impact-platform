@@ -122,7 +122,28 @@ function GlobalSquawkDrawer({ organization, messages, onClose }) {
 function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const [squawkOpen, setSquawkOpen] = useState(false);
-  const messages = [];
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSquawks() {
+      if (!activeOrganizationId) { setMessages([]); return; }
+      const { data: threads, error: threadError } = await supabase.from('squawk_threads').select('id,organization_id,event_id,context_type,context_label').eq('organization_id', activeOrganizationId);
+      if (cancelled || threadError || !threads?.length) { if (!cancelled) setMessages([]); return; }
+      const threadMap = new Map(threads.map((thread) => [thread.id, thread]));
+      const { data: messageRows, error: messageError } = await supabase.from('squawk_messages').select('id,thread_id,message_kind,visibility,required_roles,safe_label,requires_review,status,sent_at,created_at,reviewed_at,squawk_message_content(subject,body),squawk_message_receipts(user_id,read_at)').in('thread_id', threads.map((thread) => thread.id)).in('status', ['queued','sent','partially_sent','failed']).order('created_at', { ascending: false }).limit(100);
+      if (cancelled || messageError) { if (!cancelled) setMessages([]); return; }
+      setMessages((messageRows || []).map((message) => {
+        const thread = threadMap.get(message.thread_id);
+        const content = Array.isArray(message.squawk_message_content) ? message.squawk_message_content[0] : message.squawk_message_content;
+        const ownReceipt = (message.squawk_message_receipts || []).find((receipt) => receipt.user_id === user?.id);
+        const restricted = !content;
+        return { id: message.id, contextLabel: thread?.context_label || 'ElevationPilot', subject: content?.subject || message.safe_label, preview: content?.body?.slice(0, 180) || '', restricted, requiredRole: message.required_roles?.length ? message.required_roles.map((role) => role.replaceAll('_', ' ')).join(' / ') : 'Authorized', read: Boolean(ownReceipt?.read_at || message.reviewed_at), reviewed: Boolean(message.reviewed_at), sentAt: new Date(message.sent_at || message.created_at).toLocaleString() };
+      }));
+    }
+    loadSquawks();
+    return () => { cancelled = true; };
+  }, [activeOrganizationId, user?.id, squawkOpen]);
   const unreadCount = messages.filter((message) => !message.read).length;
   return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" onClick={() => setSquawkOpen(true)} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main>{squawkOpen && <GlobalSquawkDrawer organization={active?.organization} messages={messages} onClose={() => setSquawkOpen(false)} />}</div>;
 }

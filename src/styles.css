@@ -116,12 +116,38 @@ button {
 .squawk-recipient-row .balance { border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 850; }
 .squawk-recipient-row .balance.open { background: rgba(214,170,67,.13); color: #f2d88c; }
 .squawk-recipient-row .balance.paid { background: rgba(79,209,161,.12); color: #83e5c0; }
+.squawk-workspace-tabs { display: flex; gap: 8px; margin: 18px 0; overflow-x: auto; }
+.squawk-workspace-tabs button { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.04); color: #9fb0c3; padding: 9px 13px; font-weight: 850; cursor: pointer; }
+.squawk-workspace-tabs button.active { border-color: rgba(248,113,113,.4); background: rgba(225,29,46,.16); color: #fff; }
+.squawk-workspace-tabs button span { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 10px; }
+.squawk-character-count { color: #9fb0c3; font-size: 11px; font-weight: 600; }
+.squawk-consent-warning { display: grid; gap: 3px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid rgba(214,170,67,.35); border-radius: 11px; background: rgba(214,170,67,.08); color: #f2dfaa; }
+.squawk-consent-warning span { color: #c9b981; font-size: 12px; }
+.squawk-recipient-row small.consent { color: #f2c66d; }
+.squawk-recipient-row small.consent.ready { color: #83e5c0; }
+.squawk-library-panel { min-height: 390px; padding: 18px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(0,0,0,.12); }
+.squawk-template-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 13px; }
+.squawk-template-card { display: grid; gap: 8px; min-height: 180px; padding: 17px; text-align: left; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(255,255,255,.035); color: #fff; cursor: pointer; }
+.squawk-template-card:hover { border-color: rgba(248,113,113,.42); transform: translateY(-1px); }
+.squawk-template-card span,.squawk-template-card small { color: #fca5a5; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.squawk-template-card strong { font-size: 17px; }
+.squawk-template-card p { margin: 0; color: #9fb0c3; line-height: 1.5; }
+.squawk-record-list { display: grid; gap: 11px; }
+.squawk-record-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; background: rgba(255,255,255,.035); }
+.squawk-record-row > div:first-child > span { color: #91a3b7; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.squawk-record-row h3 { margin: 7px 0 5px; }
+.squawk-record-row p { margin: 0; color: #9fb0c3; }
+.squawk-record-row > div:last-child { display: grid; align-content: start; justify-items: end; gap: 7px; min-width: 145px; }
+.squawk-record-row small { color: #91a3b7; }
+.squawk-record-status { border-radius: 999px; padding: 5px 8px; background: rgba(255,255,255,.08); color: #d8e4ef; font-size: 10px; text-transform: uppercase; }
+.squawk-record-status.sent,.squawk-record-status.delivered { background: rgba(79,209,161,.12); color: #83e5c0; }
+.squawk-record-status.failed { background: rgba(239,68,68,.13); color: #fca5a5; }
 .cockpit-event-list { display: grid; gap: 12px; }
 .cockpit-event-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; border: 1px solid rgba(255,255,255,.09); border-radius: 16px; background: rgba(0,0,0,.12); }
 .cockpit-event-row h3 { margin: 9px 0 4px; }
 .cockpit-event-row p { margin: 0; color: #9fb0c3; }
 
-@media (max-width: 850px) { .squawk-layout { grid-template-columns: 1fr; } .cockpit-event-row { align-items: stretch; flex-direction: column; } }
+@media (max-width: 850px) { .squawk-layout { grid-template-columns: 1fr; } .cockpit-event-row { align-items: stretch; flex-direction: column; } .squawk-record-row { grid-template-columns: 1fr; } .squawk-record-row > div:last-child { justify-items: start; } }
 
 .compact-products .platform-product-card {
   min-height: 0;

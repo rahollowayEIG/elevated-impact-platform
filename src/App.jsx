@@ -311,17 +311,67 @@ const SQUAWK_TEMPLATES = {
 };
 
 function SquawkBox({ organization, golfEvents, onClose }) {
+  const [workspaceTab, setWorkspaceTab] = useState('compose');
   const [channel, setChannel] = useState('email');
   const [audience, setAudience] = useState('passengers_open_balance');
   const [eventId, setEventId] = useState(golfEvents[0]?.id || '');
   const [templateKey, setTemplateKey] = useState('payment_reminder');
+  const [templateId, setTemplateId] = useState('');
   const [subject, setSubject] = useState(SQUAWK_TEMPLATES.payment_reminder.subject);
   const [message, setMessage] = useState(SQUAWK_TEMPLATES.payment_reminder.message);
+  const [smsMessage, setSmsMessage] = useState('{{event_name}} reminder: Your registration balance is open. Pay securely: {{payment_link}}. Reply STOP to opt out.');
   const [saved, setSaved] = useState(false);
+  const [savedDraftId, setSavedDraftId] = useState('');
   const [recipients, setRecipients] = useState([]);
+  const [recipientPreferences, setRecipientPreferences] = useState(new Map());
   const [selectedRecipientIds, setSelectedRecipientIds] = useState(new Set());
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [recipientError, setRecipientError] = useState('');
+  const [templates, setTemplates] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadWorkspace() {
+      if (!organization?.id) return;
+      setWorkspaceLoading(true);
+      const [templateResult, connectionResult, threadResult] = await Promise.all([
+        supabase.from('squawk_templates').select('id,name,description,message_kind,channel_options,subject_template,body_template,email_template,sms_template,merge_fields,audience_key,is_system').eq('is_active', true).or(`organization_id.is.null,organization_id.eq.${organization.id}`).order('is_system', { ascending: false }).order('name'),
+        supabase.from('squawk_channel_connections').select('channel,provider,connection_status,compliance_status,sender_label,sender_masked,last_verified_at').eq('organization_id', organization.id),
+        supabase.from('squawk_threads').select('id,context_label,event_id').eq('organization_id', organization.id),
+      ]);
+      if (cancelled) return;
+      setTemplates(templateResult.data || []);
+      setConnections(connectionResult.data || []);
+      if (!threadResult.error && threadResult.data?.length) {
+        const threadMap = new Map(threadResult.data.map((thread) => [thread.id, thread]));
+        const { data: rows } = await supabase.from('squawk_messages').select('id,thread_id,created_by,message_kind,audience_key,channels,status,sent_at,created_at,updated_at,squawk_message_content(subject,body,email_body,sms_body),squawk_message_recipients(id,channel,delivery_status)').in('thread_id', threadResult.data.map((thread) => thread.id)).order('updated_at', { ascending: false }).limit(100);
+        if (!cancelled) setHistory((rows || []).map((row) => {
+          const content = Array.isArray(row.squawk_message_content) ? row.squawk_message_content[0] : row.squawk_message_content;
+          return { ...row, contextLabel: threadMap.get(row.thread_id)?.context_label || 'ElevationPilot', subject: content?.subject || 'Restricted Squawk', body: content?.body || '', recipientCount: row.squawk_message_recipients?.length || 0 };
+        }));
+      } else setHistory([]);
+      setWorkspaceLoading(false);
+    }
+    loadWorkspace();
+    return () => { cancelled = true; };
+  }, [organization?.id, refreshKey]);
+
+  useEffect(() => {
+    if (templateId || !templates.length) return;
+    const initialTemplate = templates.find((template) => template.message_kind === 'payment_reminder') || templates[0];
+    setTemplateId(initialTemplate.id);
+    setTemplateKey(initialTemplate.message_kind);
+    setSubject(initialTemplate.subject_template || '');
+    setMessage(initialTemplate.email_template || initialTemplate.body_template);
+    setSmsMessage(initialTemplate.sms_template || initialTemplate.body_template);
+    if (initialTemplate.audience_key) setAudience(initialTemplate.audience_key);
+  }, [templates, templateId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -330,64 +380,127 @@ function SquawkBox({ organization, golfEvents, onClose }) {
       setLoadingRecipients(true); setRecipientError('');
       const { data, error } = await supabase.from('golf_registrations').select('id,event_id,event_name,first_name,last_name,email,phone,price,amount_paid,payment_status').eq('event_id', eventId).order('last_name').order('first_name');
       if (cancelled) return;
-      if (error) { setRecipientError(error.message); setRecipients([]); setSelectedRecipientIds(new Set()); }
-      else { setRecipients(data || []); }
+      if (error) { setRecipientError(error.message); setRecipients([]); setRecipientPreferences(new Map()); setSelectedRecipientIds(new Set()); }
+      else {
+        const rows = data || [];
+        setRecipients(rows);
+        if (rows.length) {
+          const { data: preferenceRows } = await supabase.from('squawk_recipient_preferences').select('registration_id,email_status,sms_status,do_not_contact').eq('organization_id', organization.id).in('registration_id', rows.map((recipient) => recipient.id));
+          if (!cancelled) setRecipientPreferences(new Map((preferenceRows || []).map((preference) => [preference.registration_id, preference])));
+        } else setRecipientPreferences(new Map());
+      }
       setLoadingRecipients(false);
     }
     loadRecipients();
     return () => { cancelled = true; };
-  }, [eventId]);
+  }, [eventId, organization?.id]);
 
   const eligibleRecipients = useMemo(() => recipients.filter((recipient) => {
     const hasOpenBalance = Number(recipient.amount_paid || 0) < Number(recipient.price || 0) || recipient.payment_status !== 'paid';
     if (audience === 'passengers_open_balance' && !hasOpenBalance) return false;
     if (audience !== 'passengers_open_balance' && audience !== 'all_passengers') return false;
+    if (recipientPreferences.get(recipient.id)?.do_not_contact) return false;
     if (channel === 'email') return Boolean(recipient.email);
     if (channel === 'sms') return Boolean(recipient.phone);
+    if (channel === 'in_app') return false;
     return Boolean(recipient.email || recipient.phone);
-  }), [recipients, audience, channel]);
+  }), [recipients, recipientPreferences, audience, channel]);
 
   useEffect(() => { setSelectedRecipientIds(new Set(eligibleRecipients.map((recipient) => recipient.id))); }, [eventId, audience, channel, recipients.length]);
-  function toggleRecipient(id) { setSelectedRecipientIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
-  function toggleAllRecipients() { setSelectedRecipientIds((current) => current.size === eligibleRecipients.length ? new Set() : new Set(eligibleRecipients.map((recipient) => recipient.id))); }
+  function toggleRecipient(id) { setSaved(false); setSelectedRecipientIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
+  function toggleAllRecipients() { setSaved(false); setSelectedRecipientIds((current) => current.size === eligibleRecipients.length ? new Set() : new Set(eligibleRecipients.map((recipient) => recipient.id))); }
 
   function applyTemplate(key) {
-    const template = SQUAWK_TEMPLATES[key];
-    setTemplateKey(key); setSubject(template.subject); setMessage(template.message); setSaved(false);
+    const databaseTemplate = templates.find((item) => item.id === key);
+    if (databaseTemplate) {
+      setTemplateId(databaseTemplate.id); setTemplateKey(databaseTemplate.message_kind); setSubject(databaseTemplate.subject_template || ''); setMessage(databaseTemplate.email_template || databaseTemplate.body_template); setSmsMessage(databaseTemplate.sms_template || databaseTemplate.body_template); if (databaseTemplate.audience_key) setAudience(databaseTemplate.audience_key);
+    } else {
+      const template = SQUAWK_TEMPLATES[key] || SQUAWK_TEMPLATES.event_update;
+      setTemplateId(''); setTemplateKey(key); setSubject(template.subject); setMessage(template.message); setSmsMessage(template.message);
+    }
+    setSaved(false); setSavedDraftId(''); setSaveError('');
   }
 
-  function saveDraft() {
-    const draft = { organizationId: organization?.id, eventId, channel, audience, templateKey, subject, message, savedAt: new Date().toISOString() };
-    window.localStorage.setItem(`eig-squawk-draft-${organization?.id || 'workspace'}`, JSON.stringify(draft));
-    setSaved(true);
+  function maskEmail(email) {
+    const [name, domain] = String(email || '').split('@');
+    return name && domain ? `${name.slice(0, 2)}***@${domain}` : null;
   }
+
+  function maskPhone(phone) {
+    const digits = String(phone || '').replace(/\D/g, '');
+    return digits ? `***-***-${digits.slice(-4)}` : null;
+  }
+
+  async function saveDraft() {
+    setSaveError(''); setSaved(false); setSaving(true);
+    const selected = eligibleRecipients.filter((recipient) => selectedRecipientIds.has(recipient.id));
+    const channels = channel === 'both' ? ['email', 'sms'] : [channel];
+    const recipientRows = selected.flatMap((recipient) => channels.flatMap((deliveryChannel) => {
+      if (deliveryChannel === 'email' && recipient.email) return [{ registration_id: recipient.id, recipient_type: 'passenger', channel: 'email', destination_masked: maskEmail(recipient.email) }];
+      if (deliveryChannel === 'sms' && recipient.phone) return [{ registration_id: recipient.id, recipient_type: 'passenger', channel: 'sms', destination_masked: maskPhone(recipient.phone) }];
+      return [];
+    }));
+    const selectedEvent = golfEvents.find((event) => event.id === eventId);
+    const { data, error } = await supabase.rpc('create_squawk_draft', {
+      p_organization_id: organization.id,
+      p_event_id: eventId || null,
+      p_context_label: selectedEvent?.name || `${organization.name} Cockpit`,
+      p_message_kind: templateKey || 'message',
+      p_visibility: 'all_relevant',
+      p_required_roles: [],
+      p_safe_label: subject || 'Squawk Box message',
+      p_requires_review: ['invoice', 'payment_reminder'].includes(templateKey),
+      p_subject: subject || null,
+      p_body: message,
+      p_email_body: message,
+      p_sms_body: smsMessage,
+      p_audience_key: audience,
+      p_channels: channels,
+      p_template_id: templateId || null,
+      p_recipients: recipientRows,
+    });
+    if (error) setSaveError(error.message || 'The Squawk draft could not be saved.');
+    else { setSaved(true); setSavedDraftId(data); setRefreshKey((value) => value + 1); }
+    setSaving(false);
+  }
+
+  const draftMessages = history.filter((item) => item.status === 'draft' && item.body);
+  const sentMessages = history.filter((item) => !['draft', 'cancelled', 'archived'].includes(item.status));
+  const emailConnection = connections.find((item) => item.channel === 'email');
+  const smsConnection = connections.find((item) => item.channel === 'sms');
+  const smsConsentMissing = eligibleRecipients.filter((recipient) => selectedRecipientIds.has(recipient.id) && !['transactional_only', 'subscribed'].includes(recipientPreferences.get(recipient.id)?.sms_status)).length;
+  const selectedEvent = golfEvents.find((event) => event.id === eventId);
 
   return <section className="platform-section-card squawk-box">
     <div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Communications</p><h2>Squawk Box</h2><p>Prepare email and text messages in the correct Hangar and event context.</p></div><button className="platform-secondary-button" onClick={onClose}>Back to Cockpit</button></div>
-    <div className="squawk-notice"><strong>Preview mode:</strong> drafts can be prepared safely, but sending stays locked until Registration recipients and messaging providers are connected.</div>
-    <div className="squawk-layout">
+    <div className="squawk-notice"><strong>Foundation mode:</strong> drafts, recipients, permissions, templates and delivery tracking are live. External sending stays locked until Resend and Twilio are verified.</div>
+    <div className="squawk-workspace-tabs" role="tablist" aria-label="Squawk Box workspace"><button className={workspaceTab === 'compose' ? 'active' : ''} onClick={() => setWorkspaceTab('compose')}>Compose</button><button className={workspaceTab === 'drafts' ? 'active' : ''} onClick={() => setWorkspaceTab('drafts')}>Drafts <span>{draftMessages.length}</span></button><button className={workspaceTab === 'sent' ? 'active' : ''} onClick={() => setWorkspaceTab('sent')}>Sent <span>{sentMessages.length}</span></button><button className={workspaceTab === 'templates' ? 'active' : ''} onClick={() => setWorkspaceTab('templates')}>Templates <span>{templates.length}</span></button></div>
+    {workspaceTab === 'compose' ? <div className="squawk-layout">
       <div className="squawk-composer">
         <div className="form-grid two">
           <label>Event context<select value={eventId} onChange={(e) => { setEventId(e.target.value); setSaved(false); }}><option value="">Select an event</option>{golfEvents.map((event) => <option key={event.id} value={event.id}>{event.name}</option>)}</select></label>
           <label>Audience<select value={audience} onChange={(e) => { setAudience(e.target.value); setSaved(false); }}><option value="passengers_open_balance">Passengers with open balances</option><option value="all_passengers">All registered passengers</option><option value="atc_crew">ATC and Crew</option><option value="sponsors">Sponsors</option><option value="volunteers">Volunteers</option></select></label>
-          <label>Channel<select value={channel} onChange={(e) => { setChannel(e.target.value); setSaved(false); }}><option value="email">Email</option><option value="sms">Text message</option><option value="both">Email + text</option></select></label>
-          <label>Message template<select value={templateKey} onChange={(e) => applyTemplate(e.target.value)}><option value="payment_reminder">Registration payment reminder</option><option value="invoice">Invoice and payment link</option><option value="registration_confirmation">Registration confirmation</option><option value="event_update">Event update</option></select></label>
+          <label>Channel<select value={channel} onChange={(e) => { setChannel(e.target.value); setSaved(false); }}><option value="email">Email</option><option value="sms">Text message</option><option value="both">Email + text</option><option value="in_app">In-app Squawk</option></select></label>
+          <label>Message template<select value={templateId || templateKey} onChange={(e) => applyTemplate(e.target.value)}>{templates.length ? templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>) : <><option value="payment_reminder">Registration payment reminder</option><option value="invoice">Invoice and payment link</option><option value="registration_confirmation">Registration confirmation</option><option value="event_update">Event update</option></>}</select></label>
         </div>
         {channel !== 'sms' && <label>Subject<input value={subject} onChange={(e) => { setSubject(e.target.value); setSaved(false); }} /></label>}
-        <label>Message<textarea rows="9" value={message} onChange={(e) => { setMessage(e.target.value); setSaved(false); }} /></label>
+        {channel !== 'sms' && <label>{channel === 'in_app' ? 'In-app message' : 'Email message'}<textarea rows="8" value={message} onChange={(e) => { setMessage(e.target.value); setSaved(false); }} /></label>}
+        {['sms', 'both'].includes(channel) && <label>Text message <span className="squawk-character-count">{smsMessage.length} characters · {Math.max(1, Math.ceil(smsMessage.length / 160))} SMS segment(s)</span><textarea rows="5" value={smsMessage} onChange={(e) => { setSmsMessage(e.target.value); setSaved(false); }} /></label>}
         <div className="squawk-token-list"><span>Available merge fields:</span><code>{'{{first_name}}'}</code><code>{'{{event_name}}'}</code><code>{'{{payment_link}}'}</code><code>{'{{invoice_link}}'}</code></div>
+        {['sms', 'both'].includes(channel) && smsConsentMissing > 0 && <div className="squawk-consent-warning"><strong>{smsConsentMissing} selected recipient(s) need SMS consent recorded.</strong><span>The draft can be saved, but those texts will remain blocked from delivery.</span></div>}
         <div className="squawk-recipient-panel">
           <div className="squawk-recipient-heading"><div><p className="platform-eyebrow">Recipient Preview</p><h3>{selectedRecipientIds.size} of {eligibleRecipients.length} selected</h3></div><button className="platform-secondary-button" type="button" onClick={toggleAllRecipients} disabled={!eligibleRecipients.length}>{selectedRecipientIds.size === eligibleRecipients.length && eligibleRecipients.length ? 'Clear All' : 'Select All'}</button></div>
-          {loadingRecipients ? <p className="platform-login-copy">Loading authorized Registration recipients...</p> : recipientError ? <div className="platform-error">{recipientError}</div> : !eventId ? <p className="platform-login-copy">Select an event to preview recipients.</p> : !eligibleRecipients.length ? <p className="platform-login-copy">No recipients match this audience and channel.</p> : <div className="squawk-recipient-list">{eligibleRecipients.map((recipient) => { const balance = Math.max(Number(recipient.price || 0) - Number(recipient.amount_paid || 0), 0); return <label key={recipient.id} className="squawk-recipient-row"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} /><span><strong>{recipient.first_name} {recipient.last_name}</strong><small>{recipient.email || 'No email'} · {recipient.phone || 'No phone'}</small></span><span className={balance > 0 ? 'balance open' : 'balance paid'}>{balance > 0 ? `$${balance.toFixed(2)} due` : 'Paid'}</span></label>; })}</div>}
+          {loadingRecipients ? <p className="platform-login-copy">Loading authorized Registration recipients...</p> : recipientError ? <div className="platform-error">{recipientError}</div> : !eventId ? <p className="platform-login-copy">Select an event to preview recipients.</p> : !eligibleRecipients.length ? <p className="platform-login-copy">No recipients match this audience and channel. Additional audience connectors will populate as ATC, sponsor and volunteer records are assigned.</p> : <div className="squawk-recipient-list">{eligibleRecipients.map((recipient) => { const balance = Math.max(Number(recipient.price || 0) - Number(recipient.amount_paid || 0), 0); const preference = recipientPreferences.get(recipient.id); return <label key={recipient.id} className="squawk-recipient-row"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} /><span><strong>{recipient.first_name} {recipient.last_name}</strong><small>{recipient.email || 'No email'} · {recipient.phone || 'No phone'}</small><small className={['transactional_only', 'subscribed'].includes(preference?.sms_status) ? 'consent ready' : 'consent'}>SMS: {preference?.sms_status?.replaceAll('_', ' ') || 'consent not recorded'}</small></span><span className={balance > 0 ? 'balance open' : 'balance paid'}>{balance > 0 ? `$${balance.toFixed(2)} due` : 'Paid'}</span></label>; })}</div>}
         </div>
-        <div className="review-actions"><button className="platform-secondary-button" onClick={saveDraft}>Save Draft</button><button className="platform-primary-button" disabled title="Sending will unlock after Registration and provider connections are complete">Send Squawk</button>{saved && <span className="squawk-saved">Draft saved on this device</span>}</div>
+        {saveError && <div className="platform-error">{saveError}</div>}
+        <div className="review-actions"><button className="platform-secondary-button" onClick={saveDraft} disabled={saving || !eventId || !message.trim()}>{saving ? 'Saving...' : 'Save Draft'}</button><button className="platform-primary-button" disabled title="Sending unlocks only after provider, compliance, consent and link checks pass">Send Squawk</button>{saved && <span className="squawk-saved">Draft saved securely · {savedDraftId.slice(0, 8)}</span>}</div>
       </div>
       <aside className="squawk-side">
         <p className="platform-eyebrow">Delivery Check</p><h3>Before takeoff</h3>
-        <ul><li className={eventId ? 'ready' : ''}>Event selected</li><li className={recipients.length ? 'ready' : ''}>Registration recipients connected</li><li>Email provider connected</li><li>Text provider connected</li><li>Payment and invoice links verified</li></ul>
-        <div className="squawk-history"><p className="platform-eyebrow">Communication Log</p><p>No Squawks sent yet. Every future email and text will record the sender, recipients, event, delivery status, and time.</p></div>
+        <ul><li className={eventId ? 'ready' : ''}>Event selected</li><li className={recipients.length ? 'ready' : ''}>Registration recipients connected</li><li className={emailConnection?.connection_status === 'connected' ? 'ready' : ''}>Resend email: {emailConnection?.connection_status?.replaceAll('_', ' ') || 'setup required'}</li><li className={smsConnection?.connection_status === 'connected' && smsConnection?.compliance_status === 'approved' ? 'ready' : ''}>Twilio SMS: {smsConnection?.compliance_status?.replaceAll('_', ' ') || 'registration required'}</li><li>Payment and invoice links verified at send time</li></ul>
+        <div className="squawk-history"><p className="platform-eyebrow">Current Context</p><strong>{selectedEvent?.name || 'No event selected'}</strong><p>{selectedRecipientIds.size} recipient(s) selected. Each channel creates its own delivery record and status trail.</p></div>
       </aside>
-    </div>
+    </div> : <div className="squawk-library-panel">{workspaceLoading ? <p className="platform-login-copy">Loading Squawk Box records...</p> : workspaceTab === 'templates' ? <div className="squawk-template-grid">{templates.map((template) => <button key={template.id} className="squawk-template-card" onClick={() => { applyTemplate(template.id); setWorkspaceTab('compose'); }}><span>{template.is_system ? 'EIG System Template' : 'Hangar Template'}</span><strong>{template.name}</strong><p>{template.description}</p><small>{template.channel_options.join(' + ')}</small></button>)}</div> : <div className="squawk-record-list">{(workspaceTab === 'drafts' ? draftMessages : sentMessages).length ? (workspaceTab === 'drafts' ? draftMessages : sentMessages).map((item) => <article key={item.id} className="squawk-record-row"><div><span>{item.contextLabel} · {item.channels?.join(' + ')}</span><h3>{item.subject}</h3><p>{item.body.slice(0, 150)}{item.body.length > 150 ? '…' : ''}</p></div><div><b className={`squawk-record-status ${item.status}`}>{item.status.replaceAll('_', ' ')}</b><small>{item.recipientCount} delivery record(s)</small><small>{new Date(item.sent_at || item.updated_at || item.created_at).toLocaleString()}</small></div></article>) : <div className="empty-state"><strong>No {workspaceTab} Squawks yet.</strong><span>Saved drafts and completed delivery records will appear here.</span></div>}</div>}</div>}
   </section>;
 }
 

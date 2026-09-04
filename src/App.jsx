@@ -398,7 +398,8 @@ function SquawkBox({ organization, golfEvents, onClose }) {
   }, [eventId, organization?.id]);
 
   const eligibleRecipients = useMemo(() => recipients.filter((recipient) => {
-    const hasOpenBalance = Number(recipient.amount_paid || 0) < Number(recipient.price || 0) || recipient.payment_status !== 'paid';
+    const paymentStatus = String(recipient.payment_status || '').toLowerCase();
+    const hasOpenBalance = !['paid', 'comp'].includes(paymentStatus) && Number(recipient.amount_paid || 0) < Number(recipient.price || 0);
     if (audience === 'passengers_open_balance' && !hasOpenBalance) return false;
     if (audience !== 'passengers_open_balance' && audience !== 'all_passengers') return false;
     if (recipientPreferences.get(recipient.id)?.do_not_contact) return false;

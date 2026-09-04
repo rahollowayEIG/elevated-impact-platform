@@ -409,7 +409,7 @@ function SquawkBox({ organization, golfEvents, onClose }) {
     return Boolean(recipient.email || recipient.phone);
   }), [recipients, recipientPreferences, audience, channel]);
 
-  useEffect(() => { setSelectedRecipientIds(new Set(eligibleRecipients.map((recipient) => recipient.id))); }, [eventId, audience, channel, recipients.length]);
+  useEffect(() => { setSelectedRecipientIds(new Set()); }, [eventId, audience, channel]);
   function toggleRecipient(id) { setSaved(false); setSelectedRecipientIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
   function toggleAllRecipients() { setSaved(false); setSelectedRecipientIds((current) => current.size === eligibleRecipients.length ? new Set() : new Set(eligibleRecipients.map((recipient) => recipient.id))); }
 

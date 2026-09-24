@@ -137,7 +137,7 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
 
 function ProductCard({ product, enabled, onLaunch }) {
   const comingSoon = product.status === 'coming_soon';
-  return <div className={`platform-product-card ${enabled ? 'enabled' : ''}`}><div className="platform-product-topline"><span>{product.category || 'EIG Product'}</span><span className={`platform-status-pill ${enabled ? 'enabled' : comingSoon ? 'soon' : ''}`}>{enabled ? 'Enabled' : comingSoon ? 'Coming Soon' : 'Not Enabled'}</span></div><h3>{product.name}</h3><p>{product.description}</p>{enabled && product.product_key === 'golf_event_registration' && <button className="platform-primary-button inline" onClick={onLaunch}>Open Golf Event Registration</button>}</div>;
+  return <div className={`platform-product-card ${enabled ? 'enabled' : ''}`}><div className="platform-product-topline"><span>{product.category || 'EIG Product'}</span><span className={`platform-status-pill ${enabled ? 'enabled' : comingSoon ? 'soon' : ''}`}>{enabled ? 'Enabled' : comingSoon ? 'Coming Soon' : 'Not Enabled'}</span></div><h3>{product.product_key === 'golf_event_registration' ? 'EIE · Events' : product.name}</h3><p>{product.product_key === 'golf_event_registration' ? 'Create, publish, register, collect payments, manage rosters, communicate, and prepare Golf Genius exports.' : product.description}</p>{enabled && product.product_key === 'golf_event_registration' && <button className="platform-primary-button inline" onClick={onLaunch}>Open EIE</button>}</div>;
 }
 
 function VenueConfirmationForm({ request, onClose, onSaved }) {
@@ -230,22 +230,195 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
   </section>;
 }
 
+
+function EieEventDirectory({ organization, events, loading, onReload, onBack }) {
+  const [showNew, setShowNew] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [form, setForm] = useState({
+    name: '',
+    course: organization?.name || '',
+    event_start: '',
+    event_end: '',
+    registration_format: 'team',
+    team_size: 4,
+    member_price: '',
+    non_member_price: '',
+    max_golfers: '',
+    registration_deadline: '',
+    team_payment_mode: 'captain_all',
+    allow_online: true,
+    allow_clubhouse: true,
+    convenience_fee_type: 'percent',
+    convenience_fee_value: '3',
+    clubhouse_hold_days: '3',
+    allow_card_guarantee: true,
+    auto_charge_at_deadline: true,
+    google_calendar_sync_enabled: true,
+  });
+
+  useEffect(() => {
+    setForm((current) => ({ ...current, course: current.course || organization?.name || '' }));
+  }, [organization?.id]);
+
+  function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
+
+  async function createEvent(event) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.rpc('create_eie_golf_event', {
+        p_organization_id: organization.id,
+        p_name: form.name.trim(),
+        p_course: form.course.trim(),
+        p_event_start: form.event_start,
+        p_event_end: form.event_end || null,
+        p_public_slug: null,
+        p_registration_format: form.registration_format,
+        p_team_size: form.registration_format === 'team' ? Number(form.team_size || 4) : 1,
+        p_member_price: Number(form.member_price || 0),
+        p_non_member_price: Number(form.non_member_price || 0),
+        p_max_golfers: form.max_golfers ? Number(form.max_golfers) : null,
+        p_registration_deadline: form.registration_deadline || null,
+        p_contact_name: null,
+        p_contact_email: null,
+        p_contact_phone: null,
+        p_team_payment_mode: form.registration_format === 'team' ? form.team_payment_mode : 'captain_all',
+        p_allow_online: form.allow_online,
+        p_allow_clubhouse: form.allow_clubhouse,
+        p_convenience_fee_type: form.convenience_fee_type,
+        p_convenience_fee_value: Number(form.convenience_fee_value || 0),
+        p_clubhouse_hold_days: Number(form.clubhouse_hold_days || 3),
+        p_allow_card_guarantee: form.allow_card_guarantee,
+        p_auto_charge_at_deadline: form.auto_charge_at_deadline,
+        p_google_calendar_sync_enabled: form.google_calendar_sync_enabled,
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error('Unable to create the EIE event.');
+      setNotice('Event created. It is now a draft inside this Hangar.');
+      setShowNew(false);
+      setForm((current) => ({ ...current, name: '', event_start: '', event_end: '', member_price: '', non_member_price: '', max_golfers: '', registration_deadline: '' }));
+      await onReload();
+    } catch (createError) {
+      setNotice(createError.message || 'Unable to create event.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function eventDateLabel(event) {
+    const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
+    if (!dates.length) return 'Date not set';
+    const first = new Date(`${dates[0]}T12:00:00`).toLocaleDateString();
+    const last = dates[1] ? new Date(`${dates[1]}T12:00:00`).toLocaleDateString() : '';
+    return last ? `${first} – ${last}` : first;
+  }
+
+  const upcoming = events.filter((event) => {
+    const date = Array.isArray(event.event_dates) ? event.event_dates[0] : null;
+    return !date || date >= new Date().toISOString().slice(0, 10);
+  });
+  const past = events.filter((event) => {
+    const date = Array.isArray(event.event_dates) ? event.event_dates[0] : null;
+    return date && date < new Date().toISOString().slice(0, 10);
+  });
+
+  return <div className="platform-page">
+    <section className="platform-hero organization">
+      <div>
+        <p className="platform-eyebrow">{organization?.name} Hangar · Cockpit</p>
+        <h1>EIE · Events</h1>
+        <p>Create and operate events inside the active Hangar. Each event carries its own Hub, registration, payments, roster, Google Workspace, Calendar, and communications context.</p>
+      </div>
+      <div className="review-actions">
+        <button className="platform-secondary-button" onClick={onBack}>← Cockpit</button>
+        <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close New Event' : '+ New Event'}</button>
+      </div>
+    </section>
+
+    {notice && <div className={notice.startsWith('Event created') ? 'platform-success' : 'platform-error banner'}>{notice}</div>}
+
+    {showNew && <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Ground Zero</p><h2>Create Event</h2></div><div className="platform-role-pill">Draft</div></div>
+      <form className="platform-login-form" onSubmit={createEvent}>
+        <div className="form-grid two">
+          <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
+          <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
+          <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
+          <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
+          <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
+          {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
+          <label>Member price<input type="number" min="0" step="0.01" value={form.member_price} onChange={(e) => update('member_price', e.target.value)} placeholder="0.00" /></label>
+          <label>Non-member price<input type="number" min="0" step="0.01" value={form.non_member_price} onChange={(e) => update('non_member_price', e.target.value)} placeholder="0.00" /></label>
+          <label>Maximum golfers<input type="number" min="1" value={form.max_golfers} onChange={(e) => update('max_golfers', e.target.value)} placeholder="144" /></label>
+          <label>Registration deadline<input type="date" value={form.registration_deadline} onChange={(e) => update('registration_deadline', e.target.value)} /></label>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">Payments</p>
+          <div className="form-grid two">
+            {form.registration_format === 'team' && <label>Team payment<select value={form.team_payment_mode} onChange={(e) => update('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split">Split payment</option></select></label>}
+            <label>Convenience fee<select value={form.convenience_fee_type} onChange={(e) => update('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>
+            {form.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={form.convenience_fee_value} onChange={(e) => update('convenience_fee_value', e.target.value)} /></label>}
+            <label>Clubhouse hold days<input type="number" min="1" max="365" value={form.clubhouse_hold_days} onChange={(e) => update('clubhouse_hold_days', e.target.value)} /></label>
+          </div>
+          <div className="form-grid two" style={{ marginTop: 12 }}>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_online} onChange={(e) => update('allow_online', e.target.checked)} />Allow online payment</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_clubhouse} onChange={(e) => update('allow_clubhouse', e.target.checked)} />Allow clubhouse payment</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_card_guarantee} onChange={(e) => update('allow_card_guarantee', e.target.checked)} />Allow card guarantee</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.auto_charge_at_deadline} onChange={(e) => update('auto_charge_at_deadline', e.target.checked)} />Charge guaranteed cards at deadline if unpaid</label>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">Google Workspace</p>
+          <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.google_calendar_sync_enabled} onChange={(e) => update('google_calendar_sync_enabled', e.target.checked)} />Sync this event to the Hangar's Google Calendar after save</label>
+          <p className="platform-login-copy">Drive folder and roster Sheet provisioning will attach to this same event record. EIE remains the source of truth.</p>
+        </div>
+
+        <div className="review-actions" style={{ marginTop: 18 }}>
+          <button className="platform-secondary-button" type="button" onClick={() => setShowNew(false)}>Cancel</button>
+          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating Event...' : 'Save Draft Event'}</button>
+        </div>
+      </form>
+    </section>}
+
+    <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Directory</p><h2>Upcoming & Active</h2></div><span>{upcoming.length} event{upcoming.length === 1 ? '' : 's'}</span></div>
+      {loading ? <p>Loading EIE events...</p> : <div className="request-list">
+        {upcoming.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}>
+          <div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div>
+          <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
+          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><b>Setup →</b></div>
+        </div>)}
+        {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first one from ground zero.</span></div>}
+      </div>}
+    </section>
+
+    {past.length > 0 && <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Archive</p><h2>Past Events</h2></div><span>{past.length}</span></div>
+      <div className="request-list">{past.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}><div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div><div><strong>{eventDateLabel(event)}</strong><span>{event.public_slug || event.event_key}</span></div><div><span className={`request-status ${event.status}`}>{event.status}</span></div></div>)}</div>
+    </section>}
+  </div>;
+}
+
 function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
   const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
-  return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Organization Workspace' : 'Organization Workspace'}</p><h1>{organization?.name || 'Organization'}</h1><p>Manage venue inquiries, EIG products, events, network, billing, and future services from one workspace.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Products" value={enabledCount} detail="Purchased or assigned by EIG" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared organization onboarding" /><StatCard label="Workspace" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled products" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Your EIG Products</p><h2>Products & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
+  return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar' : 'ElevationPilot · Hangar'}</p><h1>{organization?.name || 'Organization'} Cockpit</h1><p>Operate this Hangar's events, apps, communications, venue workflow, billing, and shared business tools from one Cockpit.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Apps" value={enabledCount} detail="Entitled to this Hangar" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared Hangar profile" /><StatCard label="Cockpit" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled apps" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Apps</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
 }
 
 export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
-  useEffect(() => { if (activeOrganizationId) loadWorkspaceData(activeOrganizationId); }, [activeOrganizationId]);
+  useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
 
   async function loadMemberships(userId, preferredOrganizationId = '') {
     setLoadingData(true); setDataError('');
@@ -256,6 +429,14 @@ export default function App() {
   }
 
   async function loadEventRequests(organizationId) { setLoadingRequests(true); const { data, error } = await supabase.from('event_requests').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) setDataError(error.message); setEventRequests(data || []); setLoadingRequests(false); }
+
+  async function loadEieEvents(organizationId) {
+    if (!organizationId) return;
+    setLoadingEieEvents(true);
+    const { data, error } = await supabase.from('golf_registration_events').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false });
+    if (error) setDataError(error.message); else setEieEvents(data || []);
+    setLoadingEieEvents(false);
+  }
 
   async function loadWorkspaceData(organizationId) {
     setLoadingData(true); setDataError('');
@@ -309,5 +490,5 @@ export default function App() {
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : cockpitApp === 'eie' ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
 }

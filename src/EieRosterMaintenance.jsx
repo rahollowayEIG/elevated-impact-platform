@@ -668,7 +668,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           teamSize,
           memberPrice: Number(event?.member_price || 0),
           nonMemberPrice: Number(event?.non_member_price || 0),
-          googleSheetUrl: event.google_sheet_url || '',
+          googleSheetUrl: googleSheetUrl || event.google_sheet_url || '',
         }}
         existingRows={rows}
         onImported={async () => {

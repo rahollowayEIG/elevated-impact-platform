@@ -117,6 +117,8 @@ export default function EieEventSetupSteps({
 
   const [offers, setOffers] = useState([]);
   const [paymentSettings, setPaymentSettings] = useState(null);
+  const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
+  const [googleRosterUrl, setGoogleRosterUrl] = useState(event?.google_sheet_url || '');
   const [customDraft, setCustomDraft] = useState(blankCustomField);
   const [busy, setBusy] = useState(false);
   const [pricingBusy, setPricingBusy] = useState(false);
@@ -413,9 +415,20 @@ export default function EieEventSetupSteps({
       if (!data?.success) throw new Error(data?.error || 'Unable to prepare the required roster sheet.');
       const url = data.roster_template_url || data.google_sheet_url || '';
       if (!url) throw new Error('The roster sheet was prepared but no Google Sheet link was returned.');
+
+      setRequiredRosterUrl(data.roster_template_url || url);
+      setGoogleRosterUrl(data.google_sheet_url || event.google_sheet_url || url);
+      onEventUpdated({
+        google_sheet_url: data.google_sheet_url || event.google_sheet_url || '',
+        google_drive_folder_url: data.google_drive_folder_url || event.google_drive_folder_url || '',
+      });
+
       if (rosterWindow && !rosterWindow.closed) rosterWindow.location.replace(url);
-      else window.location.assign(url);
-      setNotice(data.existing_headers_preserved ? 'Required roster sheet opened. Existing roster work was preserved.' : 'Required roster sheet created and opened.');
+      else setNotice('Required roster sheet is ready. Use Reopen Required Roster Sheet below if your browser blocked the new tab.');
+
+      if (rosterWindow && !rosterWindow.closed) {
+        setNotice(data.existing_headers_preserved ? 'Required roster sheet opened. Existing roster work was preserved.' : 'Required roster sheet created and opened.');
+      }
     } catch (error) {
       if (rosterWindow && !rosterWindow.closed) rosterWindow.close();
       setNotice(error.message || 'Unable to prepare the required roster sheet.');
@@ -664,9 +677,11 @@ export default function EieEventSetupSteps({
       <div className="eie-builder-block">
         <div className="platform-section-heading"><div><p className="platform-eyebrow">Offline Registration</p><h3>Required Roster Sheet</h3><p>Built from this event's required fields, exactly like the test setup.</p></div></div>
         <div className="availability-note"><strong>Required for this event</strong><span>{rosterHeaders.join(' · ')}</span></div>
-        <div className="review-actions">
+        <div className="review-actions" style={{ flexWrap: 'wrap' }}>
+          <button className="platform-primary-button" type="button" disabled={busy} onClick={prepareRosterSheet}>{busy ? 'Preparing...' : 'Open Required Roster Sheet'}</button>
           <button className="platform-secondary-button" type="button" onClick={() => downloadCsv(rosterHeaders, `${fileSafeName}-required-roster-template.csv`)}>Download CSV Template</button>
-          <button className="platform-primary-button" type="button" disabled={busy} onClick={prepareRosterSheet}>Open Required Google Roster Sheet</button>
+          {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
+          {googleRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleRosterUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
         </div>
       </div>
 

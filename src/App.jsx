@@ -263,7 +263,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     convenience_fee_value: '3',
     clubhouse_hold_days: '3',
     allow_card_guarantee: true,
-    auto_charge_at_deadline: true,
+    auto_charge_at_hold_expiry: true,
     google_calendar_sync_enabled: true,
     items: [emptyItem()],
   });
@@ -335,7 +335,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         p_convenience_fee_value: Number(form.convenience_fee_value || 0),
         p_clubhouse_hold_days: Number(form.clubhouse_hold_days || 3),
         p_allow_card_guarantee: form.allow_card_guarantee,
-        p_auto_charge_at_deadline: form.auto_charge_at_deadline,
+        p_auto_charge_at_deadline: form.auto_charge_at_hold_expiry,
         p_google_calendar_sync_enabled: form.google_calendar_sync_enabled,
       });
       if (error) throw error;
@@ -463,9 +463,9 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_clubhouse} onChange={(e) => update('allow_clubhouse', e.target.checked)} />Allow clubhouse payment</label>
             {form.registration_format === 'team' && <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_split_team_payments} onChange={(e) => update('allow_split_team_payments', e.target.checked)} />Allow captains to choose split team payment</label>}
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_card_guarantee} onChange={(e) => update('allow_card_guarantee', e.target.checked)} />Allow card guarantee</label>
-            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.auto_charge_at_deadline} onChange={(e) => update('auto_charge_at_deadline', e.target.checked)} />Charge guaranteed cards at deadline if unpaid</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.auto_charge_at_hold_expiry} onChange={(e) => update('auto_charge_at_hold_expiry', e.target.checked)} />Charge guaranteed card when the payment hold expires if the balance is unpaid</label>
           </div>
-          {form.registration_format === 'team' && form.allow_split_team_payments && <div className="availability-note" style={{ marginTop: 12 }}><strong>Split-payment rule</strong><span>The captain can choose to pay the full team amount or split it. A split-payment team remains pending until the entire team balance is paid.</span></div>}
+          {form.registration_format === 'team' && form.allow_split_team_payments && <div className="availability-note" style={{ marginTop: 12 }}><strong>Split-payment rule</strong><span>The captain can choose to pay the full team amount or split it. A split-payment team remains pending until the entire team balance is paid. When the payment hold expires, unpaid teams are released unless a card guarantee is on file; guaranteed balances are charged at hold expiration, with the recovery window used only if that charge fails.</span></div>}
         </div>
 
         <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>

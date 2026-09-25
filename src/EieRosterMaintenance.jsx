@@ -52,6 +52,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       ? settings.division_details.map((item) => item?.name).filter(Boolean)
       : [];
   const teamMode = settings.registration_format === 'team';
+  const membersOnly = settings.event_access === 'members_only';
   const teamSize = teamMode ? Math.max(2, Number(settings.team_size || 4)) : 1;
   const [uploadOpen, setUploadOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -404,9 +405,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     setNotice('');
   }
 
-  const inheritedBasePrice = manualGolfer.membership_status === 'Non-Member'
-    ? Number(event?.non_member_price || 0)
-    : Number(event?.member_price || 0);
+  const inheritedBasePrice = membersOnly
+    ? Number(event?.member_price || 0)
+    : manualGolfer.membership_status === 'Non-Member'
+      ? Number(event?.non_member_price || 0)
+      : Number(event?.member_price || 0);
   const effectiveManualPrice = manualGolfer.price === ''
     ? inheritedBasePrice
     : Number(manualGolfer.price || 0);
@@ -534,8 +537,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         <div className="eie-roster-inherited">
           <div><span>Structure</span><strong>{teamMode ? `${teamSize}-Player Team` : 'Individual'}</strong></div>
           <div><span>Divisions</span><strong>{settings.division === 'hidden' ? 'Off' : divisionOptions.length ? divisionOptions.join(' · ') : 'On / none configured'}</strong></div>
-          <div><span>Membership</span><strong>{settings.membership === 'hidden' ? 'Hidden' : 'Member / Non-Member'}</strong></div>
-          <div><span>Base Price</span><strong>{money(event?.member_price)} / {money(event?.non_member_price)}</strong></div>
+          <div><span>Audience</span><strong>{membersOnly ? 'Members Only' : 'Open / Public'}</strong></div>
+          <div><span>Membership</span><strong>{membersOnly ? 'Member Required' : settings.membership === 'hidden' ? 'Hidden' : 'Member / Non-Member'}</strong></div>
+          <div><span>Base Price</span><strong>{membersOnly ? money(event?.member_price) : `${money(event?.member_price)} / ${money(event?.non_member_price)}`}</strong></div>
           <div><span>Required Fields</span><strong>{[
             settings.dob === 'required' && 'DOB',
             settings.gender === 'required' && 'Gender',
@@ -579,13 +583,14 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <label>Email *<input type="email" value={manualGolfer.email} onChange={(e) => updateManual('email', e.target.value)} /></label>
               <label>Phone *<input type="tel" value={manualGolfer.phone} onChange={(e) => updateManual('phone', e.target.value)} /></label>
 
-              {settings.membership !== 'hidden' && (
+              {!membersOnly && settings.membership !== 'hidden' && (
                 <label>Club Membership Status{settings.membership === 'required' ? ' *' : ''}
                   <select value={manualGolfer.membership_status} onChange={(e) => updateManual('membership_status', e.target.value)}>
                     <option>Member</option><option>Non-Member</option>
                   </select>
                 </label>
               )}
+              {membersOnly && <div className="availability-note"><strong>Members Only Event</strong><span>Manual registrations are treated as Member registrations and use the Member event price.</span></div>}
               {settings.division !== 'hidden' && (
                 <label>Division{settings.division === 'required' ? ' *' : ''}
                   <select value={manualGolfer.division} onChange={(e) => updateManual('division', e.target.value)}>
@@ -668,6 +673,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           teamSize,
           memberPrice: Number(event?.member_price || 0),
           nonMemberPrice: Number(event?.non_member_price || 0),
+          eventAccess: settings.event_access || 'public',
           googleSheetUrl: googleSheetUrl || event.google_sheet_url || '',
         }}
         existingRows={rows}

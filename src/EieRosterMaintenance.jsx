@@ -70,6 +70,26 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [bulkTeamId, setBulkTeamId] = useState('');
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncWorking, setSyncWorking] = useState(false);
+  const [rosterView, setRosterView] = useState('all');
+  const [requiredRosterWorking, setRequiredRosterWorking] = useState(false);
+  const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
+  const [googleSheetUrl, setGoogleSheetUrl] = useState(event?.google_sheet_url || '');
+
+  useEffect(() => {
+    let active = true;
+    async function refreshRosterLinks() {
+      if (!event?.id) return;
+      const { data } = await supabase
+        .from('golf_registration_events')
+        .select('google_sheet_url')
+        .eq('id', event.id)
+        .maybeSingle();
+      if (active && data?.google_sheet_url) setGoogleSheetUrl(data.google_sheet_url);
+    }
+    setGoogleSheetUrl(event?.google_sheet_url || '');
+    refreshRosterLinks();
+    return () => { active = false; };
+  }, [event?.id, event?.google_sheet_url]);
 
   useEffect(() => {
     if (!selected?.id) return undefined;
@@ -124,7 +144,48 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   }
 
 
-  async function pullGoogleChanges() {
+  async function openRequiredRosterSheet() {
+    setRequiredRosterWorking(true);
+    setNotice('Preparing the Required Roster Sheet...');
+    const rosterWindow = window.open('about:blank', '_blank');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-import-roster', {
+        body: {
+          action: 'prepare_required_roster_template',
+          event_id: event.id,
+          event_key: event.event_key,
+        },
+      });
+      if (error) {
+        const details = await readFunctionError(error, 'Unable to prepare the Required Roster Sheet.');
+        throw new Error(details.error || 'Unable to prepare the Required Roster Sheet.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Unable to prepare the Required Roster Sheet.');
+
+      const requiredUrl = data.roster_template_url || data.google_sheet_url || '';
+      const workbookUrl = data.google_sheet_url || googleSheetUrl || '';
+      if (!requiredUrl) throw new Error('The Required Roster Sheet was prepared but no link was returned.');
+
+      setRequiredRosterUrl(requiredUrl);
+      if (workbookUrl) setGoogleSheetUrl(workbookUrl);
+
+      if (rosterWindow && !rosterWindow.closed) {
+        rosterWindow.location.replace(requiredUrl);
+        setNotice(data.existing_headers_preserved
+          ? 'Required Roster Sheet opened. Existing roster work was preserved.'
+          : 'Required Roster Sheet created and opened.');
+      } else {
+        setNotice('Required Roster Sheet is ready. Use the Reopen button below.');
+      }
+    } catch (error) {
+      if (rosterWindow && !rosterWindow.closed) rosterWindow.close();
+      setNotice(error instanceof Error ? error.message : 'Unable to prepare the Required Roster Sheet.');
+    } finally {
+      setRequiredRosterWorking(false);
+    }
+  }
+
+    async function pullGoogleChanges() {
     setSyncWorking(true);
     setNotice('');
     try {
@@ -452,6 +513,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const paidCount = rows.filter((row) => row.payment_status === 'paid').length;
   const compCount = rows.filter((row) => row.payment_status === 'comp').length;
   const pendingCount = rows.filter((row) => row.payment_status === 'pending').length;
+  const confirmedRows = rows.filter((row) =>
+    ['paid', 'comp'].includes(row.payment_status) &&
+    (row.registration_status || 'active') === 'active'
+  );
+  const visibleRows = rosterView === 'confirmed' ? confirmedRows : rows;
 
   return (
     <>
@@ -493,8 +559,10 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <button className="platform-secondary-button" type="button" disabled={loading || syncWorking} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
           <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={pullGoogleChanges}>{syncWorking ? 'Working...' : 'Pull Google Changes'}</button>
           <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={syncGoogleSheet}>{syncWorking ? 'Working...' : 'Sync Google Sheet'}</button>
-          {event.google_sheet_url && <button className="platform-secondary-button" type="button" onClick={() => window.open(event.google_sheet_url, '_blank', 'noopener,noreferrer')}>Open Google Sheet</button>}
-          <button className="platform-secondary-button" type="button" onClick={exportGolfGenius}>Export Golf Genius CSV</button>
+          <button className="platform-secondary-button" type="button" disabled={requiredRosterWorking} onClick={openRequiredRosterSheet}>{requiredRosterWorking ? 'Preparing...' : 'Open Required Roster Sheet'}</button>
+          {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
+          {googleSheetUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleSheetUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
+          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={exportGolfGenius}>Export Confirmed Golf Genius CSV</button>
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}
@@ -615,6 +683,15 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <span>{rows.length} total</span>
         </div>
 
+        <div className="eie-roster-tabs" role="tablist" aria-label="Roster view">
+          <button type="button" className={rosterView === 'all' ? 'active' : ''} onClick={() => setRosterView('all')}>
+            All Registrations <span>{rows.length}</span>
+          </button>
+          <button type="button" className={rosterView === 'confirmed' ? 'active' : ''} onClick={() => setRosterView('confirmed')}>
+            Confirmed Roster <span>{confirmedRows.length}</span>
+          </button>
+        </div>
+
         {!!bulkSelectedIds.length && (
           <div className="eie-bulk-roster-panel">
             <div><strong>{bulkSelectedIds.length} selected</strong><span>Apply one roster action to the selected golfers.</span></div>
@@ -645,14 +722,20 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           </div>
         )}
 
-        {!rows.length ? (
-          <div className="availability-note"><strong>No golfers yet</strong><span>Add a golfer manually or upload an organizer roster.</span></div>
+        {!visibleRows.length ? (
+          <div className="availability-note">
+            <strong>{rosterView === 'confirmed' ? 'No confirmed golfers yet' : 'No golfers yet'}</strong>
+            <span>{rosterView === 'confirmed' ? 'Confirmed golfers are active registrations with Paid or Comp status.' : 'Add a golfer manually or upload an organizer roster.'}</span>
+          </div>
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th><input aria-label="Select all golfers" type="checkbox" style={{ width: 'auto' }} checked={rows.length > 0 && rows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => toggleAllRows(e.target.checked)} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th><input aria-label="Select all visible golfers" type="checkbox" style={{ width: 'auto' }} checked={visibleRows.length > 0 && visibleRows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => {
+                if (e.target.checked) setBulkSelectedIds((current) => Array.from(new Set([...current, ...visibleRows.map((row) => row.id)])));
+                else setBulkSelectedIds((current) => current.filter((id) => !visibleRows.some((row) => row.id === id)));
+              }} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
               <tbody>
-                {rows.map((row) => {
+                {visibleRows.map((row) => {
                   const isSelected = selected?.id === row.id;
                   return (
                     <React.Fragment key={row.id}>

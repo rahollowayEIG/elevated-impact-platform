@@ -46,7 +46,13 @@ async function readFunctionError(error, fallback) {
 export default function EieRosterMaintenance({ event, rows, loading, onRefresh }) {
   const settings = event?.field_settings || {};
   const customFields = Array.isArray(settings.custom_fields) ? settings.custom_fields : [];
+  const divisionOptions = Array.isArray(event?.divisions)
+    ? event.divisions.filter(Boolean)
+    : Array.isArray(settings.division_details)
+      ? settings.division_details.map((item) => item?.name).filter(Boolean)
+      : [];
   const teamMode = settings.registration_format === 'team';
+  const teamSize = teamMode ? Math.max(2, Number(settings.team_size || 4)) : 1;
   const [uploadOpen, setUploadOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualGolfer, setManualGolfer] = useState(emptyGolfer);
@@ -337,6 +343,13 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     setNotice('');
   }
 
+  const inheritedBasePrice = manualGolfer.membership_status === 'Non-Member'
+    ? Number(event?.non_member_price || 0)
+    : Number(event?.member_price || 0);
+  const effectiveManualPrice = manualGolfer.price === ''
+    ? inheritedBasePrice
+    : Number(manualGolfer.price || 0);
+
   function updateCustom(fieldId, value) {
     setManualGolfer((current) => ({
       ...current,
@@ -452,6 +465,21 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <span>{loading ? 'Loading...' : `${rows.length} golfer${rows.length === 1 ? '' : 's'}`}</span>
         </div>
 
+        <div className="eie-roster-inherited">
+          <div><span>Structure</span><strong>{teamMode ? `${teamSize}-Player Team` : 'Individual'}</strong></div>
+          <div><span>Divisions</span><strong>{settings.division === 'hidden' ? 'Off' : divisionOptions.length ? divisionOptions.join(' · ') : 'On / none configured'}</strong></div>
+          <div><span>Membership</span><strong>{settings.membership === 'hidden' ? 'Hidden' : 'Member / Non-Member'}</strong></div>
+          <div><span>Base Price</span><strong>{money(event?.member_price)} / {money(event?.non_member_price)}</strong></div>
+          <div><span>Required Fields</span><strong>{[
+            settings.dob === 'required' && 'DOB',
+            settings.gender === 'required' && 'Gender',
+            settings.division === 'required' && 'Division',
+            settings.membership === 'required' && 'Membership',
+            settings.ghin === 'required' && 'GHIN',
+            ...customFields.filter((field) => field.required).map((field) => field.label),
+          ].filter(Boolean).join(' · ') || 'Standard contact only'}</strong></div>
+        </div>
+
         <div className="platform-stats-grid" style={{ marginBottom: 18 }}>
           <div className="platform-stat-card"><span>Active</span><strong>{activeCount}</strong><small>Current roster</small></div>
           <div className="platform-stat-card"><span>Paid</span><strong>{paidCount}</strong><small>Clubhouse / online</small></div>
@@ -484,17 +512,36 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <label>Phone *<input type="tel" value={manualGolfer.phone} onChange={(e) => updateManual('phone', e.target.value)} /></label>
 
               {settings.membership !== 'hidden' && (
-                <label>Club membership
+                <label>Club Membership Status{settings.membership === 'required' ? ' *' : ''}
                   <select value={manualGolfer.membership_status} onChange={(e) => updateManual('membership_status', e.target.value)}>
                     <option>Member</option><option>Non-Member</option>
                   </select>
                 </label>
               )}
-              {settings.division !== 'hidden' && <label>Division{settings.division === 'required' ? ' *' : ''}<input value={manualGolfer.division} onChange={(e) => updateManual('division', e.target.value)} /></label>}
+              {settings.division !== 'hidden' && (
+                <label>Division{settings.division === 'required' ? ' *' : ''}
+                  <select value={manualGolfer.division} onChange={(e) => updateManual('division', e.target.value)}>
+                    <option value="">Not selected</option>
+                    {divisionOptions.map((division) => <option key={division} value={division}>{division}</option>)}
+                  </select>
+                </label>
+              )}
               {settings.dob !== 'hidden' && <label>Date of birth{settings.dob === 'required' ? ' *' : ''}<input type="date" value={manualGolfer.date_of_birth} onChange={(e) => updateManual('date_of_birth', e.target.value)} /></label>}
-              {settings.gender !== 'hidden' && <label>Gender{settings.gender === 'required' ? ' *' : ''}<input value={manualGolfer.gender} onChange={(e) => updateManual('gender', e.target.value)} /></label>}
+              {settings.gender !== 'hidden' && (
+                <label>Gender{settings.gender === 'required' ? ' *' : ''}
+                  <select value={manualGolfer.gender} onChange={(e) => updateManual('gender', e.target.value)}>
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Prefer not to say">Prefer not to say</option>
+                  </select>
+                </label>
+              )}
               {settings.ghin !== 'hidden' && <label>GHIN #{settings.ghin === 'required' ? ' *' : ''}<input value={manualGolfer.ghin_number} onChange={(e) => updateManual('ghin_number', e.target.value)} /></label>}
-              <label>Price override<input type="number" min="0" step="0.01" value={manualGolfer.price} onChange={(e) => updateManual('price', e.target.value)} placeholder="Leave blank for event price" /></label>
+              <label>Price override
+                <input type="number" min="0" step="0.01" value={manualGolfer.price} onChange={(e) => updateManual('price', e.target.value)} placeholder={`Uses ${money(inheritedBasePrice)} event price`} />
+                <small className="eie-field-help">Current registration price: <strong>{money(effectiveManualPrice)}</strong>{manualGolfer.price === '' ? ' · inherited from Event Setup' : ' · manual override'}</small>
+              </label>
 
               {customFields.map((field) => (
                 field.type === 'checkbox'
@@ -548,6 +595,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
             ghin: settings.ghin || 'optional',
           },
           customFields,
+          divisions: divisionOptions,
+          registrationFormat: settings.registration_format || 'individual',
+          teamSize,
+          memberPrice: Number(event?.member_price || 0),
+          nonMemberPrice: Number(event?.non_member_price || 0),
           googleSheetUrl: event.google_sheet_url || '',
         }}
         existingRows={rows}

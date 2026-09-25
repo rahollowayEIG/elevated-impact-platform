@@ -232,9 +232,21 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
 
 
 function EieEventDirectory({ organization, events, loading, onReload, onBack }) {
+  const emptyItem = () => ({
+    name: 'Registration',
+    description: '',
+    item_type: 'registration',
+    price: '',
+    charge_by: 'player',
+    required: true,
+    available_start: '',
+    available_end: '',
+  });
+
   const [showNew, setShowNew] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [createdEvent, setCreatedEvent] = useState(null);
   const [form, setForm] = useState({
     name: '',
     course: organization?.name || '',
@@ -242,19 +254,18 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     event_end: '',
     registration_format: 'team',
     team_size: 4,
-    member_price: '',
-    non_member_price: '',
     max_golfers: '',
     registration_deadline: '',
-    team_payment_mode: 'captain_all',
     allow_online: true,
     allow_clubhouse: true,
+    allow_split_team_payments: true,
     convenience_fee_type: 'percent',
     convenience_fee_value: '3',
     clubhouse_hold_days: '3',
     allow_card_guarantee: true,
     auto_charge_at_deadline: true,
     google_calendar_sync_enabled: true,
+    items: [emptyItem()],
   });
 
   useEffect(() => {
@@ -262,31 +273,64 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   }, [organization?.id]);
 
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
+  function updateItem(index, field, value) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item),
+    }));
+  }
+  function addItem() {
+    setForm((current) => ({
+      ...current,
+      items: [...current.items, {
+        name: '',
+        description: '',
+        item_type: 'add_on',
+        price: '',
+        charge_by: current.registration_format === 'team' ? 'team' : 'player',
+        required: false,
+        available_start: '',
+        available_end: '',
+      }],
+    }));
+  }
+  function removeItem(index) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.length === 1 ? current.items : current.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
 
   async function createEvent(event) {
     event.preventDefault();
     setBusy(true);
     setNotice('');
+    setCreatedEvent(null);
     try {
-      const { data, error } = await supabase.rpc('create_eie_golf_event', {
+      const cleanItems = form.items.map((item) => ({
+        ...item,
+        name: item.name.trim(),
+        description: item.description.trim(),
+        price: Number(item.price || 0),
+      }));
+      if (!cleanItems.some((item) => item.item_type === 'registration')) {
+        throw new Error('Add at least one Registration pricing item.');
+      }
+
+      const { data, error } = await supabase.rpc('create_eie_quick_registration_event', {
         p_organization_id: organization.id,
         p_name: form.name.trim(),
         p_course: form.course.trim(),
         p_event_start: form.event_start,
         p_event_end: form.event_end || null,
-        p_public_slug: null,
         p_registration_format: form.registration_format,
         p_team_size: form.registration_format === 'team' ? Number(form.team_size || 4) : 1,
-        p_member_price: Number(form.member_price || 0),
-        p_non_member_price: Number(form.non_member_price || 0),
         p_max_golfers: form.max_golfers ? Number(form.max_golfers) : null,
         p_registration_deadline: form.registration_deadline || null,
-        p_contact_name: null,
-        p_contact_email: null,
-        p_contact_phone: null,
-        p_team_payment_mode: form.registration_format === 'team' ? form.team_payment_mode : 'captain_all',
+        p_items: cleanItems,
         p_allow_online: form.allow_online,
         p_allow_clubhouse: form.allow_clubhouse,
+        p_allow_split_team_payments: form.registration_format === 'team' ? form.allow_split_team_payments : false,
         p_convenience_fee_type: form.convenience_fee_type,
         p_convenience_fee_value: Number(form.convenience_fee_value || 0),
         p_clubhouse_hold_days: Number(form.clubhouse_hold_days || 3),
@@ -296,9 +340,19 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       });
       if (error) throw error;
       if (!data?.success) throw new Error('Unable to create the EIE event.');
-      setNotice('Event created. It is now a draft inside this Hangar.');
+
+      setCreatedEvent(data);
+      setNotice('Quick Registration created. Next step: build the Public Hub.');
       setShowNew(false);
-      setForm((current) => ({ ...current, name: '', event_start: '', event_end: '', member_price: '', non_member_price: '', max_golfers: '', registration_deadline: '' }));
+      setForm((current) => ({
+        ...current,
+        name: '',
+        event_start: '',
+        event_end: '',
+        max_golfers: '',
+        registration_deadline: '',
+        items: [emptyItem()],
+      }));
       await onReload();
     } catch (createError) {
       setNotice(createError.message || 'Unable to create event.');
@@ -329,36 +383,77 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       <div>
         <p className="platform-eyebrow">{organization?.name} Hangar · Cockpit</p>
         <h1>EIE · Events</h1>
-        <p>Create and operate events inside the active Hangar. Each event carries its own Hub, registration, payments, roster, Google Workspace, Calendar, and communications context.</p>
+        <p>Create and operate events inside the active Hangar. Quick Registration gets registration live first, then the Hub and advanced event tools build around the same Master Event.</p>
       </div>
       <div className="review-actions">
         <button className="platform-secondary-button" onClick={onBack}>← Cockpit</button>
-        <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close New Event' : '+ New Event'}</button>
+        <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close Quick Registration' : '+ New Event'}</button>
       </div>
     </section>
 
-    {notice && <div className={notice.startsWith('Event created') ? 'platform-success' : 'platform-error banner'}>{notice}</div>}
+    {notice && <div className={notice.startsWith('Quick Registration created') ? 'platform-success' : 'platform-error banner'}>{notice}</div>}
+
+    {createdEvent && <section className="platform-section-card">
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Registration Ready</p><h2>Next: Build the Public Hub</h2></div>
+        <div className="platform-role-pill">Draft</div>
+      </div>
+      <p className="platform-login-copy">The Master Event, EIE registration setup, pricing items, payment rules, and required participant fields are created. The next workflow will collect the public-facing event details for the Hub.</p>
+      <div className="review-actions">
+        <button className="platform-secondary-button" onClick={() => setCreatedEvent(null)}>Back to Events</button>
+        <button className="platform-primary-button" type="button" onClick={() => setNotice('Hub walkthrough is the next EIE build step. Registration is safely saved as a draft.')}>Build Public Hub →</button>
+      </div>
+    </section>}
 
     {showNew && <section className="platform-section-card">
-      <div className="platform-section-heading"><div><p className="platform-eyebrow">Ground Zero</p><h2>Create Event</h2></div><div className="platform-role-pill">Draft</div></div>
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Quick Registration</p><h2>Set Up Registration First</h2><p>Use this path when you already know what you want to charge. Event details, catering, sponsorships, budget, and other tools can be completed after registration exists.</p></div>
+        <div className="platform-role-pill">Draft</div>
+      </div>
+
       <form className="platform-login-form" onSubmit={createEvent}>
-        <div className="form-grid two">
-          <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
-          <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
-          <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
-          <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
-          <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
-          {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
-          <label>Member price<input type="number" min="0" step="0.01" value={form.member_price} onChange={(e) => update('member_price', e.target.value)} placeholder="0.00" /></label>
-          <label>Non-member price<input type="number" min="0" step="0.01" value={form.non_member_price} onChange={(e) => update('non_member_price', e.target.value)} placeholder="0.00" /></label>
-          <label>Maximum golfers<input type="number" min="1" value={form.max_golfers} onChange={(e) => update('max_golfers', e.target.value)} placeholder="144" /></label>
-          <label>Registration deadline<input type="date" value={form.registration_deadline} onChange={(e) => update('registration_deadline', e.target.value)} /></label>
+        <div style={{ marginBottom: 18 }}>
+          <p className="platform-eyebrow">1 · Event Basics</p>
+          <div className="form-grid two">
+            <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
+            <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
+            <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
+            <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
+            <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
+            {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
+            <label>Maximum participants<input type="number" min="1" value={form.max_golfers} onChange={(e) => update('max_golfers', e.target.value)} placeholder="144" /></label>
+            <label>Registration deadline<input type="date" value={form.registration_deadline} onChange={(e) => update('registration_deadline', e.target.value)} /></label>
+          </div>
         </div>
 
         <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
-          <p className="platform-eyebrow">Payments</p>
+          <div className="platform-section-heading">
+            <div><p className="platform-eyebrow">2 · Pricing & Items</p><h3 style={{ margin: 0 }}>Build the event checkout</h3><p className="platform-login-copy">Start with registration. Add as many items as needed for early-bird rates, mulligans, challenge packages, guest meals, or other event charges.</p></div>
+            <button className="platform-secondary-button" type="button" onClick={addItem}>+ Add Item</button>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            {form.items.map((item, index) => <div key={index} style={{ padding: 16, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(255,255,255,.025)' }}>
+              <div className="form-grid two">
+                <label>Item name<input value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} required placeholder="Registration" /></label>
+                <label>Item type<select value={item.item_type} onChange={(e) => updateItem(index, 'item_type', e.target.value)}><option value="registration">Registration</option><option value="add_on">Add-On</option><option value="package">Package</option><option value="donation">Donation</option><option value="other">Other</option></select></label>
+                <label>Price<input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} placeholder="0.00" required /></label>
+                <label>Charge by<select value={item.charge_by} onChange={(e) => updateItem(index, 'charge_by', e.target.value)}><option value="player">Player</option><option value="team">Team</option><option value="order">Order</option><option value="flat">Flat</option></select></label>
+                <label>Available from<input type="date" value={item.available_start} onChange={(e) => updateItem(index, 'available_start', e.target.value)} /></label>
+                <label>Available until<input type="date" value={item.available_end} onChange={(e) => updateItem(index, 'available_end', e.target.value)} /></label>
+              </div>
+              <label style={{ marginTop: 10 }}>Description<input value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} placeholder="Optional public description" /></label>
+              <div className="review-actions" style={{ marginTop: 10, justifyContent: 'space-between' }}>
+                <label style={{ display:'flex',alignItems:'center',gap:10, margin: 0 }}><input style={{width:'auto'}} type="checkbox" checked={item.required} onChange={(e) => updateItem(index, 'required', e.target.checked)} />Required item</label>
+                {form.items.length > 1 && <button className="platform-secondary-button" type="button" onClick={() => removeItem(index)}>Remove</button>}
+              </div>
+            </div>)}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">3 · Payments</p>
           <div className="form-grid two">
-            {form.registration_format === 'team' && <label>Team payment<select value={form.team_payment_mode} onChange={(e) => update('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split">Split payment</option></select></label>}
             <label>Convenience fee<select value={form.convenience_fee_type} onChange={(e) => update('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>
             {form.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={form.convenience_fee_value} onChange={(e) => update('convenience_fee_value', e.target.value)} /></label>}
             <label>Clubhouse hold days<input type="number" min="1" max="365" value={form.clubhouse_hold_days} onChange={(e) => update('clubhouse_hold_days', e.target.value)} /></label>
@@ -366,20 +461,27 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           <div className="form-grid two" style={{ marginTop: 12 }}>
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_online} onChange={(e) => update('allow_online', e.target.checked)} />Allow online payment</label>
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_clubhouse} onChange={(e) => update('allow_clubhouse', e.target.checked)} />Allow clubhouse payment</label>
+            {form.registration_format === 'team' && <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_split_team_payments} onChange={(e) => update('allow_split_team_payments', e.target.checked)} />Allow captains to choose split team payment</label>}
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_card_guarantee} onChange={(e) => update('allow_card_guarantee', e.target.checked)} />Allow card guarantee</label>
             <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.auto_charge_at_deadline} onChange={(e) => update('auto_charge_at_deadline', e.target.checked)} />Charge guaranteed cards at deadline if unpaid</label>
           </div>
+          {form.registration_format === 'team' && form.allow_split_team_payments && <div className="availability-note" style={{ marginTop: 12 }}><strong>Split-payment rule</strong><span>The captain can choose to pay the full team amount or split it. A split-payment team remains pending until the entire team balance is paid.</span></div>}
         </div>
 
         <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
-          <p className="platform-eyebrow">Google Workspace</p>
+          <p className="platform-eyebrow">4 · Participant Information</p>
+          <div className="availability-note"><strong>Required by default</strong><span>First name, last name, email, and phone are created automatically. Additional fields can be configured from Registration Setup after the draft is created.</span></div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">5 · Google Workspace</p>
           <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.google_calendar_sync_enabled} onChange={(e) => update('google_calendar_sync_enabled', e.target.checked)} />Sync this event to the Hangar's Google Calendar after save</label>
-          <p className="platform-login-copy">Drive folder and roster Sheet provisioning will attach to this same event record. EIE remains the source of truth.</p>
+          <p className="platform-login-copy">Drive folders, roster Sheets, and the Hub will attach to this same Master Event. EIE remains the source of truth.</p>
         </div>
 
         <div className="review-actions" style={{ marginTop: 18 }}>
           <button className="platform-secondary-button" type="button" onClick={() => setShowNew(false)}>Cancel</button>
-          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating Event...' : 'Save Draft Event'}</button>
+          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating Registration...' : 'Save Quick Registration'}</button>
         </div>
       </form>
     </section>}
@@ -392,7 +494,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
           <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><b>Setup →</b></div>
         </div>)}
-        {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first one from ground zero.</span></div>}
+        {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first Quick Registration from ground zero.</span></div>}
       </div>}
     </section>
 
@@ -402,6 +504,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     </section>}
   </div>;
 }
+
 
 function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);

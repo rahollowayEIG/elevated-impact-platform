@@ -961,6 +961,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
 function EieHubPreviewPage({ eventId }) {
   const [event, setEvent] = useState(null);
   const [hub, setHub] = useState(null);
+  const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -969,11 +970,10 @@ function EieHubPreviewPage({ eventId }) {
     async function loadPreview() {
       setLoading(true);
       setError('');
-      const { data, error: loadError } = await supabase
-        .from('golf_registration_events')
-        .select('*')
-        .eq('id', eventId)
-        .maybeSingle();
+      const [{ data, error: loadError }, { data: offerRows, error: offerError }] = await Promise.all([
+        supabase.from('golf_registration_events').select('*').eq('id', eventId).maybeSingle(),
+        supabase.from('event_offers').select('id,name,description,offer_type,price,charge_by,is_required,status,sort_order').eq('golf_event_id', eventId).in('status', ['draft','active']).order('sort_order'),
+      ]);
 
       if (cancelled) return;
       if (loadError || !data) {
@@ -981,6 +981,7 @@ function EieHubPreviewPage({ eventId }) {
         setLoading(false);
         return;
       }
+      if (offerError) setError(offerError.message);
 
       const settings = data.field_settings || {};
       let snapshot = null;
@@ -990,6 +991,7 @@ function EieHubPreviewPage({ eventId }) {
       } catch {}
 
       setEvent(data);
+      setOffers(offerRows || []);
       setHub(snapshot?.hubForm || {
         description: settings.hub_description || '',
         check_in_time: settings.hub_check_in_time || '',
@@ -1015,58 +1017,113 @@ function EieHubPreviewPage({ eventId }) {
   }, [eventId]);
 
   if (loading) return <LoadingScreen message="Opening Hub preview..." />;
-  if (error || !event || !hub) return <div className="platform-auth-screen"><div className="platform-login-card"><h1>Hub preview unavailable.</h1><p>{error}</p><button className="platform-secondary-button" onClick={() => window.close()}>Close</button></div></div>;
+  if (error && !event) return <div className="platform-auth-screen"><div className="platform-login-card"><h1>Hub preview unavailable.</h1><p>{error}</p><button className="platform-secondary-button" onClick={() => window.close()}>Close</button></div></div>;
+  if (!event || !hub) return null;
 
   const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
   const eventDate = dates[0] ? new Date(dates[0] + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be announced';
   const timeLabel = hub.event_start_time ? new Date('2000-01-01T' + hub.event_start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'TBD';
   const checkInLabel = hub.check_in_time ? new Date('2000-01-01T' + hub.check_in_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'TBD';
+  const registrationOffers = offers.filter((offer) => offer.offer_type === 'registration');
+  const addOnOffers = offers.filter((offer) => offer.offer_type !== 'registration');
+  const hasDetails = Boolean(hub.venue_details || hub.food_beverage || hub.parking_arrival || hub.dress_code || hub.rules_notes || hub.gifts_prizes);
+  const hasMedia = Boolean(hub.flyer_url || hub.photo_urls?.length);
+  const hasContact = Boolean(hub.contact_name || hub.contact_email || hub.contact_phone);
 
-  return <div className="platform-page" style={{ maxWidth: 1180, margin: '0 auto' }}>
-    <section className="platform-hero organization" style={hub.banner_url ? { backgroundImage: 'linear-gradient(rgba(9,18,45,.70),rgba(9,18,45,.88)), url(' + hub.banner_url + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-      <div>
-        <p className="platform-eyebrow">Public Hub Preview · Not Published</p>
-        <h1>{event.name}</h1>
-        <p>{hub.description || 'Event description coming soon.'}</p>
+  const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: 22, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,.28)' };
+  const whiteSection = { padding: '54px clamp(22px,5vw,64px)', background: '#fff' };
+  const softSection = { padding: '54px clamp(22px,5vw,64px)', background: '#f4f6fa' };
+
+  return <div style={{ minHeight: '100vh', background: '#0d1730', padding: '24px' }}>
+    <div style={shell}>
+      <div style={{ padding: '10px 18px', background: '#D81C22', color: '#fff', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase' }}>EIE Public Hub Preview</strong>
+        <span style={{ fontSize: 13 }}>Draft · Not Published</span>
       </div>
-      {hub.logo_url && <img src={hub.logo_url} alt="Event logo" style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 16, background: 'rgba(255,255,255,.94)', padding: 10 }} />}
-    </section>
 
-    <section className="platform-stats-grid">
-      <div className="platform-stat-card"><span>Date</span><strong>{eventDate}</strong><small>{event.course}</small></div>
-      <div className="platform-stat-card"><span>Check-in</span><strong>{checkInLabel}</strong><small>Event starts {timeLabel}</small></div>
-      <div className="platform-stat-card"><span>Registration</span><strong>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong><small>Registration attached to this event</small></div>
-    </section>
+      <header style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e6ee' }}>
+        <div style={{ padding: '14px clamp(18px,4vw,48px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            {hub.logo_url && <img src={hub.logo_url} alt="Event logo" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10 }} />}
+            <div style={{ minWidth: 0 }}><strong style={{ display: 'block', color: '#1D245D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.name}</strong><small style={{ color: '#70727A' }}>{event.course || 'Event venue'}</small></div>
+          </div>
+          <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <a href="#overview" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Overview</a>
+            <a href="#registration" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Registration</a>
+            {hasDetails && <a href="#details" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Event Info</a>}
+            {hasMedia && <a href="#media" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Media</a>}
+            {hasContact && <a href="#contact" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Contact</a>}
+            <a href="#registration" style={{ background: '#D81C22', color: '#fff', textDecoration: 'none', padding: '10px 16px', borderRadius: 10, fontWeight: 900 }}>Register</a>
+          </nav>
+        </div>
+      </header>
 
-    <section className="platform-section-card">
-      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Information</p><h2>What to Know</h2></div></div>
-      <div className="form-grid two">
-        {hub.venue_details && <div><strong>Venue / Course</strong><p className="platform-login-copy">{hub.venue_details}</p></div>}
-        {hub.food_beverage && <div><strong>Food & Beverage</strong><p className="platform-login-copy">{hub.food_beverage}</p></div>}
-        {hub.parking_arrival && <div><strong>Parking / Arrival</strong><p className="platform-login-copy">{hub.parking_arrival}</p></div>}
-        {hub.dress_code && <div><strong>Dress Code</strong><p className="platform-login-copy">{hub.dress_code}</p></div>}
-        {hub.rules_notes && <div><strong>Rules / Notes</strong><p className="platform-login-copy">{hub.rules_notes}</p></div>}
-        {hub.gifts_prizes && <div><strong>Gifts, Prizes & Challenges</strong><p className="platform-login-copy">{hub.gifts_prizes}</p></div>}
-      </div>
-    </section>
+      <section id="overview" style={{ minHeight: 520, padding: '70px clamp(22px,6vw,76px)', display: 'grid', alignItems: 'center', background: hub.banner_url ? 'linear-gradient(90deg,rgba(13,23,48,.94),rgba(13,23,48,.68)), url(' + hub.banner_url + ') center/cover' : 'linear-gradient(135deg,#1D245D,#111936)', color: '#fff' }}>
+        <div style={{ maxWidth: 760 }}>
+          <div style={{ display: 'inline-flex', padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.12)', marginBottom: 18, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Official Event Site</div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(42px,7vw,78px)', lineHeight: .98 }}>{event.name}</h1>
+          <p style={{ fontSize: 20, lineHeight: 1.6, maxWidth: 700, opacity: .92 }}>{hub.description || 'Event information and registration will appear here.'}</p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 26 }}>
+            <a href="#registration" style={{ background: '#D81C22', color: '#fff', textDecoration: 'none', padding: '14px 22px', borderRadius: 10, fontWeight: 900 }}>Register Now</a>
+            {hub.flyer_url && <a href={hub.flyer_url} target="_blank" rel="noreferrer" style={{ border: '1px solid rgba(255,255,255,.55)', color: '#fff', textDecoration: 'none', padding: '14px 22px', borderRadius: 10, fontWeight: 900 }}>View Flyer</a>}
+          </div>
+        </div>
+      </section>
 
-    {(hub.flyer_url || hub.photo_urls?.length) && <section className="platform-section-card">
-      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Media</p><h2>Flyer & Photos</h2></div></div>
-      {hub.flyer_url && <div style={{ marginBottom: 18 }}><a className="platform-primary-button inline" href={hub.flyer_url} target="_blank" rel="noreferrer">Open Event Flyer</a></div>}
-      {!!hub.photo_urls?.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
-        {hub.photo_urls.map((url, index) => <img key={url + index} src={url} alt={'Event photo ' + (index + 1)} style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 14 }} />)}
-      </div>}
-    </section>}
+      <section style={{ ...whiteSection, paddingTop: 30, paddingBottom: 30 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 1, background: '#dfe4ed', border: '1px solid #dfe4ed', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>DATE</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{eventDate}</strong></div>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>CHECK-IN</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{checkInLabel}</strong></div>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>START</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{timeLabel}</strong></div>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>FORMAT</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong></div>
+        </div>
+      </section>
 
-    {(hub.contact_name || hub.contact_email || hub.contact_phone) && <section className="platform-section-card">
-      <div className="platform-section-heading"><div><p className="platform-eyebrow">Questions?</p><h2>Event Contact</h2></div></div>
-      <p className="platform-login-copy">{[hub.contact_name, hub.contact_email, hub.contact_phone].filter(Boolean).join(' · ')}</p>
-    </section>}
+      <section id="registration" style={softSection}>
+        <div style={{ maxWidth: 760, marginBottom: 28 }}>
+          <div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Registration</div>
+          <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Choose Your Registration</h2>
+          <p style={{ color: '#70727A', lineHeight: 1.7 }}>Registration options, packages, and add-ons connected to this event appear here automatically.</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
+          {(registrationOffers.length ? registrationOffers : [{ id: 'preview', name: 'Registration', description: 'Registration pricing will appear here.', price: 0, charge_by: 'player', is_required: true }]).map((offer) => <div key={offer.id} style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #dde3ec', boxShadow: '0 7px 22px rgba(31,47,80,.06)' }}>
+            <small style={{ color: '#D81C22', fontWeight: 900, textTransform: 'uppercase' }}>{offer.charge_by ? 'Per ' + offer.charge_by : 'Registration'}</small>
+            <h3 style={{ color: '#1D245D', fontSize: 24, margin: '8px 0' }}>{offer.name}</h3>
+            <p style={{ color: '#70727A', minHeight: 44 }}>{offer.description || 'Event registration'}</p>
+            <strong style={{ color: '#1D245D', fontSize: 30 }}>{'$' + Number(offer.price || 0).toFixed(2)}</strong>
+            <button disabled style={{ display: 'block', width: '100%', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, opacity: .72 }}>Register · Preview</button>
+          </div>)}
+        </div>
+        {!!addOnOffers.length && <div style={{ marginTop: 24 }}><h3 style={{ color: '#1D245D' }}>Available Add-ons</h3><div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{addOnOffers.map((offer) => <span key={offer.id} style={{ padding: '10px 13px', borderRadius: 999, background: '#fff', border: '1px solid #dde3ec', color: '#1D245D', fontWeight: 800 }}>{offer.name} · {'$' + Number(offer.price || 0).toFixed(2)}</span>)}</div></div>}
+      </section>
 
-    <section className="platform-section-card">
-      <div className="availability-note"><strong>Preview Mode</strong><span>This is a full-page preview in a separate tab. It is not public yet.</span></div>
-      <div className="review-actions" style={{ marginTop: 14 }}><button className="platform-secondary-button" onClick={() => window.close()}>Close Preview</button></div>
-    </section>
+      {hasDetails && <section id="details" style={whiteSection}>
+        <div style={{ maxWidth: 760, marginBottom: 28 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Event Information</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Everything You Need to Know</h2></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16 }}>
+          {hub.venue_details && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Venue / Course</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.venue_details}</p></div>}
+          {hub.food_beverage && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Food & Beverage</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.food_beverage}</p></div>}
+          {hub.parking_arrival && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Parking / Arrival</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.parking_arrival}</p></div>}
+          {hub.dress_code && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Dress Code</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.dress_code}</p></div>}
+          {hub.rules_notes && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Rules / Notes</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.rules_notes}</p></div>}
+          {hub.gifts_prizes && <div style={{ padding: 22, border: '1px solid #e0e5ed', borderRadius: 14 }}><strong style={{ color: '#1D245D' }}>Gifts, Prizes & Challenges</strong><p style={{ color: '#70727A', lineHeight: 1.65 }}>{hub.gifts_prizes}</p></div>}
+        </div>
+      </section>}
+
+      {hasMedia && <section id="media" style={softSection}>
+        <div style={{ maxWidth: 760, marginBottom: 28 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Gallery</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Event Media</h2></div>
+        {hub.flyer_url && <a href={hub.flyer_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#1D245D', color: '#fff', padding: '12px 18px', borderRadius: 10, textDecoration: 'none', fontWeight: 900, marginBottom: 22 }}>Open Event Flyer</a>}
+        {!!hub.photo_urls?.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 14 }}>{hub.photo_urls.map((url, index) => <img key={url + index} src={url} alt={'Event photo ' + (index + 1)} style={{ width: '100%', height: 260, objectFit: 'cover', borderRadius: 14 }} />)}</div>}
+      </section>}
+
+      {hasContact && <section id="contact" style={whiteSection}>
+        <div style={{ maxWidth: 760 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Contact</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Questions About the Event?</h2><p style={{ color: '#70727A', fontSize: 18 }}>{[hub.contact_name, hub.contact_email, hub.contact_phone].filter(Boolean).join(' · ')}</p></div>
+      </section>}
+
+      <footer style={{ background: '#1D245D', color: '#fff', padding: '32px clamp(22px,5vw,64px)', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div><strong>{event.name}</strong><small style={{ display: 'block', marginTop: 5, opacity: .72 }}>Powered by Elevated Impact Group · EIE</small></div>
+        <button className="platform-secondary-button" onClick={() => window.close()}>Close Preview</button>
+      </footer>
+    </div>
   </div>;
 }
 

@@ -530,6 +530,16 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     }));
   }
 
+  function openHubPreview() {
+    setPreviewHub(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
+  function closeHubPreview() {
+    setPreviewHub(false);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
   async function saveHubSetup() {
     if (!setupEvent?.id) return;
     setSetupBusy(true);
@@ -628,7 +638,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           <p>{hubForm.description || 'Add an event description in Hub Setup.'}</p>
         </div>
         <div className="review-actions">
-          <button className="platform-secondary-button" onClick={() => setPreviewHub(false)}>← Back to Setup</button>
+          <button className="platform-secondary-button" onClick={closeHubPreview}>← Back to Setup</button>
           {hubForm.logo_url && <img src={hubForm.logo_url} alt="Event logo" style={{ width: 110, height: 110, objectFit: 'contain', borderRadius: 16, background: 'rgba(255,255,255,.94)', padding: 10 }} />}
         </div>
       </section>
@@ -667,7 +677,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       <section className="platform-section-card">
         <div className="availability-note"><strong>Preview Mode</strong><span>This is an authenticated preview only. Nothing has been published to the public.</span></div>
         <div className="review-actions" style={{ marginTop: 16 }}>
-          <button className="platform-secondary-button" onClick={() => setPreviewHub(false)}>Back to Hub Setup</button>
+          <button className="platform-secondary-button" onClick={closeHubPreview}>Back to Hub Setup</button>
           <button className="platform-primary-button" disabled type="button">Publish controls coming next</button>
         </div>
       </section>
@@ -765,7 +775,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 
         <div className="review-actions" style={{ marginTop: 18 }}>
           <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
-          <button className="platform-secondary-button" type="button" onClick={() => setPreviewHub(true)}>Preview Hub →</button>
+          <button className="platform-secondary-button" type="button" onClick={openHubPreview}>Preview Hub →</button>
           <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
         </div>
       </section>

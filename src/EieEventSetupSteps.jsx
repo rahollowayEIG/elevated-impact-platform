@@ -86,6 +86,7 @@ export default function EieEventSetupSteps({
     day1: Array.isArray(event?.event_dates) ? event.event_dates[0] || '' : '',
     day2: Array.isArray(event?.event_dates) ? event.event_dates[1] || '' : '',
     structure: eventStructure(initialSettings),
+    event_access: initialSettings.event_access || 'public',
     divisions_enabled: typeof initialSettings.divisions_enabled === 'boolean'
       ? initialSettings.divisions_enabled
       : initialDivisionDetails.length > 0,
@@ -171,6 +172,7 @@ export default function EieEventSetupSteps({
     return {
       ...event.field_settings,
       registration_format: details.structure,
+      event_access: details.event_access,
       team_size: details.structure === 'team' ? Number(registration.team_size || 4) : 1,
       allow_team_name: details.structure === 'team' ? registration.allow_team_name : false,
       allow_partial_team: details.structure === 'team' ? registration.allow_partial_team : false,
@@ -276,6 +278,7 @@ export default function EieEventSetupSteps({
       const nextSettings = {
         ...(event.field_settings || {}),
         registration_format: details.structure,
+        event_access: details.event_access,
         team_size: details.structure === 'team' ? Math.max(2, Math.min(12, Number(registration.team_size || 4))) : 1,
         allow_team_name: details.structure === 'team' ? registration.allow_team_name : false,
         allow_partial_team: details.structure === 'team' ? registration.allow_partial_team : false,
@@ -338,6 +341,7 @@ export default function EieEventSetupSteps({
       const nextSettings = {
         ...(event.field_settings || {}),
         registration_format: details.structure,
+        event_access: details.event_access,
         team_size: teamSize,
         allow_team_name: details.structure === 'team' ? registration.allow_team_name : false,
         allow_partial_team: details.structure === 'team' ? registration.allow_partial_team : false,
@@ -350,7 +354,7 @@ export default function EieEventSetupSteps({
         dob: registration.dob,
         gender: registration.gender,
         division: divisionSetting,
-        membership: registration.membership,
+        membership: details.event_access === 'members_only' ? 'hidden' : registration.membership,
         ghin: registration.ghin,
         custom_fields: registration.custom_fields,
         participant_fields_status: 'configured',
@@ -360,7 +364,7 @@ export default function EieEventSetupSteps({
         .from('golf_registration_events')
         .update({
           member_price: Number(registration.member_price || 0),
-          non_member_price: Number(registration.non_member_price || 0),
+          non_member_price: details.event_access === 'public' ? Number(registration.non_member_price || 0) : Number(registration.member_price || 0),
           field_settings: nextSettings,
         })
         .eq('id', event.id)
@@ -593,6 +597,7 @@ export default function EieEventSetupSteps({
         <label>Day 1<input type="date" value={details.day1} onChange={(e) => setDetail('day1', e.target.value)} /></label>
         <label>Day 2<input type="date" value={details.day2} onChange={(e) => setDetail('day2', e.target.value)} /></label>
         <label>Event structure<select value={details.structure} onChange={(e) => changeStructure(e.target.value)}><option value="individual">Individual</option><option value="team">Team</option></select></label>
+        <label>Event audience<select value={details.event_access} onChange={(e) => setDetail('event_access', e.target.value)}><option value="public">Open / Public</option><option value="members_only">Members Only</option></select></label>
         <label>Tournament format<input value={details.tournament_format} onChange={(e) => setDetail('tournament_format', e.target.value)} placeholder="Scramble, stroke play, match play..." /></label>
         <label className="full-span">Format description<textarea rows="3" value={details.format_description} onChange={(e) => setDetail('format_description', e.target.value)} placeholder="Explain the format in plain language." /></label>
         <label className="full-span">What players need to know<textarea rows="4" value={details.player_information} onChange={(e) => setDetail('player_information', e.target.value)} placeholder="Eligibility, rules, check-in, dress code, what is included, and other player notes." /></label>
@@ -635,7 +640,8 @@ export default function EieEventSetupSteps({
 
       <div className="form-grid two">
         <label>Member price<input type="number" min="0" step="0.01" value={registration.member_price} onChange={(e) => setRegistrationField('member_price', e.target.value)} /></label>
-        <label>Non-member price<input type="number" min="0" step="0.01" value={registration.non_member_price} onChange={(e) => setRegistrationField('non_member_price', e.target.value)} /></label>
+        {details.event_access === 'public' && <label>Non-member price<input type="number" min="0" step="0.01" value={registration.non_member_price} onChange={(e) => setRegistrationField('non_member_price', e.target.value)} /></label>}
+        {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Non-member registration is disabled for this event.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
         <label>Registration deadline<input type="date" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /></label>
@@ -652,7 +658,7 @@ export default function EieEventSetupSteps({
             ['dob', 'Date of Birth'],
             ['gender', 'Gender'],
             ...(details.divisions_enabled ? [['division', 'Division']] : []),
-            ['membership', 'Club Membership Status'],
+            ...(details.event_access === 'public' ? [['membership', 'Club Membership Status']] : []),
             ['ghin', 'GHIN #'],
           ].map(([key, label]) => <div className="eie-registration-setting" key={key}>
             <strong>{label}</strong>
@@ -715,7 +721,8 @@ export default function EieEventSetupSteps({
 
       <div className="platform-stats-grid" style={{ marginBottom: 18 }}>
         <div className="platform-stat-card"><span>Member Base</span><strong>${Number(registration.member_price || 0).toFixed(2)}</strong><small>From Registration Details</small></div>
-        <div className="platform-stat-card"><span>Non-Member Base</span><strong>${Number(registration.non_member_price || 0).toFixed(2)}</strong><small>From Registration Details</small></div>
+        {details.event_access === 'public' && <div className="platform-stat-card"><span>Non-Member Base</span><strong>${Number(registration.non_member_price || 0).toFixed(2)}</strong><small>From Registration Details</small></div>}
+        {details.event_access === 'members_only' && <div className="platform-stat-card"><span>Audience</span><strong>Members Only</strong><small>Non-member registration disabled</small></div>}
         <div className="platform-stat-card"><span>Event Structure</span><strong>{details.structure === 'team' ? 'Team' : 'Individual'}</strong><small>{details.structure === 'team' ? registration.team_size + ' players per team' : 'One golfer per entry'}</small></div>
       </div>
 

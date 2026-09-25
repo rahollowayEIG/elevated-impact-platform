@@ -1300,6 +1300,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const hasMedia = Boolean(hub.flyer_url || hub.photo_urls?.length);
   const hasContact = Boolean(hub.contact_name || hub.contact_email || hub.contact_phone);
   const hasSponsors = sponsors.length > 0;
+  const membersOnly = event.field_settings?.event_access === 'members_only';
 
   const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: publicMode ? 0 : 22, overflow: 'hidden', boxShadow: publicMode ? 'none' : '0 24px 70px rgba(0,0,0,.28)' };
   const whiteSection = { padding: '54px clamp(22px,5vw,64px)', background: '#fff' };
@@ -1332,7 +1333,10 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
 
       <section id="overview" style={{ minHeight: 520, padding: '70px clamp(22px,6vw,76px)', display: 'grid', alignItems: 'center', background: hub.banner_url ? 'linear-gradient(90deg,rgba(13,23,48,.94),rgba(13,23,48,.68)), url(' + hub.banner_url + ') center/cover' : 'linear-gradient(135deg,#1D245D,#111936)', color: '#fff' }}>
         <div style={{ maxWidth: 760 }}>
-          <div style={{ display: 'inline-flex', padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.12)', marginBottom: 18, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Official Event Site</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div style={{ display: 'inline-flex', padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.12)', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Official Event Site</div>
+            <div style={{ display: 'inline-flex', padding: '7px 11px', borderRadius: 999, background: membersOnly ? 'rgba(216,28,34,.84)' : 'rgba(52,211,153,.2)', border: membersOnly ? '1px solid rgba(255,255,255,.22)' : '1px solid rgba(134,239,172,.28)', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>{membersOnly ? 'Members Only' : 'Open / Public'}</div>
+          </div>
           <h1 style={{ margin: 0, fontSize: 'clamp(42px,7vw,78px)', lineHeight: .98 }}>{event.name}</h1>
           <p style={{ fontSize: 20, lineHeight: 1.6, maxWidth: 700, opacity: .92 }}>{hub.description || 'Event information and registration will appear here.'}</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 26 }}>
@@ -1348,14 +1352,15 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>CHECK-IN</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{checkInLabel}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>START</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{timeLabel}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>FORMAT</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong></div>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>AUDIENCE</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{membersOnly ? 'Members Only' : 'Open / Public'}</strong></div>
         </div>
       </section>
 
       <section id="registration" style={softSection}>
         <div style={{ maxWidth: 760, marginBottom: 28 }}>
           <div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Registration</div>
-          <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Choose Your Registration</h2>
-          <p style={{ color: '#70727A', lineHeight: 1.7 }}>Registration options, packages, and add-ons connected to this event appear here automatically.</p>
+          <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>{membersOnly ? 'Member Registration' : 'Choose Your Registration'}</h2>
+          <p style={{ color: '#70727A', lineHeight: 1.7 }}>{membersOnly ? 'This event is limited to eligible members. Member registration options and event add-ons appear here automatically.' : 'This event is open to members and non-members. Registration options, packages, and add-ons connected to this event appear here automatically.'}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
           {(registrationOffers.length ? registrationOffers : [{ id: 'preview', name: 'Registration', description: 'Registration pricing will appear here.', price: 0, charge_by: 'player' }]).map((offer) => <div key={offer.id} style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #dde3ec', boxShadow: '0 7px 22px rgba(31,47,80,.06)' }}>

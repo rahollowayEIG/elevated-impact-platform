@@ -248,6 +248,23 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [createdEvent, setCreatedEvent] = useState(null);
+  const [setupEvent, setSetupEvent] = useState(null);
+  const [setupBusy, setSetupBusy] = useState(false);
+  const [setupNotice, setSetupNotice] = useState('');
+  const [hubForm, setHubForm] = useState({
+    description: '',
+    check_in_time: '',
+    event_start_time: '',
+    venue_details: '',
+    food_beverage: '',
+    parking_arrival: '',
+    dress_code: '',
+    rules_notes: '',
+    gifts_prizes: '',
+    contact_name: '',
+    contact_email: '',
+    contact_phone: '',
+  });
   const [form, setForm] = useState({
     name: '',
     course: organization?.name || '',
@@ -432,6 +449,82 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     }
   }
 
+  function openSetup(event) {
+    const settings = event.field_settings || {};
+    setSetupEvent(event);
+    setSetupNotice('');
+    setHubForm({
+      description: settings.hub_description || '',
+      check_in_time: settings.hub_check_in_time || '',
+      event_start_time: settings.event_start_time || '',
+      venue_details: settings.hub_venue_details || '',
+      food_beverage: settings.hub_food_beverage || '',
+      parking_arrival: settings.hub_parking_arrival || '',
+      dress_code: settings.hub_dress_code || '',
+      rules_notes: settings.hub_rules_notes || '',
+      gifts_prizes: settings.hub_gifts_prizes || '',
+      contact_name: settings.registration_contact_name || '',
+      contact_email: settings.registration_contact_email || '',
+      contact_phone: settings.registration_contact_phone || '',
+    });
+  }
+
+  function updateHub(field, value) {
+    setHubForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveHubSetup() {
+    if (!setupEvent?.id) return;
+    setSetupBusy(true);
+    setSetupNotice('');
+    try {
+      const nextSettings = {
+        ...(setupEvent.field_settings || {}),
+        hub_description: hubForm.description.trim(),
+        hub_check_in_time: hubForm.check_in_time || null,
+        event_start_time: hubForm.event_start_time || null,
+        hub_venue_details: hubForm.venue_details.trim(),
+        hub_food_beverage: hubForm.food_beverage.trim(),
+        hub_parking_arrival: hubForm.parking_arrival.trim(),
+        hub_dress_code: hubForm.dress_code.trim(),
+        hub_rules_notes: hubForm.rules_notes.trim(),
+        hub_gifts_prizes: hubForm.gifts_prizes.trim(),
+        registration_contact_name: hubForm.contact_name.trim(),
+        registration_contact_email: hubForm.contact_email.trim(),
+        registration_contact_phone: hubForm.contact_phone.trim(),
+        hub_setup_status: 'in_progress',
+      };
+
+      const { error: golfError } = await supabase
+        .from('golf_registration_events')
+        .update({ field_settings: nextSettings })
+        .eq('id', setupEvent.id);
+      if (golfError) throw golfError;
+
+      if (setupEvent.master_event_id) {
+        const { error: masterError } = await supabase
+          .from('events')
+          .update({
+            description: hubForm.description.trim() || null,
+            start_time: hubForm.event_start_time || null,
+            organizer_name: hubForm.contact_name.trim() || null,
+            organizer_email: hubForm.contact_email.trim() || null,
+            organizer_phone: hubForm.contact_phone.trim() || null,
+          })
+          .eq('id', setupEvent.master_event_id);
+        if (masterError) throw masterError;
+      }
+
+      setSetupEvent((current) => ({ ...current, field_settings: nextSettings }));
+      setSetupNotice('Public Hub details saved.');
+      await onReload();
+    } catch (error) {
+      setSetupNotice(error.message || 'Unable to save Public Hub details.');
+    } finally {
+      setSetupBusy(false);
+    }
+  }
+
   function eventDateLabel(event) {
     const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
     if (!dates.length) return 'Date not set';
@@ -448,6 +541,64 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     const date = Array.isArray(event.event_dates) ? event.event_dates[0] : null;
     return date && date < new Date().toISOString().slice(0, 10);
   });
+
+  if (setupEvent) {
+    return <div className="platform-page">
+      <section className="platform-hero organization">
+        <div>
+          <p className="platform-eyebrow">{organization?.name} Hangar · EIE</p>
+          <h1>{setupEvent.name}</h1>
+          <p>Build the participant-facing details that will become this event's Public Hub.</p>
+        </div>
+        <div className="review-actions">
+          <button className="platform-secondary-button" onClick={() => setSetupEvent(null)}>← Event Directory</button>
+          <div className="platform-role-pill">Hub Setup</div>
+        </div>
+      </section>
+
+      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Public Hub Walkthrough</p><h2>Event Details</h2><p>Registration is already saved. Now add the information participants need before they register or arrive.</p></div>
+          <span>Step 1</span>
+        </div>
+
+        <div className="form-grid two">
+          <label>Event description<textarea rows="5" value={hubForm.description} onChange={(e) => updateHub('description', e.target.value)} placeholder="Tell participants what this event is about and what is included." /></label>
+          <div>
+            <label>Check-in time<input type="time" value={hubForm.check_in_time} onChange={(e) => updateHub('check_in_time', e.target.value)} /></label>
+            <label style={{ marginTop: 12 }}>Event start time<input type="time" value={hubForm.event_start_time} onChange={(e) => updateHub('event_start_time', e.target.value)} /></label>
+          </div>
+          <label>Venue / course details<textarea rows="4" value={hubForm.venue_details} onChange={(e) => updateHub('venue_details', e.target.value)} placeholder="Where to go, clubhouse location, entrance details, or venue notes." /></label>
+          <label>Food & beverage<textarea rows="4" value={hubForm.food_beverage} onChange={(e) => updateHub('food_beverage', e.target.value)} placeholder="Meal included, meal time, beverages, guest meal information, etc." /></label>
+          <label>Parking / arrival instructions<textarea rows="4" value={hubForm.parking_arrival} onChange={(e) => updateHub('parking_arrival', e.target.value)} placeholder="Where to park and what to do when participants arrive." /></label>
+          <label>Dress code<textarea rows="4" value={hubForm.dress_code} onChange={(e) => updateHub('dress_code', e.target.value)} placeholder="Optional dress code or course attire requirements." /></label>
+          <label>Rules / participant notes<textarea rows="4" value={hubForm.rules_notes} onChange={(e) => updateHub('rules_notes', e.target.value)} placeholder="Event rules, reminders, restrictions, or other participant notes." /></label>
+          <label>Gifts, prizes & challenges<textarea rows="4" value={hubForm.gifts_prizes} onChange={(e) => updateHub('gifts_prizes', e.target.value)} placeholder="Optional gifts, prizes, contests, course challenges, or special features." /></label>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">Registration Contact</p>
+          <div className="form-grid three">
+            <label>Name<input value={hubForm.contact_name} onChange={(e) => updateHub('contact_name', e.target.value)} /></label>
+            <label>Email<input type="email" value={hubForm.contact_email} onChange={(e) => updateHub('contact_email', e.target.value)} /></label>
+            <label>Phone<input type="tel" value={hubForm.contact_phone} onChange={(e) => updateHub('contact_phone', e.target.value)} /></label>
+          </div>
+        </div>
+
+        <div className="availability-note" style={{ marginTop: 18 }}>
+          <strong>Next Hub steps</strong>
+          <span>After Event Details, we will add images/flyer, sponsor display, preview, and publish controls without making you re-enter registration information.</span>
+        </div>
+
+        <div className="review-actions" style={{ marginTop: 18 }}>
+          <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
+          <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Event Details'}</button>
+        </div>
+      </section>
+    </div>;
+  }
 
   return <div className="platform-page">
     <section className="platform-hero organization">
@@ -566,7 +717,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         {upcoming.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}>
           <div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div>
           <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
-          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><b>Setup →</b></div>
+          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>Setup →</button></div>
         </div>)}
         {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first Quick Registration from ground zero.</span></div>}
       </div>}

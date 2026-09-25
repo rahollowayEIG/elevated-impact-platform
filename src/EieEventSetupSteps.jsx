@@ -98,8 +98,7 @@ export default function EieEventSetupSteps({
   });
 
   const [registration, setRegistration] = useState({
-    member_price: event?.member_price ?? '',
-    non_member_price: event?.non_member_price ?? '',
+    base_price: event?.member_price ?? event?.non_member_price ?? '',
     team_size: initialSettings.team_size || 4,
     allow_team_name: initialSettings.allow_team_name !== false,
     allow_partial_team: initialSettings.allow_partial_team !== false,
@@ -363,14 +362,62 @@ export default function EieEventSetupSteps({
       const { data, error } = await supabase
         .from('golf_registration_events')
         .update({
-          member_price: Number(registration.member_price || 0),
-          non_member_price: details.event_access === 'public' ? Number(registration.non_member_price || 0) : Number(registration.member_price || 0),
-          field_settings: nextSettings,
+          member_price: Number(registration.base_price || 0),
+          non_member_price: Number(registration.base_price || 0),
+          field_settings: { ...nextSettings, base_registration_price: Number(registration.base_price || 0) },
         })
         .eq('id', event.id)
         .select()
         .single();
       if (error) throw error;
+
+      const basePrice = Number(registration.base_price || 0);
+      const { data: registrationOffers, error: registrationOfferError } = await supabase
+        .from('event_offers')
+        .select('id,metadata')
+        .eq('golf_event_id', event.id)
+        .eq('offer_type', 'registration')
+        .eq('status', 'active')
+        .order('sort_order')
+        .limit(1);
+      if (registrationOfferError) throw registrationOfferError;
+
+      if (registrationOffers?.length) {
+        const existing = registrationOffers[0];
+        const { error: offerUpdateError } = await supabase
+          .from('event_offers')
+          .update({
+            name: 'Registration',
+            price: basePrice,
+            charge_by: details.structure === 'team' ? 'team' : 'player',
+            is_required: true,
+            is_default: true,
+            metadata: { ...(existing.metadata || {}), base_registration: true },
+          })
+          .eq('id', existing.id);
+        if (offerUpdateError) throw offerUpdateError;
+      } else {
+        const { error: offerInsertError } = await supabase.from('event_offers').insert({
+          organization_id: organization.id,
+          master_event_id: event.master_event_id,
+          golf_event_id: event.id,
+          source_app: 'eie',
+          source_module: 'registration_setup',
+          offer_type: 'registration',
+          name: 'Registration',
+          description: 'Base event registration',
+          price: basePrice,
+          charge_by: details.structure === 'team' ? 'team' : 'player',
+          is_required: true,
+          is_default: true,
+          coupon_eligible: true,
+          visibility: 'public',
+          status: 'active',
+          sort_order: 0,
+          metadata: { base_registration: true, taxable: false },
+        });
+        if (offerInsertError) throw offerInsertError;
+      }
 
       if (paymentSettings?.id) {
         const { error: paymentError } = await supabase
@@ -460,13 +507,13 @@ export default function EieEventSetupSteps({
     setPricingBusy(true);
     setNotice('');
     try {
-      const activeOffers = offers.filter((offer) => !offer._removed);
+      const activeOffers = offers.filter((offer) => !offer._removed && offer.offer_type !== 'registration');
       for (const offer of activeOffers) {
         if (!offer.name.trim()) throw new Error('Every pricing line item needs a name.');
         if (Number(offer.price || 0) < 0) throw new Error('Pricing amounts cannot be negative.');
       }
 
-      const existingToDisable = offers.filter((offer) => offer.id && offer._removed);
+      const existingToDisable = offers.filter((offer) => offer.id && offer._removed && offer.offer_type !== 'registration');
       for (const offer of existingToDisable) {
         const { error } = await supabase.from('event_offers').update({ status: 'inactive' }).eq('id', offer.id);
         if (error) throw error;
@@ -547,7 +594,7 @@ export default function EieEventSetupSteps({
     }
   }
 
-  const visibleOffers = offers.filter((offer) => !offer._removed);
+  const visibleOffers = offers.filter((offer) => !offer._removed && offer.offer_type !== 'registration');
   const rosterHeaders = requiredHeaders(settingsPreview, registration.custom_fields);
   const fileSafeName = String(event.name || 'event').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
   const eventDetailsReady = event.field_settings?.event_details_status === 'configured';
@@ -639,9 +686,8 @@ export default function EieEventSetupSteps({
       </div>
 
       <div className="form-grid two">
-        <label>Member price<input type="number" min="0" step="0.01" value={registration.member_price} onChange={(e) => setRegistrationField('member_price', e.target.value)} /></label>
-        {details.event_access === 'public' && <label>Non-member price<input type="number" min="0" step="0.01" value={registration.non_member_price} onChange={(e) => setRegistrationField('non_member_price', e.target.value)} /></label>}
-        {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Non-member registration is disabled for this event.</span></div>}
+        <label>Registration price<input type="number" min="0" step="0.01" value={registration.base_price} onChange={(e) => setRegistrationField('base_price', e.target.value)} /><small className="eie-field-help">One base event price. Use Pricing & Add-ons for surcharges, upgrades, meals, carts, donations, or other event-specific pricing.</small></label>
+        {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
         <label>Registration deadline<input type="date" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /></label>
@@ -720,9 +766,8 @@ export default function EieEventSetupSteps({
       </div>
 
       <div className="platform-stats-grid" style={{ marginBottom: 18 }}>
-        <div className="platform-stat-card"><span>Member Base</span><strong>${Number(registration.member_price || 0).toFixed(2)}</strong><small>From Registration Details</small></div>
-        {details.event_access === 'public' && <div className="platform-stat-card"><span>Non-Member Base</span><strong>${Number(registration.non_member_price || 0).toFixed(2)}</strong><small>From Registration Details</small></div>}
-        {details.event_access === 'members_only' && <div className="platform-stat-card"><span>Audience</span><strong>Members Only</strong><small>Non-member registration disabled</small></div>}
+        <div className="platform-stat-card"><span>Base Registration</span><strong>${Number(registration.base_price || 0).toFixed(2)}</strong><small>One base price for the event</small></div>
+        <div className="platform-stat-card"><span>Audience</span><strong>{details.event_access === 'members_only' ? 'Members Only' : 'Open / Public'}</strong><small>Eligibility is separate from pricing</small></div>
         <div className="platform-stat-card"><span>Event Structure</span><strong>{details.structure === 'team' ? 'Team' : 'Individual'}</strong><small>{details.structure === 'team' ? registration.team_size + ' players per team' : 'One golfer per entry'}</small></div>
       </div>
 
@@ -732,7 +777,7 @@ export default function EieEventSetupSteps({
           return <div className="eie-builder-row" key={offer.id || 'new-offer-' + realIndex}>
             <div className="form-grid three">
               <label>Line item name<input value={offer.name} onChange={(e) => updateOffer(realIndex, 'name', e.target.value)} placeholder="Mulligans, meal guest, donation..." /></label>
-              <label>Type<select value={offer.offer_type} onChange={(e) => updateOffer(realIndex, 'offer_type', e.target.value)}><option value="registration">Registration</option><option value="add_on">Add-on</option><option value="package">Package</option><option value="donation">Donation</option><option value="sponsorship">Sponsorship</option><option value="other">Other</option></select></label>
+              <label>Type<select value={offer.offer_type} onChange={(e) => updateOffer(realIndex, 'offer_type', e.target.value)}><option value="add_on">Add-on</option><option value="package">Package</option><option value="donation">Donation</option><option value="sponsorship">Sponsorship</option><option value="other">Other</option></select></label>
               <label>Amount<input type="number" min="0" step="0.01" value={offer.price} onChange={(e) => updateOffer(realIndex, 'price', e.target.value)} /></label>
               <label>Charge by<select value={offer.charge_by} onChange={(e) => updateOffer(realIndex, 'charge_by', e.target.value)}><option value="player">Per golfer</option><option value="team">Per team</option><option value="order">Per order</option><option value="flat">Flat amount</option></select></label>
               <label>Available from<input type="date" value={offer.availability_start} onChange={(e) => updateOffer(realIndex, 'availability_start', e.target.value)} /></label>

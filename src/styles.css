@@ -843,3 +843,44 @@ button.cockpit-glass-screen{width:100%;font:inherit;cursor:pointer}
   .cockpit-display-stack{grid-template-columns:1fr}
   .cockpit-glass-screen{min-height:180px}
 }
+
+
+/* EIE event setup sequence */
+.eie-setup-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px;padding:10px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(3,9,16,.7)}
+.eie-setup-steps button{display:flex;align-items:center;gap:10px;min-height:58px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.035);color:#9fb0c3;padding:10px 12px;text-align:left;cursor:pointer}
+.eie-setup-steps button:hover{border-color:rgba(216,28,34,.42);background:rgba(255,255,255,.05)}
+.eie-setup-steps button.active{border-color:rgba(216,28,34,.55);background:linear-gradient(180deg,rgba(216,28,34,.18),rgba(216,28,34,.07));color:#fff;box-shadow:inset 0 0 22px rgba(216,28,34,.05)}
+.eie-setup-steps button span{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:50%;background:#172334;color:#b9c8d8;font-size:11px;font-weight:950}
+.eie-setup-steps button.active span{background:#D81C22;color:#fff;box-shadow:0 0 12px rgba(216,28,34,.35)}
+.eie-setup-steps button strong{font-size:12px;line-height:1.2}
+
+.eie-option-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+.eie-option-switches label{display:flex;align-items:flex-start;gap:11px;padding:15px;border:1px solid rgba(255,255,255,.1);border-radius:13px;background:rgba(255,255,255,.03);cursor:pointer}
+.eie-option-switches input,.eie-inline-check input{width:auto!important;margin-top:3px}
+.eie-option-switches strong,.eie-option-switches small{display:block}
+.eie-option-switches small{margin-top:4px;color:#91a3b7;line-height:1.4}
+
+.eie-builder-block{margin-top:20px;padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(0,0,0,.1)}
+.eie-builder-list{display:grid;gap:12px}
+.eie-builder-row{padding:16px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025)}
+.eie-builder-row>.platform-secondary-button{margin-top:12px}
+.eie-registration-settings{display:grid;gap:0;border:1px solid rgba(255,255,255,.09);border-radius:12px;overflow:hidden;margin-top:12px}
+.eie-registration-setting{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:11px 13px;border-bottom:1px solid rgba(255,255,255,.07)}
+.eie-registration-setting:last-child{border-bottom:0}
+.eie-registration-setting select{width:190px}
+.eie-inline-check{display:flex!important;align-items:center;gap:9px;min-height:44px}
+.eie-custom-field-list{display:grid;gap:8px}
+.eie-custom-field-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 12px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.025)}
+.eie-custom-field-row strong,.eie-custom-field-row span{display:block}
+.eie-custom-field-row span{margin-top:3px;color:#91a3b7;font-size:11px}
+
+@media(max-width:900px){
+  .eie-setup-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .eie-option-switches{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .eie-setup-steps{grid-template-columns:1fr}
+  .eie-registration-setting{align-items:flex-start;flex-direction:column}
+  .eie-registration-setting select{width:100%}
+  .eie-custom-field-row{align-items:flex-start;flex-direction:column}
+}

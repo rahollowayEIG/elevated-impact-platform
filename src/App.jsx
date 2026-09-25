@@ -1076,11 +1076,101 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 }
 
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
+  const activeInquiries = eventRequests.filter((request) => !['declined', 'cancelled', 'hold_expired'].includes(request.status)).length;
+  const publishedEvents = eieEvents.filter((event) => event.status === 'published').length;
+  const draftEvents = eieEvents.filter((event) => event.status !== 'published' && event.status !== 'closed').length;
   const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
-  return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar' : 'ElevationPilot · Hangar'}</p><h1>{organization?.name || 'Organization'} Cockpit</h1><p>Operate this Hangar's events, apps, communications, venue workflow, billing, and shared business tools from one Cockpit.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Apps" value={enabledCount} detail="Entitled to this Hangar" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared Hangar profile" /><StatCard label="Cockpit" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled apps" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Apps</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
+  const roleLabel = (role || 'member').replaceAll('_', ' ');
+  const setupLabel = (organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ');
+  const enabledPercent = products.length ? Math.round((enabledCount / products.length) * 100) : 0;
+  const nextEvents = [...eieEvents]
+    .sort((a, b) => String(a.event_dates?.[0] || '9999').localeCompare(String(b.event_dates?.[0] || '9999')))
+    .slice(0, 5);
+
+  return <div className="platform-page cockpit-page">
+    <section className="cockpit-flightdeck">
+      <div className="cockpit-canopy">
+        <div className="cockpit-canopy-grid" aria-hidden="true" />
+        <div>
+          <p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar · Flight Deck' : 'ElevationPilot · Flight Deck'}</p>
+          <h1>{organization?.name || 'Organization'} Cockpit</h1>
+          <p>One operating deck for events, communications, venue workflow, and every EIG capability assigned to this Hangar.</p>
+        </div>
+        <div className="cockpit-role-badge"><span>Operating As</span><strong>{roleLabel}</strong></div>
+      </div>
+
+      <div className="cockpit-annunciator" aria-label="Cockpit status">
+        <div className="cockpit-annunciator-item"><i className="ok" /><span>Hangar</span><strong>{organization?.is_test ? 'TEST' : 'ACTIVE'}</strong></div>
+        <div className="cockpit-annunciator-item"><i className={organization?.onboarding_status === 'complete' ? 'ok' : 'warn'} /><span>Setup</span><strong>{setupLabel}</strong></div>
+        <div className="cockpit-annunciator-item"><i className={activeInquiries ? 'warn' : 'ok'} /><span>Inquiries</span><strong>{activeInquiries}</strong></div>
+        <div className="cockpit-annunciator-item"><i className={draftEvents ? 'warn' : 'ok'} /><span>Event Drafts</span><strong>{draftEvents}</strong></div>
+        <div className="cockpit-annunciator-item"><i className="ok" /><span>Published</span><strong>{publishedEvents}</strong></div>
+      </div>
+
+      <div className="cockpit-instrument-grid">
+        <div className="cockpit-instrument round">
+          <div className="cockpit-gauge" style={{ '--cockpit-value': enabledPercent + '%' }}>
+            <div><strong>{enabledCount}</strong><span>of {products.length || 0}</span></div>
+          </div>
+          <small>Enabled Systems</small>
+        </div>
+
+        <div className="cockpit-center-console">
+          <div className="cockpit-console-header">
+            <div><span>Primary System</span><strong>EIE Event Operations</strong></div>
+            <div className="cockpit-system-light"><i className="ok" /> READY</div>
+          </div>
+          <p>Create events, configure registration, operate ATC rosters, publish the Hub, and prepare Golf Genius from the same Master Event.</p>
+          <div className="cockpit-control-row">
+            <button className="cockpit-control primary" type="button" onClick={onLaunchGolfRegistration}><span>EIE</span><strong>ENTER EVENT OPS</strong></button>
+            <div className="cockpit-control passive"><span>SB</span><strong>SQUAWK BOX</strong><small>Communication restoration queued</small></div>
+            <div className="cockpit-control passive"><span>ATC</span><strong>ATTENTION</strong><small>{activeInquiries ? activeInquiries + ' inquiry item' + (activeInquiries === 1 ? '' : 's') : 'No inquiry alerts'}</small></div>
+          </div>
+        </div>
+
+        <div className="cockpit-instrument attention">
+          <div className="cockpit-digital-readout"><span>ATTN</span><strong>{activeInquiries + draftEvents}</strong></div>
+          <small>Items needing review</small>
+          <div className="cockpit-mini-status"><span>Inquiries</span><b>{activeInquiries}</b></div>
+          <div className="cockpit-mini-status"><span>Draft Events</span><b>{draftEvents}</b></div>
+        </div>
+      </div>
+
+      <div className="cockpit-flight-board">
+        <div className="cockpit-panel-heading">
+          <div><p className="platform-eyebrow">Flight Board</p><h2>Event Operations</h2></div>
+          <button className="platform-primary-button inline" type="button" onClick={onLaunchGolfRegistration}>Open EIE</button>
+        </div>
+        {nextEvents.length ? <div className="cockpit-board-list">
+          {nextEvents.map((event) => {
+            const firstDate = Array.isArray(event.event_dates) ? event.event_dates[0] : '';
+            const dateLabel = firstDate ? new Date(firstDate + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'DATE TBD';
+            return <button type="button" key={event.id} className="cockpit-board-row" onClick={onLaunchGolfRegistration}>
+              <span className={'cockpit-board-status ' + (event.status || 'draft')}>{event.status || 'draft'}</span>
+              <strong>{event.name}</strong>
+              <span>{dateLabel}</span>
+              <span>{event.course || organization?.name}</span>
+              <b>ATC →</b>
+            </button>;
+          })}
+        </div> : <div className="cockpit-board-empty"><strong>NO ACTIVE FLIGHTS</strong><span>Create the first EIE event for this Hangar.</span><button className="platform-primary-button inline" type="button" onClick={onLaunchGolfRegistration}>Create Event</button></div>}
+      </div>
+    </section>
+
+    <section className="cockpit-lower-console">
+      <div className="cockpit-panel-heading">
+        <div><p className="platform-eyebrow">Systems Panel</p><h2>Apps & Tools</h2></div>
+        <span className="cockpit-panel-code">SYS / {enabledCount.toString().padStart(2, '0')}</span>
+      </div>
+      <div className="platform-product-grid cockpit-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div>
+    </section>
+
+    <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
+    {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
+  </div>;
 }
 
 
@@ -1322,7 +1412,13 @@ export default function App() {
     if (productError || entitlementError || profileError) setDataError(productError?.message || entitlementError?.message || profileError?.message || 'Unable to load workspace data.');
     setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null);
     if (isEig) { const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name'); if (orgError) setDataError(orgError.message); setOrganizations(orgRows || []); setEventRequests([]); }
-    else { setOrganizations([]); if (['organization_admin', 'organization_staff'].includes(activeMembership?.role)) await loadEventRequests(organizationId); else setEventRequests([]); }
+    else {
+      setOrganizations([]);
+      const jobs = [loadEieEvents(organizationId)];
+      if (['organization_admin', 'organization_staff'].includes(activeMembership?.role)) jobs.push(loadEventRequests(organizationId));
+      else setEventRequests([]);
+      await Promise.all(jobs);
+    }
     setLoadingData(false);
   }
 
@@ -1363,5 +1459,5 @@ export default function App() {
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : cockpitApp === 'eie' ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : cockpitApp === 'eie' ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
 }

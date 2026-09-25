@@ -251,6 +251,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [setupEvent, setSetupEvent] = useState(null);
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
+  const [assetBusy, setAssetBusy] = useState('');
   const [hubForm, setHubForm] = useState({
     description: '',
     check_in_time: '',
@@ -264,6 +265,10 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     contact_name: '',
     contact_email: '',
     contact_phone: '',
+    logo_url: '',
+    banner_url: '',
+    flyer_url: '',
+    photo_urls: [],
   });
   const [form, setForm] = useState({
     name: '',
@@ -466,11 +471,61 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       contact_name: settings.registration_contact_name || '',
       contact_email: settings.registration_contact_email || '',
       contact_phone: settings.registration_contact_phone || '',
+      logo_url: settings.hub_logo_url || '',
+      banner_url: settings.hub_banner_url || '',
+      flyer_url: settings.hub_flyer_url || '',
+      photo_urls: Array.isArray(settings.hub_photo_urls) ? settings.hub_photo_urls : [],
     });
   }
 
   function updateHub(field, value) {
     setHubForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function safeAssetName(fileName) {
+    const dot = fileName.lastIndexOf('.');
+    const ext = dot >= 0 ? fileName.slice(dot).toLowerCase() : '';
+    const stem = (dot >= 0 ? fileName.slice(0, dot) : fileName)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'asset';
+    return `${stem}-${Date.now()}${ext}`;
+  }
+
+  async function uploadHubAsset(kind, file) {
+    if (!file || !setupEvent?.id || !organization?.id) return;
+    setAssetBusy(kind);
+    setSetupNotice('');
+    try {
+      const path = `${organization.id}/${setupEvent.id}/${kind}/${safeAssetName(file.name)}`;
+      const { error: uploadError } = await supabase.storage
+        .from('event-assets')
+        .upload(path, file, { upsert: false, contentType: file.type || undefined });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage.from('event-assets').getPublicUrl(path);
+      const url = publicData?.publicUrl;
+      if (!url) throw new Error('The file uploaded, but its public URL could not be created.');
+
+      if (kind === 'logo') updateHub('logo_url', url);
+      else if (kind === 'banner') updateHub('banner_url', url);
+      else if (kind === 'flyer') updateHub('flyer_url', url);
+      else if (kind === 'photos') setHubForm((current) => ({ ...current, photo_urls: [...current.photo_urls, url] }));
+
+      setSetupNotice('Upload complete. Save Hub Setup to keep it with this event.');
+    } catch (error) {
+      setSetupNotice(error.message || 'Unable to upload event asset.');
+    } finally {
+      setAssetBusy('');
+    }
+  }
+
+  function removeHubPhoto(index) {
+    setHubForm((current) => ({
+      ...current,
+      photo_urls: current.photo_urls.filter((_, photoIndex) => photoIndex !== index),
+    }));
   }
 
   async function saveHubSetup() {
@@ -492,6 +547,10 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         registration_contact_name: hubForm.contact_name.trim(),
         registration_contact_email: hubForm.contact_email.trim(),
         registration_contact_phone: hubForm.contact_phone.trim(),
+        hub_logo_url: hubForm.logo_url || '',
+        hub_banner_url: hubForm.banner_url || '',
+        hub_flyer_url: hubForm.flyer_url || '',
+        hub_photo_urls: hubForm.photo_urls || [],
         hub_setup_status: 'in_progress',
       };
 
@@ -510,6 +569,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
             organizer_name: hubForm.contact_name.trim() || null,
             organizer_email: hubForm.contact_email.trim() || null,
             organizer_phone: hubForm.contact_phone.trim() || null,
+            banner_url: hubForm.banner_url || null,
           })
           .eq('id', setupEvent.master_event_id);
         if (masterError) throw masterError;
@@ -556,7 +616,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         </div>
       </section>
 
-      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
 
       <section className="platform-section-card">
         <div className="platform-section-heading">
@@ -587,14 +647,53 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           </div>
         </div>
 
+        <div style={{ marginTop: 22, paddingTop: 22, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <div className="platform-section-heading">
+            <div>
+              <p className="platform-eyebrow">Public Hub Walkthrough</p>
+              <h2>Images & Flyer</h2>
+              <p>Add the visual pieces participants will see on the Hub. JPG, PNG, WebP, and PDF files up to 10 MB are supported.</p>
+            </div>
+            <span>Step 2</span>
+          </div>
+
+          <div className="form-grid two">
+            <div>
+              <label>Event logo / image<input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('logo', e.target.files?.[0])} /></label>
+              {hubForm.logo_url && <div style={{ marginTop: 10 }}><img src={hubForm.logo_url} alt="Event logo preview" style={{ maxWidth: 180, maxHeight: 120, objectFit: 'contain', borderRadius: 12 }} /><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('logo_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Hub banner<input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('banner', e.target.files?.[0])} /></label>
+              {hubForm.banner_url && <div style={{ marginTop: 10 }}><img src={hubForm.banner_url} alt="Hub banner preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 12 }} /><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('banner_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Event flyer<input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('flyer', e.target.files?.[0])} /></label>
+              {hubForm.flyer_url && <div style={{ marginTop: 10 }}><a href={hubForm.flyer_url} target="_blank" rel="noreferrer">Open uploaded flyer</a><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('flyer_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Additional event photos<input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={Boolean(assetBusy)} onChange={async (e) => { const files = Array.from(e.target.files || []); for (const file of files) await uploadHubAsset('photos', file); e.target.value = ''; }} /></label>
+              <p className="platform-login-copy">Add course photos, sponsor graphics, banquet images, or other event visuals.</p>
+            </div>
+          </div>
+
+          {!!hubForm.photo_urls.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginTop: 16 }}>
+            {hubForm.photo_urls.map((url, index) => <div key={`${url}-${index}`} style={{ padding: 10, border: '1px solid rgba(255,255,255,.1)', borderRadius: 12 }}>
+              <img src={url} alt={`Event photo ${index + 1}`} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 9 }} />
+              <button className="platform-secondary-button" type="button" style={{ marginTop: 8 }} onClick={() => removeHubPhoto(index)}>Remove</button>
+            </div>)}
+          </div>}
+
+          {assetBusy && <div className="availability-note" style={{ marginTop: 14 }}><strong>Uploading...</strong><span>Your file is being added to this event's asset folder.</span></div>}
+        </div>
+
         <div className="availability-note" style={{ marginTop: 18 }}>
           <strong>Next Hub steps</strong>
-          <span>After Event Details, we will add images/flyer, sponsor display, preview, and publish controls without making you re-enter registration information.</span>
+          <span>After Images & Flyer, we will add sponsor display, Preview Hub, and Publish controls.</span>
         </div>
 
         <div className="review-actions" style={{ marginTop: 18 }}>
           <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
-          <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Event Details'}</button>
+          <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
         </div>
       </section>
     </div>;

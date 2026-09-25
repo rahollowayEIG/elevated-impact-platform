@@ -895,3 +895,9 @@ button.cockpit-glass-screen{width:100%;font:inherit;cursor:pointer}
 .eie-field-help strong{color:#b7f7df}
 @media(max-width:1050px){.eie-roster-inherited{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.eie-roster-inherited{grid-template-columns:1fr}}
+
+
+.eie-setup-steps button.complete:not(.active){border-color:rgba(52,211,153,.22);background:rgba(52,211,153,.045)}
+.eie-setup-steps button.complete:not(.active) span{background:rgba(52,211,153,.18);color:#86efac}
+.eie-setup-steps button.waiting:not(.active){opacity:.58}
+.eie-setup-steps button.waiting:not(.active):hover{border-color:rgba(251,191,36,.28)}

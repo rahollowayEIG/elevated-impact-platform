@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
+import EieEventSetupSteps from './EieEventSetupSteps';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -250,6 +251,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [notice, setNotice] = useState('');
   const [createdEvent, setCreatedEvent] = useState(null);
   const [setupEvent, setSetupEvent] = useState(null);
+  const [setupStep, setSetupStep] = useState('details');
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
   const [assetBusy, setAssetBusy] = useState('');
@@ -479,6 +481,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   async function openSetup(event) {
     const settings = event.field_settings || {};
     setSetupEvent(event);
+    setSetupStep('details');
     setSetupNotice('');
     setPreviewHub(false);
     setSetupSponsors([]);
@@ -793,24 +796,33 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         <div>
           <p className="platform-eyebrow">{organization?.name} Hangar · EIE</p>
           <h1>{setupEvent.name}</h1>
-          <p>Build the participant-facing details that will become this event's Public Hub.</p>
+          <p>Set up the event in order so Registration, Pricing, Roster, and the Public Hub all inherit the same rules.</p>
         </div>
         <div className="review-actions">
           <button className="platform-secondary-button" onClick={() => setSetupEvent(null)}>← Event Directory</button>
-          <div className="platform-role-pill">Hub Setup</div>
+          <div className="platform-role-pill">Event Setup</div>
         </div>
       </section>
 
-      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+      <EieEventSetupSteps
+        event={setupEvent}
+        organization={organization}
+        activeStep={setupStep}
+        onStepChange={setSetupStep}
+        onEventUpdated={(updatedEvent) => setSetupEvent((current) => ({ ...current, ...updatedEvent }))}
+        onReload={onReload}
+      />
 
-      <EieRosterMaintenance
+      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') || setupNotice.startsWith('Event website') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      {setupStep === 'roster' && <EieRosterMaintenance
         event={setupEvent}
         rows={rosterRows}
         loading={rosterBusy}
         onRefresh={() => loadRoster(setupEvent)}
-      />
+      />}
 
-      <section className="platform-section-card">
+      {setupStep === 'hub' && <section className="platform-section-card">
         <div className="platform-section-heading">
           <div><p className="platform-eyebrow">Public Hub Walkthrough</p><h2>Event Details</h2><p>Registration is already saved. Now add the information participants need before they register or arrive.</p></div>
           <span>Step 1</span>
@@ -941,7 +953,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
             ? <><button className="platform-secondary-button danger-outline" type="button" disabled={setupBusy} onClick={() => setHubPublication('draft')}>Unpublish</button><button className="platform-primary-button" type="button" onClick={() => window.open(publicHubUrl(setupEvent), '_blank', 'noopener,noreferrer')}>Open Live Site ↗</button></>
             : <button className="platform-primary-button" type="button" disabled={setupBusy || !setupEvent.public_slug} onClick={() => setHubPublication('published')}>{setupBusy ? 'Publishing...' : 'Publish Event Site'}</button>}
         </div>
-      </section>
+      </section>}
     </div>;
   }
 

@@ -24,6 +24,15 @@ function money(value) {
   return Number.isFinite(amount) ? amount.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '$0.00';
 }
 
+function csvEscape(value) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+}
+
+function displayCustomValue(value) {
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return value ?? '';
+}
+
 async function readFunctionError(error, fallback) {
   try {
     const body = await error?.context?.json();
@@ -49,6 +58,12 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [teamId, setTeamId] = useState('');
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [bulkSelectedIds, setBulkSelectedIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkReason, setBulkReason] = useState('');
+  const [bulkTeamId, setBulkTeamId] = useState('');
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [syncWorking, setSyncWorking] = useState(false);
 
   useEffect(() => {
     if (!selected?.id) return undefined;
@@ -100,6 +115,220 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       throw wrapped;
     }
     return data;
+  }
+
+
+  async function pullGoogleChanges() {
+    setSyncWorking(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('pull-google-roster-edits', {
+        body: { event_id: event.id, event_key: event.event_key },
+      });
+      if (error) {
+        const details = await readFunctionError(error, 'Unable to pull Google roster edits.');
+        throw new Error(details.error || 'Unable to pull Google roster edits.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Unable to pull Google roster edits.');
+      await onRefresh();
+      const count = data.updated_count ?? 0;
+      setNotice(`Google roster checked. ${count} golfer${count === 1 ? '' : 's'} updated in EIE.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Unable to pull Google roster edits.');
+    } finally {
+      setSyncWorking(false);
+    }
+  }
+
+  async function syncGoogleSheet() {
+    setSyncWorking(true);
+    setNotice('');
+    try {
+      const pull = await supabase.functions.invoke('pull-google-roster-edits', {
+        body: { event_id: event.id, event_key: event.event_key },
+      });
+      if (pull.error) {
+        const details = await readFunctionError(pull.error, 'Unable to pull Google roster edits before sync.');
+        throw new Error(details.error || 'Unable to pull Google roster edits before sync.');
+      }
+
+      const { data, error } = await supabase.functions.invoke('sync-google-roster', {
+        body: { event_key: event.event_key },
+      });
+      if (error) {
+        const details = await readFunctionError(error, 'Google Sheet sync failed.');
+        throw new Error(details.error || 'Google Sheet sync failed.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Google Sheet sync failed.');
+      await onRefresh();
+      const count = data.registrations_synced ?? rows.length;
+      setNotice(`Google Sheet synced successfully. ${count} registration${count === 1 ? '' : 's'} updated.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Unable to sync Google Sheet.');
+    } finally {
+      setSyncWorking(false);
+    }
+  }
+
+  function toggleBulkSelection(registrationId, checked) {
+    setBulkSelectedIds((current) => {
+      if (checked) return current.includes(registrationId) ? current : [...current, registrationId];
+      return current.filter((id) => id !== registrationId);
+    });
+  }
+
+  function toggleAllRows(checked) {
+    setBulkSelectedIds(checked ? rows.map((row) => row.id) : []);
+  }
+
+  async function applyBulkAction() {
+    if (!bulkSelectedIds.length || !bulkAction || bulkWorking) return;
+    if (bulkAction === 'comp' && !bulkReason.trim()) {
+      setNotice('A reason is required when comping golfers.');
+      return;
+    }
+    if (bulkAction === 'set_team' && !bulkTeamId.trim()) {
+      setNotice('Enter a Team ID for the selected golfers.');
+      return;
+    }
+    if ((bulkAction === 'withdraw' || bulkAction === 'cancel') && !window.confirm(
+      `Apply this action to ${bulkSelectedIds.length} selected golfer${bulkSelectedIds.length === 1 ? '' : 's'}?`
+    )) return;
+
+    setBulkWorking(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-bulk-registration', {
+        body: {
+          action: bulkAction,
+          registration_ids: bulkSelectedIds,
+          reason: bulkReason.trim() || null,
+          team_id: bulkAction === 'set_team' ? bulkTeamId.trim() : undefined,
+        },
+      });
+      if (error) {
+        const details = await readFunctionError(error, 'Bulk roster update could not be completed.');
+        throw new Error(details.error || 'Bulk roster update could not be completed.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Bulk roster update could not be completed.');
+
+      const count = data.updated_count ?? bulkSelectedIds.length;
+      setBulkSelectedIds([]);
+      setBulkAction('');
+      setBulkReason('');
+      setBulkTeamId('');
+      setNotice(data.sync_warning || `${count} golfer${count === 1 ? '' : 's'} updated successfully.`);
+      await onRefresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Unable to update selected golfers.');
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  function exportGolfGenius() {
+    let confirmed = rows.filter((row) =>
+      ['paid', 'comp'].includes(row.payment_status) &&
+      (row.registration_status || 'active') === 'active'
+    );
+    if (!confirmed.length) {
+      window.alert('There are no confirmed golfers to export yet.');
+      return;
+    }
+
+    const registrationFormat = teamMode ? 'team' : 'individual';
+    const teamSize = registrationFormat === 'team'
+      ? Math.max(2, Math.min(12, Number(settings.team_size || 4)))
+      : 1;
+
+    if (registrationFormat === 'team') {
+      const missingTeam = confirmed.filter((row) => !String(row.team_id ?? '').trim());
+      if (missingTeam.length) {
+        window.alert(
+          `${missingTeam.length} confirmed golfer${missingTeam.length === 1 ? '' : 's'} still need a Team ID. Use Manage -> Set / Move Team before exporting.`
+        );
+        return;
+      }
+
+      const teamOrder = [];
+      const teamMap = new Map();
+      confirmed.forEach((row) => {
+        const raw = String(row.team_id ?? '').trim();
+        if (!teamMap.has(raw)) {
+          teamMap.set(raw, teamOrder.length + 1);
+          teamOrder.push(raw);
+        }
+      });
+
+      confirmed = [...confirmed].sort((a, b) => {
+        const aTeam = teamMap.get(String(a.team_id ?? '').trim()) || 0;
+        const bTeam = teamMap.get(String(b.team_id ?? '').trim()) || 0;
+        if (aTeam !== bTeam) return aTeam - bTeam;
+        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+      });
+
+      const teamPositions = new Map();
+      confirmed = confirmed.map((row) => {
+        const exportTeamId = teamMap.get(String(row.team_id ?? '').trim()) || '';
+        const nextPosition = (teamPositions.get(exportTeamId) || 0) + 1;
+        teamPositions.set(exportTeamId, nextPosition);
+        return {
+          ...row,
+          __export_team_id: exportTeamId,
+          __export_entry_number: ((Number(exportTeamId) - 1) * teamSize) + nextPosition,
+        };
+      });
+    } else {
+      confirmed = confirmed.map((row, index) => ({
+        ...row,
+        __export_team_id: '',
+        __export_entry_number: index + 1,
+      }));
+    }
+
+    const customKeys = Array.from(new Set(confirmed.flatMap((row) => {
+      const custom = row.custom_fields && typeof row.custom_fields === 'object' ? row.custom_fields : {};
+      return Object.keys(custom);
+    })));
+    const pretty = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+    const headers = [
+      'Team Id', 'Entry Number', 'Email', 'Phone', 'First Name', 'Last Name',
+      'DOB', 'Gender', 'Tee', 'Division', 'Member Type', 'GHIN ID',
+      ...customKeys.map(pretty),
+      'Age', 'Price', 'Payment Status', 'Registration Date', 'Registration ID',
+    ];
+
+    const csvRows = confirmed.map((row, index) => {
+      const custom = row.custom_fields && typeof row.custom_fields === 'object' ? row.custom_fields : {};
+      return [
+        row.__export_team_id ?? '',
+        row.__export_entry_number ?? index + 1,
+        row.email,
+        row.phone,
+        row.first_name,
+        row.last_name,
+        row.date_of_birth,
+        row.gender,
+        row.tee ?? '',
+        row.division,
+        row.membership_status,
+        row.ghin_number,
+        ...customKeys.map((key) => displayCustomValue(custom[key])),
+        row.age,
+        row.price,
+        row.payment_status,
+        row.created_at,
+        row.id,
+      ].map(csvEscape).join(',');
+    });
+
+    const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'golf-genius-confirmed-roster.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function updateManual(field, value) {
@@ -201,6 +430,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     }
   }
 
+  useEffect(() => {
+    const validIds = new Set(rows.map((row) => row.id));
+    setBulkSelectedIds((current) => current.filter((id) => validIds.has(id)));
+  }, [rows]);
+
   const activeCount = rows.filter((row) => (row.registration_status || 'active') === 'active').length;
   const paidCount = rows.filter((row) => row.payment_status === 'paid').length;
   const compCount = rows.filter((row) => row.payment_status === 'comp').length;
@@ -228,7 +462,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         <div className="review-actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-start' }}>
           <button className="platform-primary-button" type="button" onClick={() => { setManualOpen(true); setUploadOpen(false); setNotice(''); }}>+ Add Golfer Manually</button>
           <button className="platform-secondary-button" type="button" onClick={() => { setUploadOpen(true); setManualOpen(false); setNotice(''); }}>Upload Roster</button>
-          <button className="platform-secondary-button" type="button" disabled={loading} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
+          <button className="platform-secondary-button" type="button" disabled={loading || syncWorking} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
+          <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={pullGoogleChanges}>{syncWorking ? 'Working...' : 'Pull Google Changes'}</button>
+          <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={syncGoogleSheet}>{syncWorking ? 'Working...' : 'Sync Google Sheet'}</button>
+          {event.google_sheet_url && <button className="platform-secondary-button" type="button" onClick={() => window.open(event.google_sheet_url, '_blank', 'noopener,noreferrer')}>Open Google Sheet</button>}
+          <button className="platform-secondary-button" type="button" onClick={exportGolfGenius}>Export Golf Genius CSV</button>
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}
@@ -325,12 +563,42 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <span>{rows.length} total</span>
         </div>
 
+        {!!bulkSelectedIds.length && (
+          <div className="eie-bulk-roster-panel">
+            <div><strong>{bulkSelectedIds.length} selected</strong><span>Apply one roster action to the selected golfers.</span></div>
+            <div className="form-grid two">
+              <label>Bulk action
+                <select value={bulkAction} onChange={(e) => { setBulkAction(e.target.value); setBulkReason(''); setBulkTeamId(''); setNotice(''); }}>
+                  <option value="">Choose an action</option>
+                  <option value="paid_clubhouse">Mark Paid</option>
+                  <option value="comp">Comp Players</option>
+                  {teamMode && <option value="set_team">Set / Move Team</option>}
+                  <option value="withdraw">Withdraw</option>
+                  <option value="cancel">Cancel Registration</option>
+                </select>
+              </label>
+              {bulkAction === 'set_team'
+                ? <label>Team ID *<input value={bulkTeamId} onChange={(e) => setBulkTeamId(e.target.value)} placeholder="Example: 1" /></label>
+                : <label>{bulkAction === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkAction === 'comp' ? 'Required reason for complimentary players' : 'Optional note'} /></label>}
+            </div>
+            <div className="review-actions" style={{ marginTop: 12 }}>
+              <button className="platform-secondary-button" type="button" disabled={bulkWorking} onClick={() => { setBulkSelectedIds([]); setBulkAction(''); setBulkReason(''); setBulkTeamId(''); }}>Clear Selection</button>
+              <button className="platform-primary-button" type="button" disabled={
+                bulkWorking ||
+                !bulkAction ||
+                (bulkAction === 'comp' && !bulkReason.trim()) ||
+                (bulkAction === 'set_team' && !bulkTeamId.trim())
+              } onClick={applyBulkAction}>{bulkWorking ? 'Updating...' : `Apply to ${bulkSelectedIds.length} Selected`}</button>
+            </div>
+          </div>
+        )}
+
         {!rows.length ? (
           <div className="availability-note"><strong>No golfers yet</strong><span>Add a golfer manually or upload an organizer roster.</span></div>
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th><input aria-label="Select all golfers" type="checkbox" style={{ width: 'auto' }} checked={rows.length > 0 && rows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => toggleAllRows(e.target.checked)} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {rows.map((row) => {
                   const isSelected = selected?.id === row.id;
@@ -340,6 +608,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                         data-registration-id={row.id}
                         className={isSelected ? 'eie-roster-row-selected' : ''}
                       >
+                        <td><input aria-label={`Select ${row.first_name} ${row.last_name}`} type="checkbox" style={{ width: 'auto' }} checked={bulkSelectedIds.includes(row.id)} onChange={(e) => toggleBulkSelection(row.id, e.target.checked)} /></td>
                         <td><strong>{row.first_name} {row.last_name}</strong><small style={{ display: 'block', opacity: .7 }}>{row.membership_status || 'Member'}{row.division ? ` · ${row.division}` : ''}</small></td>
                         {teamMode && <td>{row.team_id || 'Unassigned'}</td>}
                         <td>{row.email || 'No email'}<small style={{ display: 'block', opacity: .7 }}>{row.phone || 'No phone'}</small></td>
@@ -351,7 +620,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
                       {isSelected && (
                         <tr className="eie-roster-manage-row">
-                          <td colSpan={teamMode ? 7 : 6}>
+                          <td colSpan={teamMode ? 8 : 7}>
                             <div className="eie-roster-manage-panel">
                               <div>
                                 <p className="platform-eyebrow">Manage Golfer</p>

@@ -671,3 +671,17 @@ button {
   .locked-fields-box { grid-template-columns: 1fr; }
   .review-panel { padding: 16px; }
 }
+
+
+/* EIE roster import compatibility */
+.muted{color:#94a3b8}
+.message{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.32);color:#d1fae5;padding:12px;border-radius:10px}
+.section-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#D81C22;font-weight:900}
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px}
+.table-wrap table{width:100%;border-collapse:collapse}
+.table-wrap th,.table-wrap td{text-align:left;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.table-wrap th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#cbd5e1;background:rgba(255,255,255,.04)}
+.pill{display:inline-block;padding:5px 8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);border-radius:999px;text-transform:capitalize;font-size:12px;font-weight:800}
+.edit-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.1)}
+.event-summary{display:flex;align-items:center;justify-content:space-between;gap:18px}
+@media(max-width:720px){.edit-actions,.event-summary{align-items:flex-start;flex-direction:column}.edit-actions button{width:100%}}

@@ -243,6 +243,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     available_end: '',
   });
 
+  const draftStorageKey = organization?.id ? `eie-quick-registration-draft:${organization.id}` : '';
   const [showNew, setShowNew] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -264,13 +265,51 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     clubhouse_hold_days: '3',
     allow_card_guarantee: true,
     auto_charge_at_hold_expiry: true,
-    google_calendar_sync_enabled: true,
+    google_calendar_sync_enabled: false,
     items: [emptyItem()],
   });
 
   useEffect(() => {
     setForm((current) => ({ ...current, course: current.course || organization?.name || '' }));
   }, [organization?.id]);
+
+  useEffect(() => {
+    if (!draftStorageKey) return;
+    try {
+      const rawDraft = window.localStorage.getItem(draftStorageKey);
+      if (!rawDraft) return;
+      const savedDraft = JSON.parse(rawDraft);
+      if (!savedDraft?.form) return;
+      const hasProgress = Boolean(
+        savedDraft.form.name ||
+        savedDraft.form.event_start ||
+        savedDraft.form.registration_deadline ||
+        savedDraft.form.items?.some((item) => item.price || (item.name && item.name !== 'Registration'))
+      );
+      if (!hasProgress) return;
+      setForm((current) => ({
+        ...current,
+        ...savedDraft.form,
+        course: savedDraft.form.course || organization?.name || current.course,
+        items: Array.isArray(savedDraft.form.items) && savedDraft.form.items.length ? savedDraft.form.items : [emptyItem()],
+      }));
+      setShowNew(true);
+      setNotice('Recovered your saved Quick Registration draft.');
+    } catch {
+      window.localStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    if (!draftStorageKey || !showNew) return undefined;
+    const timer = window.setTimeout(() => {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify({
+        form,
+        saved_at: new Date().toISOString(),
+      }));
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [draftStorageKey, form, showNew]);
 
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
   function updateItem(index, field, value) {
@@ -299,6 +338,33 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       ...current,
       items: current.items.length === 1 ? current.items : current.items.filter((_, itemIndex) => itemIndex !== index),
     }));
+  }
+
+  function discardDraft() {
+    if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
+    setForm((current) => ({
+      ...current,
+      name: '',
+      course: organization?.name || '',
+      event_start: '',
+      event_end: '',
+      registration_format: 'team',
+      team_size: 4,
+      max_golfers: '',
+      registration_deadline: '',
+      allow_online: true,
+      allow_clubhouse: true,
+      allow_split_team_payments: true,
+      convenience_fee_type: 'percent',
+      convenience_fee_value: '3',
+      clubhouse_hold_days: '3',
+      allow_card_guarantee: true,
+      auto_charge_at_hold_expiry: true,
+      google_calendar_sync_enabled: false,
+      items: [emptyItem()],
+    }));
+    setNotice('');
+    setShowNew(false);
   }
 
   async function createEvent(event) {
@@ -341,6 +407,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       if (error) throw error;
       if (!data?.success) throw new Error('Unable to create the EIE event.');
 
+      if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
       setCreatedEvent(data);
       setNotice('Quick Registration created. Next step: build the Public Hub.');
       setShowNew(false);
@@ -412,6 +479,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       </div>
 
       <form className="platform-login-form" onSubmit={createEvent}>
+        <div className="availability-note" style={{ marginBottom: 18 }}><strong>Auto-save is on</strong><span>Your in-progress Quick Registration is saved automatically in this browser so you can continue after a refresh, browser close, or computer restart.</span></div>
         <div style={{ marginBottom: 18 }}>
           <p className="platform-eyebrow">1 · Event Basics</p>
           <div className="form-grid two">
@@ -480,7 +548,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         </div>
 
         <div className="review-actions" style={{ marginTop: 18 }}>
-          <button className="platform-secondary-button" type="button" onClick={() => setShowNew(false)}>Cancel</button>
+          <button className="platform-secondary-button danger-outline" type="button" onClick={discardDraft}>Discard Draft</button>
+          <button className="platform-secondary-button" type="button" onClick={() => setShowNew(false)}>Save & Close</button>
           <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating Registration...' : 'Save Quick Registration'}</button>
         </div>
       </form>

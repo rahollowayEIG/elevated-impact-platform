@@ -797,3 +797,49 @@ button.cockpit-control:hover{border-color:rgba(216,28,34,.7);transform:translate
   .cockpit-board-row>b{grid-column:2;text-align:left}
   .cockpit-board-empty{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Business-jet glass deck refinement */
+.cockpit-overhead-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:0 0 10px;padding:8px;border:1px solid rgba(255,255,255,.075);border-radius:10px;background:linear-gradient(180deg,#090d12,#030507);box-shadow:inset 0 -8px 18px rgba(0,0,0,.5)}
+.cockpit-overhead-strip>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid rgba(255,255,255,.06);border-radius:6px;background:#090f15}
+.cockpit-overhead-strip span{font-size:9px;letter-spacing:.13em;color:#76899e}
+.cockpit-overhead-strip b{font-size:9px;letter-spacing:.08em;color:#94a3b8}
+.cockpit-overhead-strip b.on{color:#86efac;text-shadow:0 0 8px rgba(134,239,172,.45)}
+.cockpit-overhead-strip b.warn{color:#fde68a;text-shadow:0 0 8px rgba(253,230,138,.35)}
+
+.cockpit-glass-deck{display:grid;grid-template-columns:170px minmax(0,1fr) 190px;gap:10px;align-items:stretch;margin-bottom:10px}
+.cockpit-side-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;padding:16px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:linear-gradient(180deg,#0a131e,#050a0f)}
+.cockpit-side-panel small{margin-top:13px;color:#8699ad;text-transform:uppercase;letter-spacing:.1em;font-size:9px;text-align:center}
+.cockpit-side-panel.attention{align-items:stretch;justify-content:flex-start}
+
+.cockpit-display-stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px;border:1px solid rgba(255,255,255,.075);border-radius:12px;background:#04080c}
+.cockpit-glass-screen{position:relative;min-height:240px;padding:16px;border:1px solid rgba(89,150,210,.22);border-radius:8px;background:
+  radial-gradient(circle at 50% 15%,rgba(22,88,134,.17),transparent 34%),
+  linear-gradient(180deg,#071520,#061018 55%,#04090d);
+  color:#e8f1f7;text-align:left;box-shadow:inset 0 0 24px rgba(3,15,25,.9)}
+button.cockpit-glass-screen{width:100%;font:inherit;cursor:pointer}
+.cockpit-glass-screen.primary{border-color:rgba(216,28,34,.48);background:
+  radial-gradient(circle at 50% 18%,rgba(216,28,34,.14),transparent 30%),
+  linear-gradient(180deg,#0b1720,#071018 60%,#05090d)}
+.cockpit-glass-screen.primary:hover{border-color:rgba(248,113,113,.75);transform:translateY(-1px)}
+.cockpit-screen-label{display:flex;justify-content:space-between;gap:10px;color:#70879c;font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+.cockpit-screen-label b{color:#8bd8ca}
+.cockpit-glass-screen.primary .cockpit-screen-label b{color:#fca5a5}
+.cockpit-glass-screen>strong{display:block;margin-top:32px;font-size:clamp(28px,3vw,46px);line-height:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.cockpit-glass-screen>p{margin:9px 0 0;color:#89a0b3;font-size:12px;line-height:1.4}
+.cockpit-screen-meter{position:absolute;left:16px;right:16px;bottom:16px;height:7px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:#03070a;overflow:hidden}
+.cockpit-screen-meter i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#0ea5e9,#5eead4)}
+.cockpit-screen-meter.warning i{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.cockpit-screen-route{position:absolute;left:16px;right:16px;bottom:15px;display:flex;align-items:center;justify-content:space-between;gap:6px;color:#93a9ba;font-size:8px;letter-spacing:.08em;white-space:nowrap}
+.cockpit-screen-route i{display:block;flex:1;height:2px;background:linear-gradient(90deg,#334155,#d81c22)}
+
+@media(max-width:1100px){
+  .cockpit-glass-deck{grid-template-columns:1fr}
+  .cockpit-side-panel{min-height:auto}
+  .cockpit-display-stack{order:-1}
+}
+@media(max-width:800px){
+  .cockpit-overhead-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cockpit-display-stack{grid-template-columns:1fr}
+  .cockpit-glass-screen{min-height:180px}
+}

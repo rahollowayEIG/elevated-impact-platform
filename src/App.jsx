@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
+import RosterUpload from './RosterUpload';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -254,6 +255,9 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [assetBusy, setAssetBusy] = useState('');
   const [previewHub, setPreviewHub] = useState(false);
   const [setupSponsors, setSetupSponsors] = useState([]);
+  const [rosterRows, setRosterRows] = useState([]);
+  const [rosterBusy, setRosterBusy] = useState(false);
+  const [showRosterUpload, setShowRosterUpload] = useState(false);
   const [hubForm, setHubForm] = useState({
     description: '',
     check_in_time: '',
@@ -456,12 +460,31 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     }
   }
 
+  async function loadRoster(event = setupEvent) {
+    if (!event?.id) return;
+    setRosterBusy(true);
+    const { data, error } = await supabase
+      .from('golf_registrations')
+      .select('*')
+      .eq('event_id', event.id)
+      .order('created_at', { ascending: true });
+    if (error) {
+      setSetupNotice(error.message);
+      setRosterRows([]);
+    } else {
+      setRosterRows(data || []);
+    }
+    setRosterBusy(false);
+  }
+
   async function openSetup(event) {
     const settings = event.field_settings || {};
     setSetupEvent(event);
     setSetupNotice('');
     setPreviewHub(false);
     setSetupSponsors([]);
+    setRosterRows([]);
+    setShowRosterUpload(false);
     setHubForm({
       description: settings.hub_description || '',
       check_in_time: settings.hub_check_in_time || '',
@@ -482,6 +505,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     });
 
     const sponsorEventIds = [event.id, event.master_event_id].filter(Boolean);
+    await loadRoster(event);
+
     if (sponsorEventIds.length) {
       const { data: sponsorRows, error: sponsorError } = await supabase
         .from('sponsors')
@@ -778,7 +803,50 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         </div>
       </section>
 
-      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div>
+            <p className="platform-eyebrow">ATC · Roster</p>
+            <h2>Roster Maintenance</h2>
+            <p>Manage this event's golfer list without leaving ElevationPilot. Upload an organizer-created CSV or XLSX roster, then review the mapping before anything is imported.</p>
+          </div>
+          <span>{rosterBusy ? 'Loading...' : `${rosterRows.length} golfer${rosterRows.length === 1 ? '' : 's'}`}</span>
+        </div>
+        <div className="review-actions" style={{ flexWrap: 'wrap' }}>
+          <button className="platform-primary-button" type="button" onClick={() => setShowRosterUpload(true)}>Upload Roster</button>
+          <button className="platform-secondary-button" type="button" disabled={rosterBusy} onClick={() => loadRoster(setupEvent)}>{rosterBusy ? 'Refreshing...' : 'Refresh Roster'}</button>
+        </div>
+        <div className="availability-note" style={{ marginTop: 16 }}>
+          <strong>Old EIE behavior, new home</strong>
+          <span>The proven roster importer is now attached to this ElevationPilot EIE event. CSV/XLSX mapping, duplicate review, payment defaults, comp reasons, Google source-sheet support, and missing-info requests stay intact.</span>
+        </div>
+      </section>
+
+      <RosterUpload
+        open={showRosterUpload}
+        onClose={() => setShowRosterUpload(false)}
+        event={{
+          dbId: setupEvent.id,
+          id: setupEvent.event_key,
+          name: setupEvent.name,
+          fields: {
+            dob: setupEvent.field_settings?.dob || 'optional',
+            gender: setupEvent.field_settings?.gender || 'optional',
+            division: setupEvent.field_settings?.division || 'optional',
+            membership: setupEvent.field_settings?.membership || 'optional',
+            ghin: setupEvent.field_settings?.ghin || 'optional',
+          },
+          customFields: Array.isArray(setupEvent.field_settings?.custom_fields) ? setupEvent.field_settings.custom_fields : [],
+          googleSheetUrl: setupEvent.google_sheet_url || '',
+        }}
+        existingRows={rosterRows}
+        onImported={async () => {
+          await loadRoster(setupEvent);
+          setSetupNotice('Roster import complete and refreshed.');
+        }}
+      />
 
       <section className="platform-section-card">
         <div className="platform-section-heading">

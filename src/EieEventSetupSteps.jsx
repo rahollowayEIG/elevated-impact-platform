@@ -285,6 +285,7 @@ export default function EieEventSetupSteps({
         tournament_format: details.tournament_format.trim(),
         format_description: details.format_description.trim(),
         player_information: details.player_information.trim(),
+        event_details_status: 'configured',
       };
 
       const dates = [details.day1, details.day2].filter(Boolean);
@@ -506,6 +507,20 @@ export default function EieEventSetupSteps({
         _removed: row.status !== 'active',
       })));
 
+      const pricingSettings = {
+        ...(event.field_settings || {}),
+        pricing_setup_status: 'configured',
+      };
+      const { data: updatedEvent, error: eventError } = await supabase
+        .from('golf_registration_events')
+        .update({ field_settings: pricingSettings })
+        .eq('id', event.id)
+        .select()
+        .single();
+      if (eventError) throw eventError;
+      onEventUpdated(updatedEvent);
+      await onReload();
+
       setNotice('Pricing & Add-ons saved.');
       if (next) onStepChange('roster');
     } catch (error) {
@@ -518,17 +533,37 @@ export default function EieEventSetupSteps({
   const visibleOffers = offers.filter((offer) => !offer._removed);
   const rosterHeaders = requiredHeaders(settingsPreview, registration.custom_fields);
   const fileSafeName = String(event.name || 'event').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+  const eventDetailsReady = event.field_settings?.event_details_status === 'configured';
+  const registrationReady = event.field_settings?.participant_fields_status === 'configured';
+  const pricingReady = event.field_settings?.pricing_setup_status === 'configured';
+
+  function chooseStep(key) {
+    if (key === 'roster' && !registrationReady) {
+      setNotice('Save Event Details and Registration Details before opening the Roster. Those settings define the roster.');
+      onStepChange(eventDetailsReady ? 'registration' : 'details');
+      return;
+    }
+    onStepChange(key);
+  }
 
   return <>
     <nav className="eie-setup-steps" aria-label="EIE event setup steps">
-      {STEP_ITEMS.map(([key, number, label]) => <button
-        key={key}
-        type="button"
-        className={activeStep === key ? 'active' : ''}
-        onClick={() => onStepChange(key)}
-      >
-        <span>{number}</span><strong>{label}</strong>
-      </button>)}
+      {STEP_ITEMS.map(([key, number, label]) => {
+        const complete =
+          (key === 'details' && eventDetailsReady) ||
+          (key === 'registration' && registrationReady) ||
+          (key === 'pricing' && pricingReady);
+        const waiting = key === 'roster' && !registrationReady;
+        return <button
+          key={key}
+          type="button"
+          className={[activeStep === key ? 'active' : '', complete ? 'complete' : '', waiting ? 'waiting' : ''].filter(Boolean).join(' ')}
+          onClick={() => chooseStep(key)}
+          aria-disabled={waiting}
+        >
+          <span>{complete ? '✓' : number}</span><strong>{label}</strong>
+        </button>;
+      })}
     </nav>
 
     {notice && <div className={notice.toLowerCase().includes('unable') || notice.toLowerCase().includes('required') ? 'platform-error banner' : 'platform-success'}>{notice}</div>}

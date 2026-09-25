@@ -884,3 +884,14 @@ button.cockpit-glass-screen{width:100%;font:inherit;cursor:pointer}
   .eie-registration-setting select{width:100%}
   .eie-custom-field-row{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Roster inherits Event Setup */
+.eie-roster-inherited{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px;padding:10px;border:1px solid rgba(94,234,212,.12);border-radius:14px;background:rgba(6,20,28,.52)}
+.eie-roster-inherited>div{padding:10px 11px;border:1px solid rgba(255,255,255,.065);border-radius:9px;background:rgba(255,255,255,.025)}
+.eie-roster-inherited span{display:block;color:#7190a4;font-size:9px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+.eie-roster-inherited strong{display:block;margin-top:5px;color:#e2edf5;font-size:11px;line-height:1.35}
+.eie-field-help{display:block;margin-top:5px;color:#8fa4b6;font-size:11px;line-height:1.35}
+.eie-field-help strong{color:#b7f7df}
+@media(max-width:1050px){.eie-roster-inherited{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.eie-roster-inherited{grid-template-columns:1fr}}

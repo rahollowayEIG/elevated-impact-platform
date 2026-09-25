@@ -252,6 +252,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
   const [assetBusy, setAssetBusy] = useState('');
+  const [previewHub, setPreviewHub] = useState(false);
+  const [setupOffers, setSetupOffers] = useState([]);
   const [hubForm, setHubForm] = useState({
     description: '',
     check_in_time: '',
@@ -454,10 +456,12 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     }
   }
 
-  function openSetup(event) {
+  async function openSetup(event) {
     const settings = event.field_settings || {};
     setSetupEvent(event);
     setSetupNotice('');
+    setPreviewHub(false);
+    setSetupOffers([]);
     setHubForm({
       description: settings.hub_description || '',
       check_in_time: settings.hub_check_in_time || '',
@@ -476,6 +480,15 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       flyer_url: settings.hub_flyer_url || '',
       photo_urls: Array.isArray(settings.hub_photo_urls) ? settings.hub_photo_urls : [],
     });
+
+    const { data: offerRows, error: offerError } = await supabase
+      .from('event_offers')
+      .select('id,name,description,offer_type,price,charge_by,is_required,status,sort_order')
+      .eq('golf_event_id', event.id)
+      .in('status', ['draft','active'])
+      .order('sort_order');
+    if (offerError) setSetupNotice(offerError.message);
+    else setSetupOffers(offerRows || []);
   }
 
   function updateHub(field, value) {
@@ -601,6 +614,396 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     const date = Array.isArray(event.event_dates) ? event.event_dates[0] : null;
     return date && date < new Date().toISOString().slice(0, 10);
   });
+
+  if (setupEvent && previewHub) {
+    const dates = Array.isArray(setupEvent.event_dates) ? setupEvent.event_dates : [];
+    const eventDate = dates[0] ? new Date(dates[0] + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be announced';
+    const timeLabel = hubForm.event_start_time ? new Date('2000-01-01T' + hubForm.event_start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    const checkInLabel = hubForm.check_in_time ? new Date('2000-01-01T' + hubForm.check_in_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    const primaryOffers = setupOffers.filter((offer) => offer.offer_type === 'registration');
+
+    return <div className="platform-page">
+      <section className="platform-hero organization" style={hubForm.banner_url ? { backgroundImage: 'linear-gradient(rgba(9,18,45,.76),rgba(9,18,45,.88)), url(' + hubForm.banner_url + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+        <div>
+          <p className="platform-eyebrow">Public Hub Preview · Not Published</p>
+          <h1>{setupEvent.name}</h1>
+          <p>{hubForm.description || 'Add an event description in Hub Setup.'}</p>
+        </div>
+        <div className="review-actions">
+          <button className="platform-secondary-button" onClick={() => setPreviewHub(false)}>← Back to Setup</button>
+          {hubForm.logo_url && <img src={hubForm.logo_url} alt="Event logo" style={{ width: 110, height: 110, objectFit: 'contain', borderRadius: 16, background: 'rgba(255,255,255,.94)', padding: 10 }} />}
+        </div>
+      </section>
+
+      <section className="platform-stats-grid">
+        <div className="platform-stat-card"><span>Date</span><strong>{eventDate}</strong><small>{setupEvent.course || organization?.name}</small></div>
+        <div className="platform-stat-card"><span>Event Start</span><strong>{timeLabel || 'TBD'}</strong><small>{checkInLabel ? 'Check-in: ' + checkInLabel : 'Check-in time TBD'}</small></div>
+        <div className="platform-stat-card"><span>Registration</span><strong>{setupEvent.field_settings?.registration_format === 'team' ? (setupEvent.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong><small>{setupEvent.max_golfers ? setupEvent.max_golfers + ' participant maximum' : 'Capacity managed by organizer'}</small></div>
+      </section>
+
+      {!!primaryOffers.length && <section className="platform-section-card">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Registration</p><h2>Pricing</h2></div><span>Preview</span></div>
+        <div className="platform-product-grid">
+          {primaryOffers.map((offer) => <div key={offer.id} className="platform-product-card enabled">
+            <div className="platform-product-topline"><span>{offer.charge_by ? 'Per ' + offer.charge_by : 'Registration'}</span><span className="platform-status-pill enabled">{offer.is_required ? 'Required' : 'Optional'}</span></div>
+            <h3>{offer.name}</h3>
+            <p>{offer.description || 'Event registration'}</p>
+            <strong style={{ fontSize: 26 }}>{'
+      <section className="platform-hero organization">
+        <div>
+          <p className="platform-eyebrow">{organization?.name} Hangar · EIE</p>
+          <h1>{setupEvent.name}</h1>
+          <p>Build the participant-facing details that will become this event's Public Hub.</p>
+        </div>
+        <div className="review-actions">
+          <button className="platform-secondary-button" onClick={() => setSetupEvent(null)}>← Event Directory</button>
+          <div className="platform-role-pill">Hub Setup</div>
+        </div>
+      </section>
+
+      {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Public Hub Walkthrough</p><h2>Event Details</h2><p>Registration is already saved. Now add the information participants need before they register or arrive.</p></div>
+          <span>Step 1</span>
+        </div>
+
+        <div className="form-grid two">
+          <label>Event description<textarea rows="5" value={hubForm.description} onChange={(e) => updateHub('description', e.target.value)} placeholder="Tell participants what this event is about and what is included." /></label>
+          <div>
+            <label>Check-in time<input type="time" value={hubForm.check_in_time} onChange={(e) => updateHub('check_in_time', e.target.value)} /></label>
+            <label style={{ marginTop: 12 }}>Event start time<input type="time" value={hubForm.event_start_time} onChange={(e) => updateHub('event_start_time', e.target.value)} /></label>
+          </div>
+          <label>Venue / course details<textarea rows="4" value={hubForm.venue_details} onChange={(e) => updateHub('venue_details', e.target.value)} placeholder="Where to go, clubhouse location, entrance details, or venue notes." /></label>
+          <label>Food & beverage<textarea rows="4" value={hubForm.food_beverage} onChange={(e) => updateHub('food_beverage', e.target.value)} placeholder="Meal included, meal time, beverages, guest meal information, etc." /></label>
+          <label>Parking / arrival instructions<textarea rows="4" value={hubForm.parking_arrival} onChange={(e) => updateHub('parking_arrival', e.target.value)} placeholder="Where to park and what to do when participants arrive." /></label>
+          <label>Dress code<textarea rows="4" value={hubForm.dress_code} onChange={(e) => updateHub('dress_code', e.target.value)} placeholder="Optional dress code or course attire requirements." /></label>
+          <label>Rules / participant notes<textarea rows="4" value={hubForm.rules_notes} onChange={(e) => updateHub('rules_notes', e.target.value)} placeholder="Event rules, reminders, restrictions, or other participant notes." /></label>
+          <label>Gifts, prizes & challenges<textarea rows="4" value={hubForm.gifts_prizes} onChange={(e) => updateHub('gifts_prizes', e.target.value)} placeholder="Optional gifts, prizes, contests, course challenges, or special features." /></label>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">Registration Contact</p>
+          <div className="form-grid three">
+            <label>Name<input value={hubForm.contact_name} onChange={(e) => updateHub('contact_name', e.target.value)} /></label>
+            <label>Email<input type="email" value={hubForm.contact_email} onChange={(e) => updateHub('contact_email', e.target.value)} /></label>
+            <label>Phone<input type="tel" value={hubForm.contact_phone} onChange={(e) => updateHub('contact_phone', e.target.value)} /></label>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 22, paddingTop: 22, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <div className="platform-section-heading">
+            <div>
+              <p className="platform-eyebrow">Public Hub Walkthrough</p>
+              <h2>Images & Flyer</h2>
+              <p>Add the visual pieces participants will see on the Hub. JPG, PNG, WebP, and PDF files up to 10 MB are supported.</p>
+            </div>
+            <span>Step 2</span>
+          </div>
+
+          <div className="form-grid two">
+            <div>
+              <label>Event logo / image<input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('logo', e.target.files?.[0])} /></label>
+              {hubForm.logo_url && <div style={{ marginTop: 10 }}><img src={hubForm.logo_url} alt="Event logo preview" style={{ maxWidth: 180, maxHeight: 120, objectFit: 'contain', borderRadius: 12 }} /><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('logo_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Hub banner<input type="file" accept="image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('banner', e.target.files?.[0])} /></label>
+              {hubForm.banner_url && <div style={{ marginTop: 10 }}><img src={hubForm.banner_url} alt="Hub banner preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 12 }} /><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('banner_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Event flyer<input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" disabled={Boolean(assetBusy)} onChange={(e) => uploadHubAsset('flyer', e.target.files?.[0])} /></label>
+              {hubForm.flyer_url && <div style={{ marginTop: 10 }}><a href={hubForm.flyer_url} target="_blank" rel="noreferrer">Open uploaded flyer</a><div><button className="platform-secondary-button" type="button" onClick={() => updateHub('flyer_url', '')}>Remove</button></div></div>}
+            </div>
+            <div>
+              <label>Additional event photos<input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={Boolean(assetBusy)} onChange={async (e) => { const files = Array.from(e.target.files || []); for (const file of files) await uploadHubAsset('photos', file); e.target.value = ''; }} /></label>
+              <p className="platform-login-copy">Add course photos, sponsor graphics, banquet images, or other event visuals.</p>
+            </div>
+          </div>
+
+          {!!hubForm.photo_urls.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginTop: 16 }}>
+            {hubForm.photo_urls.map((url, index) => <div key={`${url}-${index}`} style={{ padding: 10, border: '1px solid rgba(255,255,255,.1)', borderRadius: 12 }}>
+              <img src={url} alt={`Event photo ${index + 1}`} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 9 }} />
+              <button className="platform-secondary-button" type="button" style={{ marginTop: 8 }} onClick={() => removeHubPhoto(index)}>Remove</button>
+            </div>)}
+          </div>}
+
+          {assetBusy && <div className="availability-note" style={{ marginTop: 14 }}><strong>Uploading...</strong><span>Your file is being added to this event's asset folder.</span></div>}
+        </div>
+
+        <div className="availability-note" style={{ marginTop: 18 }}>
+          <strong>Next Hub steps</strong>
+          <span>Preview the participant-facing Hub now. Sponsor display and final Publish controls come next.</span>
+        </div>
+
+        <div className="review-actions" style={{ marginTop: 18 }}>
+          <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
+          <button className="platform-secondary-button" type="button" onClick={() => setPreviewHub(true)}>Preview Hub →</button>
+          <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
+        </div>
+      </section>
+    </div>;
+  }
+
+  return <div className="platform-page">
+    <section className="platform-hero organization">
+      <div>
+        <p className="platform-eyebrow">{organization?.name} Hangar · Cockpit</p>
+        <h1>EIE · Events</h1>
+        <p>Create and operate events inside the active Hangar. Quick Registration gets registration live first, then the Hub and advanced event tools build around the same Master Event.</p>
+      </div>
+      <div className="review-actions">
+        <button className="platform-secondary-button" onClick={onBack}>← Cockpit</button>
+        <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close Quick Registration' : '+ New Event'}</button>
+      </div>
+    </section>
+
+    {notice && <div className={notice.startsWith('Quick Registration created') ? 'platform-success' : 'platform-error banner'}>{notice}</div>}
+
+    {createdEvent && <section className="platform-section-card">
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Registration Ready</p><h2>Next: Build the Public Hub</h2></div>
+        <div className="platform-role-pill">Draft</div>
+      </div>
+      <p className="platform-login-copy">The Master Event, EIE registration setup, pricing items, payment rules, and required participant fields are created. The next workflow will collect the public-facing event details for the Hub.</p>
+      <div className="review-actions">
+        <button className="platform-secondary-button" onClick={() => setCreatedEvent(null)}>Back to Events</button>
+        <button className="platform-primary-button" type="button" onClick={() => setNotice('Hub walkthrough is the next EIE build step. Registration is safely saved as a draft.')}>Build Public Hub →</button>
+      </div>
+    </section>}
+
+    {showNew && <section className="platform-section-card">
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Quick Registration</p><h2>Set Up Registration First</h2><p>Use this path when you already know what you want to charge. Event details, catering, sponsorships, budget, and other tools can be completed after registration exists.</p></div>
+        <div className="platform-role-pill">Draft</div>
+      </div>
+
+      <form className="platform-login-form" onSubmit={createEvent}>
+        <div className="availability-note" style={{ marginBottom: 18 }}><strong>Auto-save is on</strong><span>Your in-progress Quick Registration is saved automatically in this browser so you can continue after a refresh, browser close, or computer restart.</span></div>
+        <div style={{ marginBottom: 18 }}>
+          <p className="platform-eyebrow">1 · Event Basics</p>
+          <div className="form-grid two">
+            <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
+            <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
+            <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
+            <label>Event start time<input type="time" value={form.event_start_time} onChange={(e) => update('event_start_time', e.target.value)} /></label>
+            <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
+            <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
+            {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
+            <label>Maximum participants<input type="number" min="1" value={form.max_golfers} onChange={(e) => update('max_golfers', e.target.value)} placeholder="144" /></label>
+            <label>Registration deadline<input type="date" value={form.registration_deadline} onChange={(e) => update('registration_deadline', e.target.value)} /></label>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <div className="platform-section-heading">
+            <div><p className="platform-eyebrow">2 · Pricing & Items</p><h3 style={{ margin: 0 }}>Build the event checkout</h3><p className="platform-login-copy">Start with registration. Add as many items as needed for early-bird rates, mulligans, challenge packages, guest meals, or other event charges.</p></div>
+            <button className="platform-secondary-button" type="button" onClick={addItem}>+ Add Item</button>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            {form.items.map((item, index) => <div key={index} style={{ padding: 16, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(255,255,255,.025)' }}>
+              <div className="form-grid two">
+                <label>Item name<input value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} required placeholder="Registration" /></label>
+                <label>Item type<select value={item.item_type} onChange={(e) => updateItem(index, 'item_type', e.target.value)}><option value="registration">Registration</option><option value="add_on">Add-On</option><option value="package">Package</option><option value="donation">Donation</option><option value="other">Other</option></select></label>
+                <label>Price<input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} placeholder="0.00" required /></label>
+                <label>Charge by<select value={item.charge_by} onChange={(e) => updateItem(index, 'charge_by', e.target.value)}><option value="player">Player</option><option value="team">Team</option><option value="order">Order</option><option value="flat">Flat</option></select></label>
+                <label>Available from<input type="date" value={item.available_start} onChange={(e) => updateItem(index, 'available_start', e.target.value)} /></label>
+                <label>Available until<input type="date" value={item.available_end} onChange={(e) => updateItem(index, 'available_end', e.target.value)} /></label>
+              </div>
+              <label style={{ marginTop: 10 }}>Description<input value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} placeholder="Optional public description" /></label>
+              <div className="review-actions" style={{ marginTop: 10, justifyContent: 'space-between' }}>
+                <label style={{ display:'flex',alignItems:'center',gap:10, margin: 0 }}><input style={{width:'auto'}} type="checkbox" checked={item.required} onChange={(e) => updateItem(index, 'required', e.target.checked)} />Required item</label>
+                {form.items.length > 1 && <button className="platform-secondary-button" type="button" onClick={() => removeItem(index)}>Remove</button>}
+              </div>
+            </div>)}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">3 · Payments</p>
+          <div className="form-grid two">
+            <label>Convenience fee<select value={form.convenience_fee_type} onChange={(e) => update('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>
+            {form.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={form.convenience_fee_value} onChange={(e) => update('convenience_fee_value', e.target.value)} /></label>}
+            <label>Clubhouse hold days<input type="number" min="1" max="365" value={form.clubhouse_hold_days} onChange={(e) => update('clubhouse_hold_days', e.target.value)} /></label>
+          </div>
+          <div className="form-grid two" style={{ marginTop: 12 }}>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_online} onChange={(e) => update('allow_online', e.target.checked)} />Allow online payment</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_clubhouse} onChange={(e) => update('allow_clubhouse', e.target.checked)} />Allow clubhouse payment</label>
+            {form.registration_format === 'team' && <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_split_team_payments} onChange={(e) => update('allow_split_team_payments', e.target.checked)} />Allow captains to choose split team payment</label>}
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.allow_card_guarantee} onChange={(e) => update('allow_card_guarantee', e.target.checked)} />Allow card guarantee</label>
+            <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.auto_charge_at_hold_expiry} onChange={(e) => update('auto_charge_at_hold_expiry', e.target.checked)} />Charge guaranteed card when the payment hold expires if the balance is unpaid</label>
+          </div>
+          {form.registration_format === 'team' && form.allow_split_team_payments && <div className="availability-note" style={{ marginTop: 12 }}><strong>Split-payment rule</strong><span>The captain can choose to pay the full team amount or split it. A split-payment team remains pending until the entire team balance is paid. When the payment hold expires, unpaid teams are released unless a card guarantee is on file; guaranteed balances are charged at hold expiration, with the recovery window used only if that charge fails.</span></div>}
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">4 · Participant Information</p>
+          <div className="availability-note"><strong>Required by default</strong><span>First name, last name, email, and phone are created automatically. Additional fields can be configured from Registration Setup after the draft is created.</span></div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <p className="platform-eyebrow">5 · Google Workspace</p>
+          <label style={{ display:'flex',alignItems:'center',gap:10 }}><input style={{width:'auto'}} type="checkbox" checked={form.google_calendar_sync_enabled} onChange={(e) => update('google_calendar_sync_enabled', e.target.checked)} />Sync this event to the Hangar's Google Calendar after save</label>
+          <p className="platform-login-copy">Drive folders, roster Sheets, and the Hub will attach to this same Master Event. EIE remains the source of truth.</p>
+        </div>
+
+        <div className="review-actions" style={{ marginTop: 18 }}>
+          <button className="platform-secondary-button danger-outline" type="button" onClick={discardDraft}>Discard Draft</button>
+          <button className="platform-secondary-button" type="button" onClick={() => setShowNew(false)}>Save & Close</button>
+          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating Registration...' : 'Save Quick Registration'}</button>
+        </div>
+      </form>
+    </section>}
+
+    <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Directory</p><h2>Upcoming & Active</h2></div><span>{upcoming.length} event{upcoming.length === 1 ? '' : 's'}</span></div>
+      {loading ? <p>Loading EIE events...</p> : <div className="request-list">
+        {upcoming.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}>
+          <div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div>
+          <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
+          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>Setup →</button></div>
+        </div>)}
+        {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first Quick Registration from ground zero.</span></div>}
+      </div>}
+    </section>
+
+    {past.length > 0 && <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Archive</p><h2>Past Events</h2></div><span>{past.length}</span></div>
+      <div className="request-list">{past.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}><div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div><div><strong>{eventDateLabel(event)}</strong><span>{event.public_slug || event.event_key}</span></div><div><span className={`request-status ${event.status}`}>{event.status}</span></div></div>)}</div>
+    </section>}
+  </div>;
+}
+
+
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+  const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
+  const enabledCount = enabledIds.size;
+  const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
+  return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar' : 'ElevationPilot · Hangar'}</p><h1>{organization?.name || 'Organization'} Cockpit</h1><p>Operate this Hangar's events, apps, communications, venue workflow, billing, and shared business tools from one Cockpit.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Apps" value={enabledCount} detail="Entitled to this Hangar" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared Hangar profile" /><StatCard label="Cockpit" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled apps" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Apps</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
+}
+
+export default function App() {
+  const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
+  if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
+
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
+
+  useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
+  useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
+  useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
+
+  async function loadMemberships(userId, preferredOrganizationId = '') {
+    setLoadingData(true); setDataError('');
+    const { data, error } = await supabase.from('organization_memberships').select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test,onboarding_status)').eq('user_id', userId).eq('status', 'active');
+    if (error) { setDataError(error.message); setMemberships([]); setLoadingData(false); return; }
+    const ordered = [...(data || [])].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
+    setMemberships(ordered); setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || ''); setLoadingData(false);
+  }
+
+  async function loadEventRequests(organizationId) { setLoadingRequests(true); const { data, error } = await supabase.from('event_requests').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) setDataError(error.message); setEventRequests(data || []); setLoadingRequests(false); }
+
+  async function loadEieEvents(organizationId) {
+    if (!organizationId) return;
+    setLoadingEieEvents(true);
+    const { data, error } = await supabase.from('golf_registration_events').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false });
+    if (error) setDataError(error.message); else setEieEvents(data || []);
+    setLoadingEieEvents(false);
+  }
+
+  async function loadWorkspaceData(organizationId) {
+    setLoadingData(true); setDataError('');
+    const activeMembership = memberships.find((m) => m.organization_id === organizationId);
+    const isEig = activeMembership?.organization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
+    const [{ data: productRows, error: productError }, { data: entitlementRows, error: entitlementError }, { data: profileRow, error: profileError }] = await Promise.all([
+      supabase.from('products').select('*').neq('status', 'retired').order('sort_order'),
+      supabase.from('organization_product_entitlements').select('*').eq('organization_id', organizationId),
+      supabase.from('organization_profiles').select('*').eq('organization_id', organizationId).maybeSingle(),
+    ]);
+    if (productError || entitlementError || profileError) setDataError(productError?.message || entitlementError?.message || profileError?.message || 'Unable to load workspace data.');
+    setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null);
+    if (isEig) { const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name'); if (orgError) setDataError(orgError.message); setOrganizations(orgRows || []); setEventRequests([]); }
+    else { setOrganizations([]); if (['organization_admin', 'organization_staff'].includes(activeMembership?.role)) await loadEventRequests(organizationId); else setEventRequests([]); }
+    setLoadingData(false);
+  }
+
+  async function createOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest }) {
+    setDataError('');
+    const { data, error } = await supabase.rpc('create_organization_workspace', { p_name: name.trim(), p_organization_type: organizationType, p_is_test: isTest, p_primary_contact_name: primaryContactName.trim() || null, p_primary_contact_email: primaryContactEmail.trim() });
+    if (error) throw error; if (!data?.id) throw new Error('Organization was created but no workspace was returned.'); await loadMemberships(session.user.id, data.id); return data;
+  }
+
+  async function saveOrganizationProfile(form) {
+    const currentSections = organizationProfile?.setup_sections || {};
+    const companyInfoStatus = form.name.trim() && form.legal_name.trim() ? 'complete' : form.name.trim() ? 'in_progress' : 'incomplete';
+    const businessValues = [form.website_url, form.phone, form.timezone].map((value) => value.trim());
+    const businessInfoStatus = businessValues.every(Boolean) ? 'complete' : businessValues.some(Boolean) ? 'in_progress' : 'incomplete';
+    const contactStatus = form.primary_contact_name.trim() && form.primary_contact_email.trim() ? 'complete' : form.primary_contact_email.trim() ? 'in_progress' : 'incomplete';
+    const nextSections = { ...currentSections, company_info: companyInfoStatus, business_info: businessInfoStatus, contacts: contactStatus };
+    const allComplete = SETUP_KEYS.every((key) => nextSections[key] === 'complete');
+    const nextOnboardingStatus = allComplete ? 'ready' : 'profile_incomplete';
+
+    const { error: profileError } = await supabase.from('organization_profiles').upsert({ organization_id: activeOrganizationId, primary_contact_name: form.primary_contact_name.trim() || null, primary_contact_email: form.primary_contact_email.trim().toLowerCase(), legal_name: form.legal_name.trim() || null, website_url: form.website_url.trim() || null, phone: form.phone.trim() || null, timezone: form.timezone.trim() || null, setup_sections: nextSections }, { onConflict: 'organization_id' });
+    if (profileError) throw profileError;
+    const { error: orgError } = await supabase.from('organizations').update({ name: form.name.trim(), onboarding_status: nextOnboardingStatus }).eq('id', activeOrganizationId);
+    if (orgError) throw orgError;
+    await loadMemberships(session.user.id, activeOrganizationId);
+    await loadWorkspaceData(activeOrganizationId);
+  }
+
+  async function signOut() { await supabase.auth.signOut(); }
+
+  if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
+  if (!authReady) return <LoadingScreen />;
+  if (!session) return <LoginScreen />;
+  if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
+  if (!memberships.length) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>No active workspace found.</h1><p>Your login is valid, but it does not currently have an active EIG organization membership.</p>{dataError && <div className="platform-error">{dataError}</div>}<button className="platform-secondary-button" onClick={signOut}>Sign out</button></div></div>;
+
+  const activeMembership = memberships.find((m) => m.organization_id === activeOrganizationId) || memberships[0];
+  const activeOrganization = activeMembership?.organization;
+  const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
+
+  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : cockpitApp === 'eie' ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+}
+ + Number(offer.price || 0).toFixed(2)}</strong>
+          </div>)}
+        </div>
+      </section>}
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Information</p><h2>What to Know</h2></div></div>
+        <div className="form-grid two">
+          {hubForm.venue_details && <div><strong>Venue / Course</strong><p className="platform-login-copy">{hubForm.venue_details}</p></div>}
+          {hubForm.food_beverage && <div><strong>Food & Beverage</strong><p className="platform-login-copy">{hubForm.food_beverage}</p></div>}
+          {hubForm.parking_arrival && <div><strong>Parking / Arrival</strong><p className="platform-login-copy">{hubForm.parking_arrival}</p></div>}
+          {hubForm.dress_code && <div><strong>Dress Code</strong><p className="platform-login-copy">{hubForm.dress_code}</p></div>}
+          {hubForm.rules_notes && <div><strong>Rules / Notes</strong><p className="platform-login-copy">{hubForm.rules_notes}</p></div>}
+          {hubForm.gifts_prizes && <div><strong>Gifts, Prizes & Challenges</strong><p className="platform-login-copy">{hubForm.gifts_prizes}</p></div>}
+        </div>
+      </section>
+
+      {(hubForm.flyer_url || hubForm.photo_urls.length) && <section className="platform-section-card">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Media</p><h2>Flyer & Photos</h2></div></div>
+        {hubForm.flyer_url && <div style={{ marginBottom: 18 }}><a className="platform-primary-button inline" href={hubForm.flyer_url} target="_blank" rel="noreferrer">Open Event Flyer</a></div>}
+        {!!hubForm.photo_urls.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+          {hubForm.photo_urls.map((url, index) => <img key={url + '-preview-' + index} src={url} alt={'Event photo ' + (index + 1)} style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 14 }} />)}
+        </div>}
+      </section>}
+
+      {(hubForm.contact_name || hubForm.contact_email || hubForm.contact_phone) && <section className="platform-section-card">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Questions?</p><h2>Event Contact</h2></div></div>
+        <p className="platform-login-copy">{[hubForm.contact_name, hubForm.contact_email, hubForm.contact_phone].filter(Boolean).join(' · ')}</p>
+      </section>}
+
+      <section className="platform-section-card">
+        <div className="availability-note"><strong>Preview Mode</strong><span>This page is visible only inside the authenticated EIE setup right now. Nothing has been published to the public.</span></div>
+        <div className="review-actions" style={{ marginTop: 16 }}>
+          <button className="platform-secondary-button" onClick={() => setPreviewHub(false)}>Back to Hub Setup</button>
+          <button className="platform-primary-button" disabled type="button">Publish controls coming next</button>
+        </div>
+      </section>
+    </div>;
+  }
 
   if (setupEvent) {
     return <div className="platform-page">

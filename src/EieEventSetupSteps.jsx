@@ -145,16 +145,19 @@ export default function EieEventSetupSteps({
       setOffers((offerRows || []).map((row) => ({
         ...row,
         price: row.price ?? '',
-        availability_start: row.availability_start || '',
-        availability_end: row.availability_end || '',
+        availability_start: row.availability_start ? String(row.availability_start).slice(0, 10) : '',
+        availability_end: row.availability_end ? String(row.availability_end).slice(0, 10) : '',
         inventory_limit: row.inventory_limit ?? '',
         quantity_max: row.quantity_max ?? '',
         metadata: row.metadata || {},
         _removed: row.status !== 'active',
       })));
       setPaymentSettings(paymentRow || null);
-      if (paymentRow?.team_payment_mode) {
-        setRegistration((current) => ({ ...current, team_payment_mode: paymentRow.team_payment_mode }));
+      if (paymentRow?.team_payment_mode && !initialSettings.team_payment_mode) {
+        setRegistration((current) => ({
+          ...current,
+          team_payment_mode: paymentRow.team_payment_mode === 'split' ? 'split_equal' : 'captain_all',
+        }));
       }
     }
     if (event?.id) loadPricing();
@@ -366,7 +369,7 @@ export default function EieEventSetupSteps({
         const { error: paymentError } = await supabase
           .from('golf_event_payment_settings')
           .update({
-            team_payment_mode: details.structure === 'team' ? registration.team_payment_mode : 'captain_all',
+            team_payment_mode: details.structure === 'team' && registration.team_payment_mode !== 'captain_all' ? 'split' : 'captain_all',
             allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
           })
           .eq('id', paymentSettings.id);
@@ -495,8 +498,8 @@ export default function EieEventSetupSteps({
       setOffers((refreshed || []).map((row) => ({
         ...row,
         price: row.price ?? '',
-        availability_start: row.availability_start || '',
-        availability_end: row.availability_end || '',
+        availability_start: row.availability_start ? String(row.availability_start).slice(0, 10) : '',
+        availability_end: row.availability_end ? String(row.availability_end).slice(0, 10) : '',
         inventory_limit: row.inventory_limit ?? '',
         quantity_max: row.quantity_max ?? '',
         metadata: row.metadata || {},

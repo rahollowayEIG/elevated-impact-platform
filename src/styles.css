@@ -685,3 +685,10 @@ button {
 .edit-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.1)}
 .event-summary{display:flex;align-items:center;justify-content:space-between;gap:18px}
 @media(max-width:720px){.edit-actions,.event-summary{align-items:flex-start;flex-direction:column}.edit-actions button{width:100%}}
+
+
+/* EIE ATC roster focus behavior */
+.eie-roster-row-selected{background:rgba(216,28,34,.12)!important;outline:2px solid rgba(216,28,34,.45);outline-offset:-2px}
+.eie-roster-row-selected td{padding-top:16px;padding-bottom:16px}
+.eie-roster-manage-row td{padding:0!important;border-bottom:1px solid rgba(255,255,255,.12)}
+.eie-roster-manage-panel{margin:0;padding:20px;background:rgba(29,36,93,.2);border-left:3px solid #D81C22}

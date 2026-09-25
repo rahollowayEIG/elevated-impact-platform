@@ -253,6 +253,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [setupNotice, setSetupNotice] = useState('');
   const [assetBusy, setAssetBusy] = useState('');
   const [previewHub, setPreviewHub] = useState(false);
+  const [setupSponsors, setSetupSponsors] = useState([]);
   const [hubForm, setHubForm] = useState({
     description: '',
     check_in_time: '',
@@ -455,11 +456,12 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     }
   }
 
-  function openSetup(event) {
+  async function openSetup(event) {
     const settings = event.field_settings || {};
     setSetupEvent(event);
     setSetupNotice('');
     setPreviewHub(false);
+    setSetupSponsors([]);
     setHubForm({
       description: settings.hub_description || '',
       check_in_time: settings.hub_check_in_time || '',
@@ -478,6 +480,17 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       flyer_url: settings.hub_flyer_url || '',
       photo_urls: Array.isArray(settings.hub_photo_urls) ? settings.hub_photo_urls : [],
     });
+
+    const sponsorEventIds = [event.id, event.master_event_id].filter(Boolean);
+    if (sponsorEventIds.length) {
+      const { data: sponsorRows, error: sponsorError } = await supabase
+        .from('sponsors')
+        .select('id,event_id,name,business_name,package,status,logo_status')
+        .in('event_id', sponsorEventIds)
+        .order('created_at');
+      if (sponsorError) setSetupNotice(sponsorError.message);
+      else setSetupSponsors((sponsorRows || []).filter((sponsor) => sponsor.status !== 'cancelled'));
+    }
   }
 
   function updateHub(field, value) {
@@ -543,6 +556,68 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   function closeHubPreview() {
     setPreviewHub(false);
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
+  function publicHubUrl(event = setupEvent) {
+    if (!event?.public_slug) return '';
+    return window.location.origin + window.location.pathname + '#events/' + encodeURIComponent(event.public_slug);
+  }
+
+  async function setHubPublication(nextStatus) {
+    if (!setupEvent?.id) return;
+    setSetupBusy(true);
+    setSetupNotice('');
+    try {
+      const nextSettings = {
+        ...(setupEvent.field_settings || {}),
+        hub_description: hubForm.description.trim(),
+        hub_check_in_time: hubForm.check_in_time || null,
+        event_start_time: hubForm.event_start_time || null,
+        hub_venue_details: hubForm.venue_details.trim(),
+        hub_food_beverage: hubForm.food_beverage.trim(),
+        hub_parking_arrival: hubForm.parking_arrival.trim(),
+        hub_dress_code: hubForm.dress_code.trim(),
+        hub_rules_notes: hubForm.rules_notes.trim(),
+        hub_gifts_prizes: hubForm.gifts_prizes.trim(),
+        registration_contact_name: hubForm.contact_name.trim(),
+        registration_contact_email: hubForm.contact_email.trim(),
+        registration_contact_phone: hubForm.contact_phone.trim(),
+        hub_logo_url: hubForm.logo_url || '',
+        hub_banner_url: hubForm.banner_url || '',
+        hub_flyer_url: hubForm.flyer_url || '',
+        hub_photo_urls: hubForm.photo_urls || [],
+        hub_setup_status: nextStatus === 'published' ? 'published' : 'in_progress',
+      };
+
+      const { error: publishError } = await supabase
+        .from('golf_registration_events')
+        .update({ status: nextStatus, field_settings: nextSettings })
+        .eq('id', setupEvent.id);
+      if (publishError) throw publishError;
+
+      if (setupEvent.master_event_id) {
+        const { error: masterError } = await supabase
+          .from('events')
+          .update({
+            description: hubForm.description.trim() || null,
+            start_time: hubForm.event_start_time || null,
+            organizer_name: hubForm.contact_name.trim() || null,
+            organizer_email: hubForm.contact_email.trim() || null,
+            organizer_phone: hubForm.contact_phone.trim() || null,
+            banner_url: hubForm.banner_url || null,
+          })
+          .eq('id', setupEvent.master_event_id);
+        if (masterError) throw masterError;
+      }
+
+      setSetupEvent((current) => ({ ...current, status: nextStatus, field_settings: nextSettings }));
+      setSetupNotice(nextStatus === 'published' ? 'Event website published.' : 'Event website returned to draft.');
+      await onReload();
+    } catch (error) {
+      setSetupNotice(error.message || 'Unable to update publication status.');
+    } finally {
+      setSetupBusy(false);
+    }
   }
 
   async function saveHubSetup() {
@@ -774,6 +849,23 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 
           {assetBusy && <div className="availability-note" style={{ marginTop: 14 }}><strong>Uploading...</strong><span>Your file is being added to this event's asset folder.</span></div>}
         </div>
+
+        <div style={{ marginTop: 22, paddingTop: 22, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <div className="platform-section-heading">
+            <div>
+              <p className="platform-eyebrow">Public Hub Walkthrough</p>
+              <h2>Sponsors</h2>
+              <p>Sponsors connected to this Master Event display automatically on the event website.</p>
+            </div>
+            <span>Step 3</span>
+          </div>
+          {setupSponsors.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+            {setupSponsors.map((sponsor) => <div key={sponsor.id} style={{ padding: 14, border: '1px solid rgba(255,255,255,.1)', borderRadius: 12 }}>
+              <strong>{sponsor.business_name || sponsor.name || 'Event Sponsor'}</strong>
+              <span style={{ display: 'block', marginTop: 5, opacity: .72 }}>{sponsor.package || 'Sponsor'}</span>
+            </div>)}
+          </div> : <div className="availability-note"><strong>No sponsors linked yet</strong><span>This section will appear automatically once sponsors are attached to the event. Sponsor management can remain in the sponsorship workflow instead of being duplicated here.</span></div>}
+        </div>
           </div>
 
           <aside style={{ position: 'sticky', top: 18 }}>
@@ -794,6 +886,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
                   {hubForm.venue_details && <div><small style={{ opacity: .7 }}>VENUE</small><span style={{ display: 'block' }}>{hubForm.venue_details}</span></div>}
                   {hubForm.food_beverage && <div><small style={{ opacity: .7 }}>FOOD & BEVERAGE</small><span style={{ display: 'block' }}>{hubForm.food_beverage}</span></div>}
                   {hubForm.gifts_prizes && <div><small style={{ opacity: .7 }}>PRIZES</small><span style={{ display: 'block' }}>{hubForm.gifts_prizes}</span></div>}
+                  {!!setupSponsors.length && <div><small style={{ opacity: .7 }}>SPONSORS</small><span style={{ display: 'block' }}>{setupSponsors.slice(0, 3).map((sponsor) => sponsor.business_name || sponsor.name).filter(Boolean).join(' · ')}</span></div>}
                   {!!hubForm.photo_urls.length && <img src={hubForm.photo_urls[0]} alt="Event photo preview" style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 12, marginTop: 4 }} />}
                 </div>
                 <div className="review-actions" style={{ marginTop: 14 }}>
@@ -806,14 +899,17 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         </div>
 
         <div className="availability-note" style={{ marginTop: 18 }}>
-          <strong>Next Hub steps</strong>
-          <span>Preview the participant-facing Hub now. Sponsor display and final Publish controls come next.</span>
+          <strong>{setupEvent.status === 'published' ? 'Event website is live' : 'Ready when you are'}</strong>
+          <span>{setupEvent.status === 'published' ? publicHubUrl(setupEvent) : 'Preview the full website, save your setup, then publish when it is ready for participants.'}</span>
         </div>
 
-        <div className="review-actions" style={{ marginTop: 18 }}>
+        <div className="review-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
           <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
           <button className="platform-secondary-button" type="button" onClick={openHubPreview}>View Full Hub ↗</button>
-          <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
+          <button className="platform-secondary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
+          {setupEvent.status === 'published'
+            ? <><button className="platform-secondary-button danger-outline" type="button" disabled={setupBusy} onClick={() => setHubPublication('draft')}>Unpublish</button><button className="platform-primary-button" type="button" onClick={() => window.open(publicHubUrl(setupEvent), '_blank', 'noopener,noreferrer')}>Open Live Site ↗</button></>
+            : <button className="platform-primary-button" type="button" disabled={setupBusy || !setupEvent.public_slug} onClick={() => setHubPublication('published')}>{setupBusy ? 'Publishing...' : 'Publish Event Site'}</button>}
         </div>
       </section>
     </div>;
@@ -958,40 +1054,54 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
 }
 
 
-function EieHubPreviewPage({ eventId }) {
+function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const [event, setEvent] = useState(null);
   const [hub, setHub] = useState(null);
   const [offers, setOffers] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    async function loadPreview() {
+    async function loadSite() {
       setLoading(true);
       setError('');
-      const [{ data, error: loadError }, { data: offerRows, error: offerError }] = await Promise.all([
-        supabase.from('golf_registration_events').select('*').eq('id', eventId).maybeSingle(),
-        supabase.from('event_offers').select('id,name,description,offer_type,price,charge_by,is_required,status,sort_order').eq('golf_event_id', eventId).in('status', ['draft','active']).order('sort_order'),
-      ]);
+
+      let eventQuery = supabase.from('golf_registration_events').select('*');
+      eventQuery = publicMode
+        ? eventQuery.eq('public_slug', publicSlug).eq('status', 'published')
+        : eventQuery.eq('id', eventId);
+      const { data, error: loadError } = await eventQuery.maybeSingle();
 
       if (cancelled) return;
       if (loadError || !data) {
-        setError(loadError?.message || 'Event preview not found.');
+        setError(loadError?.message || (publicMode ? 'This event website is not currently published.' : 'Event preview not found.'));
         setLoading(false);
         return;
       }
+
+      const [{ data: offerRows, error: offerError }, { data: sponsorRows, error: sponsorError }] = await Promise.all([
+        supabase.from('event_offers').select('id,name,description,offer_type,price,charge_by,is_required,status,sort_order').eq('golf_event_id', data.id).eq('status', 'active').order('sort_order'),
+        supabase.from('sponsors').select('id,event_id,name,business_name,package,status,logo_status').in('event_id', [data.id, data.master_event_id].filter(Boolean)).order('created_at'),
+      ]);
+
+      if (cancelled) return;
       if (offerError) setError(offerError.message);
+      if (sponsorError) setError(sponsorError.message);
 
       const settings = data.field_settings || {};
       let snapshot = null;
-      try {
-        const raw = window.localStorage.getItem('eie-hub-preview:' + eventId);
-        snapshot = raw ? JSON.parse(raw) : null;
-      } catch {}
+      if (!publicMode) {
+        try {
+          const raw = window.localStorage.getItem('eie-hub-preview:' + data.id);
+          snapshot = raw ? JSON.parse(raw) : null;
+        } catch {}
+      }
 
       setEvent(data);
       setOffers(offerRows || []);
+      setSponsors((sponsorRows || []).filter((sponsor) => sponsor.status !== 'cancelled'));
       setHub(snapshot?.hubForm || {
         description: settings.hub_description || '',
         check_in_time: settings.hub_check_in_time || '',
@@ -1012,12 +1122,12 @@ function EieHubPreviewPage({ eventId }) {
       });
       setLoading(false);
     }
-    loadPreview();
+    loadSite();
     return () => { cancelled = true; };
-  }, [eventId]);
+  }, [eventId, publicSlug, publicMode]);
 
-  if (loading) return <LoadingScreen message="Opening Hub preview..." />;
-  if (error && !event) return <div className="platform-auth-screen"><div className="platform-login-card"><h1>Hub preview unavailable.</h1><p>{error}</p><button className="platform-secondary-button" onClick={() => window.close()}>Close</button></div></div>;
+  if (loading) return <LoadingScreen message={publicMode ? 'Loading event website...' : 'Opening Hub preview...'} />;
+  if (error && !event) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>{publicMode ? 'Event site unavailable.' : 'Hub preview unavailable.'}</h1><p>{error}</p>{!publicMode && <button className="platform-secondary-button" onClick={() => window.close()}>Close</button>}</div></div>;
   if (!event || !hub) return null;
 
   const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
@@ -1029,17 +1139,18 @@ function EieHubPreviewPage({ eventId }) {
   const hasDetails = Boolean(hub.venue_details || hub.food_beverage || hub.parking_arrival || hub.dress_code || hub.rules_notes || hub.gifts_prizes);
   const hasMedia = Boolean(hub.flyer_url || hub.photo_urls?.length);
   const hasContact = Boolean(hub.contact_name || hub.contact_email || hub.contact_phone);
+  const hasSponsors = sponsors.length > 0;
 
-  const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: 22, overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,.28)' };
+  const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: publicMode ? 0 : 22, overflow: 'hidden', boxShadow: publicMode ? 'none' : '0 24px 70px rgba(0,0,0,.28)' };
   const whiteSection = { padding: '54px clamp(22px,5vw,64px)', background: '#fff' };
   const softSection = { padding: '54px clamp(22px,5vw,64px)', background: '#f4f6fa' };
 
-  return <div style={{ minHeight: '100vh', background: '#0d1730', padding: '24px' }}>
+  return <div style={{ minHeight: '100vh', background: publicMode ? '#fff' : '#0d1730', padding: publicMode ? 0 : '24px' }}>
     <div style={shell}>
-      <div style={{ padding: '10px 18px', background: '#D81C22', color: '#fff', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      {!publicMode && <div style={{ padding: '10px 18px', background: '#D81C22', color: '#fff', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase' }}>EIE Public Hub Preview</strong>
         <span style={{ fontSize: 13 }}>Draft · Not Published</span>
-      </div>
+      </div>}
 
       <header style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e6ee' }}>
         <div style={{ padding: '14px clamp(18px,4vw,48px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}>
@@ -1051,6 +1162,7 @@ function EieHubPreviewPage({ eventId }) {
             <a href="#overview" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Overview</a>
             <a href="#registration" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Registration</a>
             {hasDetails && <a href="#details" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Event Info</a>}
+            {hasSponsors && <a href="#sponsors" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Sponsors</a>}
             {hasMedia && <a href="#media" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Media</a>}
             {hasContact && <a href="#contact" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Contact</a>}
             <a href="#registration" style={{ background: '#D81C22', color: '#fff', textDecoration: 'none', padding: '10px 16px', borderRadius: 10, fontWeight: 900 }}>Register</a>
@@ -1086,12 +1198,12 @@ function EieHubPreviewPage({ eventId }) {
           <p style={{ color: '#70727A', lineHeight: 1.7 }}>Registration options, packages, and add-ons connected to this event appear here automatically.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-          {(registrationOffers.length ? registrationOffers : [{ id: 'preview', name: 'Registration', description: 'Registration pricing will appear here.', price: 0, charge_by: 'player', is_required: true }]).map((offer) => <div key={offer.id} style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #dde3ec', boxShadow: '0 7px 22px rgba(31,47,80,.06)' }}>
+          {(registrationOffers.length ? registrationOffers : [{ id: 'preview', name: 'Registration', description: 'Registration pricing will appear here.', price: 0, charge_by: 'player' }]).map((offer) => <div key={offer.id} style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #dde3ec', boxShadow: '0 7px 22px rgba(31,47,80,.06)' }}>
             <small style={{ color: '#D81C22', fontWeight: 900, textTransform: 'uppercase' }}>{offer.charge_by ? 'Per ' + offer.charge_by : 'Registration'}</small>
             <h3 style={{ color: '#1D245D', fontSize: 24, margin: '8px 0' }}>{offer.name}</h3>
             <p style={{ color: '#70727A', minHeight: 44 }}>{offer.description || 'Event registration'}</p>
             <strong style={{ color: '#1D245D', fontSize: 30 }}>{'$' + Number(offer.price || 0).toFixed(2)}</strong>
-            <button disabled style={{ display: 'block', width: '100%', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, opacity: .72 }}>Register · Preview</button>
+            <button disabled style={{ display: 'block', width: '100%', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, opacity: .72 }}>{publicMode ? 'Registration checkout next' : 'Register · Preview'}</button>
           </div>)}
         </div>
         {!!addOnOffers.length && <div style={{ marginTop: 24 }}><h3 style={{ color: '#1D245D' }}>Available Add-ons</h3><div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{addOnOffers.map((offer) => <span key={offer.id} style={{ padding: '10px 13px', borderRadius: 999, background: '#fff', border: '1px solid #dde3ec', color: '#1D245D', fontWeight: 800 }}>{offer.name} · {'$' + Number(offer.price || 0).toFixed(2)}</span>)}</div></div>}
@@ -1109,7 +1221,17 @@ function EieHubPreviewPage({ eventId }) {
         </div>
       </section>}
 
-      {hasMedia && <section id="media" style={softSection}>
+      {hasSponsors && <section id="sponsors" style={softSection}>
+        <div style={{ maxWidth: 760, marginBottom: 28 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Partners</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Event Sponsors</h2><p style={{ color: '#70727A' }}>Thank you to the organizations supporting this event.</p></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 16 }}>
+          {sponsors.map((sponsor) => <div key={sponsor.id} style={{ background: '#fff', border: '1px solid #dde3ec', borderRadius: 16, padding: 24, minHeight: 130, display: 'grid', alignContent: 'center', textAlign: 'center' }}>
+            <strong style={{ color: '#1D245D', fontSize: 21 }}>{sponsor.business_name || sponsor.name || 'Event Sponsor'}</strong>
+            {sponsor.package && <span style={{ color: '#70727A', marginTop: 7 }}>{sponsor.package}</span>}
+          </div>)}
+        </div>
+      </section>}
+
+      {hasMedia && <section id="media" style={hasSponsors ? whiteSection : softSection}>
         <div style={{ maxWidth: 760, marginBottom: 28 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Gallery</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Event Media</h2></div>
         {hub.flyer_url && <a href={hub.flyer_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#1D245D', color: '#fff', padding: '12px 18px', borderRadius: 10, textDecoration: 'none', fontWeight: 900, marginBottom: 22 }}>Open Event Flyer</a>}
         {!!hub.photo_urls?.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 14 }}>{hub.photo_urls.map((url, index) => <img key={url + index} src={url} alt={'Event photo ' + (index + 1)} style={{ width: '100%', height: 260, objectFit: 'cover', borderRadius: 14 }} />)}</div>}
@@ -1121,7 +1243,7 @@ function EieHubPreviewPage({ eventId }) {
 
       <footer style={{ background: '#1D245D', color: '#fff', padding: '32px clamp(22px,5vw,64px)', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
         <div><strong>{event.name}</strong><small style={{ display: 'block', marginTop: 5, opacity: .72 }}>Powered by Elevated Impact Group · EIE</small></div>
-        <button className="platform-secondary-button" onClick={() => window.close()}>Close Preview</button>
+        {!publicMode && <button className="platform-secondary-button" onClick={() => window.close()}>Close Preview</button>}
       </footer>
     </div>
   </div>;
@@ -1129,8 +1251,10 @@ function EieHubPreviewPage({ eventId }) {
 
 export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
+  const publicEventMatch = window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
+  if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
 
@@ -1201,7 +1325,7 @@ export default function App() {
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
-  if (hubPreviewMatch) return <EieHubPreviewPage eventId={decodeURIComponent(hubPreviewMatch[1])} />;
+  if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;
   if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
   if (!memberships.length) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>No active workspace found.</h1><p>Your login is valid, but it does not currently have an active EIG organization membership.</p>{dataError && <div className="platform-error">{dataError}</div>}<button className="platform-secondary-button" onClick={signOut}>Sign out</button></div></div>;
 

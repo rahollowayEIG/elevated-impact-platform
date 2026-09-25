@@ -531,8 +531,13 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   }
 
   function openHubPreview() {
-    setPreviewHub(true);
-    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    if (!setupEvent?.id) return;
+    window.localStorage.setItem('eie-hub-preview:' + setupEvent.id, JSON.stringify({
+      hubForm,
+      saved_at: new Date().toISOString(),
+    }));
+    const previewUrl = window.location.origin + window.location.pathname + '#eie-hub-preview/' + setupEvent.id;
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
   }
 
   function closeHubPreview() {
@@ -706,6 +711,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           <span>Step 1</span>
         </div>
 
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.55fr) minmax(300px,.75fr)', gap: 22, alignItems: 'start' }}>
+          <div>
         <div className="form-grid two">
           <label>Event description<textarea rows="5" value={hubForm.description} onChange={(e) => updateHub('description', e.target.value)} placeholder="Tell participants what this event is about and what is included." /></label>
           <div>
@@ -767,6 +774,36 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 
           {assetBusy && <div className="availability-note" style={{ marginTop: 14 }}><strong>Uploading...</strong><span>Your file is being added to this event's asset folder.</span></div>}
         </div>
+          </div>
+
+          <aside style={{ position: 'sticky', top: 18 }}>
+            <div style={{ border: '1px solid rgba(255,255,255,.12)', borderRadius: 18, overflow: 'hidden', background: 'rgba(7,18,42,.72)' }}>
+              <div style={hubForm.banner_url ? { minHeight: 150, padding: 18, backgroundImage: 'linear-gradient(rgba(9,18,45,.55),rgba(9,18,45,.88)), url(' + hubForm.banner_url + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : { minHeight: 150, padding: 18, background: 'rgba(255,255,255,.035)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                  <div>
+                    <p className="platform-eyebrow" style={{ marginBottom: 6 }}>Live Hub Preview</p>
+                    <h3 style={{ margin: 0 }}>{setupEvent.name}</h3>
+                    <p className="platform-login-copy" style={{ marginTop: 8 }}>{hubForm.description || 'Your event description will appear here.'}</p>
+                  </div>
+                  {hubForm.logo_url && <img src={hubForm.logo_url} alt="Event logo preview" style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 10, background: '#fff', padding: 6 }} />}
+                </div>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div><small style={{ opacity: .7 }}>CHECK-IN / START</small><strong style={{ display: 'block' }}>{hubForm.check_in_time || 'TBD'} / {hubForm.event_start_time || 'TBD'}</strong></div>
+                  {hubForm.venue_details && <div><small style={{ opacity: .7 }}>VENUE</small><span style={{ display: 'block' }}>{hubForm.venue_details}</span></div>}
+                  {hubForm.food_beverage && <div><small style={{ opacity: .7 }}>FOOD & BEVERAGE</small><span style={{ display: 'block' }}>{hubForm.food_beverage}</span></div>}
+                  {hubForm.gifts_prizes && <div><small style={{ opacity: .7 }}>PRIZES</small><span style={{ display: 'block' }}>{hubForm.gifts_prizes}</span></div>}
+                  {!!hubForm.photo_urls.length && <img src={hubForm.photo_urls[0]} alt="Event photo preview" style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 12, marginTop: 4 }} />}
+                </div>
+                <div className="review-actions" style={{ marginTop: 14 }}>
+                  <button className="platform-primary-button inline" type="button" onClick={openHubPreview}>View Full Hub ↗</button>
+                </div>
+                <small style={{ display: 'block', marginTop: 10, opacity: .65 }}>Updates here immediately as you edit. Full view opens in a separate tab.</small>
+              </div>
+            </div>
+          </aside>
+        </div>
 
         <div className="availability-note" style={{ marginTop: 18 }}>
           <strong>Next Hub steps</strong>
@@ -775,7 +812,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 
         <div className="review-actions" style={{ marginTop: 18 }}>
           <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>
-          <button className="platform-secondary-button" type="button" onClick={openHubPreview}>Preview Hub →</button>
+          <button className="platform-secondary-button" type="button" onClick={openHubPreview}>View Full Hub ↗</button>
           <button className="platform-primary-button" type="button" disabled={setupBusy} onClick={saveHubSetup}>{setupBusy ? 'Saving...' : 'Save Hub Setup'}</button>
         </div>
       </section>
@@ -920,8 +957,122 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
   return <div className="platform-page"><section className="platform-hero organization"><div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hangar' : 'ElevationPilot · Hangar'}</p><h1>{organization?.name || 'Organization'} Cockpit</h1><p>Operate this Hangar's events, apps, communications, venue workflow, billing, and shared business tools from one Cockpit.</p></div><div className="platform-role-pill">{role?.replaceAll('_', ' ') || 'member'}</div></section><section className="platform-stats-grid"><StatCard label="Enabled Apps" value={enabledCount} detail="Entitled to this Hangar" /><StatCard label="Setup Status" value={(organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ')} detail="Shared Hangar profile" /><StatCard label="Cockpit" value={organization?.is_test ? 'Test' : 'Active'} detail="One login across enabled apps" /></section><OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />{canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}<section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Cockpit Apps</p><h2>Apps & Tools</h2></div></div><div className="platform-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div></section></div>;
 }
 
+
+function EieHubPreviewPage({ eventId }) {
+  const [event, setEvent] = useState(null);
+  const [hub, setHub] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPreview() {
+      setLoading(true);
+      setError('');
+      const { data, error: loadError } = await supabase
+        .from('golf_registration_events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (loadError || !data) {
+        setError(loadError?.message || 'Event preview not found.');
+        setLoading(false);
+        return;
+      }
+
+      const settings = data.field_settings || {};
+      let snapshot = null;
+      try {
+        const raw = window.localStorage.getItem('eie-hub-preview:' + eventId);
+        snapshot = raw ? JSON.parse(raw) : null;
+      } catch {}
+
+      setEvent(data);
+      setHub(snapshot?.hubForm || {
+        description: settings.hub_description || '',
+        check_in_time: settings.hub_check_in_time || '',
+        event_start_time: settings.event_start_time || '',
+        venue_details: settings.hub_venue_details || '',
+        food_beverage: settings.hub_food_beverage || '',
+        parking_arrival: settings.hub_parking_arrival || '',
+        dress_code: settings.hub_dress_code || '',
+        rules_notes: settings.hub_rules_notes || '',
+        gifts_prizes: settings.hub_gifts_prizes || '',
+        contact_name: settings.registration_contact_name || '',
+        contact_email: settings.registration_contact_email || '',
+        contact_phone: settings.registration_contact_phone || '',
+        logo_url: settings.hub_logo_url || '',
+        banner_url: settings.hub_banner_url || '',
+        flyer_url: settings.hub_flyer_url || '',
+        photo_urls: Array.isArray(settings.hub_photo_urls) ? settings.hub_photo_urls : [],
+      });
+      setLoading(false);
+    }
+    loadPreview();
+    return () => { cancelled = true; };
+  }, [eventId]);
+
+  if (loading) return <LoadingScreen message="Opening Hub preview..." />;
+  if (error || !event || !hub) return <div className="platform-auth-screen"><div className="platform-login-card"><h1>Hub preview unavailable.</h1><p>{error}</p><button className="platform-secondary-button" onClick={() => window.close()}>Close</button></div></div>;
+
+  const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
+  const eventDate = dates[0] ? new Date(dates[0] + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be announced';
+  const timeLabel = hub.event_start_time ? new Date('2000-01-01T' + hub.event_start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'TBD';
+  const checkInLabel = hub.check_in_time ? new Date('2000-01-01T' + hub.check_in_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'TBD';
+
+  return <div className="platform-page" style={{ maxWidth: 1180, margin: '0 auto' }}>
+    <section className="platform-hero organization" style={hub.banner_url ? { backgroundImage: 'linear-gradient(rgba(9,18,45,.70),rgba(9,18,45,.88)), url(' + hub.banner_url + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+      <div>
+        <p className="platform-eyebrow">Public Hub Preview · Not Published</p>
+        <h1>{event.name}</h1>
+        <p>{hub.description || 'Event description coming soon.'}</p>
+      </div>
+      {hub.logo_url && <img src={hub.logo_url} alt="Event logo" style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 16, background: 'rgba(255,255,255,.94)', padding: 10 }} />}
+    </section>
+
+    <section className="platform-stats-grid">
+      <div className="platform-stat-card"><span>Date</span><strong>{eventDate}</strong><small>{event.course}</small></div>
+      <div className="platform-stat-card"><span>Check-in</span><strong>{checkInLabel}</strong><small>Event starts {timeLabel}</small></div>
+      <div className="platform-stat-card"><span>Registration</span><strong>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong><small>Registration attached to this event</small></div>
+    </section>
+
+    <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Information</p><h2>What to Know</h2></div></div>
+      <div className="form-grid two">
+        {hub.venue_details && <div><strong>Venue / Course</strong><p className="platform-login-copy">{hub.venue_details}</p></div>}
+        {hub.food_beverage && <div><strong>Food & Beverage</strong><p className="platform-login-copy">{hub.food_beverage}</p></div>}
+        {hub.parking_arrival && <div><strong>Parking / Arrival</strong><p className="platform-login-copy">{hub.parking_arrival}</p></div>}
+        {hub.dress_code && <div><strong>Dress Code</strong><p className="platform-login-copy">{hub.dress_code}</p></div>}
+        {hub.rules_notes && <div><strong>Rules / Notes</strong><p className="platform-login-copy">{hub.rules_notes}</p></div>}
+        {hub.gifts_prizes && <div><strong>Gifts, Prizes & Challenges</strong><p className="platform-login-copy">{hub.gifts_prizes}</p></div>}
+      </div>
+    </section>
+
+    {(hub.flyer_url || hub.photo_urls?.length) && <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Event Media</p><h2>Flyer & Photos</h2></div></div>
+      {hub.flyer_url && <div style={{ marginBottom: 18 }}><a className="platform-primary-button inline" href={hub.flyer_url} target="_blank" rel="noreferrer">Open Event Flyer</a></div>}
+      {!!hub.photo_urls?.length && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+        {hub.photo_urls.map((url, index) => <img key={url + index} src={url} alt={'Event photo ' + (index + 1)} style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 14 }} />)}
+      </div>}
+    </section>}
+
+    {(hub.contact_name || hub.contact_email || hub.contact_phone) && <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Questions?</p><h2>Event Contact</h2></div></div>
+      <p className="platform-login-copy">{[hub.contact_name, hub.contact_email, hub.contact_phone].filter(Boolean).join(' · ')}</p>
+    </section>}
+
+    <section className="platform-section-card">
+      <div className="availability-note"><strong>Preview Mode</strong><span>This is a full-page preview in a separate tab. It is not public yet.</span></div>
+      <div className="review-actions" style={{ marginTop: 14 }}><button className="platform-secondary-button" onClick={() => window.close()}>Close Preview</button></div>
+    </section>
+  </div>;
+}
+
 export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
+  const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
@@ -993,6 +1144,7 @@ export default function App() {
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
+  if (hubPreviewMatch) return <EieHubPreviewPage eventId={decodeURIComponent(hubPreviewMatch[1])} />;
   if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
   if (!memberships.length) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>No active workspace found.</h1><p>Your login is valid, but it does not currently have an active EIG organization membership.</p>{dataError && <div className="platform-error">{dataError}</div>}<button className="platform-secondary-button" onClick={signOut}>Sign out</button></div></div>;
 

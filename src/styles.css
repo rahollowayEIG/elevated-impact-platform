@@ -692,3 +692,10 @@ button {
 .eie-roster-row-selected td{padding-top:16px;padding-bottom:16px}
 .eie-roster-manage-row td{padding:0!important;border-bottom:1px solid rgba(255,255,255,.12)}
 .eie-roster-manage-panel{margin:0;padding:20px;background:rgba(29,36,93,.2);border-left:3px solid #D81C22}
+
+
+/* EIE bulk roster actions */
+.eie-bulk-roster-panel{margin:0 0 16px;padding:16px;border:1px solid rgba(216,28,34,.38);border-radius:14px;background:rgba(216,28,34,.08)}
+.eie-bulk-roster-panel>div:first-child{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
+.eie-bulk-roster-panel>div:first-child strong{color:#fff}
+.eie-bulk-roster-panel>div:first-child span{color:#cbd5e1;font-size:13px}

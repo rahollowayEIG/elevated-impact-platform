@@ -182,7 +182,7 @@ export default function EieEventSetupSteps({
       division: divisionSetting,
       dob: registration.dob,
       gender: registration.gender,
-      membership: registration.membership,
+      membership: details.event_access === 'members_only' ? 'hidden' : registration.membership,
       ghin: registration.ghin,
       custom_fields: registration.custom_fields,
     };

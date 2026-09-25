@@ -1110,32 +1110,60 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
         <div className="cockpit-annunciator-item"><i className="ok" /><span>Published</span><strong>{publishedEvents}</strong></div>
       </div>
 
-      <div className="cockpit-instrument-grid">
-        <div className="cockpit-instrument round">
+      <div className="cockpit-overhead-strip">
+        <div><span>MASTER</span><b className="on">ONLINE</b></div>
+        <div><span>EIE</span><b className="on">READY</b></div>
+        <div><span>HANGAR</span><b className="on">{organization?.is_test ? 'TEST' : 'ACTIVE'}</b></div>
+        <div><span>SETUP</span><b className={organization?.onboarding_status === 'complete' ? 'on' : 'warn'}>{setupLabel}</b></div>
+        <div><span>ALERTS</span><b className={activeInquiries + draftEvents ? 'warn' : 'on'}>{activeInquiries + draftEvents}</b></div>
+      </div>
+
+      <div className="cockpit-glass-deck">
+        <div className="cockpit-side-panel">
           <div className="cockpit-gauge" style={{ '--cockpit-value': enabledPercent + '%' }}>
             <div><strong>{enabledCount}</strong><span>of {products.length || 0}</span></div>
           </div>
           <small>Enabled Systems</small>
         </div>
 
-        <div className="cockpit-center-console">
-          <div className="cockpit-console-header">
-            <div><span>Primary System</span><strong>EIE Event Operations</strong></div>
-            <div className="cockpit-system-light"><i className="ok" /> READY</div>
+        <div className="cockpit-display-stack">
+          <div className="cockpit-glass-screen">
+            <div className="cockpit-screen-label"><span>LEFT DISPLAY</span><b>EIE</b></div>
+            <strong>{eieEvents.length}</strong>
+            <p>Events in this Hangar</p>
+            <div className="cockpit-screen-meter"><i style={{ width: Math.min(100, Math.max(8, eieEvents.length * 14)) + '%' }} /></div>
           </div>
-          <p>Create events, configure registration, operate ATC rosters, publish the Hub, and prepare Golf Genius from the same Master Event.</p>
-          <div className="cockpit-control-row">
-            <button className="cockpit-control primary" type="button" onClick={onLaunchGolfRegistration}><span>EIE</span><strong>ENTER EVENT OPS</strong></button>
-            <div className="cockpit-control passive"><span>SB</span><strong>SQUAWK BOX</strong><small>Communication restoration queued</small></div>
-            <div className="cockpit-control passive"><span>ATC</span><strong>ATTENTION</strong><small>{activeInquiries ? activeInquiries + ' inquiry item' + (activeInquiries === 1 ? '' : 's') : 'No inquiry alerts'}</small></div>
+          <button className="cockpit-glass-screen primary" type="button" onClick={onLaunchGolfRegistration}>
+            <div className="cockpit-screen-label"><span>CENTER DISPLAY</span><b>EVENT OPS</b></div>
+            <strong>ENTER EIE</strong>
+            <p>Registration · ATC · Hub · Golf Genius</p>
+            <div className="cockpit-screen-route"><i /> MASTER EVENT <i /> PUBLIC HUB <i /></div>
+          </button>
+          <div className="cockpit-glass-screen">
+            <div className="cockpit-screen-label"><span>RIGHT DISPLAY</span><b>ATTENTION</b></div>
+            <strong>{activeInquiries + draftEvents}</strong>
+            <p>{activeInquiries} inquiries · {draftEvents} event drafts</p>
+            <div className="cockpit-screen-meter warning"><i style={{ width: Math.min(100, Math.max(8, (activeInquiries + draftEvents) * 18)) + '%' }} /></div>
           </div>
         </div>
 
-        <div className="cockpit-instrument attention">
-          <div className="cockpit-digital-readout"><span>ATTN</span><strong>{activeInquiries + draftEvents}</strong></div>
-          <small>Items needing review</small>
+        <div className="cockpit-side-panel attention">
+          <div className="cockpit-digital-readout"><span>STATUS</span><strong>{publishedEvents}</strong></div>
+          <small>Published Events</small>
           <div className="cockpit-mini-status"><span>Inquiries</span><b>{activeInquiries}</b></div>
           <div className="cockpit-mini-status"><span>Draft Events</span><b>{draftEvents}</b></div>
+        </div>
+      </div>
+
+      <div className="cockpit-center-console">
+        <div className="cockpit-console-header">
+          <div><span>Center Pedestal</span><strong>Primary Controls</strong></div>
+          <div className="cockpit-system-light"><i className="ok" /> READY</div>
+        </div>
+        <div className="cockpit-control-row">
+          <button className="cockpit-control primary" type="button" onClick={onLaunchGolfRegistration}><span>EIE</span><strong>ENTER EVENT OPS</strong><small>Open Event Directory and ATC tools</small></button>
+          <div className="cockpit-control passive"><span>SB</span><strong>SQUAWK BOX</strong><small>Communications restoration queued</small></div>
+          <div className="cockpit-control passive"><span>ATC</span><strong>ATTENTION</strong><small>{activeInquiries ? activeInquiries + ' inquiry item' + (activeInquiries === 1 ? '' : 's') : 'No inquiry alerts'}</small></div>
         </div>
       </div>
 

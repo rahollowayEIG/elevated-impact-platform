@@ -252,6 +252,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
     name: '',
     course: organization?.name || '',
     event_start: '',
+    event_start_time: '',
     event_end: '',
     registration_format: 'team',
     team_size: 4,
@@ -347,6 +348,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
       name: '',
       course: organization?.name || '',
       event_start: '',
+      event_start_time: '',
       event_end: '',
       registration_format: 'team',
       team_size: 4,
@@ -388,6 +390,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         p_name: form.name.trim(),
         p_course: form.course.trim(),
         p_event_start: form.event_start,
+        p_event_start_time: form.event_start_time || null,
         p_event_end: form.event_end || null,
         p_registration_format: form.registration_format,
         p_team_size: form.registration_format === 'team' ? Number(form.team_size || 4) : 1,
@@ -415,6 +418,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         ...current,
         name: '',
         event_start: '',
+        event_start_time: '',
         event_end: '',
         max_golfers: '',
         registration_deadline: '',
@@ -486,6 +490,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
             <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
             <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
             <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
+            <label>Event start time<input type="time" value={form.event_start_time} onChange={(e) => update('event_start_time', e.target.value)} /></label>
             <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
             <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
             {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}

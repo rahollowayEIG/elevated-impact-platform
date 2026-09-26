@@ -583,6 +583,9 @@ Deno.serve(async (req: Request) => {
 
   const accessWindow = resolveAccessWindow(body, event, role);
   if (accessWindow.error) return json({ success: false, error: accessWindow.error }, 400);
+  if (role === "eig_admin" && accessWindow.mode !== "indefinite") {
+    return json({ success: false, error: "EIG Admin access is currently granted indefinitely. Use organization or event roles for time-limited access." }, 400);
+  }
 
   const now = new Date().toISOString();
   await admin.from("platform_invitations")

@@ -404,7 +404,7 @@ Deno.serve(async (req: Request) => {
       invitee_name: inviteeName || invitation.invitee_name,
       invited_by: user.id,
       invited_user_id: existingUser?.id || invitation.invited_user_id,
-      recipient_was_existing: Boolean(existingUser),
+      recipient_was_existing: invitation.recipient_was_existing,
       expires_at: expiresAt,
       revoked_at: null,
       last_error: null,

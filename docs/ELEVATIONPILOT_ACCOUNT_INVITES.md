@@ -101,3 +101,26 @@ The live schema changes still need to be captured into repository migration hist
 - existing-account invite adds access without creating a duplicate auth user
 - Copy Invite Link works
 - expired invitation is rejected
+
+
+## Timed role access
+
+ElevationPilot treats the account as permanent and the role as an assignment layered on top.
+
+- Passenger identity remains permanent.
+- Co-Pilot, Pilot, ATC, and Crew assignments can carry `access_starts_at` and `access_ends_at`.
+- A blank `access_ends_at` means indefinite access.
+- ATC/Crew invite default is immediate access through seven days after the event.
+- Pilots can edit accepted Co-Pilot, ATC, and Crew access dates later without issuing a new invitation.
+- When an event-role window expires, the elevated permission stops automatically. The person's Passenger identity remains intact.
+- Invite expiration is separate from role-access expiration. Secure invitation links currently expire after 14 days.
+- Existing accounts accept the role on the same `@username`; new accounts complete username/password onboarding first.
+- Existing higher roles are preserved when a lower role invite is accepted.
+
+### Access enforcement
+
+Access-window checks are enforced in database authorization helpers/RLS and in server Edge Functions that use service-role authorization. Frontend Airport/Hangar loaders also filter inactive windows so expired roles do not continue to appear as active workspaces.
+
+### Source-control note
+
+The live database schema now contains the access-window columns and updated authorization definitions. Before production merge, capture the live schema delta into the repository's formal Supabase migration history using the approved Supabase CLI `db pull` workflow. Do not treat this document as the migration itself.

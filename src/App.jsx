@@ -1924,7 +1924,35 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [authLinkReady, setAuthLinkReady] = useState(false); const [authLinkError, setAuthLinkError] = useState(''); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) { setAuthLinkReady(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get('token_hash');
+    const verificationType = params.get('type');
+    const isElevationPilotInvite = params.get('eie_invite') === '1';
+    const allowedTypes = ['invite', 'magiclink', 'email', 'signup', 'recovery'];
+
+    if (!isElevationPilotInvite || !tokenHash || !verificationType || !allowedTypes.includes(verificationType)) {
+      setAuthLinkReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    supabase.auth.verifyOtp({ token_hash: tokenHash, type: verificationType }).then(({ error }) => {
+      if (cancelled) return;
+      params.delete('token_hash');
+      params.delete('type');
+      params.delete('eie_invite');
+      const nextSearch = params.toString();
+      window.history.replaceState({}, document.title, window.location.pathname + (nextSearch ? '?' + nextSearch : '') + window.location.hash);
+      if (error) setAuthLinkError(error.message || 'This secure invitation link could not be verified.');
+      setAuthLinkReady(true);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); loadPendingInvitations(session.user.id); } else { setPendingInvitations([]); setInviteProfile(null); setInviteCheckUserId(''); } }, [session?.user?.id]);
@@ -2187,7 +2215,8 @@ export default function App() {
   function openFlightHub(flight) { if (flight?.publicSlug) window.open(`${window.location.origin}${window.location.pathname}#events/${encodeURIComponent(flight.publicSlug)}`, '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
-  if (!authReady) return <LoadingScreen />;
+  if (!authReady || !authLinkReady) return <LoadingScreen message="Verifying your ElevationPilot access..." />;
+  if (authLinkError) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><p className="platform-eyebrow">ElevationPilot Boarding</p><h1>That secure link did not verify.</h1><p className="platform-login-copy">{authLinkError}</p><p className="platform-login-copy">Use the newest invitation email or ask the Pilot to send the invitation again.</p></div></div>;
   if (!session) return <LoginScreen />;
   if (inviteCheckUserId !== session.user.id) return <LoadingScreen message="Checking your ElevationPilot access..." />;
   if (pendingInvitations.length) return <AccountSetupScreen user={session.user} invitation={pendingInvitations[0]} profile={inviteProfile || profile} onComplete={finishInviteSetup} />;

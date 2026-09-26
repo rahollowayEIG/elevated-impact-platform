@@ -20,6 +20,8 @@ function roleLabel(role) {
     eig_admin: 'EIG Command',
     organization_admin: 'Pilot',
     organization_staff: 'Co-Pilot',
+    event_coordinator: 'ATC',
+    event_staff: 'Crew',
     atc: 'ATC',
     coordinator: 'ATC',
     passenger: 'Passenger',

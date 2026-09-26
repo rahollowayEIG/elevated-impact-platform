@@ -1011,3 +1011,73 @@ button.cockpit-glass-screen{width:100%;font:inherit;cursor:pointer}
   .squawk-recipient-row .balance{grid-column:2}
   .squawk-record-row{grid-template-columns:1fr}
 }
+
+
+/* ElevationPilot Airport + Main Cabin */
+.airport-page{gap:22px}
+.airport-hero{position:relative;overflow:hidden;display:flex;justify-content:space-between;gap:24px;align-items:flex-end;min-height:230px;padding:34px;border:1px solid rgba(255,255,255,.12);border-radius:26px;background:linear-gradient(180deg,#0c1b2d,#07111d);box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.airport-terminal-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(96,165,250,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(96,165,250,.05) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.85),transparent)}
+.airport-hero-copy,.airport-squawk-card{position:relative;z-index:1}
+.airport-hero h1{margin:6px 0 10px;font-size:clamp(38px,5vw,64px);letter-spacing:-.04em}
+.airport-hero p:not(.platform-eyebrow){max-width:720px;margin:0;color:#a6b7c9;line-height:1.55}
+.airport-username{display:inline-flex;margin-top:14px;padding:7px 10px;border:1px solid rgba(94,234,212,.2);border-radius:999px;color:#8ee4d7;background:rgba(94,234,212,.04);font-weight:850}
+.airport-squawk-card{min-width:205px;padding:16px;border:1px solid rgba(216,28,34,.35);border-radius:15px;background:rgba(216,28,34,.08);color:#fff;text-align:left;cursor:pointer}
+.airport-squawk-card:hover{border-color:rgba(248,113,113,.7);transform:translateY(-1px)}
+.airport-squawk-card span{display:grid;place-items:center;width:40px;height:31px;border-radius:7px;background:#D81C22;font-size:11px;font-weight:950;letter-spacing:.08em}
+.airport-squawk-card strong,.airport-squawk-card small{display:block}
+.airport-squawk-card strong{margin-top:12px;font-size:16px}
+.airport-squawk-card small{margin-top:4px;color:#aebccc}
+
+.airport-status-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.airport-status-strip>div{padding:14px 16px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#09131f}
+.airport-status-strip span{display:block;color:#7f93a8;font-size:9px;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+.airport-status-strip strong{display:block;margin-top:6px;font-size:20px}
+
+.airport-flight-list{display:grid;gap:10px}
+.airport-flight-card{display:grid;grid-template-columns:190px minmax(0,1fr) 145px;gap:18px;align-items:center;padding:18px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.025)}
+.airport-flight-card:hover{border-color:rgba(216,28,34,.28);background:rgba(255,255,255,.035)}
+.airport-flight-date{padding-right:16px;border-right:1px solid rgba(255,255,255,.08)}
+.airport-flight-date span,.airport-flight-date small{display:block}
+.airport-flight-date span{color:#dce6ef;font-weight:900}
+.airport-flight-date small{margin-top:5px;color:#7f93a8;font-size:10px}
+.airport-flight-topline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.airport-role-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:rgba(94,234,212,.08);color:#8ee4d7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.07em}
+.airport-flight-main h3{margin:8px 0 4px;font-size:21px}
+.airport-flight-main>p{margin:0;color:#8da0b3}
+.airport-flight-detail{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;color:#7f93a8;font-size:10px}
+.airport-flight-detail strong{color:#dce6ef}
+.airport-flight-action{text-align:right}
+.airport-flight-action small{display:block;margin-top:6px;color:#7f93a8;font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+.airport-empty{padding:28px}
+.airport-hangar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.airport-hangar-card{display:grid;gap:6px;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.025);color:#fff;text-align:left;cursor:pointer}
+.airport-hangar-card:hover{border-color:rgba(216,28,34,.35)}
+.airport-hangar-card span{color:#8ee4d7;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.09em}
+.airport-hangar-card strong{font-size:16px}
+.airport-hangar-card small{color:#8497aa}
+
+.airport-home-button.active{border-color:rgba(94,234,212,.35)!important;color:#b9fff5!important}
+
+.main-cabin-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding:30px;border:1px solid rgba(255,255,255,.1);border-radius:22px;background:linear-gradient(180deg,#0d1b2b,#07101a)}
+.main-cabin-hero h1{margin:5px 0 7px;font-size:clamp(34px,4vw,54px)}
+.main-cabin-hero p:not(.platform-eyebrow){margin:0;color:#93a6b9}
+.main-cabin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.main-cabin-grid>div,.main-cabin-grid>button{display:grid;gap:5px;min-height:120px;padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.025);color:#fff;text-align:left}
+.main-cabin-grid>button{cursor:pointer;font:inherit}
+.main-cabin-grid>button:hover{border-color:rgba(216,28,34,.38)}
+.main-cabin-grid span{color:#8ee4d7;font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.main-cabin-grid strong{font-size:16px}
+.main-cabin-grid small{color:#8396aa;line-height:1.4}
+
+@media(max-width:900px){
+  .airport-hero,.main-cabin-hero{align-items:flex-start;flex-direction:column}
+  .airport-squawk-card{width:100%}
+  .airport-status-strip,.main-cabin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .airport-flight-card{grid-template-columns:1fr}
+  .airport-flight-date{padding-right:0;padding-bottom:12px;border-right:0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .airport-flight-action{text-align:left}
+}
+@media(max-width:620px){
+  .airport-status-strip,.main-cabin-grid{grid-template-columns:1fr}
+  .airport-hero{padding:24px}
+}

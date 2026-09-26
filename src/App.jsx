@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
 import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
+import { AirportPage, MainCabinPage } from './ElevationAirport';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -109,10 +110,10 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut }) {
+function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut, onAirport, isAirport = false }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : active?.organization?.name || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions"><button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{memberships.length > 0 && !isAirport && <WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} />}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -1483,10 +1484,10 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null);
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
-  useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
+  useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); } }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
 
   async function loadMemberships(userId, preferredOrganizationId = '') {
@@ -1495,6 +1496,86 @@ export default function App() {
     if (error) { setDataError(error.message); setMemberships([]); setLoadingData(false); return; }
     const ordered = [...(data || [])].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
     setMemberships(ordered); setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || ''); setLoadingData(false);
+  }
+
+  async function loadAirportData(userId) {
+    if (!userId) return;
+    setAirportLoading(true);
+    try {
+      const [profileResult, registrationResult, assignmentResult] = await Promise.all([
+        supabase.from('profiles').select('id,first_name,last_name,display_name,username').eq('id', userId).maybeSingle(),
+        supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('event_assignments').select('id,event_id,role,status').eq('user_id', userId).eq('status', 'active'),
+      ]);
+
+      if (profileResult.error) throw profileResult.error;
+      if (registrationResult.error) throw registrationResult.error;
+      if (assignmentResult.error) throw assignmentResult.error;
+
+      setProfile(profileResult.data || null);
+      const registrations = registrationResult.data || [];
+      const assignments = assignmentResult.data || [];
+      const eventIds = [...new Set([...registrations.map((row) => row.event_id), ...assignments.map((row) => row.event_id)].filter(Boolean))];
+
+      let eventRows = [];
+      if (eventIds.length) {
+        const { data, error } = await supabase.from('golf_registration_events')
+          .select('id,organization_id,name,course,event_dates,status,public_slug,event_key')
+          .in('id', eventIds);
+        if (!error) eventRows = data || [];
+      }
+
+      const eventMap = new Map(eventRows.map((event) => [event.id, event]));
+      const assignmentMap = new Map(assignments.map((assignment) => [assignment.event_id, assignment]));
+      const flights = [];
+      const seen = new Set();
+
+      registrations.forEach((registration) => {
+        const event = eventMap.get(registration.event_id);
+        const key = registration.event_id || registration.event_key || registration.id;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const assignment = assignmentMap.get(registration.event_id);
+        flights.push({
+          key,
+          eventId: registration.event_id,
+          name: event?.name || registration.event_name || registration.event_key || 'Event',
+          course: event?.course || '',
+          eventDates: event?.event_dates || [],
+          status: event?.status || 'registered',
+          publicSlug: event?.public_slug || '',
+          accessRole: assignment?.role || 'passenger',
+          destinationLabel: 'Main Cabin',
+          registration,
+        });
+      });
+
+      assignments.forEach((assignment) => {
+        if (seen.has(assignment.event_id)) return;
+        const event = eventMap.get(assignment.event_id);
+        if (!event) return;
+        seen.add(assignment.event_id);
+        flights.push({
+          key: assignment.event_id,
+          eventId: assignment.event_id,
+          name: event.name,
+          course: event.course || '',
+          eventDates: event.event_dates || [],
+          status: event.status || 'active',
+          publicSlug: event.public_slug || '',
+          accessRole: assignment.role || 'atc',
+          destinationLabel: 'Main Cabin',
+          registration: null,
+        });
+      });
+
+      setAirportFlights(flights);
+    } catch (error) {
+      setDataError(error.message || 'Unable to load your Airport.');
+      setAirportFlights([]);
+    } finally {
+      setAirportLoading(false);
+    }
   }
 
   async function loadEventRequests(organizationId) { setLoadingRequests(true); const { data, error } = await supabase.from('event_requests').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) setDataError(error.message); setEventRequests(data || []); setLoadingRequests(false); }
@@ -1554,26 +1635,37 @@ export default function App() {
   }
 
   async function signOut() { await supabase.auth.signOut(); }
+  function openAirport() { setPortalView('airport'); setActiveFlight(null); setCockpitApp(''); }
+  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); }
+  function boardEvent(flight) { setActiveFlight(flight); setPortalView('main_cabin'); }
+  function openFlightHub(flight) { if (flight?.publicSlug) window.open(`${window.location.origin}${window.location.pathname}#events/${encodeURIComponent(flight.publicSlug)}`, '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
   if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;
-  if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
-  if (!memberships.length) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>No active workspace found.</h1><p>Your login is valid, but it does not currently have an active EIG organization membership.</p>{dataError && <div className="platform-error">{dataError}</div>}<button className="platform-secondary-button" onClick={signOut}>Sign out</button></div></div>;
+  if (loadingData && !memberships.length && portalView !== 'airport') return <LoadingScreen message="Opening your workspaces..." />;
 
   const activeMembership = memberships.find((m) => m.organization_id === activeOrganizationId) || memberships[0];
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
+  const isAirport = portalView === 'airport';
+  const isMainCabin = portalView === 'main_cabin';
 
-  return <SquawkProvider user={session.user} organization={activeOrganization} role={activeMembership?.role} events={eieEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>
+  return <SquawkProvider user={session.user} organization={activeOrganization || null} role={activeMembership?.role || 'passenger'} events={eieEvents}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={(organizationId) => { setActiveOrganizationId(organizationId); setPortalView('workspace'); }} onSignOut={signOut} onAirport={openAirport} isAirport={isAirport}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
-      {isEigAdminWorkspace
-        ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} />
-        : cockpitApp === 'eie'
-          ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} />
-          : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}
+      {isAirport
+        ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
+        : isMainCabin
+          ? <MainCabinPage flight={activeFlight} onBack={openAirport} onOpenHub={openFlightHub} />
+          : !activeOrganization
+            ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
+            : isEigAdminWorkspace
+              ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} />
+              : cockpitApp === 'eie'
+                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} />
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}
     </PlatformShell>
   </SquawkProvider>;
 }

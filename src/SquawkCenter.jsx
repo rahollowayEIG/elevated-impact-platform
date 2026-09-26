@@ -203,7 +203,7 @@ function SquawkWorkspace({ organization, golfEvents, initialEventId = '', onClos
       setLoadingRecipients(true);
       setRecipientError('');
       const { data, error } = await supabase.from('golf_registrations')
-        .select('id,event_id,event_name,first_name,last_name,email,phone,price,amount_paid,payment_status,registration_status')
+        .select('id,event_id,event_name,first_name,last_name,email,phone,price,amount_paid,payment_status,registration_status,user_id')
         .eq('event_id', eventId)
         .order('last_name')
         .order('first_name');
@@ -298,18 +298,21 @@ function SquawkWorkspace({ organization, golfEvents, initialEventId = '', onClos
     const channels = channel === 'both' ? ['email', 'sms'] : [channel];
     const recipientRows = selected.flatMap((recipient) => channels.flatMap((deliveryChannel) => {
       if (deliveryChannel === 'email' && recipient.email) return [{
+        user_id: recipient.user_id || null,
         registration_id: recipient.id,
         recipient_type: 'passenger',
         channel: 'email',
         destination_masked: maskEmail(recipient.email),
       }];
       if (deliveryChannel === 'sms' && recipient.phone) return [{
+        user_id: recipient.user_id || null,
         registration_id: recipient.id,
         recipient_type: 'passenger',
         channel: 'sms',
         destination_masked: maskPhone(recipient.phone),
       }];
       if (deliveryChannel === 'in_app') return [{
+        user_id: recipient.user_id || null,
         registration_id: recipient.id,
         recipient_type: 'passenger',
         channel: 'in_app',
@@ -545,33 +548,60 @@ export function SquawkProvider({ user, organization, role, events = [], children
   useEffect(() => {
     let cancelled = false;
     async function loadSquawks() {
-      if (!organization?.id || !user?.id) {
+      if (!user?.id) {
         setMessages([]);
         return;
       }
-      const { data: threads, error: threadError } = await supabase.from('squawk_threads')
-        .select('id,organization_id,event_id,context_type,context_label')
-        .eq('organization_id', organization.id);
 
-      if (cancelled || threadError || !threads?.length) {
-        if (!cancelled) setMessages([]);
-        return;
+      const messageSelect = 'id,thread_id,message_kind,visibility,required_roles,safe_label,requires_review,status,sent_at,created_at,reviewed_at,squawk_message_content(subject,body),squawk_message_receipts(user_id,read_at),squawk_message_reviews(reviewed_at,reviewer_role,reviewed_by)';
+      const threadMap = new Map();
+      let organizationRows = [];
+      let directRows = [];
+
+      if (organization?.id) {
+        const { data: threads } = await supabase.from('squawk_threads')
+          .select('id,organization_id,event_id,context_type,context_label')
+          .eq('organization_id', organization.id);
+
+        if (cancelled) return;
+        (threads || []).forEach((thread) => threadMap.set(thread.id, thread));
+
+        if (threads?.length) {
+          const { data } = await supabase.from('squawk_messages')
+            .select(messageSelect)
+            .in('thread_id', threads.map((thread) => thread.id))
+            .in('status', ['queued', 'sent', 'partially_sent', 'failed'])
+            .order('created_at', { ascending: false })
+            .limit(100);
+          organizationRows = data || [];
+        }
       }
 
-      const threadMap = new Map(threads.map((thread) => [thread.id, thread]));
-      const { data: rows, error } = await supabase.from('squawk_messages')
-        .select('id,thread_id,message_kind,visibility,required_roles,safe_label,requires_review,status,sent_at,created_at,reviewed_at,squawk_message_content(subject,body),squawk_message_receipts(user_id,read_at),squawk_message_reviews(reviewed_at,reviewer_role,reviewed_by)')
-        .in('thread_id', threads.map((thread) => thread.id))
-        .in('status', ['queued', 'sent', 'partially_sent', 'failed'])
-        .order('created_at', { ascending: false })
-        .limit(100);
+      const { data: directRecipientRows } = await supabase.from('squawk_message_recipients')
+        .select('message_id')
+        .eq('user_id', user.id)
+        .eq('channel', 'in_app');
 
-      if (cancelled || error) {
-        if (!cancelled) setMessages([]);
-        return;
+      if (cancelled) return;
+      const directIds = [...new Set((directRecipientRows || []).map((row) => row.message_id).filter(Boolean))];
+
+      if (directIds.length) {
+        const { data } = await supabase.from('squawk_messages')
+          .select(messageSelect)
+          .in('id', directIds)
+          .in('status', ['queued', 'sent', 'partially_sent', 'failed'])
+          .order('created_at', { ascending: false })
+          .limit(100);
+        directRows = data || [];
       }
 
-      setMessages((rows || []).map((message) => {
+      if (cancelled) return;
+      const byId = new Map();
+      [...organizationRows, ...directRows].forEach((message) => byId.set(message.id, message));
+
+      const rows = [...byId.values()].sort((a, b) => String(b.sent_at || b.created_at).localeCompare(String(a.sent_at || a.created_at)));
+
+      setMessages(rows.map((message) => {
         const thread = threadMap.get(message.thread_id);
         const content = Array.isArray(message.squawk_message_content) ? message.squawk_message_content[0] : message.squawk_message_content;
         const ownReceipt = (message.squawk_message_receipts || []).find((receipt) => receipt.user_id === user.id);

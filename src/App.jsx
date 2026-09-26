@@ -360,8 +360,10 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    if (inviteRole === 'eig_admin') setOrganizationId(eigOrganization?.id || '');
-    else if (!clients.some((org) => org.id === organizationId)) setOrganizationId(clients[0]?.id || '');
+    if (inviteRole === 'eig_admin') {
+      setOrganizationId(eigOrganization?.id || '');
+      setAccessMode('indefinite');
+    } else if (!clients.some((org) => org.id === organizationId)) setOrganizationId(clients[0]?.id || '');
   }, [inviteRole, eigOrganization?.id, clients.length]);
 
   async function submit(event) {
@@ -396,7 +398,9 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
         {inviteRole === 'eig_admin'
           ? <label>Workspace<input value={eigOrganization?.name || 'Elevated Impact Group'} disabled /></label>
           : <label>Hangar<select className="platform-workspace-select" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} required><option value="">Choose Hangar</option>{clients.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label>}
-        <AccessDurationFields mode={accessMode} setMode={setAccessMode} startDate={accessStartDate} setStartDate={setAccessStartDate} endDate={accessEndDate} setEndDate={setAccessEndDate} />
+        {inviteRole === 'eig_admin'
+          ? <label>Access duration<input value="Indefinitely" disabled /><small>EIG Admin is a platform-level role. Time-limited access is handled with Pilot, Co-Pilot, ATC, or Crew assignments.</small></label>
+          : <AccessDurationFields mode={accessMode} setMode={setAccessMode} startDate={accessStartDate} setStartDate={setAccessStartDate} endDate={accessEndDate} setEndDate={setAccessEndDate} />}
       </div>
       {error && <div className="platform-error">{error}</div>}
       <InviteResult result={result} />

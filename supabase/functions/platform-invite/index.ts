@@ -645,7 +645,24 @@ Deno.serve(async (req: Request) => {
     return json({ success: false, error: message }, 500);
   }
 
-  const actionLink = linkResult.data.properties.action_link;
+  const generatedProperties = linkResult.data.properties || {};
+  const generatedActionLink = generatedProperties.action_link || "";
+  const tokenHash = generatedProperties.hashed_token || "";
+  const verificationType = generatedProperties.verification_type || (existingUser ? "magiclink" : "invite");
+  let actionLink = generatedActionLink;
+
+  if (redirectTo && tokenHash) {
+    try {
+      const clientUrl = new URL(redirectTo);
+      clientUrl.searchParams.set("token_hash", tokenHash);
+      clientUrl.searchParams.set("type", verificationType);
+      clientUrl.searchParams.set("eie_invite", "1");
+      actionLink = clientUrl.toString();
+    } catch {
+      actionLink = generatedActionLink;
+    }
+  }
+
   const linkedUserId = linkResult.data.user?.id || existingUser?.id || null;
   if (linkedUserId && linkedUserId !== invitation.invited_user_id) {
     await admin.from("platform_invitations").update({ invited_user_id: linkedUserId }).eq("id", invitation.id);

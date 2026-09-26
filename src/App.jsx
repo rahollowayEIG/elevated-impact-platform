@@ -32,6 +32,38 @@ function accessRoleLabel(role) {
   return ACCESS_ROLE_LABELS[role] || String(role || 'Passenger').replaceAll('_', ' ');
 }
 
+function accessDateInput(value) {
+  if (!value) return '';
+  try { return new Date(value).toISOString().slice(0, 10); } catch { return ''; }
+}
+
+function accessWindowIsActive(row) {
+  if (!row || row.status !== 'active') return false;
+  const now = Date.now();
+  const starts = row.access_starts_at ? new Date(row.access_starts_at).getTime() : null;
+  const ends = row.access_ends_at ? new Date(row.access_ends_at).getTime() : null;
+  return (starts === null || starts <= now) && (ends === null || ends >= now);
+}
+
+function accessWindowLabel(startsAt, endsAt) {
+  if (!endsAt) return 'Indefinitely';
+  const format = (value) => {
+    if (!value) return 'Now';
+    try { return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
+    catch { return value; }
+  };
+  return `${format(startsAt)} → ${format(endsAt)}`;
+}
+
+function eventPlusSevenLabel(event) {
+  const dates = Array.isArray(event?.event_dates) ? event.event_dates.filter(Boolean) : [];
+  const end = dates[dates.length - 1] || dates[0];
+  if (!end) return 'Event end + 7 days';
+  const parsed = new Date(end + 'T12:00:00Z');
+  parsed.setUTCDate(parsed.getUTCDate() + 7);
+  return 'Through ' + parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
 function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -89,7 +121,10 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
   const [usernameStatus, setUsernameStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const requiresPassword = !invitation?.recipient_was_existing;
+  const existingAccount = Boolean(invitation?.recipient_was_existing);
+  const requiresPassword = !existingAccount;
+  const hasExistingIdentity = existingAccount && Boolean(profile?.username);
+  const needsProfileDetails = !hasExistingIdentity || !profile?.display_name;
   const organizationName = invitation?.organization?.name || 'ElevationPilot';
   const eventName = invitation?.event?.name || '';
   const normalizedCurrentUsername = String(profile?.username || '').toLowerCase();
@@ -157,36 +192,50 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
     }
   }
 
+  const roleName = accessRoleLabel(invitation?.role);
+  const primaryButton = requiresPassword
+    ? 'Create Account & Board ElevationPilot'
+    : needsProfileDetails
+      ? 'Complete Profile & Accept ' + roleName
+      : 'Accept ' + roleName + ' Assignment';
+
   return <div className="platform-auth-screen invite-onboarding-screen">
     <div className="platform-login-card invite-onboarding-card">
       <div className="platform-logo-mark">EIG</div>
       <p className="platform-eyebrow">ElevationPilot Boarding</p>
-      <h1>Set up your account.</h1>
-      <p className="platform-login-copy"><strong>{user?.email}</strong> has been invited to {organizationName}{eventName ? ' · ' + eventName : ''} as <strong>{accessRoleLabel(invitation?.role)}</strong>.</p>
+      <h1>{existingAccount ? 'New assignment.' : 'Set up your account.'}</h1>
+      <p className="platform-login-copy"><strong>{user?.email}</strong> has been invited to {organizationName}{eventName ? ' · ' + eventName : ''} as <strong>{roleName}</strong>.</p>
+      <div className="invite-result sent" style={{ marginBottom: 18 }}>
+        {hasExistingIdentity && <strong>Signed in as @{profile.username}</strong>}
+        <span>Access: {accessWindowLabel(invitation?.access_starts_at, invitation?.access_ends_at)}</span>
+        {existingAccount && <span>Your Passenger account and history stay exactly where they are. This adds the new role to the same account.</span>}
+      </div>
       <form className="platform-login-form" onSubmit={submit}>
-        <div className="form-grid two">
-          <label>First name<input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" /></label>
-          <label>Last name<input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" /></label>
-        </div>
-        <label>Display name<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How your name appears in ElevationPilot" /></label>
-        <label>Choose @username
-          <div className="invite-username-row">
-            <span>@</span>
-            <input value={username} onChange={(e) => { setUsername(e.target.value.replace(/^@/, '')); setUsernameStatus(''); }} onBlur={checkUsername} autoComplete="username" required placeholder="username" />
+        {needsProfileDetails && <>
+          <div className="form-grid two">
+            <label>First name<input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" /></label>
+            <label>Last name<input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" /></label>
           </div>
-          {usernameStatus === 'checking' && <small>Checking availability...</small>}
-          {usernameStatus === 'available' && <small className="invite-good">Available ✓</small>}
-          {usernameStatus === 'current' && <small className="invite-good">Current username ✓</small>}
-          {usernameStatus && !['checking','available','current'].includes(usernameStatus) && <small className="invite-warning">{usernameStatus === 'unavailable' ? 'That username is already taken.' : usernameStatus}</small>}
-        </label>
-        <div className="form-grid two">
-          <label>{requiresPassword ? 'Create password' : 'New password (optional)'}<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required={requiresPassword} /></label>
-          <label>{requiresPassword ? 'Confirm password' : 'Confirm new password'}<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required={requiresPassword || Boolean(password)} /></label>
-        </div>
+          <label>Display name<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How your name appears in ElevationPilot" /></label>
+          <label>{hasExistingIdentity ? 'Current @username' : 'Choose @username'}
+            <div className="invite-username-row">
+              <span>@</span>
+              <input value={username} onChange={(e) => { setUsername(e.target.value.replace(/^@/, '')); setUsernameStatus(''); }} onBlur={checkUsername} autoComplete="username" required placeholder="username" disabled={hasExistingIdentity} />
+            </div>
+            {usernameStatus === 'checking' && <small>Checking availability...</small>}
+            {usernameStatus === 'available' && <small className="invite-good">Available ✓</small>}
+            {(usernameStatus === 'current' || hasExistingIdentity) && <small className="invite-good">Current username ✓</small>}
+            {usernameStatus && !['checking','available','current'].includes(usernameStatus) && <small className="invite-warning">{usernameStatus === 'unavailable' ? 'That username is already taken.' : usernameStatus}</small>}
+          </label>
+        </>}
+        {requiresPassword && <div className="form-grid two">
+          <label>Create password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required /></label>
+          <label>Confirm password<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required /></label>
+        </div>}
         {error && <div className="platform-error">{error}</div>}
-        <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Activating access...' : 'Create Account & Board ElevationPilot'}</button>
+        <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Activating access...' : primaryButton}</button>
       </form>
-      <small className="invite-expiry-note">Invitation access is activated only after the verified email account accepts it.</small>
+      <small className="invite-expiry-note">The secure invitation expires separately from the role access dates shown above.</small>
     </div>
   </div>;
 }
@@ -273,8 +322,27 @@ function InviteResult({ result }) {
   return <div className={`invite-result ${result.email_sent ? 'sent' : 'warning'}`}>
     <strong>{result.email_sent ? 'Invitation sent.' : 'Invitation created.'}</strong>
     <span>{result.email_sent ? 'The secure ElevationPilot invitation is on its way.' : (result.warning || 'Email delivery is not available yet. Use the secure link below.')}</span>
+    <span>Role access: {accessWindowLabel(result.access_starts_at, result.access_ends_at)}</span>
     {result.invite_link && <button className="platform-secondary-button" type="button" onClick={copyLink}>{copied ? 'Copied ✓' : 'Copy Invite Link'}</button>}
   </div>;
+}
+
+function AccessDurationFields({ mode, setMode, startDate, setStartDate, endDate, setEndDate, eventRole = false, selectedEvent = null }) {
+  return <>
+    <label>Access duration
+      <select className="platform-workspace-select" value={mode} onChange={(e) => setMode(e.target.value)}>
+        {eventRole && <option value="event_plus_7">Event + 7 days</option>}
+        <option value="custom">Custom dates</option>
+        <option value="indefinite">Indefinitely</option>
+      </select>
+      {eventRole && mode === 'event_plus_7' && <small>Access starts when accepted and ends 7 days after the event. {eventPlusSevenLabel(selectedEvent)}.</small>}
+      {mode === 'indefinite' && <small>No automatic end date. A Pilot or EIG administrator can change it later.</small>}
+    </label>
+    {mode === 'custom' && <>
+      <label>Access starts<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required /></label>
+      <label>Access ends<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required /></label>
+    </>}
+  </>;
 }
 
 function EigPeopleAccessSection({ organizations, onInvite }) {
@@ -284,6 +352,9 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
   const [organizationId, setOrganizationId] = useState(eigOrganization?.id || '');
   const [inviteeName, setInviteeName] = useState('');
   const [email, setEmail] = useState('');
+  const [accessMode, setAccessMode] = useState('indefinite');
+  const [accessStartDate, setAccessStartDate] = useState('');
+  const [accessEndDate, setAccessEndDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -297,7 +368,15 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
     event.preventDefault();
     setBusy(true); setError(''); setResult(null);
     try {
-      const response = await onInvite({ email, invitee_name: inviteeName, organization_id: organizationId, role: inviteRole });
+      const response = await onInvite({
+        email,
+        invitee_name: inviteeName,
+        organization_id: organizationId,
+        role: inviteRole,
+        access_mode: accessMode,
+        access_start_date: accessMode === 'custom' ? accessStartDate : null,
+        access_end_date: accessMode === 'custom' ? accessEndDate : null,
+      });
       setResult(response);
       if (response?.success) { setEmail(''); setInviteeName(''); }
     } catch (inviteError) {
@@ -308,7 +387,7 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
   }
 
   return <section className="platform-section-card invite-access-panel">
-    <div className="platform-section-heading"><div><p className="platform-eyebrow">People & Access</p><h2>Invite ElevationPilot User</h2><p>Create the permanent account first, then ElevationPilot activates only the role you assign.</p></div><div className="platform-role-pill">EIG Command</div></div>
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">People & Access</p><h2>Invite ElevationPilot User</h2><p>One permanent account, with role access layered on top for the dates you choose.</p></div><div className="platform-role-pill">EIG Command</div></div>
     <form className="platform-login-form invite-access-form" onSubmit={submit}>
       <div className="form-grid two">
         <label>Name<input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="Staff member name" /></label>
@@ -317,12 +396,58 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
         {inviteRole === 'eig_admin'
           ? <label>Workspace<input value={eigOrganization?.name || 'Elevated Impact Group'} disabled /></label>
           : <label>Hangar<select className="platform-workspace-select" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} required><option value="">Choose Hangar</option>{clients.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label>}
+        <AccessDurationFields mode={accessMode} setMode={setAccessMode} startDate={accessStartDate} setStartDate={setAccessStartDate} endDate={accessEndDate} setEndDate={setAccessEndDate} />
       </div>
       {error && <div className="platform-error">{error}</div>}
       <InviteResult result={result} />
-      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || !organizationId} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
+      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || !organizationId || (accessMode === 'custom' && (!accessStartDate || !accessEndDate))} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
     </form>
   </section>;
+}
+
+function AccessWindowEditor({ item, organizationId, onSaved }) {
+  const [mode, setMode] = useState(item.access_ends_at ? 'custom' : 'indefinite');
+  const [startDate, setStartDate] = useState(accessDateInput(item.access_starts_at));
+  const [endDate, setEndDate] = useState(accessDateInput(item.access_ends_at));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const profileName = item.profile?.username ? '@' + item.profile.username : (item.profile?.display_name || [item.profile?.first_name, item.profile?.last_name].filter(Boolean).join(' ') || 'User');
+
+  async function save() {
+    setBusy(true); setError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: {
+          action: 'update_access',
+          organization_id: organizationId,
+          assignment_type: item.assignment_type,
+          assignment_id: item.id,
+          access_mode: mode,
+          access_start_date: mode === 'custom' ? startDate : null,
+          access_end_date: mode === 'custom' ? endDate : null,
+        },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to update access dates.');
+      await onSaved?.();
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to update access dates.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="invite-result sent" style={{ alignItems: 'stretch', gap: 10 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div><strong>{profileName} · {accessRoleLabel(item.role)}</strong><span>{item.event?.name || 'Hangar access'}</span></div>
+      <span>{accessWindowLabel(item.access_starts_at, item.access_ends_at)}</span>
+    </div>
+    <div className="form-grid two">
+      <label>Access<select className="platform-workspace-select" value={mode} onChange={(e) => setMode(e.target.value)}><option value="custom">Custom dates</option><option value="indefinite">Indefinitely</option></select></label>
+      {mode === 'custom' && <><label>Starts<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label><label>Ends<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label></>}
+    </div>
+    {error && <div className="platform-error">{error}</div>}
+    <div className="review-actions"><button className="platform-secondary-button" type="button" disabled={busy || (mode === 'custom' && (!startDate || !endDate))} onClick={save}>{busy ? 'Saving...' : 'Change Dates'}</button></div>
+  </div>;
 }
 
 function HangarPeopleAccessSection({ organization, currentRole, events, onInvite }) {
@@ -331,15 +456,45 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
   const [eventId, setEventId] = useState('');
   const [inviteeName, setInviteeName] = useState('');
   const [email, setEmail] = useState('');
+  const [accessMode, setAccessMode] = useState('indefinite');
+  const [accessStartDate, setAccessStartDate] = useState('');
+  const [accessEndDate, setAccessEndDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [accessItems, setAccessItems] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessError, setAccessError] = useState('');
   const needsEvent = ['event_coordinator', 'event_staff'].includes(inviteRole);
+  const selectedEvent = (events || []).find((item) => item.id === eventId) || null;
 
   useEffect(() => {
     if (needsEvent && !eventId) setEventId(events?.[0]?.id || '');
     if (!needsEvent) setEventId('');
+    setAccessMode(needsEvent ? 'event_plus_7' : 'indefinite');
   }, [needsEvent, events?.length]);
+
+  async function loadAccess() {
+    if (!canInvite || !organization?.id) return;
+    setAccessLoading(true); setAccessError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'list_access', organization_id: organization.id },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to load access assignments.');
+      const membershipItems = (data.memberships || [])
+        .filter((item) => item.role === 'organization_staff')
+        .map((item) => ({ ...item, assignment_type: 'organization' }));
+      const assignmentItems = (data.assignments || []).map((item) => ({ ...item, assignment_type: 'event' }));
+      setAccessItems([...membershipItems, ...assignmentItems]);
+    } catch (loadError) {
+      setAccessError(loadError.message || 'Unable to load access assignments.');
+    } finally {
+      setAccessLoading(false);
+    }
+  }
+
+  useEffect(() => { loadAccess(); }, [canInvite, organization?.id]);
 
   if (!canInvite) return null;
 
@@ -353,6 +508,9 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
         organization_id: organization.id,
         event_id: needsEvent ? eventId : null,
         role: inviteRole,
+        access_mode: accessMode,
+        access_start_date: accessMode === 'custom' ? accessStartDate : null,
+        access_end_date: accessMode === 'custom' ? accessEndDate : null,
       });
       setResult(response);
       if (response?.success) { setEmail(''); setInviteeName(''); }
@@ -364,19 +522,27 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
   }
 
   return <section className="platform-section-card invite-access-panel">
-    <div className="platform-section-heading"><div><p className="platform-eyebrow">Team / Crew</p><h2>Invite People to {organization?.name}</h2><p>Pilots can add Co-Pilots and assign ATC or Crew to a specific event. Pilot access itself stays EIG-controlled.</p></div><div className="platform-role-pill">Pilot Control</div></div>
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">Team / Crew</p><h2>Invite People to {organization?.name}</h2><p>Pilots can add Co-Pilots and assign ATC or Crew to a specific event. Event access defaults to ending 7 days after the event.</p></div><div className="platform-role-pill">Pilot Control</div></div>
     <form className="platform-login-form invite-access-form" onSubmit={submit}>
       <div className="form-grid two">
         <label>Name<input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="Name" /></label>
         <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="name@example.com" /></label>
         <label>Role<select className="platform-workspace-select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}><option value="organization_staff">Co-Pilot</option><option value="event_coordinator">ATC</option><option value="event_staff">Crew</option></select></label>
         {needsEvent && <label>Event<select className="platform-workspace-select" value={eventId} onChange={(e) => setEventId(e.target.value)} required><option value="">Choose event</option>{(events || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+        <AccessDurationFields mode={accessMode} setMode={setAccessMode} startDate={accessStartDate} setStartDate={setAccessStartDate} endDate={accessEndDate} setEndDate={setAccessEndDate} eventRole={needsEvent} selectedEvent={selectedEvent} />
       </div>
       {needsEvent && !(events || []).length && <div className="platform-error">Create the event before assigning ATC or Crew.</div>}
       {error && <div className="platform-error">{error}</div>}
       <InviteResult result={result} />
-      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || (needsEvent && !eventId)} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
+      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || (needsEvent && !eventId) || (accessMode === 'custom' && (!accessStartDate || !accessEndDate))} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
     </form>
+
+    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(112,114,122,.2)' }}>
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Active / Scheduled Roles</p><h3>Access Dates</h3><p>Change a date here and the permission window changes. The person's Passenger account remains permanent.</p></div><button className="platform-secondary-button" type="button" onClick={loadAccess} disabled={accessLoading}>{accessLoading ? 'Refreshing...' : 'Refresh'}</button></div>
+      {accessError && <div className="platform-error">{accessError}</div>}
+      {!accessLoading && !accessItems.length && <p className="platform-login-copy">No accepted Co-Pilot, ATC, or Crew assignments yet.</p>}
+      <div style={{ display: 'grid', gap: 12 }}>{accessItems.map((item) => <AccessWindowEditor key={item.assignment_type + ':' + item.id} item={item} organizationId={organization.id} onSaved={loadAccess} />)}</div>
+    </div>
   </section>;
 }
 
@@ -1762,9 +1928,10 @@ export default function App() {
 
   async function loadMemberships(userId, preferredOrganizationId = '') {
     setLoadingData(true); setDataError('');
-    const { data, error } = await supabase.from('organization_memberships').select('organization_id, role, status, organization:organizations(id,name,slug,organization_type,status,is_test,onboarding_status)').eq('user_id', userId).eq('status', 'active');
+    const { data, error } = await supabase.from('organization_memberships').select('organization_id, role, status, access_starts_at, access_ends_at, organization:organizations(id,name,slug,organization_type,status,is_test,onboarding_status)').eq('user_id', userId).eq('status', 'active');
     if (error) { setDataError(error.message); setMemberships([]); setLoadingData(false); return; }
-    const ordered = [...(data || [])].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
+    const activeRows = (data || []).filter(accessWindowIsActive);
+    const ordered = [...activeRows].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
     setMemberships(ordered); setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || ''); setLoadingData(false);
   }
 
@@ -1775,7 +1942,7 @@ export default function App() {
       const [profileResult, registrationResult, assignmentResult] = await Promise.all([
         supabase.from('profiles').select('id,first_name,last_name,display_name,username').eq('id', userId).maybeSingle(),
         supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
-        supabase.from('event_assignments').select('id,event_id,role,status').eq('user_id', userId).eq('status', 'active'),
+        supabase.from('event_assignments').select('id,event_id,role,status,access_starts_at,access_ends_at').eq('user_id', userId).eq('status', 'active'),
       ]);
 
       if (profileResult.error) throw profileResult.error;
@@ -1784,7 +1951,7 @@ export default function App() {
 
       setProfile(profileResult.data || null);
       const registrations = registrationResult.data || [];
-      const assignments = assignmentResult.data || [];
+      const assignments = (assignmentResult.data || []).filter(accessWindowIsActive);
       const eventIds = [...new Set([...registrations.map((row) => row.event_id), ...assignments.map((row) => row.event_id)].filter(Boolean))];
 
       let eventRows = [];

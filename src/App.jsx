@@ -110,10 +110,11 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut, onAirport, isAirport = false }) {
+function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut, onAirport, isAirport = false, contextOrganization = null }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
+  const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : active?.organization?.name || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions"><button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{memberships.length > 0 && !isAirport && <WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} />}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions"><button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{memberships.length > 0 && !isAirport && <WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} />}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -236,7 +237,7 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
 }
 
 
-function EieEventDirectory({ organization, events, loading, onReload, onBack }) {
+function EieEventDirectory({ organization, events, loading, onReload, onBack, initialEventId = '', atcOnly = false }) {
   const { openComposer } = useSquawk();
   const emptyItem = () => ({
     name: 'Registration',
@@ -263,6 +264,13 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   const [setupSponsors, setSetupSponsors] = useState([]);
   const [rosterRows, setRosterRows] = useState([]);
   const [rosterBusy, setRosterBusy] = useState(false);
+
+  useEffect(() => {
+    if (!initialEventId || setupEvent?.id === initialEventId) return;
+    const targetEvent = (events || []).find((item) => item.id === initialEventId);
+    if (targetEvent) openSetup(targetEvent);
+  }, [initialEventId, events, setupEvent?.id]);
+
   const [hubForm, setHubForm] = useState({
     description: '',
     check_in_time: '',
@@ -803,9 +811,9 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
           <p>Set up the event in order so Registration, Pricing, Roster, and the Public Hub all inherit the same rules.</p>
         </div>
         <div className="review-actions">
-          <button className="platform-secondary-button" onClick={() => setSetupEvent(null)}>← Event Directory</button>
+          <button className="platform-secondary-button" onClick={() => atcOnly ? onBack?.() : setSetupEvent(null)}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
           <button className="platform-secondary-button" type="button" onClick={() => openComposer(setupEvent.id)}>SB · Squawk Event</button>
-          <div className="platform-role-pill">Event Setup</div>
+          <div className="platform-role-pill">ATC Center</div>
         </div>
       </section>
 
@@ -965,13 +973,13 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
   return <div className="platform-page">
     <section className="platform-hero organization">
       <div>
-        <p className="platform-eyebrow">{organization?.name} Hangar · Cockpit</p>
-        <h1>EIE · Events</h1>
-        <p>Create and operate events inside the active Hangar. Quick Registration gets registration live first, then the Hub and advanced event tools build around the same Master Event.</p>
+        <p className="platform-eyebrow">{organization?.name} Hangar · {atcOnly ? 'ATC' : 'Cockpit'}</p>
+        <h1>{atcOnly ? 'ATC Center' : 'EIE · Events'}</h1>
+        <p>{atcOnly ? 'Operate your assigned event from setup through roster, communications, Hub, and closeout.' : 'Create and operate events inside the active Hangar. Quick Registration gets registration live first, then the Hub and advanced event tools build around the same Master Event.'}</p>
       </div>
       <div className="review-actions">
-        <button className="platform-secondary-button" onClick={onBack}>← Cockpit</button>
-        <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close Quick Registration' : '+ New Event'}</button>
+        <button className="platform-secondary-button" onClick={onBack}>← {atcOnly ? 'Airport' : 'Cockpit'}</button>
+        {!atcOnly && <button className="platform-primary-button" onClick={() => setShowNew((current) => !current)}>{showNew ? 'Close Quick Registration' : '+ New Event'}</button>}
       </div>
     </section>
 
@@ -1079,7 +1087,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         {upcoming.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}>
           <div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div>
           <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
-          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>Setup →</button></div>
+          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>ATC Center →</button></div>
         </div>)}
         {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first Quick Registration from ground zero.</span></div>}
       </div>}
@@ -1093,7 +1101,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 }
 
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile }) {
   const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
@@ -1194,7 +1202,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
           {nextEvents.map((event) => {
             const firstDate = Array.isArray(event.event_dates) ? event.event_dates[0] : '';
             const dateLabel = firstDate ? new Date(firstDate + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'DATE TBD';
-            return <button type="button" key={event.id} className="cockpit-board-row" onClick={onLaunchGolfRegistration}>
+            return <button type="button" key={event.id} className="cockpit-board-row" onClick={() => onOpenEventAtc?.(event)}>
               <span className={'cockpit-board-status ' + (event.status || 'draft')}>{event.status || 'draft'}</span>
               <strong>{event.name}</strong>
               <span>{dateLabel}</span>
@@ -1484,7 +1492,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); } }, [session?.user?.id]);
@@ -1544,8 +1552,9 @@ export default function App() {
           eventDates: event?.event_dates || [],
           status: event?.status || 'registered',
           publicSlug: event?.public_slug || '',
+          organizationId: event?.organization_id || null,
           accessRole: assignment?.role || 'passenger',
-          destinationLabel: 'Main Cabin',
+          destinationLabel: assignment?.role === 'event_coordinator' ? 'ATC Center' : 'Main Cabin',
           registration,
         });
       });
@@ -1563,8 +1572,9 @@ export default function App() {
           eventDates: event.event_dates || [],
           status: event.status || 'active',
           publicSlug: event.public_slug || '',
-          accessRole: assignment.role || 'atc',
-          destinationLabel: 'Main Cabin',
+          organizationId: event.organization_id || null,
+          accessRole: assignment.role || 'event_coordinator',
+          destinationLabel: assignment.role === 'event_coordinator' ? 'ATC Center' : 'Main Cabin',
           registration: null,
         });
       });
@@ -1635,9 +1645,75 @@ export default function App() {
   }
 
   async function signOut() { await supabase.auth.signOut(); }
-  function openAirport() { setPortalView('airport'); setActiveFlight(null); setCockpitApp(''); }
-  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); }
-  function boardEvent(flight) { setActiveFlight(flight); setPortalView('main_cabin'); }
+  function openAirport() { setPortalView('airport'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); setCockpitApp(''); setEieInitialEventId(''); }
+  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); }
+
+  async function loadAtcEvent(eventId, organizationId = '') {
+    if (!eventId) return;
+    setAtcLoading(true);
+    setDataError('');
+    try {
+      const { data: eventRow, error: eventError } = await supabase
+        .from('golf_registration_events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+      if (eventError) throw eventError;
+      if (!eventRow) throw new Error('This ATC assignment is not available.');
+
+      const resolvedOrganizationId = organizationId || eventRow.organization_id;
+      let organizationRow = null;
+      if (resolvedOrganizationId) {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('id,name,slug,organization_type,status,is_test,onboarding_status')
+          .eq('id', resolvedOrganizationId)
+          .maybeSingle();
+        if (error) throw error;
+        organizationRow = data;
+      }
+
+      setAtcEvent(eventRow);
+      setAtcOrganization(organizationRow || { id: resolvedOrganizationId, name: eventRow.course || 'Event Hangar' });
+    } catch (error) {
+      setAtcEvent(null);
+      setAtcOrganization(null);
+      setDataError(error.message || 'Unable to open the ATC Center.');
+    } finally {
+      setAtcLoading(false);
+    }
+  }
+
+  async function enterAssignedAtc(flight) {
+    if (!flight?.eventId) return;
+    setActiveFlight(flight);
+    setPortalView('atc');
+    await loadAtcEvent(flight.eventId, flight.organizationId);
+  }
+
+  function boardEvent(flight) {
+    if (flight?.accessRole === 'event_coordinator') {
+      enterAssignedAtc(flight);
+      return;
+    }
+    setActiveFlight(flight);
+    setPortalView('main_cabin');
+  }
+
+  async function openCockpitEventAtc(event) {
+    if (!event?.id) return;
+    setEieInitialEventId(event.id);
+    setCockpitApp('eie');
+    setPortalView('workspace');
+    await loadEieEvents(activeOrganizationId);
+  }
+
+  async function openEieDirectory() {
+    setEieInitialEventId('');
+    setCockpitApp('eie');
+    await loadEieEvents(activeOrganizationId);
+  }
+
   function openFlightHub(flight) { if (flight?.publicSlug) window.open(`${window.location.origin}${window.location.pathname}#events/${encodeURIComponent(flight.publicSlug)}`, '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
@@ -1651,21 +1727,31 @@ export default function App() {
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
   const isAirport = portalView === 'airport';
   const isMainCabin = portalView === 'main_cabin';
+  const isAtc = portalView === 'atc';
+  const contextOrganization = isAtc ? atcOrganization : activeOrganization;
+  const contextRole = isAtc ? 'event_coordinator' : (activeMembership?.role || 'passenger');
+  const contextEvents = isAtc && atcEvent ? [atcEvent] : eieEvents;
 
-  return <SquawkProvider user={session.user} organization={activeOrganization || null} role={activeMembership?.role || 'passenger'} events={eieEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={(organizationId) => { setActiveOrganizationId(organizationId); setPortalView('workspace'); }} onSignOut={signOut} onAirport={openAirport} isAirport={isAirport}>
+  return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={(organizationId) => { setActiveOrganizationId(organizationId); setPortalView('workspace'); setEieInitialEventId(''); }} onSignOut={signOut} onAirport={openAirport} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {isAirport
         ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
         : isMainCabin
           ? <MainCabinPage flight={activeFlight} onBack={openAirport} onOpenHub={openFlightHub} />
+          : isAtc
+            ? atcLoading
+              ? <LoadingScreen message="Opening ATC Center..." />
+              : atcEvent && atcOrganization
+                ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
+                : <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
             : isEigAdminWorkspace
               ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} />
               : cockpitApp === 'eie'
-                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} />
-                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}
+                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} />}
     </PlatformShell>
   </SquawkProvider>;
 }

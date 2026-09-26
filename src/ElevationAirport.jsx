@@ -124,41 +124,150 @@ export function AirportPage({
 }
 
 export function MainCabinPage({ flight, onBack, onOpenHub }) {
-  const { openInbox } = useSquawk();
+  const { unreadCount, openInbox } = useSquawk();
   if (!flight) return null;
 
   const registration = flight.registration || {};
   const eventDate = flight.eventDates?.[0];
+  const eventEnd = flight.eventDates?.[1];
+  const registrationStatus = String(registration.registration_status || 'Active').replaceAll('_', ' ');
+  const paymentStatus = String(registration.payment_status || 'Pending').replaceAll('_', ' ');
+  const teamLabel = registration.team_id || 'Not assigned';
+  const boardingCode = String(flight.eventId || flight.key || 'EIG').replaceAll('-', '').slice(0, 8).toUpperCase();
 
-  return <div className="platform-page main-cabin-page">
-    <section className="main-cabin-hero">
-      <div>
+  return <div className="platform-page main-cabin-page premium-main-cabin">
+    <section className="main-cabin-entry">
+      <button className="platform-secondary-button" type="button" onClick={onBack}>← Airport</button>
+      <div className="main-cabin-entry-title">
         <p className="platform-eyebrow">ElevationPilot · Main Cabin</p>
-        <h1>{flight.name}</h1>
-        <p>{flight.course || flight.organizationName || 'Event destination'}</p>
+        <strong>{flight.name}</strong>
       </div>
-      <div className="review-actions">
-        <button className="platform-secondary-button" type="button" onClick={onBack}>← Airport</button>
-        <button className="platform-secondary-button" type="button" onClick={openInbox}>SB · Messages</button>
-        {flight.publicSlug && <button className="platform-primary-button" type="button" onClick={() => onOpenHub(flight)}>Open Event Hub ↗</button>}
+      <div className="main-cabin-entry-actions">
+        <button className="global-squawk-trigger main-cabin-sb-trigger" type="button" onClick={openInbox}>
+          <span className="global-squawk-trigger-icon">SB</span>
+          <span className="global-squawk-trigger-label">Squawk Box</span>
+          {unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}
+        </button>
+        {flight.publicSlug && <button className="platform-primary-button" type="button" onClick={() => onOpenHub(flight)}>Event Hub ↗</button>}
       </div>
     </section>
 
-    <section className="platform-stats-grid">
-      <div className="platform-stat-card"><span>Departure</span><strong>{formatDate(eventDate)}</strong><small>{flight.course || 'Venue TBD'}</small></div>
-      <div className="platform-stat-card"><span>Registration</span><strong>{String(registration.registration_status || 'Active').replaceAll('_', ' ')}</strong><small>Your event access</small></div>
-      <div className="platform-stat-card"><span>Payment</span><strong>{String(registration.payment_status || 'Pending').replaceAll('_', ' ')}</strong><small>{registration.amount_paid != null ? '$' + Number(registration.amount_paid || 0).toFixed(2) + ' paid' : 'Payment details will appear here'}</small></div>
-    </section>
-
-    <section className="platform-section-card">
-      <div className="platform-section-heading">
-        <div><p className="platform-eyebrow">Your Trip</p><h2>Main Cabin</h2><p>This is the participant space for this event. Event updates, itinerary, team details, payments, documents, and other passenger tools will collect here as they are connected.</p></div>
+    <section className="main-cabin-airframe">
+      <div className="main-cabin-overhead" aria-hidden="true">
+        <i /><i /><i /><i /><i /><i /><i />
       </div>
-      <div className="main-cabin-grid">
-        <div><span>Event</span><strong>{flight.name}</strong><small>{formatDate(eventDate)}</small></div>
-        <div><span>Venue</span><strong>{flight.course || 'TBD'}</strong><small>{flight.organizationName || 'Event venue'}</small></div>
-        <div><span>Team</span><strong>{registration.team_id || 'Not assigned'}</strong><small>Team details will stay with this event.</small></div>
-        <button type="button" onClick={openInbox}><span>SB</span><strong>Squawk Box</strong><small>Event messages and updates</small></button>
+
+      <div className="main-cabin-forward-screen">
+        <div className="main-cabin-screen-frame">
+          <div className="main-cabin-screen-topline">
+            <span>WELCOME ABOARD</span>
+            <b>EP · {boardingCode}</b>
+          </div>
+          <h1>{flight.name}</h1>
+          <p>{flight.course || flight.organizationName || 'Event destination'}</p>
+          <div className="main-cabin-screen-route">
+            <div><small>EVENT DATE</small><strong>{formatDate(eventDate)}</strong></div>
+            <span className="main-cabin-route-line"><i /><b>EP</b><i /></span>
+            <div><small>{eventEnd ? 'FINAL DAY' : 'DESTINATION'}</small><strong>{eventEnd ? formatDate(eventEnd) : (flight.course || 'Venue TBD')}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="main-cabin-status-ribbon">
+        <div><span>Registration</span><strong>{registrationStatus}</strong></div>
+        <div><span>Payment</span><strong>{paymentStatus}</strong></div>
+        <div><span>Team</span><strong>{teamLabel}</strong></div>
+        <div><span>Messages</span><strong>{unreadCount ? unreadCount + ' unread' : 'All caught up'}</strong></div>
+      </div>
+
+      <div className="main-cabin-seat-map">
+        <article className="main-cabin-seat-pod">
+          <div className="main-cabin-seat-shell">
+            <div className="main-cabin-seat-number">01A</div>
+            <div className="main-cabin-seat-screen boarding-pass-screen">
+              <span>BOARDING PASS</span>
+              <h2>{flight.name}</h2>
+              <div className="boarding-pass-grid">
+                <div><small>DATE</small><strong>{formatDate(eventDate)}</strong></div>
+                <div><small>ROLE</small><strong>Passenger</strong></div>
+                <div><small>STATUS</small><strong>{registrationStatus}</strong></div>
+                <div><small>REF</small><strong>{boardingCode}</strong></div>
+              </div>
+            </div>
+            <div className="main-cabin-seat-console"><i /><i /><i /></div>
+          </div>
+        </article>
+
+        <div className="main-cabin-aisle" aria-hidden="true">
+          <span>ROW 01</span>
+          <i /><i /><i />
+          <b>FORWARD</b>
+        </div>
+
+        <article className="main-cabin-seat-pod">
+          <div className="main-cabin-seat-shell">
+            <div className="main-cabin-seat-number">01F</div>
+            <div className="main-cabin-seat-screen">
+              <span>MY EVENT</span>
+              <h2>{flight.course || 'Venue TBD'}</h2>
+              <div className="main-cabin-event-lines">
+                <div><small>Hangar</small><strong>{flight.organizationName || 'Event venue'}</strong></div>
+                <div><small>Team</small><strong>{teamLabel}</strong></div>
+                <div><small>Payment</small><strong>{paymentStatus}</strong></div>
+              </div>
+            </div>
+            <div className="main-cabin-seat-console"><i /><i /><i /></div>
+          </div>
+        </article>
+
+        <article className="main-cabin-seat-pod interactive">
+          <button className="main-cabin-seat-shell" type="button" onClick={openInbox}>
+            <div className="main-cabin-seat-number">02A</div>
+            <div className="main-cabin-seat-screen squawk-screen">
+              <span>SB · SEATBACK COMMS</span>
+              <div className="main-cabin-sb-mark">SB</div>
+              <h2>Squawk Box</h2>
+              <p>{unreadCount ? unreadCount + ' unread message' + (unreadCount === 1 ? '' : 's') : 'Messages, event updates, and direct Squawks live here.'}</p>
+              <b className="main-cabin-screen-action">OPEN MESSAGES →</b>
+            </div>
+            <div className="main-cabin-seat-console"><i /><i /><i /></div>
+          </button>
+        </article>
+
+        <div className="main-cabin-aisle second" aria-hidden="true">
+          <span>ROW 02</span>
+          <i /><i /><i />
+          <b>CABIN</b>
+        </div>
+
+        <article className={'main-cabin-seat-pod interactive ' + (!flight.publicSlug ? 'disabled' : '')}>
+          {flight.publicSlug ? <button className="main-cabin-seat-shell" type="button" onClick={() => onOpenHub(flight)}>
+            <div className="main-cabin-seat-number">02F</div>
+            <div className="main-cabin-seat-screen hub-screen">
+              <span>EVENT HUB</span>
+              <div className="main-cabin-hub-window"><i /><i /><i /></div>
+              <h2>Event AirSpace</h2>
+              <p>Event information, sponsors, media, announcements, and public updates.</p>
+              <b className="main-cabin-screen-action">OPEN EVENT HUB ↗</b>
+            </div>
+            <div className="main-cabin-seat-console"><i /><i /><i /></div>
+          </button> : <div className="main-cabin-seat-shell">
+            <div className="main-cabin-seat-number">02F</div>
+            <div className="main-cabin-seat-screen hub-screen">
+              <span>EVENT HUB</span>
+              <div className="main-cabin-hub-window"><i /><i /><i /></div>
+              <h2>Preparing for departure</h2>
+              <p>The event's public Hub will appear here when it is published.</p>
+            </div>
+            <div className="main-cabin-seat-console"><i /><i /><i /></div>
+          </div>}
+        </article>
+      </div>
+
+      <div className="main-cabin-aft-panel">
+        <span>MAIN CABIN · {flight.name}</span>
+        <strong>Additional passenger tools will occupy new seats as they come online.</strong>
+        <small>Itinerary · tickets · purchases · results · team tools</small>
       </div>
     </section>
   </div>;

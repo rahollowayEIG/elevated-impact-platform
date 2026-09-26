@@ -19,8 +19,21 @@ function LoadingScreen({ message = 'Loading EIG Platform...' }) {
   );
 }
 
+const ACCESS_ROLE_LABELS = {
+  eig_admin: 'EIG Admin',
+  organization_admin: 'Pilot',
+  organization_staff: 'Co-Pilot',
+  event_coordinator: 'ATC',
+  event_staff: 'Crew',
+  passenger: 'Passenger',
+};
+
+function accessRoleLabel(role) {
+  return ACCESS_ROLE_LABELS[role] || String(role || 'Passenger').replaceAll('_', ' ');
+}
+
 function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -29,9 +42,23 @@ function LoginScreen() {
     event.preventDefault();
     setError('');
     setBusy(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) setError(signInError.message);
-    setBusy(false);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('golf-account-auth', {
+        body: { action: 'sign_in', identifier: identifier.trim(), password },
+      });
+      if (invokeError || data?.error || !data?.access_token || !data?.refresh_token) {
+        throw new Error(data?.error || invokeError?.message || 'Unable to sign in.');
+      }
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (sessionError) throw sessionError;
+    } catch (signInError) {
+      setError(signInError.message || 'Unable to sign in.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -40,16 +67,128 @@ function LoginScreen() {
         <div className="platform-logo-mark">EIG</div>
         <p className="platform-eyebrow">Elevated Impact Group</p>
         <h1>One login. Every EIG workspace.</h1>
-        <p className="platform-login-copy">Sign in to access the organizations, products, events, and tools assigned to your account.</p>
+        <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
         <form onSubmit={submit} className="platform-login-form">
-          <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" required /></label>
+          <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
           <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
           {error && <div className="platform-error">{error}</div>}
-          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to EIG'}</button>
+          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to ElevationPilot'}</button>
         </form>
       </div>
     </div>
   );
+}
+
+function AccountSetupScreen({ user, invitation, profile, onComplete }) {
+  const [firstName, setFirstName] = useState(profile?.first_name || '');
+  const [lastName, setLastName] = useState(profile?.last_name || '');
+  const [displayName, setDisplayName] = useState(profile?.display_name || invitation?.invitee_name || '');
+  const [username, setUsername] = useState(profile?.username || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const requiresPassword = !invitation?.recipient_was_existing;
+  const organizationName = invitation?.organization?.name || 'ElevationPilot';
+  const eventName = invitation?.event?.name || '';
+  const normalizedCurrentUsername = String(profile?.username || '').toLowerCase();
+
+  useEffect(() => {
+    setFirstName(profile?.first_name || '');
+    setLastName(profile?.last_name || '');
+    setDisplayName(profile?.display_name || invitation?.invitee_name || '');
+    setUsername(profile?.username || '');
+  }, [invitation?.id, profile?.username]);
+
+  async function checkUsername() {
+    const normalized = username.trim().replace(/^@/, '').toLowerCase();
+    if (!normalized) { setUsernameStatus(''); return false; }
+    if (normalizedCurrentUsername && normalized === normalizedCurrentUsername) {
+      setUsernameStatus('current');
+      return true;
+    }
+    setUsernameStatus('checking');
+    const { data, error: invokeError } = await supabase.functions.invoke('golf-account-auth', {
+      body: { action: 'username_available', username: normalized },
+    });
+    if (invokeError || data?.error || !data?.available) {
+      setUsernameStatus(data?.error || 'unavailable');
+      return false;
+    }
+    setUsernameStatus('available');
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setError('');
+    const normalized = username.trim().replace(/^@/, '').toLowerCase();
+    if (!normalized) { setError('Choose an @username.'); return; }
+    if (requiresPassword && password.length < 8) { setError('Create a password with at least 8 characters.'); return; }
+    if (password && password.length < 8) { setError('Use at least 8 characters for your password.'); return; }
+    if (password && password !== confirmPassword) { setError('The passwords do not match.'); return; }
+
+    setBusy(true);
+    try {
+      if (password) {
+        const { error: passwordError } = await supabase.auth.updateUser({ password });
+        if (passwordError) throw passwordError;
+      }
+
+      const { data, error: acceptError } = await supabase.functions.invoke('platform-invite', {
+        body: {
+          action: 'accept',
+          invite_id: invitation.id,
+          username: normalized,
+          first_name: firstName,
+          last_name: lastName,
+          display_name: displayName,
+        },
+      });
+      if (acceptError || data?.error || !data?.success) {
+        throw new Error(data?.error || acceptError?.message || 'Unable to accept the invitation.');
+      }
+      await onComplete?.(data);
+    } catch (setupError) {
+      setError(setupError.message || 'Unable to finish your account.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="platform-auth-screen invite-onboarding-screen">
+    <div className="platform-login-card invite-onboarding-card">
+      <div className="platform-logo-mark">EIG</div>
+      <p className="platform-eyebrow">ElevationPilot Boarding</p>
+      <h1>Set up your account.</h1>
+      <p className="platform-login-copy"><strong>{user?.email}</strong> has been invited to {organizationName}{eventName ? ' · ' + eventName : ''} as <strong>{accessRoleLabel(invitation?.role)}</strong>.</p>
+      <form className="platform-login-form" onSubmit={submit}>
+        <div className="form-grid two">
+          <label>First name<input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" /></label>
+          <label>Last name<input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" /></label>
+        </div>
+        <label>Display name<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How your name appears in ElevationPilot" /></label>
+        <label>Choose @username
+          <div className="invite-username-row">
+            <span>@</span>
+            <input value={username} onChange={(e) => { setUsername(e.target.value.replace(/^@/, '')); setUsernameStatus(''); }} onBlur={checkUsername} autoComplete="username" required placeholder="username" />
+          </div>
+          {usernameStatus === 'checking' && <small>Checking availability...</small>}
+          {usernameStatus === 'available' && <small className="invite-good">Available ✓</small>}
+          {usernameStatus === 'current' && <small className="invite-good">Current username ✓</small>}
+          {usernameStatus && !['checking','available','current'].includes(usernameStatus) && <small className="invite-warning">{usernameStatus === 'unavailable' ? 'That username is already taken.' : usernameStatus}</small>}
+        </label>
+        <div className="form-grid two">
+          <label>{requiresPassword ? 'Create password' : 'New password (optional)'}<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required={requiresPassword} /></label>
+          <label>{requiresPassword ? 'Confirm password' : 'Confirm new password'}<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required={requiresPassword || Boolean(password)} /></label>
+        </div>
+        {error && <div className="platform-error">{error}</div>}
+        <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Activating access...' : 'Create Account & Board ElevationPilot'}</button>
+      </form>
+      <small className="invite-expiry-note">Invitation access is activated only after the verified email account accepts it.</small>
+    </div>
+  </div>;
 }
 
 function PublicInquiryPage({ slug }) {
@@ -119,7 +258,129 @@ function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrgan
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
 
-function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, loading }) {
+function InviteResult({ result }) {
+  const [copied, setCopied] = useState(false);
+  if (!result) return null;
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(result.invite_link || '');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return <div className={`invite-result ${result.email_sent ? 'sent' : 'warning'}`}>
+    <strong>{result.email_sent ? 'Invitation sent.' : 'Invitation created.'}</strong>
+    <span>{result.email_sent ? 'The secure ElevationPilot invitation is on its way.' : (result.warning || 'Email delivery is not available yet. Use the secure link below.')}</span>
+    {result.invite_link && <button className="platform-secondary-button" type="button" onClick={copyLink}>{copied ? 'Copied ✓' : 'Copy Invite Link'}</button>}
+  </div>;
+}
+
+function EigPeopleAccessSection({ organizations, onInvite }) {
+  const eigOrganization = organizations.find((org) => org.slug === EIG_SLUG);
+  const clients = organizations.filter((org) => org.slug !== EIG_SLUG && org.status === 'active');
+  const [inviteRole, setInviteRole] = useState('eig_admin');
+  const [organizationId, setOrganizationId] = useState(eigOrganization?.id || '');
+  const [inviteeName, setInviteeName] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (inviteRole === 'eig_admin') setOrganizationId(eigOrganization?.id || '');
+    else if (!clients.some((org) => org.id === organizationId)) setOrganizationId(clients[0]?.id || '');
+  }, [inviteRole, eigOrganization?.id, clients.length]);
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true); setError(''); setResult(null);
+    try {
+      const response = await onInvite({ email, invitee_name: inviteeName, organization_id: organizationId, role: inviteRole });
+      setResult(response);
+      if (response?.success) { setEmail(''); setInviteeName(''); }
+    } catch (inviteError) {
+      setError(inviteError.message || 'Unable to send the invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="platform-section-card invite-access-panel">
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">People & Access</p><h2>Invite ElevationPilot User</h2><p>Create the permanent account first, then ElevationPilot activates only the role you assign.</p></div><div className="platform-role-pill">EIG Command</div></div>
+    <form className="platform-login-form invite-access-form" onSubmit={submit}>
+      <div className="form-grid two">
+        <label>Name<input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="Staff member name" /></label>
+        <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="name@example.com" /></label>
+        <label>Role<select className="platform-workspace-select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}><option value="eig_admin">EIG Admin</option><option value="organization_admin">Pilot</option><option value="organization_staff">Co-Pilot</option></select></label>
+        {inviteRole === 'eig_admin'
+          ? <label>Workspace<input value={eigOrganization?.name || 'Elevated Impact Group'} disabled /></label>
+          : <label>Hangar<select className="platform-workspace-select" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} required><option value="">Choose Hangar</option>{clients.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label>}
+      </div>
+      {error && <div className="platform-error">{error}</div>}
+      <InviteResult result={result} />
+      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || !organizationId} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
+    </form>
+  </section>;
+}
+
+function HangarPeopleAccessSection({ organization, currentRole, events, onInvite }) {
+  const canInvite = currentRole === 'organization_admin';
+  const [inviteRole, setInviteRole] = useState('organization_staff');
+  const [eventId, setEventId] = useState('');
+  const [inviteeName, setInviteeName] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState(null);
+  const needsEvent = ['event_coordinator', 'event_staff'].includes(inviteRole);
+
+  useEffect(() => {
+    if (needsEvent && !eventId) setEventId(events?.[0]?.id || '');
+    if (!needsEvent) setEventId('');
+  }, [needsEvent, events?.length]);
+
+  if (!canInvite) return null;
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true); setError(''); setResult(null);
+    try {
+      const response = await onInvite({
+        email,
+        invitee_name: inviteeName,
+        organization_id: organization.id,
+        event_id: needsEvent ? eventId : null,
+        role: inviteRole,
+      });
+      setResult(response);
+      if (response?.success) { setEmail(''); setInviteeName(''); }
+    } catch (inviteError) {
+      setError(inviteError.message || 'Unable to send the invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="platform-section-card invite-access-panel">
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">Team / Crew</p><h2>Invite People to {organization?.name}</h2><p>Pilots can add Co-Pilots and assign ATC or Crew to a specific event. Pilot access itself stays EIG-controlled.</p></div><div className="platform-role-pill">Pilot Control</div></div>
+    <form className="platform-login-form invite-access-form" onSubmit={submit}>
+      <div className="form-grid two">
+        <label>Name<input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="Name" /></label>
+        <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="name@example.com" /></label>
+        <label>Role<select className="platform-workspace-select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}><option value="organization_staff">Co-Pilot</option><option value="event_coordinator">ATC</option><option value="event_staff">Crew</option></select></label>
+        {needsEvent && <label>Event<select className="platform-workspace-select" value={eventId} onChange={(e) => setEventId(e.target.value)} required><option value="">Choose event</option>{(events || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      </div>
+      {needsEvent && !(events || []).length && <div className="platform-error">Create the event before assigning ATC or Crew.</div>}
+      {error && <div className="platform-error">{error}</div>}
+      <InviteResult result={result} />
+      <div className="review-actions"><button className="platform-primary-button" disabled={busy || !email || (needsEvent && !eventId)} type="submit">{busy ? 'Preparing invite...' : 'Send ElevationPilot Invite'}</button></div>
+    </form>
+  </section>;
+}
+
+function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, loading }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('EIG Test Organization');
   const [organizationType, setOrganizationType] = useState('business');
@@ -138,7 +399,7 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
     finally { setCreating(false); }
   }
 
-  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Master Workspace</p><h1>Platform Control Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-role-pill">EIG Admin</div></section><section className="platform-stats-grid"><StatCard label="Client Organizations" value={clients.length} detail="Organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Organizations</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Organization Admin.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}</button></form>}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section></div>;
+  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Master Workspace</p><h1>Platform Control Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-role-pill">EIG Admin</div></section><section className="platform-stats-grid"><StatCard label="Client Organizations" value={clients.length} detail="Organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Organizations</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Organization Admin.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}</button></form>}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
 }
 
 function ProductCard({ product, enabled, onLaunch }) {
@@ -1101,7 +1362,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 }
 
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile, onInviteUser }) {
   const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
@@ -1222,6 +1483,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
       <div className="platform-product-grid cockpit-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div>
     </section>
 
+    <HangarPeopleAccessSection organization={organization} currentRole={role} events={eieEvents} onInvite={onInviteUser} />
     <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
     {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
   </div>;
@@ -1492,10 +1754,10 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('airport'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
-  useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); } }, [session?.user?.id]);
+  useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); loadPendingInvitations(session.user.id); } else { setPendingInvitations([]); setInviteProfile(null); setInviteCheckUserId(''); } }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
 
   async function loadMemberships(userId, preferredOrganizationId = '') {
@@ -1644,6 +1906,43 @@ export default function App() {
     await loadWorkspaceData(activeOrganizationId);
   }
 
+  async function loadPendingInvitations(userId = session?.user?.id) {
+    if (!userId) return [];
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-invite', { body: { action: 'mine' } });
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Unable to load invitations.');
+      const rows = data?.invitations || [];
+      setPendingInvitations(rows);
+      setInviteProfile(data?.profile || null);
+      if (data?.profile) setProfile(data.profile);
+      return rows;
+    } catch {
+      setPendingInvitations([]);
+      return [];
+    } finally {
+      setInviteCheckUserId(userId);
+    }
+  }
+
+  async function sendPlatformInvite(payload) {
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { data, error } = await supabase.functions.invoke('platform-invite', {
+      body: { action: 'send', ...payload, redirect_to: redirectTo },
+    });
+    if (error || data?.error || !data?.success) throw new Error(data?.error || error?.message || 'Unable to send the invitation.');
+    return data;
+  }
+
+  async function finishInviteSetup() {
+    if (!session?.user?.id) return;
+    await Promise.all([
+      loadMemberships(session.user.id),
+      loadAirportData(session.user.id),
+    ]);
+    await loadPendingInvitations(session.user.id);
+    setPortalView('airport');
+  }
+
   async function signOut() { await supabase.auth.signOut(); }
   function openAirport() { setPortalView('airport'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); setCockpitApp(''); setEieInitialEventId(''); }
   function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); }
@@ -1719,6 +2018,8 @@ export default function App() {
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
+  if (inviteCheckUserId !== session.user.id) return <LoadingScreen message="Checking your ElevationPilot access..." />;
+  if (pendingInvitations.length) return <AccountSetupScreen user={session.user} invitation={pendingInvitations[0]} profile={inviteProfile || profile} onComplete={finishInviteSetup} />;
   if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;
   if (loadingData && !memberships.length && portalView !== 'airport') return <LoadingScreen message="Opening your workspaces..." />;
 
@@ -1748,10 +2049,10 @@ export default function App() {
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
             : isEigAdminWorkspace
-              ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} />
+              ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
-                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} />}
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
     </PlatformShell>
   </SquawkProvider>;
 }

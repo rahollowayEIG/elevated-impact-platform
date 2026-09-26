@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
 import EieEventSetupSteps from './EieEventSetupSteps';
+import { SquawkProvider, useSquawk } from './SquawkCenter';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -110,7 +111,8 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
 
 function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  const { unreadCount, openInbox } = useSquawk();
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -234,6 +236,7 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
 
 
 function EieEventDirectory({ organization, events, loading, onReload, onBack }) {
+  const { openComposer } = useSquawk();
   const emptyItem = () => ({
     name: 'Registration',
     description: '',
@@ -800,6 +803,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
         </div>
         <div className="review-actions">
           <button className="platform-secondary-button" onClick={() => setSetupEvent(null)}>← Event Directory</button>
+          <button className="platform-secondary-button" type="button" onClick={() => openComposer(setupEvent.id)}>SB · Squawk Event</button>
           <div className="platform-role-pill">Event Setup</div>
         </div>
       </section>
@@ -1089,6 +1093,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack }) 
 
 
 function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onSaveProfile }) {
+  const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
   const activeInquiries = eventRequests.filter((request) => !['declined', 'cancelled', 'hold_expired'].includes(request.status)).length;
@@ -1170,11 +1175,11 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
       <div className="cockpit-center-console">
         <div className="cockpit-console-header">
           <div><span>Center Pedestal</span><strong>Primary Controls</strong></div>
-          <div className="cockpit-system-light"><i className="ok" /> READY</div>
+          <button className="cockpit-system-light cockpit-system-button" type="button" onClick={openInbox}><i className="ok" /> SB {unreadCount ? `${unreadCount} UNREAD` : 'READY'}</button>
         </div>
         <div className="cockpit-control-row">
           <button className="cockpit-control primary" type="button" onClick={onLaunchGolfRegistration}><span>EIE</span><strong>ENTER EVENT OPS</strong><small>Open Event Directory and ATC tools</small></button>
-          <div className="cockpit-control passive"><span>SB</span><strong>SQUAWK BOX</strong><small>Communications restoration queued</small></div>
+          <button className="cockpit-control" type="button" onClick={() => openComposer()}><span>SB</span><strong>SQUAWK BOX</strong><small>{unreadCount ? `${unreadCount} unread · compose or review messages` : 'Compose event communications'}</small></button>
           <div className="cockpit-control passive"><span>ATC</span><strong>ATTENTION</strong><small>{activeInquiries ? activeInquiries + ' inquiry item' + (activeInquiries === 1 ? '' : 's') : 'No inquiry alerts'}</small></div>
         </div>
       </div>
@@ -1219,6 +1224,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const [hub, setHub] = useState(null);
   const [offers, setOffers] = useState([]);
   const [sponsors, setSponsors] = useState([]);
+  const [hubSquawks, setHubSquawks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -1250,6 +1256,41 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
       if (offerError) setError(offerError.message);
       if (sponsorError) setError(sponsorError.message);
 
+      let squawkItems = [];
+      if (publicMode && data.public_slug) {
+        const { data: publicSquawks } = await supabase.functions.invoke('public-event-squawks', {
+          body: { public_slug: data.public_slug },
+        });
+        squawkItems = publicSquawks?.success ? (publicSquawks.items || []) : [];
+      } else {
+        const { data: threadRows } = await supabase
+          .from('squawk_threads')
+          .select('id')
+          .eq('event_id', data.id)
+          .eq('context_type', 'event')
+          .eq('status', 'open');
+        if (threadRows?.length) {
+          const { data: messageRows } = await supabase
+            .from('squawk_messages')
+            .select('id,message_kind,sent_at,created_at,metadata,squawk_message_content(subject,body,in_app_body)')
+            .in('thread_id', threadRows.map((thread) => thread.id))
+            .eq('status', 'sent')
+            .contains('metadata', { hub_visible: true })
+            .order('sent_at', { ascending: false })
+            .limit(25);
+          squawkItems = (messageRows || []).map((message) => {
+            const content = Array.isArray(message.squawk_message_content) ? message.squawk_message_content[0] : message.squawk_message_content;
+            return {
+              id: message.id,
+              kind: message.message_kind,
+              subject: content?.subject || 'Event update',
+              body: content?.in_app_body || content?.body || '',
+              sent_at: message.sent_at || message.created_at,
+            };
+          }).filter((item) => item.body);
+        }
+      }
+
       const settings = data.field_settings || {};
       let snapshot = null;
       if (!publicMode) {
@@ -1262,6 +1303,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
       setEvent(data);
       setOffers(offerRows || []);
       setSponsors((sponsorRows || []).filter((sponsor) => sponsor.status !== 'cancelled'));
+      setHubSquawks(squawkItems);
       setHub(snapshot?.hubForm || {
         description: settings.hub_description || '',
         check_in_time: settings.hub_check_in_time || '',
@@ -1300,6 +1342,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const hasMedia = Boolean(hub.flyer_url || hub.photo_urls?.length);
   const hasContact = Boolean(hub.contact_name || hub.contact_email || hub.contact_phone);
   const hasSponsors = sponsors.length > 0;
+  const hasSquawks = hubSquawks.length > 0;
   const membersOnly = event.field_settings?.event_access === 'members_only';
 
   const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: publicMode ? 0 : 22, overflow: 'hidden', boxShadow: publicMode ? 'none' : '0 24px 70px rgba(0,0,0,.28)' };
@@ -1322,6 +1365,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
           <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
             <a href="#overview" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Overview</a>
             <a href="#registration" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Registration</a>
+            {hasSquawks && <a href="#squawks" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Updates</a>}
             {hasDetails && <a href="#details" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Event Info</a>}
             {hasSponsors && <a href="#sponsors" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Sponsors</a>}
             {hasMedia && <a href="#media" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Media</a>}
@@ -1373,6 +1417,24 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
         </div>
         {!!addOnOffers.length && <div style={{ marginTop: 24 }}><h3 style={{ color: '#1D245D' }}>Available Add-ons</h3><div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{addOnOffers.map((offer) => <span key={offer.id} style={{ padding: '10px 13px', borderRadius: 999, background: '#fff', border: '1px solid #dde3ec', color: '#1D245D', fontWeight: 800 }}>{offer.name} · {'$' + Number(offer.price || 0).toFixed(2)}</span>)}</div></div>}
       </section>
+
+      {hasSquawks && <section id="squawks" style={whiteSection}>
+        <div style={{ maxWidth: 760, marginBottom: 28 }}>
+          <div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Squawk Box</div>
+          <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Event Updates</h2>
+          <p style={{ color: '#70727A', lineHeight: 1.7 }}>Official updates sent to participants for this event.</p>
+        </div>
+        <div style={{ display: 'grid', gap: 14 }}>
+          {hubSquawks.map((item) => <article key={item.id} style={{ border: '1px solid #dde3ec', borderRadius: 16, padding: 22, background: '#fff', boxShadow: '0 7px 22px rgba(31,47,80,.05)' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ color: '#D81C22', fontWeight: 900, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' }}>{String(item.kind || 'update').replaceAll('_', ' ')}</span>
+              <small style={{ color: '#70727A' }}>{item.sent_at ? new Date(item.sent_at).toLocaleString() : ''}</small>
+            </div>
+            <h3 style={{ color: '#1D245D', fontSize: 22, margin: '9px 0' }}>{item.subject}</h3>
+            <p style={{ color: '#50566a', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 0 }}>{item.body}</p>
+          </article>)}
+        </div>
+      </section>}
 
       {hasDetails && <section id="details" style={whiteSection}>
         <div style={{ maxWidth: 760, marginBottom: 28 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Event Information</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Everything You Need to Know</h2></div>
@@ -1504,5 +1566,14 @@ export default function App() {
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : cockpitApp === 'eie' ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+  return <SquawkProvider user={session.user} organization={activeOrganization} role={activeMembership?.role} events={eieEvents}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>
+      {dataError && <div className="platform-error banner">{dataError}</div>}
+      {isEigAdminWorkspace
+        ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} />
+        : cockpitApp === 'eie'
+          ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => setCockpitApp('')} />
+          : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={async () => { setCockpitApp('eie'); await loadEieEvents(activeOrganizationId); }} onSaveProfile={saveOrganizationProfile} />}
+    </PlatformShell>
+  </SquawkProvider>;
 }

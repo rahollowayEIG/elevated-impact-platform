@@ -181,13 +181,17 @@ async function getCallerAccess(admin: any, userId: string, organizationId: strin
 
 async function generateAuthLink(admin: any, email: string, existing: boolean, redirectTo: string) {
   const type = existing ? "magiclink" : "invite";
-  const params: any = {
+  const withRedirect: any = {
     type,
     email,
-    ...(redirectTo ? { redirectTo } : {}),
+    ...(redirectTo ? { options: { redirectTo } } : {}),
   };
 
-  return admin.auth.admin.generateLink(params);
+  let result = await admin.auth.admin.generateLink(withRedirect);
+  if (result.error && redirectTo) {
+    result = await admin.auth.admin.generateLink({ type, email } as any);
+  }
+  return result;
 }
 
 async function sendInviteEmail(resendApiKey: string, params: {
@@ -609,7 +613,7 @@ Deno.serve(async (req: Request) => {
       invitee_name: inviteeName || invitation.invitee_name,
       invited_by: user.id,
       invited_user_id: existingUser?.id || invitation.invited_user_id,
-      recipient_was_existing: invitation.recipient_was_existing,
+      recipient_was_existing: Boolean(existingUser),
       expires_at: expiresAt,
       access_starts_at: accessWindow.startsAt,
       access_ends_at: accessWindow.endsAt,
@@ -645,24 +649,7 @@ Deno.serve(async (req: Request) => {
     return json({ success: false, error: message }, 500);
   }
 
-  const generatedProperties = linkResult.data.properties || {};
-  const generatedActionLink = generatedProperties.action_link || "";
-  const tokenHash = generatedProperties.hashed_token || "";
-  const verificationType = generatedProperties.verification_type || (existingUser ? "magiclink" : "invite");
-  let actionLink = generatedActionLink;
-
-  if (redirectTo && tokenHash) {
-    try {
-      const clientUrl = new URL(redirectTo);
-      clientUrl.searchParams.set("token_hash", tokenHash);
-      clientUrl.searchParams.set("type", verificationType);
-      clientUrl.searchParams.set("eie_invite", "1");
-      actionLink = clientUrl.toString();
-    } catch {
-      actionLink = generatedActionLink;
-    }
-  }
-
+  const actionLink = linkResult.data.properties.action_link;
   const linkedUserId = linkResult.data.user?.id || existingUser?.id || null;
   if (linkedUserId && linkedUserId !== invitation.invited_user_id) {
     await admin.from("platform_invitations").update({ invited_user_id: linkedUserId }).eq("id", invitation.id);

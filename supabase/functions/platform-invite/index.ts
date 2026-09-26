@@ -181,17 +181,13 @@ async function getCallerAccess(admin: any, userId: string, organizationId: strin
 
 async function generateAuthLink(admin: any, email: string, existing: boolean, redirectTo: string) {
   const type = existing ? "magiclink" : "invite";
-  const withRedirect: any = {
+  const params: any = {
     type,
     email,
-    ...(redirectTo ? { options: { redirectTo } } : {}),
+    ...(redirectTo ? { redirectTo } : {}),
   };
 
-  let result = await admin.auth.admin.generateLink(withRedirect);
-  if (result.error && redirectTo) {
-    result = await admin.auth.admin.generateLink({ type, email } as any);
-  }
-  return result;
+  return admin.auth.admin.generateLink(params);
 }
 
 async function sendInviteEmail(resendApiKey: string, params: {

@@ -41,7 +41,7 @@ async function readFunctionError(error, fallback) {
   }
 }
 
-function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, onReview, actionError, onCompose, onClose }) {
+function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, onReview, actionError, onCompose, onDirect, onClose }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const unreadCount = messages.filter((message) => !message.read).length;
   const filteredMessages = messages.filter((message) => {
@@ -50,6 +50,7 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
     return true;
   });
   const canReview = ['eig_admin', 'organization_admin'].includes(currentRole);
+  const canComposeOperational = Boolean(organization?.id) && ['eig_admin', 'organization_admin', 'organization_staff', 'event_coordinator', 'event_staff'].includes(currentRole);
 
   return <div className="global-squawk-layer" role="dialog" aria-modal="true" aria-label="Squawk Box">
     <button className="global-squawk-backdrop" aria-label="Close Squawk Box" onClick={onClose} />
@@ -60,7 +61,8 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
       </div>
 
       <div className="review-actions squawk-drawer-actions">
-        <button className="platform-primary-button" type="button" onClick={onCompose}>+ New Squawk</button>
+        <button className="platform-primary-button" type="button" onClick={onDirect}>Direct @username</button>
+        {canComposeOperational && <button className="platform-secondary-button" type="button" onClick={onCompose}>+ Event / Hangar Squawk</button>}
       </div>
 
       <div className="global-squawk-filters">
@@ -99,6 +101,172 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
         <span>Internal Pilot and ATC messages stay internal. Only Squawks explicitly marked for the Event Hub can appear publicly.</span>
       </div>
     </aside>
+  </div>;
+}
+
+
+function DirectSquawkPanel({ onClose }) {
+  const [threads, setThreads] = useState([]);
+  const [activeThreadId, setActiveThreadId] = useState('');
+  const [targetUser, setTargetUser] = useState(null);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [message, setMessage] = useState('');
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  async function invokeDirect(body, fallback) {
+    const { data, error: invokeError } = await supabase.functions.invoke('direct-squawk', { body });
+    if (invokeError) throw new Error(await readFunctionError(invokeError, fallback));
+    if (!data?.success) throw new Error(data?.error || fallback);
+    return data;
+  }
+
+  async function loadThreads(preferredThreadId = '') {
+    setLoading(true);
+    try {
+      const data = await invokeDirect({ action: 'list' }, 'Direct Squawks could not be loaded.');
+      const rows = data.threads || [];
+      setThreads(rows);
+      const chosenId = preferredThreadId || activeThreadId;
+      if (chosenId && rows.some((thread) => thread.id === chosenId)) {
+        setActiveThreadId(chosenId);
+        const chosen = rows.find((thread) => thread.id === chosenId);
+        if (chosen?.other_user) setTargetUser(chosen.other_user);
+      }
+    } catch (loadError) {
+      setError(loadError.message || 'Direct Squawks could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadThreads(); }, []);
+
+  const activeThread = threads.find((thread) => thread.id === activeThreadId)
+    || (targetUser ? threads.find((thread) => thread.other_user?.id === targetUser.id) : null);
+  const conversation = activeThread?.messages || [];
+
+  async function searchUsers(event) {
+    event?.preventDefault?.();
+    const clean = query.trim().replace(/^@/, '');
+    setError('');
+    if (clean.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const data = await invokeDirect({ action: 'search', query: clean }, 'User search is unavailable.');
+      setSearchResults(data.users || []);
+    } catch (searchError) {
+      setError(searchError.message || 'User search is unavailable.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function chooseUser(user) {
+    setTargetUser(user);
+    const existing = threads.find((thread) => thread.other_user?.id === user.id);
+    setActiveThreadId(existing?.id || '');
+    setQuery('');
+    setSearchResults([]);
+    setReplyTarget(null);
+    setError('');
+  }
+
+  function chooseThread(thread) {
+    setActiveThreadId(thread.id);
+    setTargetUser(thread.other_user);
+    setReplyTarget(null);
+    setError('');
+  }
+
+  async function sendMessage(event) {
+    event.preventDefault();
+    if (!targetUser?.username || !message.trim()) return;
+    setSending(true);
+    setError('');
+    try {
+      const data = await invokeDirect({
+        action: 'send',
+        to_username: targetUser.username,
+        message: message.trim(),
+        reply_to_message_id: replyTarget?.id || null,
+      }, 'The Direct Squawk could not be sent.');
+      setMessage('');
+      setReplyTarget(null);
+      await loadThreads(data.thread_id);
+    } catch (sendError) {
+      setError(sendError.message || 'The Direct Squawk could not be sent.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return <div className="global-squawk-layer" role="dialog" aria-modal="true" aria-label="Direct Squawk">
+    <button className="global-squawk-backdrop" aria-label="Close Direct Squawk" onClick={onClose} />
+    <section className="direct-squawk-modal">
+      <header className="direct-squawk-header">
+        <div><p className="platform-eyebrow">Squawk Box · Personal</p><h2>Direct Squawk</h2><span>Message any ElevationPilot account by @username.</span></div>
+        <button className="global-squawk-close" type="button" onClick={onClose} aria-label="Close Direct Squawk">×</button>
+      </header>
+
+      <div className="direct-squawk-layout">
+        <aside className="direct-squawk-sidebar">
+          <form className="direct-squawk-search" onSubmit={searchUsers}>
+            <label>Find @username
+              <div><span>@</span><input value={query} onChange={(e) => setQuery(e.target.value.replace(/^@/, ''))} placeholder="username" /></div>
+            </label>
+            <button className="platform-secondary-button" type="submit" disabled={searching || query.trim().length < 2}>{searching ? 'Searching...' : 'Find User'}</button>
+          </form>
+
+          {!!searchResults.length && <div className="direct-squawk-search-results">
+            {searchResults.map((user) => <button key={user.id} type="button" onClick={() => chooseUser(user)}>
+              <strong>@{user.username}</strong><span>{user.display_name}</span>
+            </button>)}
+          </div>}
+
+          <div className="direct-squawk-conversations">
+            <div className="direct-squawk-section-label">Conversations</div>
+            {loading ? <small>Loading...</small> : threads.length
+              ? threads.map((thread) => <button className={thread.id === activeThread?.id ? 'active' : ''} key={thread.id} type="button" onClick={() => chooseThread(thread)}>
+                  <strong>@{thread.other_user?.username}</strong>
+                  <span>{thread.messages?.at(-1)?.body || 'Direct Squawk'}</span>
+                </button>)
+              : <small>No direct conversations yet.</small>}
+          </div>
+        </aside>
+
+        <main className="direct-squawk-conversation">
+          {targetUser ? <>
+            <div className="direct-squawk-person">
+              <div><span>Direct channel</span><h3>@{targetUser.username}</h3><small>{targetUser.display_name}</small></div>
+              <b>PRIVATE</b>
+            </div>
+
+            <div className="direct-squawk-messages">
+              {conversation.length ? conversation.map((item) => <article key={item.id} className={item.mine ? 'mine' : 'theirs'}>
+                <small>{item.mine ? 'You' : '@' + targetUser.username} · {new Date(item.sent_at).toLocaleString()}</small>
+                <p>{item.body}</p>
+                <button type="button" onClick={() => setReplyTarget(item)}>Reply</button>
+              </article>) : <div className="direct-squawk-empty"><strong>Open channel.</strong><span>Send the first Squawk to @{targetUser.username}.</span></div>}
+            </div>
+
+            <form className="direct-squawk-compose" onSubmit={sendMessage}>
+              {replyTarget && <div className="direct-squawk-replying"><span>Replying to: {replyTarget.body.slice(0, 90)}{replyTarget.body.length > 90 ? '…' : ''}</span><button type="button" onClick={() => setReplyTarget(null)}>Cancel</button></div>}
+              <textarea rows="3" value={message} onChange={(e) => setMessage(e.target.value)} maxLength="2000" placeholder={'Squawk @' + targetUser.username + '...'} />
+              <div><small>{message.length}/2000</small><button className="platform-primary-button" type="submit" disabled={sending || !message.trim()}>{sending ? 'Sending...' : 'Send Squawk'}</button></div>
+            </form>
+          </> : <div className="direct-squawk-empty large"><div className="global-squawk-radio">SB</div><strong>Choose a conversation or find an @username.</strong><span>Direct Squawks stay between the two ElevationPilot accounts.</span></div>}
+          {error && <div className="platform-error direct-squawk-error">{error}</div>}
+        </main>
+      </div>
+    </section>
   </div>;
 }
 
@@ -664,6 +832,7 @@ export function SquawkProvider({ user, organization, role, events = [], children
   const value = {
     unreadCount,
     openInbox: () => setMode('inbox'),
+    openDirect: () => setMode('direct'),
     openComposer: (eventId = '') => { setInitialEventId(eventId); setMode('compose'); },
     closeSquawk: () => setMode(''),
   };
@@ -678,7 +847,11 @@ export function SquawkProvider({ user, organization, role, events = [], children
       onReview={reviewMessage}
       actionError={actionError}
       onCompose={() => setMode('compose')}
+      onDirect={() => setMode('direct')}
       onClose={() => setMode('')}
+    />}
+    {mode === 'direct' && <DirectSquawkPanel
+      onClose={() => { setMode('inbox'); setRefresh((value) => value + 1); }}
     />}
     {mode === 'compose' && <SquawkWorkspace
       organization={organization}
@@ -693,6 +866,7 @@ export function useSquawk() {
   return useContext(SquawkContext) || {
     unreadCount: 0,
     openInbox: () => {},
+    openDirect: () => {},
     openComposer: () => {},
     closeSquawk: () => {},
   };

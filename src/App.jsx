@@ -1539,7 +1539,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
   const activeInquiries = eventRequests.filter((request) => !['declined', 'cancelled', 'hold_expired'].includes(request.status)).length;
   const publishedEvents = eieEvents.filter((event) => event.status === 'published').length;
   const draftEvents = eieEvents.filter((event) => event.status !== 'published' && event.status !== 'closed').length;
-  const canReviewRequests = ['organization_admin', 'organization_staff'].includes(role);
+  const canReviewRequests = ['eig_admin', 'organization_admin', 'organization_staff'].includes(role);
   const roleLabel = (role || 'member').replaceAll('_', ' ');
   const setupLabel = (organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ');
   const enabledPercent = products.length ? Math.round((enabledCount / products.length) * 100) : 0;
@@ -2048,8 +2048,12 @@ export default function App() {
 
   async function loadWorkspaceData(organizationId) {
     setLoadingData(true); setDataError('');
-    const activeMembership = memberships.find((m) => m.organization_id === organizationId);
-    const isEig = activeMembership?.organization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
+    const directMembership = memberships.find((m) => m.organization_id === organizationId);
+    const eigMembership = memberships.find((m) => m.organization?.slug === EIG_SLUG && m.role === 'eig_admin');
+    const hasEigCommandAccess = Boolean(eigMembership);
+    const isEigCommandCenter = organizationId === eigMembership?.organization_id;
+    const effectiveRole = directMembership?.role || (hasEigCommandAccess ? 'eig_admin' : null);
+
     const [{ data: productRows, error: productError }, { data: entitlementRows, error: entitlementError }, { data: profileRow, error: profileError }] = await Promise.all([
       supabase.from('products').select('*').neq('status', 'retired').order('sort_order'),
       supabase.from('organization_product_entitlements').select('*').eq('organization_id', organizationId),
@@ -2057,11 +2061,21 @@ export default function App() {
     ]);
     if (productError || entitlementError || profileError) setDataError(productError?.message || entitlementError?.message || profileError?.message || 'Unable to load workspace data.');
     setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null);
-    if (isEig) { const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name'); if (orgError) setDataError(orgError.message); setOrganizations(orgRows || []); setEventRequests([]); }
-    else {
+
+    if (hasEigCommandAccess) {
+      const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name');
+      if (orgError) setDataError(orgError.message);
+      setOrganizations(orgRows || []);
+    } else {
       setOrganizations([]);
+    }
+
+    if (isEigCommandCenter) {
+      setEventRequests([]);
+      setEieEvents([]);
+    } else {
       const jobs = [loadEieEvents(organizationId)];
-      if (['organization_admin', 'organization_staff'].includes(activeMembership?.role)) jobs.push(loadEventRequests(organizationId));
+      if (['eig_admin', 'organization_admin', 'organization_staff'].includes(effectiveRole)) jobs.push(loadEventRequests(organizationId));
       else setEventRequests([]);
       await Promise.all(jobs);
     }
@@ -2238,14 +2252,17 @@ export default function App() {
   if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;
   if (loadingData && !memberships.length && portalView !== 'airport') return <LoadingScreen message="Opening your workspaces..." />;
 
-  const activeMembership = memberships.find((m) => m.organization_id === activeOrganizationId) || memberships[0];
-  const activeOrganization = activeMembership?.organization;
-  const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
+  const directActiveMembership = memberships.find((m) => m.organization_id === activeOrganizationId) || null;
+  const eigMembership = memberships.find((m) => m.organization?.slug === EIG_SLUG && m.role === 'eig_admin') || null;
+  const activeMembership = directActiveMembership || (eigMembership && activeOrganizationId ? { organization_id: activeOrganizationId, role: 'eig_admin', organization: organizations.find((org) => org.id === activeOrganizationId) || null } : memberships[0]);
+  const activeOrganization = activeMembership?.organization || organizations.find((org) => org.id === activeOrganizationId) || null;
+  const effectiveActiveRole = directActiveMembership?.role || (eigMembership ? 'eig_admin' : activeMembership?.role || 'passenger');
+  const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && effectiveActiveRole === 'eig_admin';
   const isAirport = portalView === 'airport';
   const isMainCabin = portalView === 'main_cabin';
   const isAtc = portalView === 'atc';
   const contextOrganization = isAtc ? atcOrganization : activeOrganization;
-  const contextRole = isAtc ? 'event_coordinator' : (activeMembership?.role || 'passenger');
+  const contextRole = isAtc ? 'event_coordinator' : effectiveActiveRole;
   const contextEvents = isAtc && atcEvent ? [atcEvent] : eieEvents;
   const landing = roleLanding();
   const roleHomeLabel = landing?.label || '';
@@ -2274,7 +2291,7 @@ export default function App() {
               ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
-                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
     </PlatformShell>
   </SquawkProvider>;
 }

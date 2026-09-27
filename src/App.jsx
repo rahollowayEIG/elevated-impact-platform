@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
 import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
-import { AirportPage, MainCabinPage } from './ElevationAirport';
+import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -1939,7 +1939,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
   useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); loadPendingInvitations(session.user.id); } else { setPendingInvitations([]); setInviteProfile(null); setInviteCheckUserId(''); } }, [session?.user?.id]);
@@ -1959,7 +1959,7 @@ export default function App() {
     setAirportLoading(true);
     try {
       const [profileResult, registrationResult, assignmentResult] = await Promise.all([
-        supabase.from('profiles').select('id,first_name,last_name,display_name,username').eq('id', userId).maybeSingle(),
+        supabase.from('profiles').select('id,first_name,last_name,display_name,username,phone').eq('id', userId).maybeSingle(),
         supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('event_assignments').select('id,event_id,role,status,access_starts_at,access_ends_at').eq('user_id', userId).eq('status', 'active'),
       ]);
@@ -1969,6 +1969,29 @@ export default function App() {
       if (assignmentResult.error) throw assignmentResult.error;
 
       setProfile(profileResult.data || null);
+
+      const { data: passengerRow, error: passengerError } = await supabase
+        .from('passengers')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .maybeSingle();
+      if (passengerError) throw passengerError;
+      setPassenger(passengerRow || null);
+
+      if (passengerRow?.id) {
+        const [{ data: reusableProfile, error: reusableProfileError }, { data: paymentMethods, error: paymentMethodsError }] = await Promise.all([
+          supabase.from('passenger_profiles').select('*').eq('passenger_id', passengerRow.id).maybeSingle(),
+          supabase.from('passenger_payment_methods').select('id').eq('passenger_id', passengerRow.id).eq('status', 'active'),
+        ]);
+        if (reusableProfileError) throw reusableProfileError;
+        if (paymentMethodsError) throw paymentMethodsError;
+        setPassengerProfile(reusableProfile || null);
+        setSavedPaymentCount(paymentMethods?.length || 0);
+      } else {
+        setPassengerProfile(null);
+        setSavedPaymentCount(0);
+      }
+
       const registrations = registrationResult.data || [];
       const assignments = (assignmentResult.data || []).filter(accessWindowIsActive);
       const eventIds = [...new Set([...registrations.map((row) => row.event_id), ...assignments.map((row) => row.event_id)].filter(Boolean))];
@@ -2146,6 +2169,96 @@ export default function App() {
   async function signOut() { await supabase.auth.signOut(); }
   function openAirport() { setPortalView('airport'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); setCockpitApp(''); setEieInitialEventId(''); }
   function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); }
+  function openPassengerProfile() { setPortalView('profile'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); }
+
+  async function savePassengerProfile(form) {
+    if (!session?.user?.id) return;
+
+    const trimmedUsername = String(form.username || '').trim() || null;
+    const profilePayload = {
+      id: session.user.id,
+      first_name: String(form.first_name || '').trim() || null,
+      last_name: String(form.last_name || '').trim() || null,
+      display_name: String(form.display_name || '').trim() || null,
+      username: trimmedUsername,
+      phone: String(form.phone || '').trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: basicProfileError } = await supabase
+      .from('profiles')
+      .upsert(profilePayload, { onConflict: 'id' });
+    if (basicProfileError) throw basicProfileError;
+
+    let passengerRow = passenger;
+    if (!passengerRow?.id) {
+      const { data: createdPassenger, error: createPassengerError } = await supabase
+        .from('passengers')
+        .insert({
+          auth_user_id: session.user.id,
+          first_name: String(form.first_name || '').trim() || null,
+          last_name: String(form.last_name || '').trim() || null,
+          preferred_name: String(form.preferred_name || '').trim() || null,
+          date_of_birth: form.date_of_birth || null,
+          gender: String(form.gender || '').trim() || null,
+          ghin_number: String(form.ghin_number || '').trim() || null,
+          status: 'claimed',
+          claimed_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single();
+      if (createPassengerError) throw createPassengerError;
+      passengerRow = createdPassenger;
+    } else {
+      const { data: updatedPassenger, error: updatePassengerError } = await supabase
+        .from('passengers')
+        .update({
+          first_name: String(form.first_name || '').trim() || null,
+          last_name: String(form.last_name || '').trim() || null,
+          preferred_name: String(form.preferred_name || '').trim() || null,
+          date_of_birth: form.date_of_birth || null,
+          gender: String(form.gender || '').trim() || null,
+          ghin_number: String(form.ghin_number || '').trim() || null,
+          status: 'claimed',
+          claimed_at: passengerRow.claimed_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', passengerRow.id)
+        .select('*')
+        .single();
+      if (updatePassengerError) throw updatePassengerError;
+      passengerRow = updatedPassenger;
+    }
+
+    const favoriteBrands = String(form.favorite_brands || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const { data: updatedReusableProfile, error: reusableError } = await supabase
+      .from('passenger_profiles')
+      .upsert({
+        passenger_id: passengerRow.id,
+        address_line_1: String(form.address_line_1 || '').trim() || null,
+        address_line_2: String(form.address_line_2 || '').trim() || null,
+        city: String(form.city || '').trim() || null,
+        state_region: String(form.state_region || '').trim() || null,
+        postal_code: String(form.postal_code || '').trim() || null,
+        home_course: String(form.home_course || '').trim() || null,
+        handedness: String(form.handedness || '').trim() || null,
+        player_status: String(form.player_status || '').trim() || null,
+        favorite_brands: favoriteBrands,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'passenger_id' })
+      .select('*')
+      .single();
+    if (reusableError) throw reusableError;
+
+    setProfile(profilePayload);
+    setPassenger(passengerRow);
+    setPassengerProfile(updatedReusableProfile);
+    await loadAirportData(session.user.id);
+  }
 
   function roleLanding() {
     const eigMembership = memberships.find((membership) => membership.organization?.slug === EIG_SLUG && membership.role === 'eig_admin');
@@ -2259,6 +2372,7 @@ export default function App() {
   const effectiveActiveRole = directActiveMembership?.role || (eigMembership ? 'eig_admin' : activeMembership?.role || 'passenger');
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && effectiveActiveRole === 'eig_admin';
   const isAirport = portalView === 'airport';
+  const isProfile = portalView === 'profile';
   const isMainCabin = portalView === 'main_cabin';
   const isAtc = portalView === 'atc';
   const contextOrganization = isAtc ? atcOrganization : activeOrganization;
@@ -2276,7 +2390,9 @@ export default function App() {
         : portalView === 'atc_select'
           ? <AtcAssignmentChooser flights={roleLanding()?.flights || []} onBack={openAirport} onSelect={enterAssignedAtc} />
           : isAirport
-        ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
+        ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
+        : isProfile
+          ? <PassengerProfilePage profile={profile} passenger={passenger} passengerProfile={passengerProfile} user={session.user} savedPaymentCount={savedPaymentCount} onBack={openAirport} onSave={savePassengerProfile} />
         : isMainCabin
           ? <MainCabinPage flight={activeFlight} onBack={openAirport} onOpenHub={openFlightHub} />
           : isAtc
@@ -2284,9 +2400,9 @@ export default function App() {
               ? <LoadingScreen message="Opening ATC / EIE..." />
               : atcEvent && atcOrganization
                 ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
-                : <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
+                : <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
           : !activeOrganization
-            ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} />
+            ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
               ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} />
               : cockpitApp === 'eie'

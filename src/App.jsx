@@ -2175,22 +2175,30 @@ export default function App() {
     if (!session?.user?.id) return;
 
     const trimmedUsername = String(form.username || '').trim() || null;
+    const currentUsername = String(profile?.username || '').trim() || null;
     const profilePayload = {
       id: session.user.id,
       first_name: String(form.first_name || '').trim() || null,
       last_name: String(form.last_name || '').trim() || null,
       display_name: String(form.display_name || '').trim() || null,
-      username: trimmedUsername,
       phone: String(form.phone || '').trim() || null,
       updated_at: new Date().toISOString(),
     };
+    if ((trimmedUsername || '').toLowerCase() !== (currentUsername || '').toLowerCase()) {
+      profilePayload.username = trimmedUsername;
+    }
 
     const { id: profileId, ...profileUpdate } = profilePayload;
     const { error: basicProfileError } = await supabase
       .from('profiles')
       .update(profileUpdate)
       .eq('id', profileId);
-    if (basicProfileError) throw basicProfileError;
+    if (basicProfileError) {
+      if (basicProfileError.code === '23505' && String(basicProfileError.message || '').includes('profiles_username_unique_idx')) {
+        throw new Error('That username is already in use. Choose a different username, or leave it unchanged if this is an older EIG account you want us to reconnect.');
+      }
+      throw basicProfileError;
+    }
 
     let passengerRow = passenger;
     if (!passengerRow?.id) {

@@ -37,6 +37,7 @@ export function AirportPage({
   loading = false,
   onBoard,
   onOpenWorkspace,
+  onOpenProfile,
 }) {
   const { unreadCount, openInbox } = useSquawk();
   const displayName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')?.[0] || 'Passenger';
@@ -82,11 +83,12 @@ export function AirportPage({
         {memberships.length ? <div className="airport-hangar-list">{memberships.filter((membership) => membership.organization?.slug !== 'elevated-impact-group').slice(0,6).map((membership) => <button key={membership.organization_id} type="button" onClick={() => onOpenWorkspace(membership.organization_id)}><div className="airport-hangar-mark">{membership.organization?.name?.slice(0,2).toUpperCase()}</div><div><strong>{membership.organization?.name || 'Hangar'}</strong><span>{roleLabel(membership.role)} access</span></div><b>Open →</b></button>)}</div> : <div className="airport-empty"><strong>No Hangars yet.</strong><span>Businesses and venues connected to your EIG activity will collect here.</span></div>}
       </article>
 
-      <article className="airport-panel">
+      <article className="airport-panel airport-profile-panel">
         <div className="airport-panel-heading"><div><span className="airport-icon">🪪</span><div><p className="platform-eyebrow">Passenger ID</p><h2>My Profile</h2></div></div><span className="airport-progress-label">{profileProgress}%</span></div>
         <div className="airport-profile-progress"><div style={{width: `${profileProgress}%`}} /></div>
         <p className="airport-panel-copy">Your permanent EIG identity follows you into registrations and future apps.</p>
         <div className="airport-mini-grid"><div><span>Name</span><strong>{displayName}</strong></div><div><span>Username</span><strong>{username || 'Add later'}</strong></div><div><span>Email</span><strong>{user?.email || 'Add later'}</strong></div><div><span>Role Spaces</span><strong>{memberships.length}</strong></div></div>
+        <button className="platform-primary-button inline" type="button" onClick={onOpenProfile}>Open My Profile →</button>
       </article>
 
       <article className="airport-panel">
@@ -100,6 +102,163 @@ export function AirportPage({
         <div className="airport-mini-grid"><div><span>Completed Flights</span><strong>{completedFlights.length}</strong></div><div><span>Upcoming</span><strong>{upcomingFlights.length}</strong></div><div><span>Results</span><strong>0</strong></div><div><span>Awards</span><strong>0</strong></div></div>
       </article>
     </section>
+  </div>;
+}
+
+
+export function PassengerProfilePage({
+  profile,
+  passenger,
+  passengerProfile,
+  user,
+  savedPaymentCount = 0,
+  onBack,
+  onSave,
+}) {
+  const [form, setForm] = React.useState({
+    first_name: '',
+    last_name: '',
+    preferred_name: '',
+    display_name: '',
+    username: '',
+    phone: '',
+    date_of_birth: '',
+    gender: '',
+    ghin_number: '',
+    home_course: '',
+    handedness: '',
+    player_status: '',
+    address_line_1: '',
+    address_line_2: '',
+    city: '',
+    state_region: '',
+    postal_code: '',
+    favorite_brands: '',
+  });
+  const [busy, setBusy] = React.useState(false);
+  const [notice, setNotice] = React.useState('');
+  const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    setForm({
+      first_name: passenger?.first_name || profile?.first_name || '',
+      last_name: passenger?.last_name || profile?.last_name || '',
+      preferred_name: passenger?.preferred_name || '',
+      display_name: profile?.display_name || '',
+      username: profile?.username || '',
+      phone: profile?.phone || '',
+      date_of_birth: passenger?.date_of_birth || '',
+      gender: passenger?.gender || '',
+      ghin_number: passenger?.ghin_number || '',
+      home_course: passengerProfile?.home_course || '',
+      handedness: passengerProfile?.handedness || '',
+      player_status: passengerProfile?.player_status || '',
+      address_line_1: passengerProfile?.address_line_1 || '',
+      address_line_2: passengerProfile?.address_line_2 || '',
+      city: passengerProfile?.city || '',
+      state_region: passengerProfile?.state_region || '',
+      postal_code: passengerProfile?.postal_code || '',
+      favorite_brands: Array.isArray(passengerProfile?.favorite_brands) ? passengerProfile.favorite_brands.join(', ') : '',
+    });
+  }, [profile, passenger, passengerProfile]);
+
+  function update(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice('');
+    setError('');
+    try {
+      await onSave(form);
+      setNotice('Profile saved. Your updated Passenger information will be available to future EIG registrations.');
+    } catch (saveError) {
+      setError(saveError?.message || 'Unable to save your profile.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const completed = [
+    form.first_name,
+    form.last_name,
+    user?.email,
+    form.phone,
+    form.date_of_birth,
+    form.ghin_number,
+    form.home_course,
+    form.handedness,
+  ].filter(Boolean).length;
+  const progress = Math.round((completed / 8) * 100);
+
+  return <div className="platform-page passenger-profile-page">
+    <section className="platform-hero organization">
+      <div>
+        <p className="platform-eyebrow">Airport · Passenger ID</p>
+        <h1>My Profile</h1>
+        <p>This is your permanent EIG identity. Event registrations can reuse the information you choose to keep here.</p>
+      </div>
+      <div className="review-actions">
+        <button className="platform-secondary-button" type="button" onClick={onBack}>← Airport</button>
+        <div className="platform-role-pill">{progress}% Complete</div>
+      </div>
+    </section>
+
+    {notice && <div className="platform-success">{notice}</div>}
+    {error && <div className="platform-error banner">{error}</div>}
+
+    <form className="passenger-profile-form" onSubmit={submit}>
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Identity</p><h2>About Me</h2><p>The basics that identify you across ElevationPilot.</p></div>
+        </div>
+        <div className="form-grid two">
+          <label>First name<input value={form.first_name} onChange={(e) => update('first_name', e.target.value)} /></label>
+          <label>Last name<input value={form.last_name} onChange={(e) => update('last_name', e.target.value)} /></label>
+          <label>Preferred name<input value={form.preferred_name} onChange={(e) => update('preferred_name', e.target.value)} placeholder="What should EIG call you?" /></label>
+          <label>Display name<input value={form.display_name} onChange={(e) => update('display_name', e.target.value)} placeholder="Shown around ElevationPilot" /></label>
+          <label>Username<input value={form.username} onChange={(e) => update('username', e.target.value)} placeholder="Future Squawk / Squadron username" /></label>
+          <label>Email<input value={user?.email || ''} disabled /><small>Your sign-in email is managed with your account.</small></label>
+          <label>Phone<input value={form.phone} onChange={(e) => update('phone', e.target.value)} type="tel" /></label>
+          <label>Date of birth<input value={form.date_of_birth} onChange={(e) => update('date_of_birth', e.target.value)} type="date" /></label>
+          <label>Gender<input value={form.gender} onChange={(e) => update('gender', e.target.value)} /></label>
+        </div>
+      </section>
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Golf Profile</p><h2>My Game</h2><p>Reusable golf information for EIE registrations.</p></div>
+        </div>
+        <div className="form-grid two">
+          <label>GHIN number<input value={form.ghin_number} onChange={(e) => update('ghin_number', e.target.value)} /></label>
+          <label>Home course<input value={form.home_course} onChange={(e) => update('home_course', e.target.value)} /></label>
+          <label>Handedness<select value={form.handedness} onChange={(e) => update('handedness', e.target.value)}><option value="">Choose</option><option value="right">Right</option><option value="left">Left</option></select></label>
+          <label>Player status<select value={form.player_status} onChange={(e) => update('player_status', e.target.value)}><option value="">Choose</option><option value="recreational">Recreational</option><option value="competitive">Competitive</option><option value="club">Club Player</option><option value="professional">Professional</option></select></label>
+          <label className="full-label">Favorite brands<input value={form.favorite_brands} onChange={(e) => update('favorite_brands', e.target.value)} placeholder="Titleist, FootJoy, TravisMathew..." /></label>
+        </div>
+      </section>
+
+      <section className="platform-section-card">
+        <div className="platform-section-heading">
+          <div><p className="platform-eyebrow">Contact</p><h2>Address</h2><p>Kept private by default and available for future event, shipping, and store workflows.</p></div>
+        </div>
+        <div className="form-grid two">
+          <label className="full-label">Address<input value={form.address_line_1} onChange={(e) => update('address_line_1', e.target.value)} /></label>
+          <label className="full-label">Address line 2<input value={form.address_line_2} onChange={(e) => update('address_line_2', e.target.value)} /></label>
+          <label>City<input value={form.city} onChange={(e) => update('city', e.target.value)} /></label>
+          <label>State / Region<input value={form.state_region} onChange={(e) => update('state_region', e.target.value)} /></label>
+          <label>ZIP / Postal code<input value={form.postal_code} onChange={(e) => update('postal_code', e.target.value)} /></label>
+          <div className="profile-payment-summary"><span>Saved payment methods</span><strong>{savedPaymentCount}</strong><small>Card details remain with the payment provider, not EIG.</small></div>
+        </div>
+      </section>
+
+      <div className="passenger-profile-savebar">
+        <div><strong>Passenger Profile</strong><span>Save once. Reuse across EIG.</span></div>
+        <button className="platform-primary-button" type="submit" disabled={busy}>{busy ? 'Saving...' : 'Save My Profile'}</button>
+      </div>
+    </form>
   </div>;
 }
 

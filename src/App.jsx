@@ -103,15 +103,140 @@ function PublicInquiryPage({ slug }) {
 }
 
 function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
-  return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
+  if (!memberships.length) return null;
+  return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose Hangar"><option value="" disabled>Choose Hangar</option>{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Hangar'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, setActiveOrganizationId, children, onSignOut }) {
-  const active = memberships.find((m) => m.organization_id === activeOrganizationId);
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{active?.organization?.name || 'Platform'}</span></div></div><div className="platform-topbar-actions"><WorkspaceSwitcher memberships={memberships} activeOrganizationId={activeOrganizationId} onSelect={setActiveOrganizationId} /><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+function PlatformShell({ user, memberships, activeOrganizationId, currentView, onOpenAirport, onOpenWorkspace, children, onSignOut }) {
+  const active = memberships.find((membership) => membership.organization_id === activeOrganizationId);
+  return <div className="platform-shell"><header className="platform-topbar"><button type="button" className="platform-brand-wrap platform-brand-button" onClick={onOpenAirport}><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{currentView === 'airport' ? 'Airport' : active?.organization?.name || 'Platform'}</span></div></button><div className="platform-topbar-actions"><button type="button" className={`platform-airport-nav ${currentView === 'airport' ? 'active' : ''}`} onClick={onOpenAirport}>Airport</button><WorkspaceSwitcher memberships={memberships} activeOrganizationId={currentView === 'workspace' ? activeOrganizationId : ''} onSelect={onOpenWorkspace} /><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
+
+
+function airportMoney(value) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function airportDate(value) {
+  if (!value) return 'Date pending';
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? 'Date pending' : parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function airportCountdown(value) {
+  if (!value) return '';
+  const target = new Date(value).getTime();
+  const remaining = target - Date.now();
+  if (!Number.isFinite(target) || remaining <= 0) return '';
+  const days = Math.floor(remaining / 86400000);
+  const hours = Math.floor((remaining % 86400000) / 3600000);
+  if (days > 0) return `${days}d ${hours}h`;
+  return `${hours}h ${Math.max(1, Math.floor((remaining % 3600000) / 60000))}m`;
+}
+
+function AirportDashboard({ user, memberships, airportData, onOpenWorkspace, onOpenGolfRegistration }) {
+  const registrations = airportData.registrations || [];
+  const eventMap = airportData.eventMap || {};
+  const organizations = airportData.organizations || [];
+  const activeRegistrations = registrations.filter((registration) => registration.registration_status !== 'withdrawn');
+  const actionRegistrations = activeRegistrations.filter((registration) => !['paid', 'comp'].includes(registration.payment_status));
+  const completedRegistrations = activeRegistrations.filter((registration) => ['paid', 'comp'].includes(registration.payment_status));
+  const passengerName = airportData.passenger?.preferred_name || airportData.passenger?.first_name || airportData.basicProfile?.first_name || user?.email?.split('@')[0] || 'Passenger';
+
+  const flights = activeRegistrations.map((registration) => {
+    const event = eventMap[registration.event_id] || {};
+    const firstDate = Array.isArray(event.event_dates) ? event.event_dates[0] : null;
+    return { ...registration, event, firstDate };
+  }).sort((a, b) => {
+    const aTime = a.firstDate ? new Date(`${a.firstDate}T12:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+    const bTime = b.firstDate ? new Date(`${b.firstDate}T12:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+    return aTime - bTime;
+  });
+
+  const nextFlight = flights.find((flight) => !flight.firstDate || new Date(`${flight.firstDate}T23:59:59`).getTime() >= Date.now()) || flights[0];
+  const nextAction = actionRegistrations.map((registration) => {
+    const deadline = registration.spot_hold_expires_at || registration.payment_due_at || null;
+    return { ...registration, deadline, deadlineTime: deadline ? new Date(deadline).getTime() : Number.MAX_SAFE_INTEGER };
+  }).sort((a, b) => a.deadlineTime - b.deadlineTime)[0];
+
+  const orgById = new Map(organizations.map((organization) => [organization.id, organization]));
+  memberships.forEach((membership) => {
+    if (membership.organization?.id && !orgById.has(membership.organization.id)) orgById.set(membership.organization.id, membership.organization);
+  });
+
+  const hangars = Array.from(orgById.values()).map((organization) => {
+    const orgRegistrations = activeRegistrations.filter((registration) => registration.organization_id === organization.id);
+    const uniqueEvents = new Set(orgRegistrations.map((registration) => registration.event_id || registration.event_key).filter(Boolean));
+    const spent = orgRegistrations.reduce((sum, registration) => sum + Number(registration.amount_paid || (registration.payment_status === 'paid' ? registration.price : 0) || 0), 0);
+    const membership = memberships.find((item) => item.organization_id === organization.id);
+    return { organization, events: uniqueEvents.size, registrations: orgRegistrations.length, spent, membership };
+  }).sort((a, b) => b.events - a.events || b.spent - a.spent);
+
+  const profileChecks = [
+    airportData.passenger?.first_name,
+    airportData.passenger?.last_name,
+    user?.email,
+    airportData.basicProfile?.phone,
+    airportData.passenger?.date_of_birth,
+    airportData.passenger?.ghin_number,
+    airportData.passengerProfile?.home_course,
+    airportData.passengerProfile?.handedness,
+  ];
+  const profileProgress = Math.round((profileChecks.filter(Boolean).length / profileChecks.length) * 100);
+
+  return <div className="airport-page">
+    <section className="airport-hero">
+      <div><p className="platform-eyebrow">ElevationPilot Airport</p><h1>Welcome, {passengerName}.</h1><p>Your personal EIG home for Flights, tickets, Hangars, messages, profile, payments, results, and everything connected to your account.</p></div>
+      <div className="airport-status"><span>Passenger Profile</span><strong>{profileProgress}%</strong><small>foundation complete</small></div>
+    </section>
+
+    {airportData.error && <div className="platform-error banner">{airportData.error}</div>}
+
+    <section className="airport-summary-grid">
+      <div className="airport-summary-card"><span>Flights</span><strong>{flights.length}</strong><small>{nextFlight ? `Next: ${nextFlight.event_name || nextFlight.event?.name || 'Event'}` : 'No Flights yet'}</small></div>
+      <div className="airport-summary-card attention"><span>Ticket Kiosk</span><strong>{actionRegistrations.length}</strong><small>{actionRegistrations.length === 1 ? 'registration needs attention' : 'registrations need attention'}</small></div>
+      <div className="airport-summary-card"><span>Boarding Passes</span><strong>{completedRegistrations.length}</strong><small>completed registrations</small></div>
+      <div className="airport-summary-card"><span>Squawk Box</span><strong>{airportData.unreadSquawks || 0}</strong><small>unread in-app messages</small></div>
+    </section>
+
+    <section className="airport-grid">
+      <article className="airport-panel airport-departures">
+        <div className="airport-panel-heading"><div><span className="airport-icon">✈</span><div><p className="platform-eyebrow">Departures</p><h2>Flights</h2></div></div><button className="platform-secondary-button" onClick={onOpenGolfRegistration}>Open EIE</button></div>
+        {flights.length ? <div className="airport-flight-list">{flights.slice(0, 5).map((flight) => <div className="airport-flight-row" key={flight.id}><div><strong>{flight.event_name || flight.event?.name || 'EIG Event'}</strong><span>{flight.event?.course || 'Venue details pending'}</span></div><div><strong>{airportDate(flight.firstDate)}</strong><span>{flight.division || flight.membership_status || 'Passenger'}</span></div><span className={`airport-ticket-status ${['paid','comp'].includes(flight.payment_status) ? 'ready' : 'action'}`}>{['paid','comp'].includes(flight.payment_status) ? 'Boarding Pass Ready' : 'Ticket Action Needed'}</span></div>)}</div> : <div className="airport-empty"><strong>No Flights on the board yet.</strong><span>Your registered EIG events will appear here automatically.</span></div>}
+      </article>
+
+      <article className="airport-panel airport-kiosk">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🎟</span><div><p className="platform-eyebrow">Ticket Machine</p><h2>Ticket Kiosk</h2></div></div>{nextAction?.deadline && <span className="airport-countdown">{airportCountdown(nextAction.deadline)} left</span>}</div>
+        {actionRegistrations.length ? <div className="airport-action-list">{actionRegistrations.slice(0, 4).map((registration) => <button key={registration.id} type="button" onClick={onOpenGolfRegistration}><div><strong>{registration.event_name || 'Event Registration'}</strong><span>{registration.payment_status === 'pending' ? 'Payment or registration step still open' : `Status: ${registration.payment_status || 'incomplete'}`}</span></div><b>Continue →</b></button>)}</div> : <div className="airport-empty"><strong>Ticket Kiosk is clear.</strong><span>No unfinished registration or payment actions right now.</span></div>}
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🏢</span><div><p className="platform-eyebrow">Your Network</p><h2>Hangars</h2></div></div></div>
+        {hangars.length ? <div className="airport-hangar-list">{hangars.slice(0, 5).map(({ organization, events, registrations: registrationCount, spent, membership }) => <button key={organization.id} type="button" onClick={() => membership && onOpenWorkspace(organization.id)} className={!membership ? 'read-only' : ''}><div className="airport-hangar-mark">{organization.name?.slice(0,2).toUpperCase()}</div><div><strong>{organization.name}</strong><span>{events} event{events === 1 ? '' : 's'} · {registrationCount} registration{registrationCount === 1 ? '' : 's'} · {airportMoney(spent)} spent</span></div><b>{membership ? 'Open →' : 'History'}</b></button>)}</div> : <div className="airport-empty"><strong>No Hangars yet.</strong><span>Businesses and venues connected to your EIG activity will collect here.</span></div>}
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🪪</span><div><p className="platform-eyebrow">Passenger ID</p><h2>My Profile</h2></div></div><span className="airport-progress-label">{profileProgress}%</span></div>
+        <div className="airport-profile-progress"><div style={{ width: `${profileProgress}%` }} /></div>
+        <p className="airport-panel-copy">Your permanent Passenger profile is connected to registrations so future events can reuse information you have already provided.</p>
+        <div className="airport-mini-grid"><div><span>Home Course</span><strong>{airportData.passengerProfile?.home_course || 'Add later'}</strong></div><div><span>GHIN</span><strong>{airportData.passenger?.ghin_number || 'Add later'}</strong></div><div><span>Handedness</span><strong>{airportData.passengerProfile?.handedness || 'Add later'}</strong></div><div><span>Saved Payments</span><strong>{airportData.savedPaymentCount || 0}</strong></div></div>
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">📻</span><div><p className="platform-eyebrow">Communications</p><h2>Squawk Box</h2></div></div><span className={`airport-message-badge ${airportData.unreadSquawks ? 'has-unread' : ''}`}>{airportData.unreadSquawks || 0}</span></div>
+        <p className="airport-panel-copy">Messages tied to your events, Hangars, and future Squadron connections will live here.</p>
+        <div className="airport-empty compact"><strong>Squawk foundation connected.</strong><span>The full Airport message window is the next visual layer.</span></div>
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🏆</span><div><p className="platform-eyebrow">Flight Record</p><h2>Results & Awards</h2></div></div></div>
+        <div className="airport-mini-grid"><div><span>Results</span><strong>0</strong></div><div><span>Awards</span><strong>0</strong></div><div><span>Completed Flights</span><strong>{completedRegistrations.length}</strong></div><div><span>Hangars Visited</span><strong>{hangars.filter((hangar) => hangar.events > 0).length}</strong></div></div>
+      </article>
+    </section>
+  </div>;
+}
 
 function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, loading }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -241,11 +366,12 @@ export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [currentView, setCurrentView] = useState(() => window.location.hash.startsWith('#hangar/') ? 'workspace' : 'airport'); const [airportData, setAirportData] = useState({ registrations: [], eventMap: {}, organizations: [], unreadSquawks: 0, savedPaymentCount: 0 }); const [loadingAirport, setLoadingAirport] = useState(false); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState('');
 
-  useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
-  useEffect(() => { if (session?.user?.id) loadMemberships(session.user.id); }, [session?.user?.id]);
+  useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); setAirportData({ registrations: [], eventMap: {}, organizations: [], unreadSquawks: 0, savedPaymentCount: 0 }); } }); return () => listener.subscription.unsubscribe(); }, []);
+  useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); } }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) loadWorkspaceData(activeOrganizationId); }, [activeOrganizationId]);
+  useEffect(() => { function syncHash() { const match = window.location.hash.match(/^#hangar\/([^/?#]+)/); if (match) { setActiveOrganizationId(decodeURIComponent(match[1])); setCurrentView('workspace'); } else { setCurrentView('airport'); } } window.addEventListener('hashchange', syncHash); syncHash(); return () => window.removeEventListener('hashchange', syncHash); }, []);
 
   async function loadMemberships(userId, preferredOrganizationId = '') {
     setLoadingData(true); setDataError('');
@@ -253,6 +379,70 @@ export default function App() {
     if (error) { setDataError(error.message); setMemberships([]); setLoadingData(false); return; }
     const ordered = [...(data || [])].sort((a, b) => { if (a.organization?.slug === EIG_SLUG) return -1; if (b.organization?.slug === EIG_SLUG) return 1; return (a.organization?.name || '').localeCompare(b.organization?.name || ''); });
     setMemberships(ordered); setActiveOrganizationId((current) => preferredOrganizationId || current || ordered[0]?.organization_id || ''); setLoadingData(false);
+  }
+
+  async function loadAirportData(userId) {
+    setLoadingAirport(true);
+    const next = { registrations: [], eventMap: {}, organizations: [], unreadSquawks: 0, savedPaymentCount: 0, passenger: null, passengerProfile: null, basicProfile: null, error: '' };
+    const errors = [];
+
+    const { data: basicProfile, error: profileError } = await supabase.from('profiles').select('first_name,last_name,display_name,phone').eq('id', userId).maybeSingle();
+    if (profileError) errors.push(profileError.message); else next.basicProfile = basicProfile || null;
+
+    const { data: passenger, error: passengerError } = await supabase.from('passengers').select('*').eq('auth_user_id', userId).maybeSingle();
+    if (passengerError) errors.push(passengerError.message); else next.passenger = passenger || null;
+
+    if (passenger?.id) {
+      const [{ data: reusableProfile, error: reusableError }, { data: paymentMethods, error: paymentError }] = await Promise.all([
+        supabase.from('passenger_profiles').select('*').eq('passenger_id', passenger.id).maybeSingle(),
+        supabase.from('passenger_payment_methods').select('id').eq('passenger_id', passenger.id).eq('status', 'active'),
+      ]);
+      if (reusableError) errors.push(reusableError.message); else next.passengerProfile = reusableProfile || null;
+      if (paymentError) errors.push(paymentError.message); else next.savedPaymentCount = paymentMethods?.length || 0;
+    }
+
+    const { data: registrations, error: registrationError } = await supabase.from('golf_registrations').select('id,organization_id,event_id,event_key,event_name,division,membership_status,price,payment_status,amount_paid,registration_status,payment_due_at,spot_hold_expires_at,created_at').eq('user_id', userId).order('created_at', { ascending: false });
+    if (registrationError) errors.push(registrationError.message); else next.registrations = registrations || [];
+
+    const eventIds = [...new Set((next.registrations || []).map((registration) => registration.event_id).filter(Boolean))];
+    if (eventIds.length) {
+      const { data: events, error: eventError } = await supabase.from('golf_registration_events').select('id,name,course,event_dates,organization_id,status,public_slug').in('id', eventIds);
+      if (eventError) errors.push(eventError.message); else next.eventMap = Object.fromEntries((events || []).map((event) => [event.id, event]));
+    }
+
+    const organizationIds = [...new Set((next.registrations || []).map((registration) => registration.organization_id).filter(Boolean))];
+    if (organizationIds.length) {
+      const { data: orgRows, error: orgError } = await supabase.from('organizations').select('id,name,slug,organization_type,status,is_test').in('id', organizationIds);
+      if (orgError) errors.push(orgError.message); else next.organizations = orgRows || [];
+    }
+
+    const { data: recipients, error: recipientError } = await supabase.from('squawk_message_recipients').select('message_id').eq('user_id', userId).eq('channel', 'in_app');
+    if (recipientError) errors.push(recipientError.message);
+    else if (recipients?.length) {
+      const messageIds = [...new Set(recipients.map((recipient) => recipient.message_id).filter(Boolean))];
+      const { data: receipts, error: receiptError } = await supabase.from('squawk_message_receipts').select('message_id,read_at').eq('user_id', userId).in('message_id', messageIds);
+      if (receiptError) errors.push(receiptError.message);
+      else {
+        const readMap = new Map((receipts || []).map((receipt) => [receipt.message_id, receipt.read_at]));
+        next.unreadSquawks = messageIds.filter((messageId) => !readMap.get(messageId)).length;
+      }
+    }
+
+    next.error = [...new Set(errors)].join(' · ');
+    setAirportData(next);
+    setLoadingAirport(false);
+  }
+
+  function openAirport() {
+    setCurrentView('airport');
+    window.location.hash = 'airport';
+  }
+
+  function openWorkspace(organizationId) {
+    if (!organizationId) return;
+    setActiveOrganizationId(organizationId);
+    setCurrentView('workspace');
+    window.location.hash = `hangar/${encodeURIComponent(organizationId)}`;
   }
 
   async function loadEventRequests(organizationId) { setLoadingRequests(true); const { data, error } = await supabase.from('event_requests').select('*').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) setDataError(error.message); setEventRequests(data || []); setLoadingRequests(false); }
@@ -302,12 +492,20 @@ export default function App() {
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
-  if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
-  if (!memberships.length) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>No active workspace found.</h1><p>Your login is valid, but it does not currently have an active EIG organization membership.</p>{dataError && <div className="platform-error">{dataError}</div>}<button className="platform-secondary-button" onClick={signOut}>Sign out</button></div></div>;
+  if (loadingAirport && !airportData.registrations.length && !airportData.passenger) return <LoadingScreen message="Opening Airport..." />;
 
-  const activeMembership = memberships.find((m) => m.organization_id === activeOrganizationId) || memberships[0];
+  const activeMembership = memberships.find((membership) => membership.organization_id === activeOrganizationId) || null;
   const activeOrganization = activeMembership?.organization;
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && activeMembership?.role === 'eig_admin';
 
-  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} setActiveOrganizationId={setActiveOrganizationId} onSignOut={signOut}>{dataError && <div className="platform-error banner">{dataError}</div>}{isEigAdminWorkspace ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={setActiveOrganizationId} onCreateOrganization={createOrganization} /> : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} onSaveProfile={saveOrganizationProfile} />}</PlatformShell>;
+  let content;
+  if (currentView === 'airport' || !activeMembership) {
+    content = <AirportDashboard user={session.user} memberships={memberships} airportData={airportData} onOpenWorkspace={openWorkspace} onOpenGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} />;
+  } else if (isEigAdminWorkspace) {
+    content = <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} />;
+  } else {
+    content = <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={activeMembership?.role} products={products} entitlements={entitlements} eventRequests={eventRequests} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={() => { window.location.href = GOLF_REGISTRATION_URL; }} onSaveProfile={saveOrganizationProfile} />;
+  }
+
+  return <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} currentView={currentView} onOpenAirport={openAirport} onOpenWorkspace={openWorkspace} onSignOut={signOut}>{dataError && currentView === 'workspace' && <div className="platform-error banner">{dataError}</div>}{content}</PlatformShell>;
 }

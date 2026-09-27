@@ -2185,9 +2185,11 @@ export default function App() {
       updated_at: new Date().toISOString(),
     };
 
+    const { id: profileId, ...profileUpdate } = profilePayload;
     const { error: basicProfileError } = await supabase
       .from('profiles')
-      .upsert(profilePayload, { onConflict: 'id' });
+      .update(profileUpdate)
+      .eq('id', profileId);
     if (basicProfileError) throw basicProfileError;
 
     let passengerRow = passenger;

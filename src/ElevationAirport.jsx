@@ -42,86 +42,64 @@ export function AirportPage({
   const displayName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')?.[0] || 'Passenger';
   const username = profile?.username ? '@' + profile.username : '';
   const upcomingFlights = [...flights].sort((a, b) => String(a.eventDates?.[0] || '9999-12-31').localeCompare(String(b.eventDates?.[0] || '9999-12-31')));
+  const actionFlights = upcomingFlights.filter((flight) => {
+    const status = String(flight.registration?.payment_status || '').toLowerCase();
+    return flight.registration && !['paid','comp'].includes(status);
+  });
+  const completedFlights = upcomingFlights.filter((flight) => {
+    const status = String(flight.registration?.payment_status || '').toLowerCase();
+    return flight.registration && ['paid','comp'].includes(status);
+  });
+  const profileFields = [profile?.first_name, profile?.last_name, user?.email, profile?.username];
+  const profileProgress = Math.round((profileFields.filter(Boolean).length / profileFields.length) * 100);
 
-  return <div className="platform-page airport-page">
+  return <div className="airport-page">
     <section className="airport-hero">
-      <div className="airport-terminal-grid" aria-hidden="true" />
-      <div className="airport-hero-copy">
-        <p className="platform-eyebrow">ElevationPilot · Airport</p>
-        <h1>Welcome, {displayName}</h1>
-        <p>Your personal departure board for events, messages, and the Hangars you can access.</p>
-        {username && <span className="airport-username">{username}</span>}
-      </div>
-      <button className="airport-squawk-card" type="button" onClick={openInbox}>
-        <span>SB</span>
-        <strong>Squawk Box</strong>
-        <small>{unreadCount ? unreadCount + ' unread message' + (unreadCount === 1 ? '' : 's') : 'No unread messages'}</small>
-      </button>
+      <div><p className="platform-eyebrow">ElevationPilot Airport</p><h1>Welcome, {displayName}.</h1><p>Your personal home for Flights, registration actions, Boarding Passes, Hangars, Squawk Box, profile, results, and everything tied to your EIG identity.</p>{username && <span className="airport-username">{username}</span>}</div>
+      <div className="airport-status"><span>Passenger Profile</span><strong>{profileProgress}%</strong><small>{username || 'account ready'}</small></div>
     </section>
 
-    <section className="airport-status-strip">
-      <div><span>Upcoming Departures</span><strong>{upcomingFlights.length}</strong></div>
-      <div><span>Hangars</span><strong>{memberships.length}</strong></div>
-      <div><span>Squawks</span><strong>{unreadCount}</strong></div>
-      <div><span>Account</span><strong>{username || 'Ready'}</strong></div>
+    <section className="airport-summary-grid">
+      <div className="airport-summary-card"><span>Flights</span><strong>{upcomingFlights.length}</strong><small>{upcomingFlights[0] ? `Next: ${upcomingFlights[0].name}` : 'No Flights yet'}</small></div>
+      <div className="airport-summary-card attention"><span>Ticket Kiosk</span><strong>{actionFlights.length}</strong><small>registration actions</small></div>
+      <div className="airport-summary-card"><span>Boarding Passes</span><strong>{completedFlights.length}</strong><small>completed registrations</small></div>
+      <button className="airport-summary-card" type="button" onClick={openInbox}><span>Squawk Box</span><strong>{unreadCount}</strong><small>unread messages</small></button>
     </section>
 
-    <section className="platform-section-card airport-departures">
-      <div className="platform-section-heading">
-        <div>
-          <p className="platform-eyebrow">Departure Board</p>
-          <h2>Your Events</h2>
-          <p>Choose an event to board. ElevationPilot will open the area that matches your role for that event.</p>
-        </div>
-        <span>{upcomingFlights.length} event{upcomingFlights.length === 1 ? '' : 's'}</span>
-      </div>
+    <section className="airport-grid">
+      <article className="airport-panel airport-departures">
+        <div className="airport-panel-heading"><div><span className="airport-icon">✈</span><div><p className="platform-eyebrow">Departure Board</p><h2>Flights</h2></div></div></div>
+        {loading ? <div className="airport-empty"><strong>Loading departures...</strong></div> : upcomingFlights.length ? <div className="airport-flight-list">{upcomingFlights.slice(0,6).map((flight) => <button className="airport-flight-row" key={flight.key} type="button" onClick={() => onBoard(flight)}><div><strong>{flight.name}</strong><span>{flight.course || 'Venue details pending'}</span></div><div><strong>{formatDate(flight.eventDates?.[0])}</strong><span>{roleLabel(flight.accessRole)}</span></div><span className={`airport-ticket-status ${flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'ready' : flight.registration ? 'action' : 'ready'}`}>{flight.accessRole === 'event_coordinator' ? 'ATC / EIE' : flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'Boarding Pass Ready' : flight.registration ? 'Ticket Action Needed' : 'Assigned Event'}</span></button>)}</div> : <div className="airport-empty"><strong>No Flights on the board yet.</strong><span>Registered events and assigned EIE events will appear here automatically.</span></div>}
+      </article>
 
-      {loading ? <p className="platform-login-copy">Loading your departures...</p>
-        : upcomingFlights.length ? <div className="airport-flight-list">
-          {upcomingFlights.map((flight) => <article className="airport-flight-card" key={flight.key}>
-            <div className="airport-flight-date">
-              <span>{formatDate(flight.eventDates?.[0])}</span>
-              <small>{flight.eventDates?.[1] ? 'Through ' + formatDate(flight.eventDates[1]) : 'Single-day event'}</small>
-            </div>
-            <div className="airport-flight-main">
-              <div className="airport-flight-topline">
-                <span className={'airport-role-badge ' + (flight.accessRole || 'passenger')}>{roleLabel(flight.accessRole)}</span>
-                <span className={'request-status ' + (flight.status || 'draft')}>{flight.status || 'draft'}</span>
-              </div>
-              <h3>{flight.name}</h3>
-              <p>{flight.course || flight.organizationName || 'Venue to be announced'}</p>
-              {flight.registration && <div className="airport-flight-detail">
-                <span>Registration: <strong>{String(flight.registration.registration_status || 'active').replaceAll('_', ' ')}</strong></span>
-                <span>Payment: <strong>{String(flight.registration.payment_status || 'pending').replaceAll('_', ' ')}</strong></span>
-                {flight.registration.team_id && <span>Team: <strong>{flight.registration.team_id}</strong></span>}
-              </div>}
-            </div>
-            <div className="airport-flight-action">
-              <button className="platform-primary-button" type="button" onClick={() => onBoard(flight)}>
-                Board Event →
-              </button>
-              <small>{flight.destinationLabel || 'Main Cabin'}</small>
-            </div>
-          </article>)}
-        </div>
-        : <div className="empty-state airport-empty">
-          <strong>No departures on your board yet.</strong>
-          <span>When you register for an event or receive an event role, it will appear here automatically.</span>
-        </div>}
+      <article className="airport-panel airport-kiosk">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🎟</span><div><p className="platform-eyebrow">Things To Do</p><h2>Ticket Kiosk</h2></div></div></div>
+        {actionFlights.length ? <div className="airport-action-list">{actionFlights.slice(0,5).map((flight) => <button key={flight.key} type="button" onClick={() => onBoard(flight)}><div><strong>{flight.name}</strong><span>Registration or payment still needs attention.</span></div><b>Continue →</b></button>)}</div> : <div className="airport-empty"><strong>Ticket Kiosk is clear.</strong><span>No unfinished registration or payment actions right now.</span></div>}
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🏢</span><div><p className="platform-eyebrow">Your Network</p><h2>Hangars</h2></div></div></div>
+        {memberships.length ? <div className="airport-hangar-list">{memberships.filter((membership) => membership.organization?.slug !== 'elevated-impact-group').slice(0,6).map((membership) => <button key={membership.organization_id} type="button" onClick={() => onOpenWorkspace(membership.organization_id)}><div className="airport-hangar-mark">{membership.organization?.name?.slice(0,2).toUpperCase()}</div><div><strong>{membership.organization?.name || 'Hangar'}</strong><span>{roleLabel(membership.role)} access</span></div><b>Open →</b></button>)}</div> : <div className="airport-empty"><strong>No Hangars yet.</strong><span>Businesses and venues connected to your EIG activity will collect here.</span></div>}
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🪪</span><div><p className="platform-eyebrow">Passenger ID</p><h2>My Profile</h2></div></div><span className="airport-progress-label">{profileProgress}%</span></div>
+        <div className="airport-profile-progress"><div style={{width: `${profileProgress}%`}} /></div>
+        <p className="airport-panel-copy">Your permanent EIG identity follows you into registrations and future apps.</p>
+        <div className="airport-mini-grid"><div><span>Name</span><strong>{displayName}</strong></div><div><span>Username</span><strong>{username || 'Add later'}</strong></div><div><span>Email</span><strong>{user?.email || 'Add later'}</strong></div><div><span>Role Spaces</span><strong>{memberships.length}</strong></div></div>
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">📻</span><div><p className="platform-eyebrow">Communications</p><h2>Squawk Box</h2></div></div><span className={`airport-message-badge ${unreadCount ? 'has-unread' : ''}`}>{unreadCount}</span></div>
+        <p className="airport-panel-copy">Messages tied to Flights, Cockpits, EIE events, and your network stay accessible from the same global Squawk Box.</p>
+        <button className="platform-primary-button inline" type="button" onClick={openInbox}>Open Squawk Box</button>
+      </article>
+
+      <article className="airport-panel">
+        <div className="airport-panel-heading"><div><span className="airport-icon">🏆</span><div><p className="platform-eyebrow">Flight Record</p><h2>Results & Awards</h2></div></div></div>
+        <div className="airport-mini-grid"><div><span>Completed Flights</span><strong>{completedFlights.length}</strong></div><div><span>Upcoming</span><strong>{upcomingFlights.length}</strong></div><div><span>Results</span><strong>0</strong></div><div><span>Awards</span><strong>0</strong></div></div>
+      </article>
     </section>
-
-    {!!memberships.length && <section className="platform-section-card">
-      <div className="platform-section-heading">
-        <div><p className="platform-eyebrow">Hangars</p><h2>Your Workspaces</h2><p>Organization access stays separate from your personal Airport.</p></div>
-      </div>
-      <div className="airport-hangar-grid">
-        {memberships.map((membership) => <button type="button" className="airport-hangar-card" key={membership.organization_id} onClick={() => onOpenWorkspace(membership.organization_id)}>
-          <span>{roleLabel(membership.role)}</span>
-          <strong>{membership.organization?.name || 'EIG Workspace'}</strong>
-          <small>Enter Hangar / Cockpit →</small>
-        </button>)}
-      </div>
-    </section>}
   </div>;
 }
 

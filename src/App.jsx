@@ -1917,8 +1917,8 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   </div>;
 }
 
-function PortalChooser({ profile, user, secondaryLabel, secondaryDetail, onAirport, onSecondary }) {
-  const displayName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')?.[0] || 'Passenger';
+function PortalChooser({ profile, passenger, user, secondaryLabel, secondaryDetail, onAirport, onSecondary }) {
+  const displayName = profile?.display_name || passenger?.preferred_name || [passenger?.first_name, passenger?.last_name].filter(Boolean).join(' ') || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')?.[0] || 'Passenger';
   return <div className="platform-page portal-chooser-page">
     <section className="platform-hero"><div><p className="platform-eyebrow">ElevationPilot</p><h1>Welcome, {displayName}.</h1><p>Choose where you want to enter. Airport is your personal space. Your second door is based on your highest active permission.</p></div></section>
     <section className="portal-choice-grid">
@@ -2386,7 +2386,7 @@ export default function App() {
     <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={signOut} onAirport={openAirport} onRoleHome={openRoleLanding} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {portalView === 'chooser'
-        ? <PortalChooser profile={profile} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />
+        ? <PortalChooser profile={profile} passenger={passenger} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />
         : portalView === 'atc_select'
           ? <AtcAssignmentChooser flights={roleLanding()?.flights || []} onBack={openAirport} onSelect={enterAssignedAtc} />
           : isAirport

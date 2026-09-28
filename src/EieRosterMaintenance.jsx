@@ -251,6 +251,41 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
   async function applyBulkAction() {
     if (!bulkSelectedIds.length || !bulkAction || bulkWorking) return;
+    if (bulkAction === 'send_passenger_invite') {
+      const inviteRows = rows.filter((row) => bulkSelectedIds.includes(row.id) && !row.user_id && row.email);
+      if (!inviteRows.length) {
+        setNotice('None of the selected golfers need a Passenger account invitation.');
+        return;
+      }
+      if (inviteRows.length > 25) {
+        setNotice('Send Passenger invitations in groups of 25 or fewer so delivery stays reliable.');
+        return;
+      }
+      if (!window.confirm(`Send Passenger account invitations to ${inviteRows.length} selected golfer${inviteRows.length === 1 ? '' : 's'}?`)) return;
+
+      setBulkWorking(true);
+      setNotice('');
+      let sent = 0;
+      let warnings = 0;
+      try {
+        for (const row of inviteRows) {
+          try {
+            const data = await invoke({ action: 'send_passenger_invite', registration_id: row.id });
+            if (data?.passenger_invite?.email_sent) sent += 1;
+            else warnings += 1;
+          } catch {
+            warnings += 1;
+          }
+        }
+        setBulkSelectedIds([]);
+        setBulkAction('');
+        await onRefresh();
+        setNotice(`${sent} Passenger invitation${sent === 1 ? '' : 's'} sent.${warnings ? ` ${warnings} need attention.` : ''}`);
+      } finally {
+        setBulkWorking(false);
+      }
+      return;
+    }
     if (bulkAction === 'comp' && !bulkReason.trim()) {
       setNotice('A reason is required when comping golfers.');
       return;
@@ -722,6 +757,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                 <select value={bulkAction} onChange={(e) => { setBulkAction(e.target.value); setBulkReason(''); setBulkTeamId(''); setNotice(''); }}>
                   <option value="">Choose an action</option>
                   <option value="paid_clubhouse">Mark Paid</option>
+                  <option value="send_passenger_invite">Send Passenger Account Invites</option>
                   <option value="comp">Comp Players</option>
                   {teamMode && <option value="set_team">Set / Move Team</option>}
                   <option value="withdraw">Withdraw</option>
@@ -730,7 +766,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               </label>
               {bulkAction === 'set_team'
                 ? <label>Team ID *<input value={bulkTeamId} onChange={(e) => setBulkTeamId(e.target.value)} placeholder="Example: 1" /></label>
-                : <label>{bulkAction === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkAction === 'comp' ? 'Required reason for complimentary players' : 'Optional note'} /></label>}
+                : bulkAction === 'send_passenger_invite'
+                  ? <div className="availability-note"><strong>Passenger Invitations</strong><span>Claim links will be emailed only to selected golfers who do not already have a claimed Passenger account. Maximum 25 at a time.</span></div>
+                  : <label>{bulkAction === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkAction === 'comp' ? 'Required reason for complimentary players' : 'Optional note'} /></label>}
             </div>
             <div className="review-actions" style={{ marginTop: 12 }}>
               <button className="platform-secondary-button" type="button" disabled={bulkWorking} onClick={() => { setBulkSelectedIds([]); setBulkAction(''); setBulkReason(''); setBulkTeamId(''); }}>Clear Selection</button>

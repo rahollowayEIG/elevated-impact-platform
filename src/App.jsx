@@ -108,8 +108,17 @@ function LoginScreen() {
     }
     setBusy(true);
     try {
+      const { data: accountCheck, error: accountCheckError } = await supabase.functions.invoke('golf-account-auth', {
+        body: { action: 'account_exists', email },
+      });
+      if (accountCheckError) throw accountCheckError;
+      if (!accountCheck?.exists) {
+        setError('We couldn\'t find an ElevationPilot account matching that email. Check the address or contact your event coordinator.');
+        return;
+      }
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://elevated-impact-platform.vercel.app/?recovery=1',
+        redirectTo: ELEVATIONPILOT_PUBLIC_URL + '/?recovery=1',
       });
       if (resetError) throw resetError;
       setRecoverySent(true);
@@ -215,9 +224,9 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
   const [usernameStatus, setUsernameStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const existingAccount = Boolean(invitation?.recipient_was_existing);
-  const requiresPassword = !existingAccount;
-  const hasExistingIdentity = existingAccount && Boolean(profile?.username);
+  const hasExistingIdentity = Boolean(invitation?.recipient_was_existing && profile?.username);
+  const requiresPassword = !hasExistingIdentity;
+  const existingAccount = hasExistingIdentity;
   const needsProfileDetails = !hasExistingIdentity || !profile?.display_name;
   const organizationName = invitation?.organization?.name || 'ElevationPilot';
   const eventName = invitation?.event?.name || '';

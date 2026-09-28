@@ -10,7 +10,8 @@
     "react": "latest",
     "react-dom": "latest",
     "@supabase/supabase-js": "latest",
-    "read-excel-file": "9.3.10"
+    "read-excel-file": "9.3.10",
+    "qrcode": "1.5.4"
   },
   "devDependencies": {}
 }

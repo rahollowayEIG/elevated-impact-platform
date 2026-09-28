@@ -480,6 +480,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         ? `Withdraw ${selected.first_name} ${selected.last_name} from this event?`
         : `Cancel ${selected.first_name} ${selected.last_name}'s registration?`
     )) return;
+    if (action === 'pending' && !window.confirm(
+      `Mark ${selected.first_name} ${selected.last_name} as unpaid / pending? This only reverses the roster payment status. It does not reactivate a withdrawn or cancelled registration.`
+    )) return;
 
     setWorking(true);
     setNotice('');
@@ -763,13 +766,14 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                               <div>
                                 <p className="platform-eyebrow">Manage Golfer</p>
                                 <h3 style={{ marginTop: 4 }}>{selected.first_name} {selected.last_name}</h3>
-                                <p className="platform-login-copy">Payment and roster status are tracked separately. Every action is written to the existing EIE audit history.</p>
+                                <p className="platform-login-copy">Payment and roster status are tracked separately. Every action is written to the existing EIE audit history. Manual Paid or Comp status can be returned to Unpaid / Pending here. Stripe-paid registrations stay protected from a status-only reversal because changing EIE status does not refund a Stripe charge.</p>
                               </div>
                               <div className="form-grid two">
                                 <label>Action
                                   <select value={action} onChange={(e) => { setAction(e.target.value); setReason(''); setNotice(''); }}>
                                     <option value="">Choose an action</option>
                                     <option value="paid_clubhouse">Mark Paid</option>
+                                    {selected.payment_status !== 'pending' && !selected.stripe_payment_intent_id && !selected.stripe_checkout_session_id && <option value="pending">Mark Unpaid / Pending</option>}
                                     <option value="comp">Comp Player</option>
                                     <option value="withdraw">Withdraw</option>
                                     <option value="cancel">Cancel Registration</option>

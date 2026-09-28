@@ -69,6 +69,9 @@ function eventPlusSevenLabel(event) {
 function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [forgotMode, setForgotMode] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoverySent, setRecoverySent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -95,22 +98,111 @@ function LoginScreen() {
     }
   }
 
+  async function sendRecovery(event) {
+    event.preventDefault();
+    setError('');
+    const email = recoveryEmail.trim();
+    if (!email) {
+      setError('Enter the email address on your ElevationPilot account.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://elevated-impact-platform.vercel.app/?recovery=1',
+      });
+      if (resetError) throw resetError;
+      setRecoverySent(true);
+    } catch (resetError) {
+      setError(resetError.message || 'Unable to send password reset email.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="platform-auth-screen">
       <div className="platform-login-card">
         <div className="platform-logo-mark">EIG</div>
         <p className="platform-eyebrow">Elevated Impact Group</p>
-        <h1>One login. Every EIG workspace.</h1>
-        <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
-        <form onSubmit={submit} className="platform-login-form">
-          <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
-          <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
-          {error && <div className="platform-error">{error}</div>}
-          <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to ElevationPilot'}</button>
-        </form>
+        <h1>{forgotMode ? 'Reset your password.' : 'One login. Every EIG workspace.'}</h1>
+        {!forgotMode ? <>
+          <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
+          <form onSubmit={submit} className="platform-login-form">
+            <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
+            <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
+            {error && <div className="platform-error">{error}</div>}
+            <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to ElevationPilot'}</button>
+            <button className="platform-secondary-button" type="button" onClick={() => { setForgotMode(true); setError(''); setRecoverySent(false); }}>Forgot password?</button>
+          </form>
+        </> : recoverySent ? <>
+          <div className="invite-result sent">
+            <strong>Check your email.</strong>
+            <span>We sent a secure password reset link to {recoveryEmail.trim()}.</span>
+            <span>If you do not see it in a minute, check your Spam or Junk folder.</span>
+          </div>
+          <button className="platform-secondary-button" type="button" onClick={() => { setForgotMode(false); setRecoverySent(false); setError(''); }}>Back to sign in</button>
+        </> : <>
+          <p className="platform-login-copy">Enter the email address connected to your ElevationPilot account.</p>
+          <form onSubmit={sendRecovery} className="platform-login-form">
+            <label>Email<input value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} type="email" autoComplete="email" required placeholder="name@example.com" /></label>
+            {error && <div className="platform-error">{error}</div>}
+            <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Sending reset link...' : 'Email Password Reset Link'}</button>
+            <button className="platform-secondary-button" type="button" onClick={() => { setForgotMode(false); setError(''); }}>Back to sign in</button>
+          </form>
+          <p className="platform-login-copy" style={{ marginTop: 14 }}>If the message does not arrive shortly, check Spam or Junk.</p>
+        </>}
       </div>
     </div>
   );
+}
+
+function PasswordRecoveryScreen({ onComplete }) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(event) {
+    event.preventDefault();
+    setError('');
+    if (password.length < 8) {
+      setError('Create a password with at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('The passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('recovery');
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+      await onComplete?.();
+    } catch (updateError) {
+      setError(updateError.message || 'Unable to update your password.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="platform-auth-screen">
+    <div className="platform-login-card">
+      <div className="platform-logo-mark">EIG</div>
+      <p className="platform-eyebrow">ElevationPilot Account Recovery</p>
+      <h1>Choose a new password.</h1>
+      <p className="platform-login-copy">Use at least 8 characters. This becomes your normal ElevationPilot sign-in password.</p>
+      <form className="platform-login-form" onSubmit={submit}>
+        <label>New password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+        <label>Confirm password<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+        {error && <div className="platform-error">{error}</div>}
+        <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving password...' : 'Set Password & Continue'}</button>
+      </form>
+    </div>
+  </div>;
 }
 
 function AccountSetupScreen({ user, invitation, profile, onComplete }) {
@@ -2028,6 +2120,7 @@ export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   const publicEventMatch = window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
+  const recoveryMode = new URLSearchParams(window.location.search).get('recovery') === '1';
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
@@ -2506,6 +2599,7 @@ export default function App() {
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
+  if (recoveryMode) return <PasswordRecoveryScreen onComplete={() => window.location.reload()} />;
   if (inviteCheckUserId !== session.user.id) return <LoadingScreen message="Checking your ElevationPilot access..." />;
   if (pendingInvitations.length) return <AccountSetupScreen user={session.user} invitation={pendingInvitations[0]} profile={inviteProfile || profile} onComplete={finishInviteSetup} />;
   if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;

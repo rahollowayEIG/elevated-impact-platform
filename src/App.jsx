@@ -336,7 +336,7 @@ function AccessDurationFields({ mode, setMode, startDate, setStartDate, endDate,
         <option value="indefinite">Indefinitely</option>
       </select>
       {eventRole && mode === 'event_plus_7' && <small>Access starts when accepted and ends 7 days after the event. {eventPlusSevenLabel(selectedEvent)}.</small>}
-      {mode === 'indefinite' && <small>No automatic end date. A Pilot or EIG administrator can change it later.</small>}
+      {mode === 'indefinite' && <small>No automatic end date. A Pilot or EIG user can change it later.</small>}
     </label>
     {mode === 'custom' && <>
       <label>Access starts<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required /></label>
@@ -455,7 +455,8 @@ function AccessWindowEditor({ item, organizationId, onSaved }) {
 }
 
 function HangarPeopleAccessSection({ organization, currentRole, events, onInvite }) {
-  const canInvite = currentRole === 'organization_admin';
+  const canInvite = ['eig_admin', 'organization_admin'].includes(currentRole);
+  const controlLabel = currentRole === 'eig_admin' ? 'EIG Control' : 'Pilot Control';
   const [inviteRole, setInviteRole] = useState('organization_staff');
   const [eventId, setEventId] = useState('');
   const [inviteeName, setInviteeName] = useState('');
@@ -526,7 +527,7 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
   }
 
   return <section className="platform-section-card invite-access-panel">
-    <div className="platform-section-heading"><div><p className="platform-eyebrow">Team / Crew</p><h2>Invite People to {organization?.name}</h2><p>Pilots can add Co-Pilots and assign ATC or Crew to a specific event. Event access defaults to ending 7 days after the event.</p></div><div className="platform-role-pill">Pilot Control</div></div>
+    <div className="platform-section-heading"><div><p className="platform-eyebrow">Team / Crew</p><h2>Invite People to {organization?.name}</h2><p>Invite Co-Pilots and assign ATC or Crew to a specific event. Event access defaults to ending 7 days after the event.</p></div><div className="platform-role-pill">{controlLabel}</div></div>
     <form className="platform-login-form invite-access-form" onSubmit={submit}>
       <div className="form-grid two">
         <label>Name<input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="Name" /></label>
@@ -1244,7 +1245,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         <div className="review-actions">
           <button className="platform-secondary-button" onClick={() => atcOnly ? onBack?.() : setSetupEvent(null)}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
           <button className="platform-secondary-button" type="button" onClick={() => openComposer(setupEvent.id)}>SB · Squawk Event</button>
-          <div className="platform-role-pill">ATC / EIE</div>
+          <div className="platform-role-pill">EIE</div>
         </div>
       </section>
 
@@ -1518,7 +1519,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         {upcoming.map((event) => <div key={event.id} className="request-row" style={{ cursor:'default' }}>
           <div><strong>{event.name}</strong><span>{event.course || organization?.name}</span></div>
           <div><strong>{eventDateLabel(event)}</strong><span>{event.field_settings?.registration_format === 'team' ? `${event.field_settings?.team_size || 4}-player team` : 'Individual'} registration</span></div>
-          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>ATC / EIE →</button></div>
+          <div><span className={`request-status ${event.status}`}>{event.status}</span><small>{event.google_calendar_sync_enabled ? `Calendar: ${event.google_calendar_sync_status?.replaceAll('_',' ') || 'pending'}` : 'Calendar sync off'}</small><button className="platform-secondary-button" type="button" onClick={() => openSetup(event)}>Open Event →</button></div>
         </div>)}
         {!upcoming.length && <div className="empty-state"><strong>No upcoming EIE events yet.</strong><span>Use + New Event to create the first Quick Registration from ground zero.</span></div>}
       </div>}
@@ -1540,7 +1541,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
   const publishedEvents = eieEvents.filter((event) => event.status === 'published').length;
   const draftEvents = eieEvents.filter((event) => event.status !== 'published' && event.status !== 'closed').length;
   const canReviewRequests = ['eig_admin', 'organization_admin', 'organization_staff'].includes(role);
-  const roleLabel = (role || 'member').replaceAll('_', ' ');
+  const roleLabel = accessRoleLabel(role || 'passenger');
   const setupLabel = (organization?.onboarding_status || 'profile_incomplete').replaceAll('_', ' ');
   const enabledPercent = products.length ? Math.round((enabledCount / products.length) * 100) : 0;
   const nextEvents = [...eieEvents]
@@ -1638,7 +1639,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
               <strong>{event.name}</strong>
               <span>{dateLabel}</span>
               <span>{event.course || organization?.name}</span>
-              <b>ATC →</b>
+              <b>Open EIE →</b>
             </button>;
           })}
         </div> : <div className="cockpit-board-empty"><strong>NO ACTIVE FLIGHTS</strong><span>Create the first EIE event for this Hangar.</span><button className="platform-primary-button inline" type="button" onClick={onLaunchGolfRegistration}>Create Event</button></div>}

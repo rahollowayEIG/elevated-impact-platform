@@ -4,9 +4,11 @@ import EieRosterMaintenance from './EieRosterMaintenance';
 import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
+import QRCode from 'qrcode';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
+const ELEVATIONPILOT_PUBLIC_URL = 'https://elevated-impact-platform.vercel.app';
 
 function LoadingScreen({ message = 'Loading EIG Platform...' }) {
   return (
@@ -696,6 +698,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   const [setupSponsors, setSetupSponsors] = useState([]);
   const [rosterRows, setRosterRows] = useState([]);
   const [rosterBusy, setRosterBusy] = useState(false);
+  const [hubQrDataUrl, setHubQrDataUrl] = useState('');
 
   useEffect(() => {
     if (!initialEventId || setupEvent?.id === initialEventId) return;
@@ -1030,7 +1033,69 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 
   function publicHubUrl(event = setupEvent) {
     if (!event?.public_slug) return '';
-    return window.location.origin + window.location.pathname + '#events/' + encodeURIComponent(event.public_slug);
+    return ELEVATIONPILOT_PUBLIC_URL + '/#events/' + encodeURIComponent(event.public_slug);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const url = publicHubUrl(setupEvent);
+    if (!url) {
+      setHubQrDataUrl('');
+      return () => { cancelled = true; };
+    }
+
+    QRCode.toDataURL(url, { width: 420, margin: 2 })
+      .then((dataUrl) => {
+        if (!cancelled) setHubQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setHubQrDataUrl('');
+      });
+
+    return () => { cancelled = true; };
+  }, [setupEvent?.id, setupEvent?.public_slug]);
+
+  async function copyHubLink() {
+    const url = publicHubUrl(setupEvent);
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setSetupNotice('Public Hub link copied.');
+    } catch {
+      setSetupNotice('Unable to copy the Public Hub link on this device.');
+    }
+  }
+
+  async function shareHub() {
+    const url = publicHubUrl(setupEvent);
+    if (!url) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: setupEvent?.name || 'ElevationPilot Event Hub',
+          text: setupEvent?.name ? 'Open the ' + setupEvent.name + ' Event Hub.' : 'Open this ElevationPilot Event Hub.',
+          url,
+        });
+        setSetupNotice('Public Hub share sheet opened.');
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setSetupNotice('Sharing is not available in this browser, so the Public Hub link was copied instead.');
+    } catch (error) {
+      if (error?.name !== 'AbortError') setSetupNotice('Unable to share the Public Hub link on this device.');
+    }
+  }
+
+  function downloadHubQr() {
+    if (!hubQrDataUrl || !setupEvent) return;
+    const a = document.createElement('a');
+    const slug = setupEvent.public_slug || setupEvent.event_key || 'event-hub';
+    a.href = hubQrDataUrl;
+    a.download = slug + '-event-hub-qr.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setSetupNotice('Public Hub QR downloaded.');
   }
 
   async function setHubPublication(nextStatus) {
@@ -1389,6 +1454,30 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
           <strong>{setupEvent.status === 'published' ? 'Event website is live' : 'Ready when you are'}</strong>
           <span>{setupEvent.status === 'published' ? publicHubUrl(setupEvent) : 'Preview the full website, save your setup, then publish when it is ready for participants.'}</span>
         </div>
+
+        {setupEvent.public_slug && <div style={{ marginTop: 18, padding: 18, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(0,0,0,.12)' }}>
+          <div className="platform-section-heading" style={{ marginBottom: 12 }}>
+            <div><p className="platform-eyebrow">Hub Sharing</p><h3 style={{ margin: 0 }}>Link & QR</h3></div>
+            <span>{setupEvent.status === 'published' ? 'Live' : 'Ready'}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 150px', gap: 18, alignItems: 'center' }}>
+            <div>
+              <p className="platform-login-copy" style={{ wordBreak: 'break-all', marginTop: 0 }}>{publicHubUrl(setupEvent)}</p>
+              <p className="platform-login-copy" style={{ marginBottom: 14 }}>{setupEvent.status === 'published' ? 'This link and QR are live now.' : 'Use this QR on flyers now. The public link activates when the Event Hub is published.'}</p>
+              <div className="review-actions" style={{ flexWrap: 'wrap' }}>
+                <button className="platform-secondary-button" type="button" onClick={copyHubLink}>Copy Link</button>
+                <button className="platform-secondary-button" type="button" onClick={shareHub}>Share Hub</button>
+                <button className="platform-secondary-button" type="button" disabled={!hubQrDataUrl} onClick={downloadHubQr}>Download QR</button>
+                <button className="platform-secondary-button" type="button" disabled={setupEvent.status !== 'published'} onClick={() => window.open(publicHubUrl(setupEvent), '_blank', 'noopener,noreferrer')}>Open Hub ↗</button>
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              {hubQrDataUrl
+                ? <img src={hubQrDataUrl} alt={'QR code for ' + setupEvent.name + ' Event Hub'} style={{ width: 140, height: 140, background: '#fff', padding: 8, borderRadius: 12 }} />
+                : <div style={{ width: 140, height: 140, display: 'grid', placeItems: 'center', border: '1px dashed rgba(255,255,255,.25)', borderRadius: 12 }}>QR</div>}
+            </div>
+          </div>
+        </div>}
 
         <div className="review-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
           <button className="platform-secondary-button" type="button" onClick={() => setSetupEvent(null)}>Save Later</button>

@@ -1032,6 +1032,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   }
 
   function publicHubUrl(event = setupEvent) {
+    const legacyUrl = event?.field_settings?.public_hub_url;
+    if (legacyUrl) return legacyUrl;
     if (!event?.public_slug) return '';
     return ELEVATIONPILOT_PUBLIC_URL + '/#events/' + encodeURIComponent(event.public_slug);
   }
@@ -1053,7 +1055,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
       });
 
     return () => { cancelled = true; };
-  }, [setupEvent?.id, setupEvent?.public_slug]);
+  }, [setupEvent?.id, setupEvent?.public_slug, setupEvent?.field_settings?.public_hub_url]);
 
   async function copyHubLink() {
     const url = publicHubUrl(setupEvent);
@@ -1455,7 +1457,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
           <span>{setupEvent.status === 'published' ? publicHubUrl(setupEvent) : 'Preview the full website, save your setup, then publish when it is ready for participants.'}</span>
         </div>
 
-        {setupEvent.public_slug && <div style={{ marginTop: 18, padding: 18, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(0,0,0,.12)' }}>
+        {publicHubUrl(setupEvent) && <div style={{ marginTop: 18, padding: 18, border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, background: 'rgba(0,0,0,.12)' }}>
           <div className="platform-section-heading" style={{ marginBottom: 12 }}>
             <div><p className="platform-eyebrow">Hub Sharing</p><h3 style={{ margin: 0 }}>Link & QR</h3></div>
             <span>{setupEvent.status === 'published' ? 'Live' : 'Ready'}</span>

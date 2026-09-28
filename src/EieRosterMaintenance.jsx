@@ -491,7 +491,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         if (!selected.email) throw new Error('Add an email address before sending an account invite.');
         if (!event?.organization_id) throw new Error('This event is not connected to a Hangar yet.');
 
-        const redirectTo = `${window.location.origin}${window.location.pathname}`;
+        const redirectTo = 'https://elevated-impact-platform.vercel.app/';
         const { data, error: inviteError } = await supabase.functions.invoke('platform-invite', {
           body: {
             action: 'send',

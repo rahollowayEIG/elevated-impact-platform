@@ -2033,7 +2033,51 @@ export default function App() {
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
-  useEffect(() => { if (!supabase) { setAuthReady(true); return; } supabase.auth.getSession().then(({ data }) => { setSession(data.session || null); setAuthReady(true); }); const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession || null); if (!nextSession) { setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null); } }); return () => listener.subscription.unsubscribe(); }, []);
+  useEffect(() => {
+    if (!supabase) { setAuthReady(true); return; }
+    let cancelled = false;
+
+    async function bootstrapAuth() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tokenHash = params.get('token_hash');
+        const verificationType = params.get('type');
+        if (tokenHash && verificationType) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: verificationType,
+          });
+          if (error) throw error;
+          if (data?.session && !cancelled) setSession(data.session);
+          params.delete('token_hash');
+          params.delete('type');
+          params.delete('boarding');
+          const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+          window.history.replaceState({}, '', clean);
+        } else {
+          const { data } = await supabase.auth.getSession();
+          if (!cancelled) setSession(data.session || null);
+        }
+      } catch (error) {
+        console.error('Unable to verify ElevationPilot invitation link', error);
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) setSession(data.session || null);
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    }
+
+    bootstrapAuth();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession || null);
+      if (!nextSession) {
+        setMemberships([]);
+        setActiveOrganizationId('');
+        setOrganizationProfile(null);
+      }
+    });
+    return () => { cancelled = true; listener.subscription.unsubscribe(); };
+  }, []);
   useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); loadPendingInvitations(session.user.id); } else { setPendingInvitations([]); setInviteProfile(null); setInviteCheckUserId(''); } }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
 

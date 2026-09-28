@@ -487,6 +487,42 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     setWorking(true);
     setNotice('');
     try {
+      if (action === 'resend_account_invite') {
+        if (!selected.email) throw new Error('Add an email address before sending an account invite.');
+        if (!event?.organization_id) throw new Error('This event is not connected to a Hangar yet.');
+
+        const redirectTo = `${window.location.origin}${window.location.pathname}`;
+        const { data, error: inviteError } = await supabase.functions.invoke('platform-invite', {
+          body: {
+            action: 'send',
+            email: selected.email,
+            invitee_name: [selected.first_name, selected.last_name].filter(Boolean).join(' '),
+            organization_id: event.organization_id,
+            event_id: event.id,
+            registration_id: selected.id,
+            role: 'passenger',
+            access_mode: 'indefinite',
+            redirect_to: redirectTo,
+          },
+        });
+
+        if (inviteError) {
+          const details = await readFunctionError(inviteError, 'Account invite could not be sent.');
+          throw new Error(details.error || 'Account invite could not be sent.');
+        }
+        if (!data?.success) throw new Error(data?.error || 'Account invite could not be sent.');
+
+        setSelected(null);
+        setAction('');
+        setReason('');
+        setTeamId('');
+        setNotice(data.email_sent
+          ? 'Fresh Passenger account invite sent successfully.'
+          : (data.warning || 'Invite link created, but the email could not be delivered.'));
+        await onRefresh();
+        return;
+      }
+
       const data = await invoke({
         action,
         registration_id: selected.id,
@@ -775,6 +811,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                                     <option value="paid_clubhouse">Mark Paid</option>
                                     {selected.payment_status !== 'pending' && !selected.stripe_payment_intent_id && !selected.stripe_checkout_session_id && <option value="pending">Mark Unpaid / Pending</option>}
                                     <option value="comp">Comp Player</option>
+                                    {!selected.user_id && selected.email && <option value="resend_account_invite">Resend Account Invite</option>}
                                     <option value="withdraw">Withdraw</option>
                                     <option value="cancel">Cancel Registration</option>
                                     {(selected.registration_status || 'active') !== 'active' && <option value="reactivate">Reactivate</option>}
@@ -783,7 +820,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                                 </label>
                                 {action === 'set_team'
                                   ? <label>Team ID *<input value={teamId} onChange={(e) => setTeamId(e.target.value)} placeholder="Example: 1" /></label>
-                                  : <label>{action === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={action === 'comp' ? 'Required reason for complimentary player' : 'Optional note'} /></label>}
+                                  : action === 'resend_account_invite'
+                                    ? <div className="availability-note"><strong>Send fresh account invite</strong><span>This reuses the existing roster registration and sends a new secure Passenger account link to {selected.email}.</span></div>
+                                    : <label>{action === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={action === 'comp' ? 'Required reason for complimentary player' : 'Optional note'} /></label>}
                               </div>
                               <div className="review-actions" style={{ marginTop: 16 }}>
                                 <button className="platform-secondary-button" type="button" disabled={working} onClick={closeManage}>Close</button>

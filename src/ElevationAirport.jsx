@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSquawk } from './SquawkCenter';
+import { supabase } from './lib/supabase';
 
 function formatDate(dateValue) {
   if (!dateValue) return 'Date TBD';
@@ -264,6 +265,8 @@ export function PassengerProfilePage({
 
 export function MainCabinPage({ flight, onBack, onOpenHub }) {
   const { unreadCount, openInbox } = useSquawk();
+  const [paymentBusy, setPaymentBusy] = React.useState(false);
+  const [paymentError, setPaymentError] = React.useState('');
   if (!flight) return null;
 
   const registration = flight.registration || {};
@@ -273,6 +276,24 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
   const paymentStatus = String(registration.payment_status || 'Pending').replaceAll('_', ' ');
   const teamLabel = registration.team_id || 'Not assigned';
   const boardingCode = String(flight.eventId || flight.key || 'EIG').replaceAll('-', '').slice(0, 8).toUpperCase();
+  const paymentAmount = Number(registration.price || 0);
+
+  async function startCheckout() {
+    if (!registration.id || paymentBusy) return;
+    setPaymentBusy(true);
+    setPaymentError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-golf-checkout-session', {
+        body: { registration_id: registration.id, save_payment_method: false },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error(data?.error || 'Unable to start payment.');
+      window.location.assign(data.url);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Unable to start payment.');
+      setPaymentBusy(false);
+    }
+  }
 
   return <div className="platform-page main-cabin-page premium-main-cabin">
     <section className="main-cabin-entry">
@@ -353,6 +374,14 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
                 <div><small>Hangar</small><strong>{flight.organizationName || 'Event venue'}</strong></div>
                 <div><small>Team</small><strong>{teamLabel}</strong></div>
                 <div><small>Payment</small><strong>{paymentStatus}</strong></div>
+                {String(registration.payment_status || '').toLowerCase() === 'pending' && registration.id && (
+                  <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+                    <button className="platform-primary-button" type="button" disabled={paymentBusy} onClick={startCheckout}>
+                      {paymentBusy ? 'Opening secure checkout...' : `Pay ${paymentAmount > 0 ? paymentAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : 'Balance'}`}
+                    </button>
+                    {paymentError && <div className="platform-error" style={{ marginTop: 8 }}>{paymentError}</div>}
+                  </div>
+                )}
               </div>
             </div>
             <div className="main-cabin-seat-console"><i /><i /><i /></div>

@@ -5,7 +5,7 @@ const STEP_ITEMS = [
   ['details', '1', 'Event Details'],
   ['registration', '2', 'Registration Details'],
   ['pricing', '3', 'Pricing & Add-ons'],
-  ['roster', '4', 'Roster / ATC'],
+  ['roster', '4', 'Roster / Event Ops'],
   ['hub', '5', 'Event Info / Hub'],
 ];
 

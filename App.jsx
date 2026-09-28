@@ -58,6 +58,140 @@ function LoginScreen() {
   );
 }
 
+function InviteClaimScreen({ session, onAccepted }) {
+  const [invite, setInvite] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    async function loadInvite() {
+      setBusy(true);
+      setError('');
+      try {
+        const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+          body: { action: 'mine' }
+        });
+        if (invokeError) throw invokeError;
+        const nextInvite = data?.invitations?.[0] || null;
+        if (!nextInvite) throw new Error('No active ElevationPilot invitation was found for this email.');
+        if (!active) return;
+        const nextProfile = data?.profile || null;
+        setInvite(nextInvite);
+        setProfile(nextProfile);
+        setUsername(nextProfile?.username || '');
+        setFirstName(nextProfile?.first_name || '');
+        setLastName(nextProfile?.last_name || '');
+        setDisplayName(nextProfile?.display_name || '');
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : 'Unable to load this invitation.');
+      } finally {
+        if (active) setBusy(false);
+      }
+    }
+    loadInvite();
+    return () => { active = false; };
+  }, []);
+
+  async function acceptInvite(event) {
+    event.preventDefault();
+    if (!invite?.id) return;
+    if (!username.trim()) return setError('Choose an @username to continue.');
+    if (!session?.user?.email_confirmed_at && password.length < 8) {
+      return setError('Choose a password with at least 8 characters.');
+    }
+    if (password && password !== confirmPassword) return setError('The passwords do not match.');
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      if (password) {
+        const { error: passwordError } = await supabase.auth.updateUser({ password });
+        if (passwordError) throw passwordError;
+      }
+
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: {
+          action: 'accept',
+          invite_id: invite.id,
+          username: username.trim().toLowerCase(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          display_name: displayName.trim() || [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
+        }
+      });
+      if (invokeError) throw invokeError;
+      if (!data?.success) throw new Error(data?.error || 'Unable to accept this invitation.');
+
+      setNotice('Account connected. Opening ElevationPilot...');
+      window.history.replaceState({}, '', '/');
+      await onAccepted?.(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to accept this invitation.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (busy && !invite) return <LoadingScreen message="Opening your invitation..." />;
+
+  return (
+    <div className="platform-auth-screen">
+      <div className="platform-login-card">
+        <div className="platform-logo-mark">EIG</div>
+        <p className="platform-eyebrow">ElevationPilot Passenger</p>
+        <h1>Claim your EIG account.</h1>
+        <p className="platform-login-copy">
+          {invite?.event?.name
+            ? `You were added to ${invite.event.name}. Finish your Passenger profile to connect this login to the existing roster entry.`
+            : 'Finish your Passenger profile to activate your ElevationPilot invitation.'}
+        </p>
+
+        <form onSubmit={acceptInvite} className="platform-login-form">
+          <label>
+            @Username
+            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
+          </label>
+          <label>
+            First name
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
+          </label>
+          <label>
+            Last name
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
+          </label>
+          <label>
+            Display name
+            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </label>
+          <label>
+            Password
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" placeholder={profile?.username ? 'Leave blank to keep current password' : 'At least 8 characters'} />
+          </label>
+          <label>
+            Confirm password
+            <input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" />
+          </label>
+          {error && <div className="platform-error">{error}</div>}
+          {notice && <div className="platform-success">{notice}</div>}
+          <button className="platform-primary-button" disabled={busy} type="submit">
+            {busy ? 'Connecting account...' : 'Claim Passenger Account'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return (
     <select
@@ -324,6 +458,7 @@ export default function App() {
   const [loadingData, setLoadingData] = useState(false);
   const [dataError, setDataError] = useState('');
   const [legacyMode, setLegacyMode] = useState(false);
+  const inviteMode = new URLSearchParams(window.location.search).get('invite') === '1';
 
   useEffect(() => {
     if (!supabase) {
@@ -443,6 +578,12 @@ export default function App() {
 
   if (!authReady) return <LoadingScreen />;
   if (!session) return <LoginScreen />;
+  if (inviteMode) {
+    return <InviteClaimScreen session={session} onAccepted={async (data) => {
+      await loadMemberships(session.user.id, data?.organization_id || '');
+      setLegacyMode(false);
+    }} />;
+  }
   if (loadingData && !memberships.length) return <LoadingScreen message="Opening your workspaces..." />;
 
   if (!memberships.length) {

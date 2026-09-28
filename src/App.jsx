@@ -2096,7 +2096,7 @@ export default function App() {
     try {
       const [profileResult, registrationResult, assignmentResult] = await Promise.all([
         supabase.from('profiles').select('id,first_name,last_name,display_name,username,phone').eq('id', userId).maybeSingle(),
-        supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,price,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('event_assignments').select('id,event_id,role,status,access_starts_at,access_ends_at').eq('user_id', userId).eq('status', 'active'),
       ]);
 

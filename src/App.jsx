@@ -70,6 +70,13 @@ function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [forgotMode, setForgotMode] = useState(false);
+  const [joinMode, setJoinMode] = useState(false);
+  const [joinFirstName, setJoinFirstName] = useState('');
+  const [joinLastName, setJoinLastName] = useState('');
+  const [joinEmail, setJoinEmail] = useState('');
+  const [joinUsername, setJoinUsername] = useState('');
+  const [joinPassword, setJoinPassword] = useState('');
+  const [joinConfirmPassword, setJoinConfirmPassword] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoverySent, setRecoverySent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -93,6 +100,70 @@ function LoginScreen() {
       if (sessionError) throw sessionError;
     } catch (signInError) {
       setError(signInError.message || 'Unable to sign in.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createPassengerAccount(event) {
+    event.preventDefault();
+    setError('');
+    const firstName = joinFirstName.trim();
+    const lastName = joinLastName.trim();
+    const email = joinEmail.trim().toLowerCase();
+    const username = joinUsername.trim().replace(/^@/, '').toLowerCase();
+
+    if (!firstName || !lastName || !email || !username) {
+      setError('Enter your name, email and @username.');
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
+      setError('Username must be 3-30 characters and use letters, numbers, dots, dashes, or underscores.');
+      return;
+    }
+    if (joinPassword.length < 8) {
+      setError('Create a password with at least 8 characters.');
+      return;
+    }
+    if (joinPassword !== joinConfirmPassword) {
+      setError('The passwords do not match.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { data: available, error: availableError } = await supabase.functions.invoke('golf-account-auth', {
+        body: { action: 'username_available', username },
+      });
+      if (availableError || data?.error) throw new Error(data?.error || availableError?.message || 'Unable to check username.');
+      if (!available?.available) throw new Error(available?.error || 'That username is already taken.');
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: joinPassword,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            display_name: [firstName, lastName].filter(Boolean).join(' '),
+            username,
+            account_type: 'passenger',
+          },
+        },
+      });
+      if (signUpError) throw signUpError;
+
+      if (data?.session) {
+        window.location.reload();
+        return;
+      }
+
+      setError('Account created. Check your email to verify it, then sign in to ElevationPilot.');
+      setJoinMode(false);
+      setIdentifier(email);
+      setPassword('');
+    } catch (joinError) {
+      setError(joinError.message || 'Unable to create your ElevationPilot account.');
     } finally {
       setBusy(false);
     }
@@ -134,15 +205,33 @@ function LoginScreen() {
       <div className="platform-login-card">
         <div className="platform-logo-mark">EIG</div>
         <p className="platform-eyebrow">Elevated Impact Group</p>
-        <h1>{forgotMode ? 'Reset your password.' : 'One login. Every EIG workspace.'}</h1>
-        {!forgotMode ? <>
+        <h1>{forgotMode ? 'Reset your password.' : joinMode ? 'Join ElevationPilot.' : 'One login. Every EIG workspace.'}</h1>
+        {!forgotMode && !joinMode ? <>
           <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
           <form onSubmit={submit} className="platform-login-form">
             <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
             <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
             {error && <div className="platform-error">{error}</div>}
             <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to ElevationPilot'}</button>
-            <button className="platform-secondary-button" type="button" onClick={() => { setForgotMode(true); setError(''); setRecoverySent(false); }}>Forgot password?</button>
+            <button className="platform-secondary-button" type="button" onClick={() => { setJoinMode(true); setForgotMode(false); setError(''); }}>Join ElevationPilot</button>
+            <button className="platform-secondary-button" type="button" onClick={() => { setForgotMode(true); setJoinMode(false); setError(''); setRecoverySent(false); }}>Forgot password?</button>
+          </form>
+        </> : joinMode ? <>
+          <p className="platform-login-copy">Create your Passenger account now. You can use it for event registrations, saved profile information, payments, and your Airport.</p>
+          <form onSubmit={createPassengerAccount} className="platform-login-form">
+            <div className="form-grid two">
+              <label>First name<input value={joinFirstName} onChange={(e) => setJoinFirstName(e.target.value)} autoComplete="given-name" required /></label>
+              <label>Last name<input value={joinLastName} onChange={(e) => setJoinLastName(e.target.value)} autoComplete="family-name" required /></label>
+            </div>
+            <label>Email<input value={joinEmail} onChange={(e) => setJoinEmail(e.target.value)} type="email" autoComplete="email" required /></label>
+            <label>Choose @username<input value={joinUsername} onChange={(e) => setJoinUsername(e.target.value.replace(/^@/, ''))} autoComplete="username" required /></label>
+            <div className="form-grid two">
+              <label>Create password<input value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+              <label>Confirm password<input value={joinConfirmPassword} onChange={(e) => setJoinConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+            </div>
+            {error && <div className="platform-error">{error}</div>}
+            <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating account...' : 'Create Passenger Account'}</button>
+            <button className="platform-secondary-button" type="button" onClick={() => { setJoinMode(false); setError(''); }}>Back to sign in</button>
           </form>
         </> : recoverySent ? <>
           <div className="invite-result sent">

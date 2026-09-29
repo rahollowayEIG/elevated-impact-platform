@@ -103,6 +103,8 @@ export default function EieEventSetupSteps({
     allow_team_name: initialSettings.allow_team_name !== false,
     allow_partial_team: initialSettings.allow_partial_team !== false,
     team_payment_mode: initialSettings.team_payment_mode || 'captain_all',
+    availability_start: '',
+    availability_end: '',
     registration_deadline: initialSettings.registration_deadline || '',
     registration_contact_name: initialSettings.registration_contact_name || '',
     registration_contact_email: initialSettings.registration_contact_email || '',
@@ -144,7 +146,7 @@ export default function EieEventSetupSteps({
         setNotice(offerError?.message || paymentError?.message || 'Unable to load pricing settings.');
         return;
       }
-      setOffers((offerRows || []).map((row) => ({
+      const normalizedOffers = (offerRows || []).map((row) => ({
         ...row,
         price: row.price ?? '',
         availability_start: row.availability_start ? String(row.availability_start).slice(0, 10) : '',
@@ -153,7 +155,20 @@ export default function EieEventSetupSteps({
         quantity_max: row.quantity_max ?? '',
         metadata: row.metadata || {},
         _removed: row.status !== 'active',
-      })));
+      }));
+      setOffers(normalizedOffers);
+      const baseRegistrationOffer = normalizedOffers.find((row) =>
+        row.offer_type === 'registration' &&
+        row.status === 'active' &&
+        (row.metadata?.base_registration === true || row.is_required === true)
+      ) || normalizedOffers.find((row) => row.offer_type === 'registration' && row.status === 'active');
+      if (baseRegistrationOffer) {
+        setRegistration((current) => ({
+          ...current,
+          availability_start: baseRegistrationOffer.availability_start || '',
+          availability_end: baseRegistrationOffer.availability_end || '',
+        }));
+      }
       setPaymentSettings(paymentRow || null);
       if (paymentRow?.team_payment_mode && !initialSettings.team_payment_mode) {
         setRegistration((current) => ({
@@ -392,6 +407,8 @@ export default function EieEventSetupSteps({
             charge_by: details.structure === 'team' ? 'team' : 'player',
             is_required: true,
             is_default: true,
+            availability_start: registration.availability_start || null,
+            availability_end: registration.availability_end || null,
             metadata: { ...(existing.metadata || {}), base_registration: true },
           })
           .eq('id', existing.id);
@@ -410,6 +427,8 @@ export default function EieEventSetupSteps({
           charge_by: details.structure === 'team' ? 'team' : 'player',
           is_required: true,
           is_default: true,
+          availability_start: registration.availability_start || null,
+          availability_end: registration.availability_end || null,
           coupon_eligible: true,
           visibility: 'public',
           status: 'active',
@@ -690,6 +709,8 @@ export default function EieEventSetupSteps({
         {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
+        <label>Registration available from<input type="date" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">You can change this later without creating a new event.</small></label>
+        <label>Registration available through<input type="date" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Changing this updates the existing registration offer.</small></label>
         <label>Registration deadline<input type="date" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /></label>
         <div />
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_team_name} onChange={(e) => setRegistrationField('allow_team_name', e.target.checked)} /><span>Allow team name</span></label>}

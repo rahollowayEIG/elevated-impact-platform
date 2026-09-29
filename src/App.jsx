@@ -142,6 +142,7 @@ function LoginScreen() {
         email,
         password: joinPassword,
         options: {
+          emailRedirectTo: ELEVATIONPILOT_PUBLIC_URL + '/?joined=1',
           data: {
             first_name: firstName,
             last_name: lastName,

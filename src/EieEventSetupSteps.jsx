@@ -103,9 +103,9 @@ export default function EieEventSetupSteps({
     allow_team_name: initialSettings.allow_team_name !== false,
     allow_partial_team: initialSettings.allow_partial_team !== false,
     team_payment_mode: initialSettings.team_payment_mode || 'captain_all',
-    availability_start: '',
-    availability_end: '',
-    registration_deadline: initialSettings.registration_deadline || '',
+    availability_start: initialSettings.registration_available_from_at || '',
+    availability_end: initialSettings.registration_available_through_at || '',
+    registration_deadline: initialSettings.registration_deadline_at || initialSettings.registration_deadline || '',
     registration_contact_name: initialSettings.registration_contact_name || '',
     registration_contact_email: initialSettings.registration_contact_email || '',
     registration_contact_phone: initialSettings.registration_contact_phone || '',
@@ -165,8 +165,8 @@ export default function EieEventSetupSteps({
       if (baseRegistrationOffer) {
         setRegistration((current) => ({
           ...current,
-          availability_start: baseRegistrationOffer.availability_start || '',
-          availability_end: baseRegistrationOffer.availability_end || '',
+          availability_start: current.availability_start || baseRegistrationOffer.availability_start || '',
+          availability_end: current.availability_end || baseRegistrationOffer.availability_end || '',
         }));
       }
       setPaymentSettings(paymentRow || null);
@@ -361,7 +361,10 @@ export default function EieEventSetupSteps({
         allow_partial_team: details.structure === 'team' ? registration.allow_partial_team : false,
         team_payment_mode: details.structure === 'team' ? registration.team_payment_mode : 'captain_all',
         allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
-        registration_deadline: registration.registration_deadline || null,
+        registration_available_from_at: registration.availability_start || null,
+        registration_available_through_at: registration.availability_end || null,
+        registration_deadline_at: registration.registration_deadline || null,
+        registration_deadline: registration.registration_deadline ? String(registration.registration_deadline).slice(0, 10) : null,
         registration_contact_name: registration.registration_contact_name.trim(),
         registration_contact_email: registration.registration_contact_email.trim(),
         registration_contact_phone: registration.registration_contact_phone.trim(),
@@ -407,8 +410,8 @@ export default function EieEventSetupSteps({
             charge_by: details.structure === 'team' ? 'team' : 'player',
             is_required: true,
             is_default: true,
-            availability_start: registration.availability_start || null,
-            availability_end: registration.availability_end || null,
+            availability_start: registration.availability_start ? String(registration.availability_start).slice(0, 10) : null,
+            availability_end: registration.availability_end ? String(registration.availability_end).slice(0, 10) : null,
             metadata: { ...(existing.metadata || {}), base_registration: true },
           })
           .eq('id', existing.id);
@@ -452,7 +455,7 @@ export default function EieEventSetupSteps({
       if (event.master_event_id) {
         const { error: masterError } = await supabase
           .from('events')
-          .update({ registration_deadline: registration.registration_deadline || null })
+          .update({ registration_deadline: registration.registration_deadline ? new Date(registration.registration_deadline).toISOString() : null })
           .eq('id', event.master_event_id);
         if (masterError) throw masterError;
       }
@@ -709,9 +712,9 @@ export default function EieEventSetupSteps({
         {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
-        <label>Registration available from<input type="date" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">You can change this later without creating a new event.</small></label>
-        <label>Registration available through<input type="date" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Changing this updates the existing registration offer.</small></label>
-        <label>Registration deadline<input type="date" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /></label>
+        <label>Registration available from<input type="datetime-local" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">Exact date and time registration becomes available.</small></label>
+        <label>Registration available through<input type="datetime-local" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Exact date and time the public registration window ends.</small></label>
+        <label>Registration deadline<input type="datetime-local" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /><small className="eie-field-help">Final event registration deadline used by the registration flow.</small></label>
         <div />
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_team_name} onChange={(e) => setRegistrationField('allow_team_name', e.target.checked)} /><span>Allow team name</span></label>}
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_partial_team} onChange={(e) => setRegistrationField('allow_partial_team', e.target.checked)} /><span>Allow partial teams / hold incomplete team</span></label>}

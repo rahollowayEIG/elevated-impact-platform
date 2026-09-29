@@ -2081,7 +2081,13 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
     <div style={shell}>
       {!publicMode && <div style={{ padding: '10px 18px', background: '#D81C22', color: '#fff', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase' }}>EIE Public Hub Preview</strong>
-        <span style={{ fontSize: 13 }}>Draft · Not Published</span>
+        <span style={{ fontSize: 13 }}>
+          {event.status === 'published'
+            ? 'Published · Preview Mode'
+            : event.status === 'closed'
+              ? 'Closed · Preview Mode'
+              : 'Draft · Preview Mode'}
+        </span>
       </div>}
 
       <header style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e2e6ee' }}>
@@ -2140,14 +2146,14 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
             <h3 style={{ color: '#1D245D', fontSize: 24, margin: '8px 0' }}>{offer.name}</h3>
             <p style={{ color: '#70727A', minHeight: 44 }}>{offer.description || 'Event registration'}</p>
             <strong style={{ color: '#1D245D', fontSize: 30 }}>{'$' + Number(offer.price || 0).toFixed(2)}</strong>
-            {publicMode
-              ? <a
-                  href={`https://golf.elevatedimpactgroup.net/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(window.location.href)}`}
-                  style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, textAlign: 'center', textDecoration: 'none' }}
-                >
-                  {event.field_settings?.registration_format === 'team' ? 'Register Team' : 'Register Now'}
-                </a>
-              : <button disabled style={{ display: 'block', width: '100%', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, opacity: .72 }}>Register · Preview</button>}
+            <a
+              href={`https://golf.elevatedimpactgroup.net/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(event.public_slug ? ELEVATIONPILOT_PUBLIC_URL + '/#events/' + event.public_slug : window.location.href)}`}
+              style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, textAlign: 'center', textDecoration: 'none' }}
+            >
+              {publicMode
+                ? (event.field_settings?.registration_format === 'team' ? 'Register Team' : 'Register Now')
+                : (event.field_settings?.registration_format === 'team' ? 'Test Team Registration' : 'Test Registration')}
+            </a>
           </div>)}
         </div>
         {!!addOnOffers.length && <div style={{ marginTop: 24 }}><h3 style={{ color: '#1D245D' }}>Available Add-ons</h3><div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{addOnOffers.map((offer) => <span key={offer.id} style={{ padding: '10px 13px', borderRadius: 999, background: '#fff', border: '1px solid #dde3ec', color: '#1D245D', fontWeight: 800 }}>{offer.name} · {'$' + Number(offer.price || 0).toFixed(2)}</span>)}</div></div>}

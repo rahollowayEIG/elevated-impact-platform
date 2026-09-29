@@ -1323,9 +1323,13 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
       if (publishError) throw publishError;
 
       if (setupEvent.master_event_id) {
+        const masterPublished = nextStatus === 'published';
         const { error: masterError } = await supabase
           .from('events')
           .update({
+            status: masterPublished ? 'published' : 'draft',
+            is_published: masterPublished,
+            registration_status: masterPublished ? 'open' : 'draft',
             description: hubForm.description.trim() || null,
             start_time: hubForm.event_start_time || null,
             organizer_name: hubForm.contact_name.trim() || null,

@@ -1223,10 +1223,11 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   }
 
   function publicHubUrl(event = setupEvent) {
+    if (event?.public_slug) {
+      return ELEVATIONPILOT_PUBLIC_URL + '/#events/' + encodeURIComponent(event.public_slug);
+    }
     const legacyUrl = event?.field_settings?.public_hub_url;
-    if (legacyUrl) return legacyUrl;
-    if (!event?.public_slug) return '';
-    return ELEVATIONPILOT_PUBLIC_URL + '/#events/' + encodeURIComponent(event.public_slug);
+    return legacyUrl || '';
   }
 
   useEffect(() => {

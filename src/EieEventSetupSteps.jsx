@@ -252,6 +252,30 @@ export default function EieEventSetupSteps({
     setNotice('');
   }
 
+  const teamPaymentPolicy = details.structure !== 'team'
+    ? 'captain_all'
+    : !registration.allow_split_team_payments
+      ? 'captain_all'
+      : registration.team_payment_mode === 'captain_all'
+        ? 'captain_choice'
+        : registration.team_payment_mode;
+
+  function setTeamPaymentPolicy(value) {
+    setRegistration((current) => {
+      if (value === 'captain_all') {
+        return { ...current, team_payment_mode: 'captain_all', allow_split_team_payments: false };
+      }
+      if (value === 'captain_choice') {
+        return { ...current, team_payment_mode: 'captain_all', allow_split_team_payments: true };
+      }
+      if (value === 'split_equal') {
+        return { ...current, team_payment_mode: 'split_equal', allow_split_team_payments: true };
+      }
+      return { ...current, team_payment_mode: 'each_player', allow_split_team_payments: true };
+    });
+    setNotice('');
+  }
+
   function changeStructure(nextStructure) {
     setDetails((current) => ({
       ...current,
@@ -446,7 +470,7 @@ export default function EieEventSetupSteps({
         allow_team_name: details.structure === 'team' ? registration.allow_team_name : false,
         allow_partial_team: details.structure === 'team' ? registration.allow_partial_team : false,
         team_payment_mode: details.structure === 'team' ? registration.team_payment_mode : 'captain_all',
-        allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
+        allow_split_team_payments: details.structure === 'team' && Boolean(registration.allow_split_team_payments),
         registration_available_from_at: registration.availability_start || null,
         registration_available_through_at: registration.availability_end || null,
         registration_deadline_at: registration.registration_deadline || null,
@@ -811,32 +835,49 @@ export default function EieEventSetupSteps({
 
       <div className="form-grid two">
         <label>Registration price<input type="number" min="0" step="0.01" value={registration.base_price} onChange={(e) => setRegistrationField('base_price', e.target.value)} /><small className="eie-field-help">One base event price. Use Pricing & Add-ons for surcharges, upgrades, meals, carts, donations, or other event-specific pricing.</small></label>
-        {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
-        {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
         <label>Registration item name<input value={registration.registration_item_name} onChange={(e) => setRegistrationField('registration_item_name', e.target.value)} /></label>
-        <label>Registration charge by<select value={registration.registration_charge_by} onChange={(e) => setRegistrationField('registration_charge_by', e.target.value)}><option value="player">Per golfer</option><option value="team">Per team</option><option value="order">Per order</option><option value="flat">Flat amount</option></select></label>
+        {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         <label className="full-span">Registration description<textarea rows="2" value={registration.registration_description} onChange={(e) => setRegistrationField('registration_description', e.target.value)} /></label>
-        <label>Days until payment is due<input type="number" min="1" max="365" step="1" value={registration.payment_hold_days} onChange={(e) => setRegistrationField('payment_hold_days', e.target.value)} /><small className="eie-field-help">For Pay at Clubhouse registrations. The due date is calculated from the time the registration is created. Existing registrations keep their already-saved due date.</small></label>
-        <label>Registration available from<input type="datetime-local" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">Exact date and time registration becomes available.</small></label>
-        <label>Registration available through<input type="datetime-local" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Exact date and time the public registration window ends.</small></label>
-        <label>Registration deadline<input type="datetime-local" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /><small className="eie-field-help">Final event registration deadline used by the registration flow.</small></label>
-        <div className="full-span eie-builder-block">
-          <p className="platform-eyebrow">Payment Rules</p>
-          <div className="form-grid two">
-            <label>Convenience fee<select value={registration.convenience_fee_type} onChange={(e) => setRegistrationField('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>
-            {registration.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={registration.convenience_fee_value} onChange={(e) => setRegistrationField('convenience_fee_value', e.target.value)} /></label>}
-          </div>
-          <div className="eie-option-switches" style={{ marginTop: 10 }}>
-            <label><input type="checkbox" checked={registration.allow_online} onChange={(e) => setRegistrationField('allow_online', e.target.checked)} /><span><strong>Allow online payment</strong></span></label>
-            <label><input type="checkbox" checked={registration.allow_clubhouse} onChange={(e) => setRegistrationField('allow_clubhouse', e.target.checked)} /><span><strong>Allow clubhouse payment</strong></span></label>
-            {details.structure === 'team' && <label><input type="checkbox" checked={registration.allow_split_team_payments} onChange={(e) => setRegistrationField('allow_split_team_payments', e.target.checked)} /><span><strong>Allow split team payments</strong></span></label>}
-            <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong></span></label>
-            <label><input type="checkbox" checked={registration.auto_charge_at_deadline} onChange={(e) => setRegistrationField('auto_charge_at_deadline', e.target.checked)} /><span><strong>Auto-charge guaranteed card at deadline if balance is unpaid</strong></span></label>
-          </div>
-        </div>
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_team_name} onChange={(e) => setRegistrationField('allow_team_name', e.target.checked)} /><span>Allow team name</span></label>}
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_partial_team} onChange={(e) => setRegistrationField('allow_partial_team', e.target.checked)} /><span>Allow partial teams / hold incomplete team</span></label>}
+      </div>
+
+      <div className="eie-builder-block">
+        <p className="platform-eyebrow">Registration Window</p>
+        <h3>When registration is available</h3>
+        <div className="form-grid three">
+          <label>Available from<input type="datetime-local" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">Exact date and time registration becomes available.</small></label>
+          <label>Available through<input type="datetime-local" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Exact date and time the public registration window ends.</small></label>
+          <label>Registration deadline<input type="datetime-local" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /><small className="eie-field-help">Final registration deadline used by the event flow.</small></label>
+        </div>
+      </div>
+
+      <div className="eie-builder-block">
+        <p className="platform-eyebrow">Payment Rules</p>
+        <h3>How participants can pay</h3>
+        <p className="eie-field-help">Keep all accepted payment methods, team responsibility, fees, holds, and card-guarantee rules in one place.</p>
+
+        <div className="eie-builder-block" style={{ marginTop: 14 }}>
+          <strong>Payment methods accepted</strong>
+          <div className="eie-option-switches" style={{ marginTop: 10 }}>
+            <label><input type="checkbox" checked={registration.allow_online} onChange={(e) => setRegistrationField('allow_online', e.target.checked)} /><span><strong>Online card payment</strong><small>Participant can pay securely through Stripe.</small></span></label>
+            <label><input type="checkbox" checked={registration.allow_clubhouse} onChange={(e) => setRegistrationField('allow_clubhouse', e.target.checked)} /><span><strong>Pay at clubhouse</strong><small>Participant can reserve now and pay within the configured window.</small></span></label>
+          </div>
+        </div>
+
+        <div className="form-grid two" style={{ marginTop: 14 }}>
+          <label>Base price applies to<select value={registration.registration_charge_by} onChange={(e) => setRegistrationField('registration_charge_by', e.target.value)}><option value="player">Each golfer</option><option value="team">Entire team</option><option value="order">Each order</option><option value="flat">Flat event amount</option></select></label>
+          {details.structure === 'team' && <label>Team payment policy<select value={teamPaymentPolicy} onChange={(e) => setTeamPaymentPolicy(e.target.value)}><option value="captain_all">Captain pays full team only</option><option value="captain_choice">Captain can choose full team or split</option><option value="split_equal">Split equally by default</option><option value="each_player">Each player pays own share</option></select><small className="eie-field-help">One setting controls both the default and whether split payment is available.</small></label>}
+          {registration.allow_online && <label>Convenience fee<select value={registration.convenience_fee_type} onChange={(e) => setRegistrationField('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>}
+          {registration.allow_online && registration.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={registration.convenience_fee_value} onChange={(e) => setRegistrationField('convenience_fee_value', e.target.value)} /></label>}
+          {registration.allow_clubhouse && <label>Days until payment is due<input type="number" min="1" max="365" step="1" value={registration.payment_hold_days} onChange={(e) => setRegistrationField('payment_hold_days', e.target.value)} /><small className="eie-field-help">Calculated from the time the registration is created. Existing registrations keep their saved due date.</small></label>}
+        </div>
+
+        {registration.allow_clubhouse && <div className="eie-option-switches" style={{ marginTop: 12 }}>
+          <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong><small>Captain may securely save a card without charging it immediately.</small></span></label>
+          {registration.allow_card_guarantee && <label><input type="checkbox" checked={registration.auto_charge_at_deadline} onChange={(e) => setRegistrationField('auto_charge_at_deadline', e.target.checked)} /><span><strong>Auto-charge unpaid guaranteed balance at deadline</strong><small>Only applies when a backup card is actually on file.</small></span></label>}
+        </div>}
       </div>
 
       <div className="eie-builder-block">

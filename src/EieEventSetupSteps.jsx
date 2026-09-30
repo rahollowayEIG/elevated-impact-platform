@@ -146,6 +146,17 @@ export default function EieEventSetupSteps({
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
+    const savedTeamSize = Number(event?.field_settings?.team_size);
+    if (event?.id && details.structure === 'team' && Number.isFinite(savedTeamSize) && savedTeamSize >= 2) {
+      setRegistration((current) => (
+        Number(current.team_size) === savedTeamSize
+          ? current
+          : { ...current, team_size: savedTeamSize }
+      ));
+    }
+  }, [event?.id, event?.field_settings?.team_size, details.structure]);
+
+  useEffect(() => {
     let cancelled = false;
     async function loadPricing() {
       const [
@@ -507,6 +518,12 @@ export default function EieEventSetupSteps({
         .single();
       if (error) throw error;
 
+      const savedTeamSize = Number(data?.field_settings?.team_size);
+      if (details.structure === 'team' && savedTeamSize !== teamSize) {
+        throw new Error(`Players per team did not save correctly. Expected ${teamSize}, but the event returned ${savedTeamSize || 'no value'}.`);
+      }
+      setRegistration((current) => ({ ...current, team_size: savedTeamSize || teamSize }));
+
       const basePrice = Number(registration.base_price || 0);
       const { data: registrationOffers, error: registrationOfferError } = await supabase
         .from('event_offers')
@@ -597,7 +614,9 @@ export default function EieEventSetupSteps({
 
       onEventUpdated(data);
       await onReload();
-      setNotice('Registration Details saved. Roster rules are now updated.');
+      setNotice(details.structure === 'team'
+        ? `Registration Details saved. Players per team: ${teamSize}. Roster rules are now updated.`
+        : 'Registration Details saved. Roster rules are now updated.');
       if (next) onStepChange('pricing');
     } catch (error) {
       setNotice(error.message || 'Unable to save Registration Details.');

@@ -2333,7 +2333,7 @@ export default function App() {
     try {
       const [profileResult, registrationResult, assignmentResult] = await Promise.all([
         supabase.from('profiles').select('id,first_name,last_name,display_name,username,phone').eq('id', userId).maybeSingle(),
-        supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,amount_paid,price,team_id,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('golf_registrations').select('id,event_id,event_key,event_name,registration_status,payment_status,payment_reference,payment_due_at,amount_paid,price,team_id,entry_number,user_id').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('event_assignments').select('id,event_id,role,status,access_starts_at,access_ends_at').eq('user_id', userId).eq('status', 'active'),
       ]);
 
@@ -2424,6 +2424,24 @@ export default function App() {
       });
 
       setAirportFlights(flights);
+
+      const deepLinkParams = new URLSearchParams(window.location.search);
+      const requestedEventId = deepLinkParams.get('event_id');
+      const openAirportFlight = deepLinkParams.get('airport') === '1' || Boolean(requestedEventId);
+      if (openAirportFlight) {
+        const requestedFlight = requestedEventId
+          ? flights.find((flight) => String(flight.eventId) === String(requestedEventId))
+          : null;
+        if (requestedFlight) {
+          setActiveFlight(requestedFlight);
+          setPortalView(requestedFlight.accessRole === 'event_coordinator' ? 'atc' : 'main_cabin');
+          if (requestedFlight.accessRole === 'event_coordinator') {
+            await loadAtcEvent(requestedFlight.eventId, requestedFlight.organizationId);
+          }
+        } else {
+          setPortalView('airport');
+        }
+      }
     } catch (error) {
       setDataError(error.message || 'Unable to load your Airport.');
       setAirportFlights([]);

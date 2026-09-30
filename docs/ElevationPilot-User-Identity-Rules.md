@@ -122,15 +122,21 @@ Membership/event vocabularies are separate and should be standardized independen
 
 1. Roles are contextual, not permanent labels attached globally to a person.
 2. The same person may be EIG Admin, Pilot for one organization, ATC for one event, vendor representative elsewhere, and Passenger in another event.
-3. Roles describe a relationship or job.
+3. Roles are access grants, not just labels.
 4. Permissions define what the person may actually do.
-5. Permissions must be scoped to the appropriate organization, event, app, or platform context.
+5. Every role assignment must have an explicit scope, such as platform, Hangar, event, app, or other approved context.
 6. Every role assignment must record the exact date and time it became effective.
 7. Role history should preserve `assigned_at`, `assigned_by`, and, when applicable, `removed_at` / `revoked_at` and `removed_by` / `revoked_by`.
 8. Role and permission timestamps should be stored as timezone-aware timestamps (UTC in the database) and displayed in the viewer's appropriate local time.
-9. Current access is determined by active role assignments; historical assignments remain available for audit and reporting.
-10. Role and permission changes are independently auditable.
-11. Adding profile information never grants operational permission.
+9. Roles may support scheduled start and end date/time for temporary access.
+10. Sensitive or high-level role changes may require a reason/comment.
+11. No privilege increase should happen silently; elevated access creates an auditable event.
+12. Delegation is limited by authority. A Pilot or Co-Pilot may only assign roles/permissions they are authorized to delegate.
+13. High-level roles such as EIG Admin, ownership-level, or finance-sensitive access may require an additional approval/confirmation step.
+14. Removing a role never erases the historical fact that the person held it.
+15. Current access is determined by active role assignments; historical assignments remain available for audit and reporting.
+16. Role and permission changes are independently auditable and should be reversible where practical.
+17. Adding profile information never grants operational permission.
 
 ## 10. Profiles, Privacy, and Visibility
 

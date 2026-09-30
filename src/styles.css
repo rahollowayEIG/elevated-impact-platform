@@ -1418,3 +1418,28 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .user-directory-row{grid-template-columns:auto minmax(0,1fr)}
   .user-directory-row>.user-state{grid-column:2}
 }
+
+.user-management-page{gap:20px}
+.user-management-hero{align-items:flex-start}
+.user-management-back{display:inline-flex;align-items:center;border:0;background:transparent;color:#c7c8cc;padding:0;margin:0 0 14px;font:inherit;font-size:13px;font-weight:900;cursor:pointer}
+.user-management-back:hover{color:#fff}
+.platform-hero-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.user-management-primary-nav{margin:0}
+.user-management-overview{display:grid;gap:16px}
+.user-management-overview .user-management-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.user-management-stats small{color:#91a3b7;font-size:11px}
+.user-management-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.user-management-overview-grid .platform-section-card{margin:0}
+.user-management-invite-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:4px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
+.user-management-invite-footer p{margin:0;color:#91a3b7;font-size:12px}
+.user-management-placeholder{min-height:260px;display:grid;align-content:center;justify-items:start;gap:10px}
+.user-management-placeholder h2,.user-management-placeholder p{margin:0}
+@media(max-width:1100px){
+  .user-management-overview .user-management-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .user-management-overview-grid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .user-management-overview .user-management-stats{grid-template-columns:1fr 1fr}
+  .platform-hero-actions{align-items:flex-start}
+  .user-management-invite-footer{align-items:flex-start;flex-direction:column}
+}

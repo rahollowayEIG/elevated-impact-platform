@@ -1106,6 +1106,9 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
       .from('golf_registrations')
       .select('*')
       .eq('event_id', event.id)
+      .eq('registration_status', 'active')
+      .not('spot_hold_status', 'in', '(released,expired)')
+      .order('entry_number', { ascending: true })
       .order('created_at', { ascending: true });
     if (error) {
       setSetupNotice(error.message);

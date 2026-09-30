@@ -41,7 +41,7 @@ async function readFunctionError(error, fallback) {
   }
 }
 
-function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, onReview, actionError, onCompose, onDirect, onClose }) {
+function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, onReview, actionError, onCompose, onDirect, onOpenDirect, onClose }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const unreadCount = messages.filter((message) => !message.read).length;
   const filteredMessages = messages.filter((message) => {
@@ -74,7 +74,18 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
       {actionError && <div className="platform-error global-squawk-action-error">{actionError}</div>}
 
       {filteredMessages.length ? <div className="global-squawk-list">
-        {filteredMessages.map((message) => <article key={message.id} className={`global-squawk-message ${message.restricted ? 'restricted' : ''}`}>
+        {filteredMessages.map((message) => <article
+          key={message.id}
+          className={`global-squawk-message ${message.restricted ? 'restricted' : ''} ${message.isDirect ? 'clickable' : ''}`}
+          onClick={message.isDirect ? () => onOpenDirect(message) : undefined}
+          onKeyDown={message.isDirect ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onOpenDirect(message);
+            }
+          } : undefined}
+          tabIndex={message.isDirect ? 0 : undefined}
+        >
           <div className="global-squawk-message-top">
             <span>{message.contextLabel}</span>
             {message.reviewed ? <b className="reviewed">{message.reviewedLabel}</b> : !message.read && <b>Unread</b>}
@@ -84,8 +95,9 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
           <div className="global-squawk-message-footer">
             <small>{message.sentAt}</small>
             <div className="global-squawk-message-actions">
-              {!message.read && !message.restricted && <button onClick={() => onMarkRead(message.id)}>Mark Read</button>}
-              {message.requiresReview && !message.reviewed && canReview && <button className="review" onClick={() => onReview(message.id)}>Review as {currentRole === 'eig_admin' ? 'EIG' : 'Pilot'}</button>}
+              {message.isDirect && <button className="open-direct" onClick={(event) => { event.stopPropagation(); onOpenDirect(message); }}>Open</button>}
+              {!message.read && !message.restricted && <button onClick={(event) => { event.stopPropagation(); onMarkRead(message.id); }}>Mark Read</button>}
+              {message.requiresReview && !message.reviewed && canReview && <button className="review" onClick={(event) => { event.stopPropagation(); onReview(message.id); }}>Review as {currentRole === 'eig_admin' ? 'EIG' : 'Pilot'}</button>}
               {message.requiresReview && !message.reviewed && !canReview && <span>Pilot review required</span>}
             </div>
           </div>
@@ -105,7 +117,7 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
 }
 
 
-function DirectSquawkPanel({ onClose, initialUsername = '' }) {
+function DirectSquawkPanel({ onClose, initialUsername = '', initialThreadId = '' }) {
   const [threads, setThreads] = useState([]);
   const [activeThreadId, setActiveThreadId] = useState('');
   const [targetUser, setTargetUser] = useState(null);
@@ -144,7 +156,7 @@ function DirectSquawkPanel({ onClose, initialUsername = '' }) {
     }
   }
 
-  useEffect(() => { loadThreads(); }, []);
+  useEffect(() => { loadThreads(initialThreadId); }, [initialThreadId]);
 
   useEffect(() => {
     const channel = supabase
@@ -741,6 +753,7 @@ export function SquawkProvider({ user, organization, role, events = [], children
   const [mode, setMode] = useState('');
   const [initialEventId, setInitialEventId] = useState('');
   const [initialDirectUsername, setInitialDirectUsername] = useState('');
+  const [initialDirectThreadId, setInitialDirectThreadId] = useState('');
   const [messages, setMessages] = useState([]);
   const [refresh, setRefresh] = useState(0);
   const [actionError, setActionError] = useState('');
@@ -800,9 +813,11 @@ export function SquawkProvider({ user, organization, role, events = [], children
       [...organizationRows, ...directRows].forEach((message) => byId.set(message.id, message));
 
       const rows = [...byId.values()].sort((a, b) => String(b.sent_at || b.created_at).localeCompare(String(a.sent_at || a.created_at)));
+      const directIdSet = new Set(directRows.map((message) => message.id));
 
       setMessages(rows.map((message) => {
         const thread = threadMap.get(message.thread_id);
+        const isDirect = message.message_kind === 'direct_message' || directIdSet.has(message.id);
         const content = Array.isArray(message.squawk_message_content) ? message.squawk_message_content[0] : message.squawk_message_content;
         const ownReceipt = (message.squawk_message_receipts || []).find((receipt) => receipt.user_id === user.id);
         const review = Array.isArray(message.squawk_message_reviews) ? message.squawk_message_reviews[0] : message.squawk_message_reviews;
@@ -810,8 +825,10 @@ export function SquawkProvider({ user, organization, role, events = [], children
         const reviewed = Boolean(review?.reviewed_at || message.reviewed_at);
         return {
           id: message.id,
+          threadId: message.thread_id,
           eventId: thread?.event_id || '',
-          contextLabel: thread?.context_label || 'ElevationPilot',
+          isDirect,
+          contextLabel: isDirect ? 'Direct Squawk' : (thread?.context_label || 'ElevationPilot'),
           subject: content?.subject || message.safe_label,
           preview: content?.body?.slice(0, 180) || '',
           restricted,
@@ -888,7 +905,11 @@ export function SquawkProvider({ user, organization, role, events = [], children
   const value = {
     unreadCount,
     openInbox: () => setMode('inbox'),
-    openDirect: (username = '') => { setInitialDirectUsername(username); setMode('direct'); },
+    openDirect: (username = '') => {
+      setInitialDirectThreadId('');
+      setInitialDirectUsername(username);
+      setMode('direct');
+    },
     openComposer: (eventId = '') => { setInitialEventId(eventId); setMode('compose'); },
     closeSquawk: () => setMode(''),
   };
@@ -903,11 +924,22 @@ export function SquawkProvider({ user, organization, role, events = [], children
       onReview={reviewMessage}
       actionError={actionError}
       onCompose={() => setMode('compose')}
-      onDirect={() => setMode('direct')}
+      onDirect={() => {
+        setInitialDirectThreadId('');
+        setInitialDirectUsername('');
+        setMode('direct');
+      }}
+      onOpenDirect={(message) => {
+        if (!message.read) markRead(message.id);
+        setInitialDirectUsername('');
+        setInitialDirectThreadId(message.threadId || '');
+        setMode('direct');
+      }}
       onClose={() => setMode('')}
     />}
     {mode === 'direct' && <DirectSquawkPanel
       initialUsername={initialDirectUsername}
+      initialThreadId={initialDirectThreadId}
       onClose={() => { setMode('inbox'); setRefresh((value) => value + 1); }}
     />}
     {mode === 'compose' && <SquawkWorkspace

@@ -2207,7 +2207,30 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
       </section>}
 
       {hasContact && <section id="contact" style={whiteSection}>
-        <div style={{ maxWidth: 760 }}><div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Contact</div><h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Questions About the Event?</h2><p style={{ color: '#70727A', fontSize: 18 }}>{[hub.contact_name, hub.contact_email, hub.contact_phone].filter(Boolean).join(' · ')}</p></div>
+        <div style={{ maxWidth: 820 }}>
+          <div style={{ color: '#D81C22', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', fontSize: 12 }}>Contact</div>
+          <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>Questions About the Event?</h2>
+          <div style={{ display: 'grid', gap: 12, marginTop: 18 }}>
+            {hub.contact_name && <div><strong style={{ color: '#1D245D' }}>Organizer</strong><div style={{ color: '#70727A', marginTop: 4 }}>{hub.contact_name}</div></div>}
+            {hub.contact_email && <div>
+              <strong style={{ color: '#1D245D' }}>Email</strong>
+              <div style={{ color: '#70727A', marginTop: 4, wordBreak: 'break-word' }}>{hub.contact_email}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+                <button type="button" className="platform-secondary-button" onClick={() => navigator.clipboard?.writeText(hub.contact_email)}>Copy Email</button>
+                <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(hub.contact_email)}`} target="_blank" rel="noreferrer" style={{ background: '#1D245D', color: '#fff', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900 }}>Open in Gmail</a>
+                <a href={`mailto:${hub.contact_email}`} style={{ background: '#f4f6fa', color: '#1D245D', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900, border: '1px solid #d9e0ea' }}>Use Default Email App</a>
+              </div>
+            </div>}
+            {hub.contact_phone && <div>
+              <strong style={{ color: '#1D245D' }}>Phone</strong>
+              <div style={{ color: '#70727A', marginTop: 4 }}>{hub.contact_phone}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+                <a href={`tel:${hub.contact_phone.replace(/[^0-9+]/g, '')}`} style={{ background: '#1D245D', color: '#fff', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900 }}>Call</a>
+                <a href={`sms:${hub.contact_phone.replace(/[^0-9+]/g, '')}`} style={{ background: '#f4f6fa', color: '#1D245D', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900, border: '1px solid #d9e0ea' }}>Text</a>
+              </div>
+            </div>}
+          </div>
+        </div>
       </section>}
 
       <footer style={{ background: '#1D245D', color: '#fff', padding: '32px clamp(22px,5vw,64px)', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>

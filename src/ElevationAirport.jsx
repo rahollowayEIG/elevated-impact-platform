@@ -71,7 +71,7 @@ export function AirportPage({
     <section className="airport-grid">
       <article className="airport-panel airport-departures">
         <div className="airport-panel-heading"><div><span className="airport-icon">✈</span><div><p className="platform-eyebrow">Departure Board</p><h2>Flights</h2></div></div></div>
-        {loading ? <div className="airport-empty"><strong>Loading departures...</strong></div> : upcomingFlights.length ? <div className="airport-flight-list">{upcomingFlights.slice(0,6).map((flight) => <button className="airport-flight-row" key={flight.key} type="button" onClick={() => onBoard(flight)}><div><strong>{flight.name}</strong><span>{flight.course || 'Venue details pending'}</span></div><div><strong>{formatDate(flight.eventDates?.[0])}</strong><span>{roleLabel(flight.accessRole)}</span></div><span className={`airport-ticket-status ${flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'ready' : flight.registration ? 'action' : 'ready'}`}>{flight.accessRole === 'event_coordinator' ? 'ATC / EIE' : flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'Boarding Pass Ready' : flight.registration ? 'Ticket Action Needed' : 'Assigned Event'}</span></button>)}</div> : <div className="airport-empty"><strong>No Flights on the board yet.</strong><span>Registered events and assigned EIE events will appear here automatically.</span></div>}
+        {loading ? <div className="airport-empty"><strong>Loading departures...</strong></div> : upcomingFlights.length ? <div className="airport-flight-list">{upcomingFlights.slice(0,6).map((flight) => <button className="airport-flight-row" key={flight.key} type="button" onClick={() => onBoard(flight)}><div><strong>{flight.name}</strong><span>{flight.course || 'Venue details pending'}</span></div><div><strong>{formatDate(flight.eventDates?.[0])}</strong><span>{roleLabel(flight.accessRole)}</span></div><div className="airport-flight-actions"><span className={`airport-ticket-status ${flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'ready' : flight.registration ? 'action' : 'ready'}`}>{flight.accessRole === 'event_coordinator' ? 'ATC / EIE' : flight.registration && ['paid','comp'].includes(String(flight.registration.payment_status || '').toLowerCase()) ? 'Boarding Pass Ready' : flight.registration ? 'Ticket Action Needed' : 'Assigned Event'}</span><b>{flight.accessRole === 'event_coordinator' ? 'Open ATC / EIE →' : 'Manage Registration & Team →'}</b></div></button>)}</div> : <div className="airport-empty"><strong>No Flights on the board yet.</strong><span>Registered events and assigned EIE events will appear here automatically.</span></div>}
       </article>
 
       <article className="airport-panel airport-kiosk">
@@ -267,6 +267,42 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
   const { unreadCount, openInbox } = useSquawk();
   const [paymentBusy, setPaymentBusy] = React.useState(false);
   const [paymentError, setPaymentError] = React.useState('');
+  const [teamGroup, setTeamGroup] = React.useState(null);
+  const [teamLoading, setTeamLoading] = React.useState(false);
+  const [teamMessage, setTeamMessage] = React.useState('');
+  const [teamWorkingId, setTeamWorkingId] = React.useState('');
+  const [newPlayer, setNewPlayer] = React.useState({ first_name: '', last_name: '', email: '' });
+
+  React.useEffect(() => {
+    let active = true;
+    async function loadTeam() {
+      if (!flight?.registration?.id) {
+        if (active) setTeamGroup(null);
+        return;
+      }
+      setTeamLoading(true);
+      setTeamMessage('');
+      try {
+        const { data, error } = await supabase.functions.invoke('golf-my-registrations', {
+          body: { action: 'list' },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Unable to load registration details.');
+        const group = (data.groups || []).find((item) =>
+          item?.registration?.id === flight.registration.id ||
+          (item?.registration?.event_id === flight.eventId && item?.registration?.team_id === flight.registration.team_id)
+        );
+        if (active) setTeamGroup(group || null);
+      } catch (error) {
+        if (active) setTeamMessage(error instanceof Error ? error.message : 'Unable to load registration details.');
+      } finally {
+        if (active) setTeamLoading(false);
+      }
+    }
+    loadTeam();
+    return () => { active = false; };
+  }, [flight?.registration?.id, flight?.eventId]);
+
   if (!flight) return null;
 
   const registration = flight.registration || {};
@@ -274,8 +310,104 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
   const eventEnd = flight.eventDates?.[1];
   const registrationStatus = String(registration.registration_status || 'Active').replaceAll('_', ' ');
   const paymentStatus = String(registration.payment_status || 'Pending').replaceAll('_', ' ');
-  const teamLabel = registration.team_id || 'Not assigned';
+  const teamLabel = teamGroup?.team?.entry_number || registration.entry_number || (registration.team_id ? 'Assigned' : 'Not assigned');
   const boardingCode = String(flight.eventId || flight.key || 'EIG').replaceAll('-', '').slice(0, 8).toUpperCase();
+
+  function activeMembers() {
+    return (teamGroup?.members || []).filter((member) => member.registration_status === 'active');
+  }
+
+  function isReservedTba(member) {
+    return member?.custom_fields?.reserved_tba === true || (
+      String(member?.first_name || '').trim().toUpperCase() === 'TBA' &&
+      String(member?.last_name || '').trim().toUpperCase() === 'RESERVED'
+    );
+  }
+
+  async function refreshTeam() {
+    const { data, error } = await supabase.functions.invoke('golf-my-registrations', { body: { action: 'list' } });
+    if (error) throw error;
+    if (!data?.success) throw new Error(data?.error || 'Unable to refresh team.');
+    const group = (data.groups || []).find((item) =>
+      item?.registration?.id === registration.id ||
+      (item?.registration?.event_id === flight.eventId && item?.registration?.team_id === registration.team_id)
+    );
+    setTeamGroup(group || null);
+  }
+
+  async function resendInvite(member) {
+    if (!teamGroup?.team?.id || !member?.id) return;
+    setTeamWorkingId(member.id);
+    setTeamMessage('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-team-member', {
+        body: {
+          action: 'invite',
+          team_id: teamGroup.team.id,
+          registration_id: member.id,
+          app_origin: 'https://golf.elevatedimpactgroup.net',
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Unable to resend invite.');
+      setTeamMessage(data.email_sent ? 'Invitation sent.' : (data.warning || 'Invite saved, but email delivery needs attention.'));
+      await refreshTeam();
+    } catch (error) {
+      setTeamMessage(error instanceof Error ? error.message : 'Unable to resend invite.');
+    } finally {
+      setTeamWorkingId('');
+    }
+  }
+
+  async function removeGolfer(member) {
+    if (!member?.id || !window.confirm('Remove this golfer from the team and reopen the spot for a replacement?')) return;
+    setTeamWorkingId(member.id);
+    setTeamMessage('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-team-status', {
+        body: { action: 'remove', registration_id: member.id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Unable to remove golfer.');
+      setTeamMessage('Golfer removed. The team spot is open for a replacement.');
+      await refreshTeam();
+    } catch (error) {
+      setTeamMessage(error instanceof Error ? error.message : 'Unable to remove golfer.');
+    } finally {
+      setTeamWorkingId('');
+    }
+  }
+
+  async function addGolfer() {
+    if (!teamGroup?.team?.id) return;
+    if (!newPlayer.first_name.trim() || !newPlayer.last_name.trim() || !newPlayer.email.trim()) {
+      setTeamMessage('Enter the golfer’s first name, last name, and email.');
+      return;
+    }
+    setTeamWorkingId('add-player');
+    setTeamMessage('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-team-member', {
+        body: {
+          action: 'add',
+          team_id: teamGroup.team.id,
+          first_name: newPlayer.first_name.trim(),
+          last_name: newPlayer.last_name.trim(),
+          email: newPlayer.email.trim(),
+          app_origin: 'https://golf.elevatedimpactgroup.net',
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Unable to add golfer.');
+      setNewPlayer({ first_name: '', last_name: '', email: '' });
+      setTeamMessage(data.email_sent ? 'Golfer added and invitation sent.' : (data.warning || 'Golfer added, but email delivery needs attention.'));
+      await refreshTeam();
+    } catch (error) {
+      setTeamMessage(error instanceof Error ? error.message : 'Unable to add golfer.');
+    } finally {
+      setTeamWorkingId('');
+    }
+  }
   const paymentAmount = Number(registration.price || 0);
 
   async function startCheckout() {
@@ -432,10 +564,56 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
         </article>
       </div>
 
+      <section className="main-cabin-team-tools">
+        <div className="main-cabin-team-heading">
+          <div>
+            <span>REGISTRATION & TEAM</span>
+            <h2>{teamGroup?.role === 'captain' ? 'Manage My Team' : 'My Team'}</h2>
+            <p>Team / Entry #{teamGroup?.team?.entry_number || registration.entry_number || '—'} · {paymentStatus}</p>
+          </div>
+          {teamLoading && <small>Loading team...</small>}
+        </div>
+
+        {teamMessage && <div className="platform-success">{teamMessage}</div>}
+
+        {!teamLoading && teamGroup ? <>
+          <div className="main-cabin-team-roster">
+            {activeMembers().map((member) => (
+              <div className="main-cabin-team-member" key={member.id}>
+                <div>
+                  <strong>{isReservedTba(member) ? 'TBA · Reserved' : [member.first_name, member.last_name].filter(Boolean).join(' ')}</strong>
+                  <span>{member.id === teamGroup.team?.captain_registration_id ? 'Captain' : isReservedTba(member) ? 'Open reserved spot' : member.passenger_claim_status === 'claimed' ? 'Account connected' : 'Invite pending'}</span>
+                </div>
+                {teamGroup.role === 'captain' && member.id !== teamGroup.team?.captain_registration_id && !isReservedTba(member) && (
+                  <div className="main-cabin-team-actions">
+                    {member.passenger_claim_status !== 'claimed' && <button type="button" className="platform-secondary-button" disabled={teamWorkingId === member.id} onClick={() => resendInvite(member)}>Resend Invite</button>}
+                    <button type="button" className="platform-secondary-button" disabled={teamWorkingId === member.id} onClick={() => removeGolfer(member)}>Remove / Replace</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {teamGroup.role === 'captain' && activeMembers().some(isReservedTba) && (
+            <div className="main-cabin-add-golfer">
+              <strong>Fill Reserved TBA Spot</strong>
+              <div className="main-cabin-add-grid">
+                <label>First name<input value={newPlayer.first_name} onChange={(e) => setNewPlayer((current) => ({ ...current, first_name: e.target.value }))} /></label>
+                <label>Last name<input value={newPlayer.last_name} onChange={(e) => setNewPlayer((current) => ({ ...current, last_name: e.target.value }))} /></label>
+                <label>Email<input type="email" value={newPlayer.email} onChange={(e) => setNewPlayer((current) => ({ ...current, email: e.target.value }))} /></label>
+              </div>
+              <button type="button" className="platform-primary-button" disabled={teamWorkingId === 'add-player'} onClick={addGolfer}>
+                {teamWorkingId === 'add-player' ? 'Adding Golfer...' : 'Add Golfer & Send Invite'}
+              </button>
+            </div>
+          )}
+        </> : !teamLoading && <div className="airport-empty"><strong>Registration details are not available yet.</strong><span>Refresh the Airport or contact the event coordinator if this persists.</span></div>}
+      </section>
+
       <div className="main-cabin-aft-panel">
         <span>MAIN CABIN · {flight.name}</span>
-        <strong>Additional passenger tools will occupy new seats as they come online.</strong>
-        <small>Itinerary · tickets · purchases · results · team tools</small>
+        <strong>Your registration, team, payment, and event tools live in this Flight.</strong>
+        <small>Team roster · payment · event hub · messages</small>
       </div>
     </section>
   </div>;

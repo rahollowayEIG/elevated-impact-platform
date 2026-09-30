@@ -125,8 +125,12 @@ Membership/event vocabularies are separate and should be standardized independen
 3. Roles describe a relationship or job.
 4. Permissions define what the person may actually do.
 5. Permissions must be scoped to the appropriate organization, event, app, or platform context.
-6. Role and permission changes are independently auditable.
-7. Adding profile information never grants operational permission.
+6. Every role assignment must record the exact date and time it became effective.
+7. Role history should preserve `assigned_at`, `assigned_by`, and, when applicable, `removed_at` / `revoked_at` and `removed_by` / `revoked_by`.
+8. Role and permission timestamps should be stored as timezone-aware timestamps (UTC in the database) and displayed in the viewer's appropriate local time.
+9. Current access is determined by active role assignments; historical assignments remain available for audit and reporting.
+10. Role and permission changes are independently auditable.
+11. Adding profile information never grants operational permission.
 
 ## 10. Profiles, Privacy, and Visibility
 

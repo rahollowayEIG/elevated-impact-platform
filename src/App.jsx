@@ -923,7 +923,7 @@ function EigUserManagement() {
       {filteredInvitations.map((invite) => <div className="user-management-table-row" key={invite.id}>
         <div><strong>{invite.invitee_name || invite.email}</strong><small>{invite.email}</small></div>
         <div><strong>{accessRoleLabel(invite.role)}</strong><small>{invite.event?.name || invite.organization?.name || 'ElevationPilot'}</small></div>
-        <div><span className={'user-state ' + invite.status}>{invite.status}</span><small>{invite.recipient_was_existing ? 'Existing account' : 'New / unclaimed at invite'}</small></div>
+        <div><span className={'user-state ' + invite.status}>{invite.status}</span><small>{invite.recipient_was_existing ? 'Existing account at invite' : (invite.status === 'accepted' ? 'New account created from invite' : 'No account yet at invite')}</small></div>
         <div><strong>Sent {formatAdminTimestamp(invite.sent_at || invite.created_at)}</strong><small>{invite.accepted_at ? 'Accepted ' + formatAdminTimestamp(invite.accepted_at) : invite.expires_at ? 'Expires ' + formatAdminTimestamp(invite.expires_at) : '—'}</small></div>
       </div>)}
     </div>}

@@ -1443,3 +1443,14 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .platform-hero-actions{align-items:flex-start}
   .user-management-invite-footer{align-items:flex-start;flex-direction:column}
 }
+
+.user-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.user-report-card{display:flex;align-items:center;justify-content:space-between;gap:18px;text-align:left;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(6,15,28,.42);color:#fff;padding:16px;cursor:pointer;font:inherit}
+.user-report-card:hover{border-color:rgba(216,28,34,.4);background:rgba(216,28,34,.07)}
+.user-report-card h3,.user-report-card p{margin:0}
+.user-report-card>div{display:grid;gap:5px}
+.user-report-card span{color:#91a3b7;font-size:12px;line-height:1.5}
+.user-report-card b{white-space:nowrap;font-size:12px}
+.user-report-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
+.user-report-actions span{color:#91a3b7;font-size:12px}
+@media(max-width:720px){.user-report-grid{grid-template-columns:1fr}.user-report-card{align-items:flex-start;flex-direction:column}.user-report-actions{align-items:flex-start;flex-direction:column}}

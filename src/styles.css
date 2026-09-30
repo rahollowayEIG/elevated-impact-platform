@@ -1454,3 +1454,28 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
 .user-report-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
 .user-report-actions span{color:#91a3b7;font-size:12px}
 @media(max-width:720px){.user-report-grid{grid-template-columns:1fr}.user-report-card{align-items:flex-start;flex-direction:column}.user-report-actions{align-items:flex-start;flex-direction:column}}
+
+.user-org-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.user-org-card{display:grid;gap:14px;padding:18px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(6,15,28,.42)}
+.user-org-card h3,.user-org-card p{margin:0}
+.user-org-card>div:first-child{display:grid;gap:5px}
+.user-org-card span{color:#91a3b7;font-size:12px}
+.user-org-member-list{display:flex;flex-wrap:wrap;gap:7px}
+.user-org-member-list button{border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.035);color:#fff;padding:7px 10px;font:inherit;font-size:11px;cursor:pointer}
+.user-org-member-list button:hover{border-color:rgba(216,28,34,.4)}
+.user-org-member-list small{padding:7px 2px;color:#91a3b7}
+.user-access-table{display:grid;gap:8px}
+.user-access-head,.user-access-row{display:grid;grid-template-columns:1fr 1.1fr 1.1fr;gap:14px;align-items:start}
+.user-access-head{padding:0 12px;color:#91a3b7;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+.user-access-row{padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:rgba(6,15,28,.42)}
+.user-access-row>button{border:0;background:transparent;color:#fff;text-align:left;padding:0;display:grid;gap:4px;cursor:pointer}
+.user-access-row small,.user-access-row div{color:#91a3b7;font-size:11px}
+.user-access-row>div{display:grid;gap:5px}
+.user-access-row span{color:#c7c8cc}
+.user-activity-list{display:grid;gap:8px}
+.user-activity-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:rgba(6,15,28,.42)}
+.user-activity-row>div{display:grid;gap:4px}
+.user-activity-row small{color:#91a3b7}
+.user-activity-row time{color:#91a3b7;font-size:11px;white-space:nowrap}
+@media(max-width:900px){.user-org-grid{grid-template-columns:1fr}.user-access-head,.user-access-row{grid-template-columns:1fr}.user-access-head{display:none}}
+@media(max-width:720px){.user-activity-row{grid-template-columns:1fr}.user-activity-row time{white-space:normal}}

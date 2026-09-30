@@ -210,6 +210,22 @@ async function generateAuthLink(admin: any, email: string, existing: boolean, re
   return result;
 }
 
+async function syncRoster(supabaseUrl: string, serviceRoleKey: string, eventKey: string) {
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/sync-google-roster`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event_key: eventKey }),
+    });
+  } catch {
+    // Invitation delivery must not fail just because roster sync is temporarily unavailable.
+  }
+}
+
 async function sendInviteEmail(resendApiKey: string, params: {
   email: string;
   inviteeName: string;
@@ -909,6 +925,10 @@ Deno.serve(async (req: Request) => {
     resend_message_id: resendMessageId,
     last_error: emailError || null,
   }).eq("id", invitation.id);
+
+  if (registrationId && registration?.event_key) {
+    await syncRoster(supabaseUrl, serviceRoleKey, registration.event_key);
+  }
 
   return json({
     success: true,

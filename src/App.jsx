@@ -2219,6 +2219,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
                 <button type="button" className="platform-secondary-button" onClick={() => navigator.clipboard?.writeText(hub.contact_email)}>Copy Email</button>
                 <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(hub.contact_email)}`} target="_blank" rel="noreferrer" style={{ background: '#1D245D', color: '#fff', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900 }}>Open in Gmail</a>
                 <a href={`mailto:${hub.contact_email}`} style={{ background: '#f4f6fa', color: '#1D245D', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900, border: '1px solid #d9e0ea' }}>Use Default Email App</a>
+                {String(event.field_settings?.registration_contact_username || '').trim() && <a href={`${ELEVATIONPILOT_PUBLIC_URL}/?squawk=direct&to=${encodeURIComponent(String(event.field_settings.registration_contact_username).replace(/^@/, ''))}`} style={{ background: '#D81C22', color: '#fff', padding: '10px 14px', borderRadius: 10, textDecoration: 'none', fontWeight: 900 }}>Message in Squawk Box</a>}
               </div>
             </div>}
             {hub.contact_phone && <div>

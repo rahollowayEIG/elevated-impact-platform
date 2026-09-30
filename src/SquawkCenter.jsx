@@ -105,7 +105,7 @@ function GlobalSquawkDrawer({ organization, messages, currentRole, onMarkRead, o
 }
 
 
-function DirectSquawkPanel({ onClose }) {
+function DirectSquawkPanel({ onClose, initialUsername = '' }) {
   const [threads, setThreads] = useState([]);
   const [activeThreadId, setActiveThreadId] = useState('');
   const [targetUser, setTargetUser] = useState(null);
@@ -145,6 +145,27 @@ function DirectSquawkPanel({ onClose }) {
   }
 
   useEffect(() => { loadThreads(); }, []);
+
+  useEffect(() => {
+    const clean = String(initialUsername || '').trim().replace(/^@/, '').toLowerCase();
+    if (!clean) return;
+    let cancelled = false;
+
+    async function openInitialUser() {
+      try {
+        const data = await invokeDirect({ action: 'search', query: clean }, 'User search is unavailable.');
+        const user = (data.users || []).find((item) => String(item.username || '').toLowerCase() === clean)
+          || (data.users || [])[0]
+          || null;
+        if (!cancelled && user) chooseUser(user);
+      } catch (searchError) {
+        if (!cancelled) setError(searchError.message || 'User search is unavailable.');
+      }
+    }
+
+    openInitialUser();
+    return () => { cancelled = true; };
+  }, [initialUsername]);
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId)
     || (targetUser ? threads.find((thread) => thread.other_user?.id === targetUser.id) : null);
@@ -709,6 +730,7 @@ function SquawkWorkspace({ organization, golfEvents, initialEventId = '', onClos
 export function SquawkProvider({ user, organization, role, events = [], children }) {
   const [mode, setMode] = useState('');
   const [initialEventId, setInitialEventId] = useState('');
+  const [initialDirectUsername, setInitialDirectUsername] = useState('');
   const [messages, setMessages] = useState([]);
   const [refresh, setRefresh] = useState(0);
   const [actionError, setActionError] = useState('');
@@ -828,11 +850,21 @@ export function SquawkProvider({ user, organization, role, events = [], children
     await markRead(messageId, reviewedAt);
   }
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const params = new URLSearchParams(window.location.search);
+    const toUsername = String(params.get('to') || '').trim().replace(/^@/, '');
+    if (params.get('squawk') === 'direct' && toUsername) {
+      setInitialDirectUsername(toUsername);
+      setMode('direct');
+    }
+  }, [user?.id]);
+
   const unreadCount = messages.filter((message) => !message.read).length;
   const value = {
     unreadCount,
     openInbox: () => setMode('inbox'),
-    openDirect: () => setMode('direct'),
+    openDirect: (username = '') => { setInitialDirectUsername(username); setMode('direct'); },
     openComposer: (eventId = '') => { setInitialEventId(eventId); setMode('compose'); },
     closeSquawk: () => setMode(''),
   };
@@ -851,6 +883,7 @@ export function SquawkProvider({ user, organization, role, events = [], children
       onClose={() => setMode('')}
     />}
     {mode === 'direct' && <DirectSquawkPanel
+      initialUsername={initialDirectUsername}
       onClose={() => { setMode('inbox'); setRefresh((value) => value + 1); }}
     />}
     {mode === 'compose' && <SquawkWorkspace

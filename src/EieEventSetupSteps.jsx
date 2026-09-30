@@ -437,7 +437,12 @@ export default function EieEventSetupSteps({
       if (error) throw error;
 
       if (event.master_event_id) {
-        const { error: masterError } = await supabase
+        const intendedMaxGolfers = details.max_golfers === '' ? null : Math.max(1, Number(details.max_golfers));
+        if (details.max_golfers !== '' && !Number.isFinite(intendedMaxGolfers)) {
+          throw new Error('Maximum participants must be a valid number.');
+        }
+
+        const { data: savedMaster, error: masterError } = await supabase
           .from('events')
           .update({
             name: details.name.trim(),
@@ -445,10 +450,22 @@ export default function EieEventSetupSteps({
             event_date: details.day1,
             start_time: details.event_start_time || null,
             location: details.course.trim() || null,
-            max_golfers: details.max_golfers === '' ? null : Number(details.max_golfers),
+            max_golfers: intendedMaxGolfers,
           })
-          .eq('id', event.master_event_id);
+          .eq('id', event.master_event_id)
+          .select('id,max_golfers,start_time')
+          .single();
         if (masterError) throw masterError;
+
+        const confirmedMaxGolfers = savedMaster?.max_golfers == null ? null : Number(savedMaster.max_golfers);
+        if (confirmedMaxGolfers !== intendedMaxGolfers) {
+          throw new Error(`Maximum participants did not save correctly. Expected ${intendedMaxGolfers ?? 'unlimited'}, but the event returned ${confirmedMaxGolfers ?? 'unlimited'}.`);
+        }
+
+        setDetails((current) => ({
+          ...current,
+          max_golfers: confirmedMaxGolfers == null ? '' : String(confirmedMaxGolfers),
+        }));
       }
 
       const { error: calendarError } = await supabase
@@ -466,7 +483,9 @@ export default function EieEventSetupSteps({
         google_calendar_sync_status: details.google_calendar_sync_enabled ? (event.google_calendar_sync_status || 'pending') : 'not_synced',
       });
       await onReload();
-      setNotice('Event Details saved.');
+      setNotice(details.max_golfers === ''
+        ? 'Event Details saved. Maximum participants: unlimited.'
+        : `Event Details saved. Maximum participants: ${Number(details.max_golfers)}.`);
       if (next) onStepChange('registration');
     } catch (error) {
       setNotice(error.message || 'Unable to save Event Details.');

@@ -568,7 +568,7 @@ export default function EieEventSetupSteps({
           clubhouse_hold_mode: 'days',
           clubhouse_hold_days: holdDays,
           allow_card_guarantee: Boolean(registration.allow_card_guarantee),
-          auto_charge_at_deadline: Boolean(registration.auto_charge_at_deadline),
+          auto_charge_at_deadline: false,
         }, { onConflict: 'event_id' })
         .select()
         .single();
@@ -875,8 +875,7 @@ export default function EieEventSetupSteps({
         </div>
 
         {registration.allow_clubhouse && <div className="eie-option-switches" style={{ marginTop: 12 }}>
-          <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong><small>Captain may securely save a card without charging it immediately.</small></span></label>
-          {registration.allow_card_guarantee && <label><input type="checkbox" checked={registration.auto_charge_at_deadline} onChange={(e) => setRegistrationField('auto_charge_at_deadline', e.target.checked)} /><span><strong>Auto-charge unpaid guaranteed balance at deadline</strong><small>Only applies when a backup card is actually on file.</small></span></label>}
+          <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong><small>Captain may securely save a card without charging it immediately. For now, EIG reviews overdue balances and charges a saved backup card manually.</small></span></label>
         </div>}
       </div>
 

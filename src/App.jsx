@@ -2751,7 +2751,7 @@ export default function App() {
 
   async function signOut() { await supabase.auth.signOut(); }
   function openAirport() { setPortalView('airport'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); setCockpitApp(''); setEieInitialEventId(''); }
-  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); setAdminView('command'); } function openUserManagement() { setAdminView('users'); setPortalView('workspace'); setActiveOrganizationId(EIG_ID); setCockpitApp(''); setEieInitialEventId(''); } function closeUserManagement() { setAdminView('command'); }
+  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); setAdminView('command'); } function openUserManagement() { const eigOrg = organizations.find((org) => org.slug === EIG_SLUG); if (!eigOrg?.id) return; setAdminView('users'); setPortalView('workspace'); setActiveOrganizationId(eigOrg.id); setCockpitApp(''); setEieInitialEventId(''); } function closeUserManagement() { setAdminView('command'); }
   function openPassengerProfile() { setPortalView('profile'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); }
 
   async function savePassengerProfile(form) {

@@ -103,6 +103,7 @@ export default function EieEventSetupSteps({
     allow_team_name: initialSettings.allow_team_name !== false,
     allow_partial_team: initialSettings.allow_partial_team !== false,
     team_payment_mode: initialSettings.team_payment_mode || 'captain_all',
+    payment_hold_days: '',
     availability_start: initialSettings.registration_available_from_at || '',
     availability_end: initialSettings.registration_available_through_at || '',
     registration_deadline: initialSettings.registration_deadline_at || initialSettings.registration_deadline || '',
@@ -170,12 +171,13 @@ export default function EieEventSetupSteps({
         }));
       }
       setPaymentSettings(paymentRow || null);
-      if (paymentRow?.team_payment_mode && !initialSettings.team_payment_mode) {
-        setRegistration((current) => ({
-          ...current,
-          team_payment_mode: paymentRow.team_payment_mode === 'split' ? 'split_equal' : 'captain_all',
-        }));
-      }
+      setRegistration((current) => ({
+        ...current,
+        payment_hold_days: String(paymentRow?.clubhouse_hold_days ?? 3),
+        ...(!initialSettings.team_payment_mode && paymentRow?.team_payment_mode
+          ? { team_payment_mode: paymentRow.team_payment_mode === 'split' ? 'split_equal' : 'captain_all' }
+          : {}),
+      }));
     }
     if (event?.id) loadPricing();
     return () => { cancelled = true; };
@@ -441,16 +443,22 @@ export default function EieEventSetupSteps({
         if (offerInsertError) throw offerInsertError;
       }
 
-      if (paymentSettings?.id) {
-        const { error: paymentError } = await supabase
-          .from('golf_event_payment_settings')
-          .update({
-            team_payment_mode: details.structure === 'team' && registration.team_payment_mode !== 'captain_all' ? 'split' : 'captain_all',
-            allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
-          })
-          .eq('id', paymentSettings.id);
-        if (paymentError) throw paymentError;
-      }
+      const holdDays = Math.max(1, Math.min(365, Number(registration.payment_hold_days || 3)));
+      const { data: savedPaymentSettings, error: paymentError } = await supabase
+        .from('golf_event_payment_settings')
+        .upsert({
+          organization_id: organization.id,
+          event_id: event.id,
+          price_mode: details.structure === 'team' ? 'per_team' : 'per_player',
+          team_payment_mode: details.structure === 'team' && registration.team_payment_mode !== 'captain_all' ? 'split' : 'captain_all',
+          allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
+          clubhouse_hold_mode: 'days',
+          clubhouse_hold_days: holdDays,
+        }, { onConflict: 'event_id' })
+        .select()
+        .single();
+      if (paymentError) throw paymentError;
+      setPaymentSettings(savedPaymentSettings);
 
       if (event.master_event_id) {
         const { error: masterError } = await supabase
@@ -712,6 +720,7 @@ export default function EieEventSetupSteps({
         {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
+        <label>Days until payment is due<input type="number" min="1" max="365" step="1" value={registration.payment_hold_days} onChange={(e) => setRegistrationField('payment_hold_days', e.target.value)} /><small className="eie-field-help">For Pay at Clubhouse registrations. The due date is calculated from the time the registration is created. Existing registrations keep their already-saved due date.</small></label>
         <label>Registration available from<input type="datetime-local" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">Exact date and time registration becomes available.</small></label>
         <label>Registration available through<input type="datetime-local" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Exact date and time the public registration window ends.</small></label>
         <label>Registration deadline<input type="datetime-local" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /><small className="eie-field-help">Final event registration deadline used by the registration flow.</small></label>

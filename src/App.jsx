@@ -834,6 +834,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
     ['organizations', 'Organizations'],
     ['access', 'Access'],
     ['activity', 'Activity'],
+    ['reports', 'Reports'],
   ];
 
   const placeholderCopy = {
@@ -926,6 +927,29 @@ function EigUserManagement({ onBack, onInviteUser }) {
     </section>}
 
     {['organizations', 'access', 'activity'].includes(tab) && <section className="platform-section-card user-management-placeholder"><p className="platform-eyebrow">User Management</p><h2>{placeholderCopy[tab][0]}</h2><p>{placeholderCopy[tab][1]}</p><span className="platform-role-pill">Planned workspace</span></section>}
+
+    {tab === 'reports' && <section className="platform-section-card user-management-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Reporting</p><h2>Reports</h2><p>Build a filtered report, preview it, then print it or send the data to Google Sheets.</p></div></div>
+      <div className="user-report-grid">
+        {[
+          ['People Directory', 'People, account status, verification, usernames, and relationships.'],
+          ['User Account Report', 'Account creation, verification, sign-in, and Passenger linkage.'],
+          ['Organization / Hangar Roster', 'People and contextual memberships by organization.'],
+          ['Roles & Access', 'Scoped roles, effective dates, and access history.'],
+          ['Invitations', 'Invitation lifecycle, recipient, access, and timeline.'],
+          ['Identity Review', 'Unclaimed identities and preserved merge history.'],
+          ['Activity / Audit', 'Auditable identity, access, and relationship changes.'],
+          ['Failed Email Report', 'Delivery failures and retry/review information.'],
+        ].map(([title, description]) => <button key={title} type="button" className="user-report-card">
+          <div><p className="platform-eyebrow">Report</p><h3>{title}</h3><span>{description}</span></div><b>Build Report →</b>
+        </button>)}
+      </div>
+      <div className="user-report-actions">
+        <button className="platform-secondary-button" type="button" disabled>🖨 Print Report</button>
+        <button className="platform-secondary-button" type="button" disabled>📊 Export to Google Sheets</button>
+        <span>Choose a report above to enable actions.</span>
+      </div>
+    </section>}
   </div>;
 }
 

@@ -117,6 +117,10 @@ export default function EieEventSetupSteps({
     convenience_fee_value: '3',
     allow_card_guarantee: true,
     auto_charge_at_deadline: true,
+    clubhouse_payment_payee: 'Elevated Impact Group',
+    clubhouse_payment_location_name: '',
+    clubhouse_payment_address: '',
+    clubhouse_payment_instructions: '',
     availability_start: initialSettings.registration_available_from_at || '',
     availability_end: initialSettings.registration_available_through_at || '',
     registration_deadline: initialSettings.registration_deadline_at || initialSettings.registration_deadline || '',
@@ -212,6 +216,10 @@ export default function EieEventSetupSteps({
         convenience_fee_value: String(paymentRow?.convenience_fee_value ?? 3),
         allow_card_guarantee: paymentRow?.allow_card_guarantee !== false,
         auto_charge_at_deadline: paymentRow?.auto_charge_at_deadline !== false,
+        clubhouse_payment_payee: paymentRow?.clubhouse_payment_payee || 'Elevated Impact Group',
+        clubhouse_payment_location_name: paymentRow?.clubhouse_payment_location_name || '',
+        clubhouse_payment_address: paymentRow?.clubhouse_payment_address || '',
+        clubhouse_payment_instructions: paymentRow?.clubhouse_payment_instructions || '',
         ...(!initialSettings.team_payment_mode && paymentRow?.team_payment_mode
           ? { team_payment_mode: paymentRow.team_payment_mode === 'split' ? 'split_equal' : 'captain_all' }
           : {}),
@@ -569,6 +577,10 @@ export default function EieEventSetupSteps({
           clubhouse_hold_days: holdDays,
           allow_card_guarantee: Boolean(registration.allow_card_guarantee),
           auto_charge_at_deadline: false,
+          clubhouse_payment_payee: registration.clubhouse_payment_payee.trim() || null,
+          clubhouse_payment_location_name: registration.clubhouse_payment_location_name.trim() || null,
+          clubhouse_payment_address: registration.clubhouse_payment_address.trim() || null,
+          clubhouse_payment_instructions: registration.clubhouse_payment_instructions.trim() || null,
         }, { onConflict: 'event_id' })
         .select()
         .single();
@@ -874,9 +886,21 @@ export default function EieEventSetupSteps({
           {registration.allow_clubhouse && <label>Days until payment is due<input type="number" min="1" max="365" step="1" value={registration.payment_hold_days} onChange={(e) => setRegistrationField('payment_hold_days', e.target.value)} /><small className="eie-field-help">Calculated from the time the registration is created. Existing registrations keep their saved due date.</small></label>}
         </div>
 
-        {registration.allow_clubhouse && <div className="eie-option-switches" style={{ marginTop: 12 }}>
-          <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong><small>Captain may securely save a card without charging it immediately. For now, EIG reviews overdue balances and charges a saved backup card manually.</small></span></label>
-        </div>}
+        {registration.allow_clubhouse && <>
+          <div className="eie-builder-block" style={{ marginTop: 14 }}>
+            <strong>Pay at Clubhouse Details</strong>
+            <p className="eie-field-help">These instructions are shown after Pay at Clubhouse is selected and stay available with the registration.</p>
+            <div className="form-grid two" style={{ marginTop: 10 }}>
+              <label>Make check payable to<input value={registration.clubhouse_payment_payee} onChange={(e) => setRegistrationField('clubhouse_payment_payee', e.target.value)} placeholder="Elevated Impact Group" /></label>
+              <label>Location<input value={registration.clubhouse_payment_location_name} onChange={(e) => setRegistrationField('clubhouse_payment_location_name', e.target.value)} placeholder="Chapel Hill Golf Course" /></label>
+              <label className="full-span">Mail to or bring to<input value={registration.clubhouse_payment_address} onChange={(e) => setRegistrationField('clubhouse_payment_address', e.target.value)} placeholder="2023 Old Lancaster Pike, Reading, PA 19608" /><small className="eie-field-help">This address becomes a clickable map link on the customer payment screen.</small></label>
+              <label className="full-span">Additional instructions<textarea rows="2" value={registration.clubhouse_payment_instructions} onChange={(e) => setRegistrationField('clubhouse_payment_instructions', e.target.value)} placeholder="Optional note for this event." /></label>
+            </div>
+          </div>
+          <div className="eie-option-switches" style={{ marginTop: 12 }}>
+            <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong><small>Captain may securely save a card without charging it immediately. For now, EIG reviews overdue balances and charges a saved backup card manually.</small></span></label>
+          </div>
+        </>}
       </div>
 
       <div className="eie-builder-block">

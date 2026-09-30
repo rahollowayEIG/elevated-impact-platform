@@ -744,6 +744,213 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
   </section>;
 }
 
+
+function formatAdminTimestamp(value) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return value;
+  }
+}
+
+function accountStateLabel(user) {
+  if (user?.banned_until && new Date(user.banned_until).getTime() > Date.now()) return 'Disabled';
+  if (!user?.email_confirmed_at) return 'Unverified';
+  return 'Active';
+}
+
+function EigUserManagement() {
+  const [tab, setTab] = useState('people');
+  const [query, setQuery] = useState('');
+  const [payload, setPayload] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'admin_users' },
+      });
+      if (invokeError || data?.error || !data?.success) {
+        throw new Error(data?.error || invokeError?.message || 'Unable to load User Management.');
+      }
+      setPayload(data);
+      if (data?.users?.length && !selectedUserId) setSelectedUserId(data.users[0].id);
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load User Management.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const users = payload?.users || [];
+  const invitations = payload?.invitations || [];
+  const unclaimed = payload?.identity_review?.unclaimed || [];
+  const merged = payload?.identity_review?.merged || [];
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredUsers = users.filter((user) => {
+    if (!normalizedQuery) return true;
+    const profile = user.profile || {};
+    const haystack = [
+      user.email,
+      profile.username,
+      profile.display_name,
+      profile.first_name,
+      profile.last_name,
+      ...(user.memberships || []).map((row) => row.organization?.name),
+      ...(user.assignments || []).map((row) => row.event?.name),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
+  const filteredInvitations = invitations.filter((invite) => {
+    if (!normalizedQuery) return true;
+    return [invite.email, invite.invitee_name, invite.organization?.name, invite.event?.name, accessRoleLabel(invite.role)]
+      .filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery);
+  });
+  const selected = users.find((user) => user.id === selectedUserId) || filteredUsers[0] || null;
+  const displayName = (user) => user?.profile?.display_name
+    || [user?.profile?.first_name, user?.profile?.last_name].filter(Boolean).join(' ')
+    || user?.email?.split('@')?.[0]
+    || 'ElevationPilot User';
+
+  return <section className="platform-section-card user-management-card">
+    <div className="platform-section-heading user-management-heading">
+      <div>
+        <p className="platform-eyebrow">Platform Identity</p>
+        <h2>User Management</h2>
+        <p>One ElevationPilot identity, with Hangar, event, and app relationships layered around it.</p>
+      </div>
+      <button className="platform-secondary-button" type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
+    </div>
+
+    <div className="user-management-stats">
+      <div><strong>{payload?.stats?.accounts ?? '—'}</strong><span>Accounts</span></div>
+      <div><strong>{payload?.stats?.verified_accounts ?? '—'}</strong><span>Verified</span></div>
+      <div><strong>{payload?.stats?.pending_invitations ?? '—'}</strong><span>Pending Invites</span></div>
+      <div><strong>{payload?.stats?.unclaimed ?? '—'}</strong><span>Unclaimed</span></div>
+    </div>
+
+    <div className="user-management-tabs" role="tablist" aria-label="User Management sections">
+      {[
+        ['people', 'People'],
+        ['invitations', 'Invitations'],
+        ['identity', 'Identity Review'],
+      ].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>)}
+    </div>
+
+    <div className="user-management-toolbar">
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'people' ? 'Search name, @username, email, Hangar, event...' : 'Search this section...'} />
+      <span>{tab === 'people' ? filteredUsers.length : tab === 'invitations' ? filteredInvitations.length : unclaimed.length + merged.length} shown</span>
+    </div>
+
+    {error && <div className="platform-error">{error}</div>}
+    {payload?.truncated && <div className="platform-error">The account directory reached its current safety limit. Refine the directory loader before relying on this as a complete platform count.</div>}
+
+    {!error && tab === 'people' && <div className="user-management-layout">
+      <div className="user-directory-list">
+        {!loading && !filteredUsers.length && <p className="platform-login-copy">No matching users.</p>}
+        {filteredUsers.map((user) => {
+          const state = accountStateLabel(user);
+          const username = user.profile?.username ? '@' + user.profile.username : 'No username yet';
+          const membershipCount = (user.memberships || []).filter((row) => row.status === 'active').length;
+          const assignmentCount = (user.assignments || []).filter((row) => row.status === 'active').length;
+          return <button key={user.id} type="button" className={'user-directory-row ' + (selected?.id === user.id ? 'selected' : '')} onClick={() => setSelectedUserId(user.id)}>
+            <div className="user-avatar">{displayName(user).slice(0, 2).toUpperCase()}</div>
+            <div className="user-directory-copy">
+              <strong>{displayName(user)}</strong>
+              <span>{username} · {user.email || 'No email'}</span>
+              <small>{membershipCount} Hangar role{membershipCount === 1 ? '' : 's'} · {assignmentCount} event role{assignmentCount === 1 ? '' : 's'}</small>
+            </div>
+            <span className={'user-state ' + state.toLowerCase()}>{state}</span>
+          </button>;
+        })}
+      </div>
+
+      <div className="user-detail-panel">
+        {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
+          <div className="user-detail-header">
+            <div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div>
+            <div>
+              <h3>{displayName(selected)}</h3>
+              <p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p>
+            </div>
+            <span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>
+          </div>
+
+          <div className="user-detail-grid">
+            <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
+            <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
+            <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>
+            <div><span>Passenger Identity</span><strong>{selected.passenger ? 'Linked' : 'Not created'}</strong><small>{selected.passenger?.claimed_at ? 'Claimed ' + formatAdminTimestamp(selected.passenger.claimed_at) : 'No claimed Passenger record'}</small></div>
+          </div>
+
+          <div className="user-detail-section">
+            <h4>Hangar Roles</h4>
+            {!(selected.memberships || []).length && <p className="platform-login-copy">No organization memberships.</p>}
+            {(selected.memberships || []).map((row) => <div className="role-history-row" key={row.id}>
+              <div><strong>{accessRoleLabel(row.role)}</strong><span>{row.organization?.name || 'Organization'}</span></div>
+              <div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}{row.invited_by ? ' · recorded inviter' : ''}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div>
+            </div>)}
+          </div>
+
+          <div className="user-detail-section">
+            <h4>Event Roles</h4>
+            {!(selected.assignments || []).length && <p className="platform-login-copy">No event assignments.</p>}
+            {(selected.assignments || []).map((row) => <div className="role-history-row" key={row.id}>
+              <div><strong>{accessRoleLabel(row.role)}</strong><span>{row.event?.name || 'Event'}</span></div>
+              <div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div>
+            </div>)}
+          </div>
+        </>}
+      </div>
+    </div>}
+
+    {!error && tab === 'invitations' && <div className="user-management-table">
+      <div className="user-management-table-head"><span>Person</span><span>Access</span><span>Status</span><span>Timeline</span></div>
+      {!loading && !filteredInvitations.length && <p className="platform-login-copy">No invitations match this view.</p>}
+      {filteredInvitations.map((invite) => <div className="user-management-table-row" key={invite.id}>
+        <div><strong>{invite.invitee_name || invite.email}</strong><small>{invite.email}</small></div>
+        <div><strong>{accessRoleLabel(invite.role)}</strong><small>{invite.event?.name || invite.organization?.name || 'ElevationPilot'}</small></div>
+        <div><span className={'user-state ' + invite.status}>{invite.status}</span><small>{invite.recipient_was_existing ? 'Existing account' : 'New / unclaimed at invite'}</small></div>
+        <div><strong>Sent {formatAdminTimestamp(invite.sent_at || invite.created_at)}</strong><small>{invite.accepted_at ? 'Accepted ' + formatAdminTimestamp(invite.accepted_at) : invite.expires_at ? 'Expires ' + formatAdminTimestamp(invite.expires_at) : '—'}</small></div>
+      </div>)}
+    </div>}
+
+    {!error && tab === 'identity' && <div className="identity-review-grid">
+      <div className="identity-review-column">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Needs Claim</p><h3>Unclaimed People</h3></div><span className="platform-role-pill">{unclaimed.length}</span></div>
+        {!unclaimed.length && <p className="platform-login-copy">No unclaimed Passenger identities right now.</p>}
+        {unclaimed.map((person) => <div className="identity-review-item" key={person.id}>
+          <strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Unclaimed person'}</strong>
+          <span>{(person.contacts || []).find((row) => row.contact_type === 'email')?.contact_value || 'No email contact'}</span>
+          <small>Created {formatAdminTimestamp(person.created_at)}</small>
+        </div>)}
+      </div>
+      <div className="identity-review-column">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">History</p><h3>Merged Identities</h3></div><span className="platform-role-pill">{merged.length}</span></div>
+        {!merged.length && <p className="platform-login-copy">No merged identities yet.</p>}
+        {merged.map((person) => <div className="identity-review-item" key={person.id}>
+          <strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Merged identity'}</strong>
+          <span>Preserved historical identity</span>
+          <small>Merged into {person.merged_into_passenger_id || 'canonical identity'}</small>
+        </div>)}
+      </div>
+    </div>}
+  </section>;
+}
+
 function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, loading }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('EIG Test Organization');

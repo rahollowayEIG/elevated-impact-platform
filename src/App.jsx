@@ -66,10 +66,10 @@ function eventPlusSevenLabel(event) {
   return 'Through ' + parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
-function LoginScreen() {
+function LoginScreen({ initialForgotMode = false }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotMode, setForgotMode] = useState(initialForgotMode);
   const [joinMode, setJoinMode] = useState(false);
   const [joinFirstName, setJoinFirstName] = useState('');
   const [joinLastName, setJoinLastName] = useState('');
@@ -2264,11 +2264,13 @@ export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   const publicEventMatch = window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
-  const recoveryMode = new URLSearchParams(window.location.search).get('recovery') === '1';
+  const recoverySearchParams = new URLSearchParams(window.location.search);
+  const recoveryHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const recoveryLinkHint = recoverySearchParams.get('recovery') === '1' || recoverySearchParams.get('type') === 'recovery' || recoveryHashParams.get('type') === 'recovery';
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return; }
@@ -2279,6 +2281,10 @@ export default function App() {
         const params = new URLSearchParams(window.location.search);
         const tokenHash = params.get('token_hash');
         const verificationType = params.get('type');
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        if (!cancelled && (params.get('recovery') === '1' || verificationType === 'recovery' || hashParams.get('type') === 'recovery')) {
+          setRecoveryMode(true);
+        }
         if (tokenHash && verificationType) {
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
@@ -2305,7 +2311,8 @@ export default function App() {
     }
 
     bootstrapAuth();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
       setSession(nextSession || null);
       if (!nextSession) {
         setMemberships([]);
@@ -2760,8 +2767,9 @@ export default function App() {
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
+  if (recoveryMode && session) return <PasswordRecoveryScreen onComplete={() => window.location.reload()} />;
+  if (recoveryMode && !session) return <LoginScreen initialForgotMode />;
   if (!session) return <LoginScreen />;
-  if (recoveryMode) return <PasswordRecoveryScreen onComplete={() => window.location.reload()} />;
   if (inviteCheckUserId !== session.user.id) return <LoadingScreen message="Checking your ElevationPilot access..." />;
   if (pendingInvitations.length) return <AccountSetupScreen user={session.user} invitation={pendingInvitations[0]} profile={inviteProfile || profile} onComplete={finishInviteSetup} />;
   if (hubPreviewMatch) return <EieEventSite eventId={decodeURIComponent(hubPreviewMatch[1])} />;

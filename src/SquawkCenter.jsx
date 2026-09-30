@@ -147,6 +147,16 @@ function DirectSquawkPanel({ onClose, initialUsername = '' }) {
   useEffect(() => { loadThreads(); }, []);
 
   useEffect(() => {
+    const channel = supabase
+      .channel('direct-squawk-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'squawk_messages' }, () => loadThreads(activeThreadId))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'squawk_message_recipients' }, () => loadThreads(activeThreadId))
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeThreadId]);
+
+  useEffect(() => {
     const clean = String(initialUsername || '').trim().replace(/^@/, '').toLowerCase();
     if (!clean) return;
     let cancelled = false;
@@ -818,6 +828,20 @@ export function SquawkProvider({ user, organization, role, events = [], children
     loadSquawks();
     return () => { cancelled = true; };
   }, [organization?.id, user?.id, mode, refresh]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const channel = supabase
+      .channel('squawk-inbox-live-' + user.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'squawk_messages' }, () => setRefresh((value) => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'squawk_message_recipients' }, (payload) => {
+        if (!payload.new?.user_id || payload.new.user_id === user.id) setRefresh((value) => value + 1);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   async function markRead(messageId, reviewedAt = null) {
     setActionError('');

@@ -86,7 +86,7 @@ export default function EieEventSetupSteps({
     day1: Array.isArray(event?.event_dates) ? event.event_dates[0] || '' : '',
     day2: Array.isArray(event?.event_dates) ? event.event_dates[1] || '' : '',
     event_start_time: initialSettings.event_start_time || '',
-    max_golfers: '',
+    max_golfers: initialSettings.max_golfers ?? '',
     google_calendar_sync_enabled: event?.google_calendar_sync_enabled === true,
     structure: eventStructure(initialSettings),
     event_access: initialSettings.event_access || 'public',
@@ -187,7 +187,7 @@ export default function EieEventSetupSteps({
       setDetails((current) => ({
         ...current,
         event_start_time: current.event_start_time || (masterRow?.start_time ? String(masterRow.start_time).slice(0, 5) : ''),
-        max_golfers: masterRow?.max_golfers ?? '',
+        max_golfers: masterRow?.max_golfers ?? event?.field_settings?.max_golfers ?? current.max_golfers ?? '',
         google_calendar_sync_enabled: event?.google_calendar_sync_enabled === true,
       }));
       const normalizedOffers = (offerRows || []).map((row) => ({
@@ -402,9 +402,15 @@ export default function EieEventSetupSteps({
       if (!details.name.trim()) throw new Error('Event name is required.');
       if (!details.day1) throw new Error('Event date is required.');
 
+      const intendedMaxGolfers = details.max_golfers === '' ? null : Math.max(1, Number(details.max_golfers));
+      if (details.max_golfers !== '' && !Number.isFinite(intendedMaxGolfers)) {
+        throw new Error('Maximum participants must be a valid number.');
+      }
+
       const nextSettings = {
         ...(event.field_settings || {}),
         event_start_time: details.event_start_time || null,
+        max_golfers: intendedMaxGolfers,
         registration_format: details.structure,
         event_access: details.event_access,
         team_size: details.structure === 'team' ? Math.max(2, Math.min(12, Number(registration.team_size || 4))) : 1,
@@ -437,11 +443,6 @@ export default function EieEventSetupSteps({
       if (error) throw error;
 
       if (event.master_event_id) {
-        const intendedMaxGolfers = details.max_golfers === '' ? null : Math.max(1, Number(details.max_golfers));
-        if (details.max_golfers !== '' && !Number.isFinite(intendedMaxGolfers)) {
-          throw new Error('Maximum participants must be a valid number.');
-        }
-
         const { data: savedMaster, error: masterError } = await supabase
           .from('events')
           .update({

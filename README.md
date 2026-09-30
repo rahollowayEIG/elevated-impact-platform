@@ -34,3 +34,9 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 - Framework: Vite
 - Build command: `npm run build`
 - Output directory: `dist`
+
+
+## Architecture references
+
+- [ElevationPilot User & Identity Rules](docs/ElevationPilot-User-Identity-Rules.md) — canonical reference for accounts, permanent person IDs, usernames, invitations, roles, permissions, duplicate resolution, history claiming, Advantage Connections, and external identity connections.
+- `AGENTS.md` requires identity-related implementation work to follow the canonical rules above.

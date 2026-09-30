@@ -294,28 +294,58 @@ export default function EieEventSetupSteps({
       setNotice('Enter a custom question label first.');
       return;
     }
-    const base = customDraft.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `field_${Date.now()}`;
-    const used = new Set(registration.custom_fields.map((field) => field.id));
-    let id = base;
-    let suffix = 2;
-    while (used.has(id)) id = `${base}_${suffix++}`;
-    setRegistration((current) => ({
-      ...current,
-      custom_fields: [...current.custom_fields, {
-        ...customDraft,
-        id,
-        label: customDraft.label.trim(),
-        options: customDraft.type === 'select'
-          ? (Array.isArray(customDraft.options) ? customDraft.options : String(customDraft.options || '').split(',')).map((value) => String(value).trim()).filter(Boolean)
-          : [],
-      }],
-    }));
+    const normalized = {
+      ...customDraft,
+      label: customDraft.label.trim(),
+      options: customDraft.type === 'select'
+        ? (Array.isArray(customDraft.options) ? customDraft.options : String(customDraft.options || '').split(',')).map((value) => String(value).trim()).filter(Boolean)
+        : [],
+    };
+
+    setRegistration((current) => {
+      if (editingCustomIndex >= 0) {
+        return {
+          ...current,
+          custom_fields: current.custom_fields.map((field, index) => index === editingCustomIndex ? { ...field, ...normalized } : field),
+        };
+      }
+
+      const base = normalized.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `field_${Date.now()}`;
+      const used = new Set(current.custom_fields.map((field) => field.id));
+      let id = base;
+      let suffix = 2;
+      while (used.has(id)) id = `${base}_${suffix++}`;
+      return {
+        ...current,
+        custom_fields: [...current.custom_fields, { ...normalized, id }],
+      };
+    });
+
+    setEditingCustomIndex(-1);
     setCustomDraft(blankCustomField());
+    setNotice('');
+  }
+
+  function editCustomField(index) {
+    const field = registration.custom_fields[index];
+    if (!field) return;
+    setEditingCustomIndex(index);
+    setCustomDraft({
+      id: field.id || '',
+      label: field.label || '',
+      type: field.type || 'text',
+      required: Boolean(field.required),
+      options: Array.isArray(field.options) ? field.options : [],
+    });
     setNotice('');
   }
 
   function removeCustomField(index) {
     setRegistration((current) => ({ ...current, custom_fields: current.custom_fields.filter((_, itemIndex) => itemIndex !== index) }));
+    if (editingCustomIndex === index) {
+      setEditingCustomIndex(-1);
+      setCustomDraft(blankCustomField());
+    }
   }
 
   async function saveEventDetails(next = false) {
@@ -331,6 +361,7 @@ export default function EieEventSetupSteps({
 
       const nextSettings = {
         ...(event.field_settings || {}),
+        event_start_time: details.event_start_time || null,
         registration_format: details.structure,
         event_access: details.event_access,
         team_size: details.structure === 'team' ? Math.max(2, Math.min(12, Number(registration.team_size || 4))) : 1,
@@ -369,13 +400,28 @@ export default function EieEventSetupSteps({
             name: details.name.trim(),
             date: details.day1,
             event_date: details.day1,
+            start_time: details.event_start_time || null,
             location: details.course.trim() || null,
+            max_golfers: details.max_golfers === '' ? null : Number(details.max_golfers),
           })
           .eq('id', event.master_event_id);
         if (masterError) throw masterError;
       }
 
-      onEventUpdated(data);
+      const { error: calendarError } = await supabase
+        .from('golf_registration_events')
+        .update({
+          google_calendar_sync_enabled: Boolean(details.google_calendar_sync_enabled),
+          google_calendar_sync_status: details.google_calendar_sync_enabled ? (event.google_calendar_sync_status || 'pending') : 'not_synced',
+        })
+        .eq('id', event.id);
+      if (calendarError) throw calendarError;
+
+      onEventUpdated({
+        ...data,
+        google_calendar_sync_enabled: Boolean(details.google_calendar_sync_enabled),
+        google_calendar_sync_status: details.google_calendar_sync_enabled ? (event.google_calendar_sync_status || 'pending') : 'not_synced',
+      });
       await onReload();
       setNotice('Event Details saved.');
       if (next) onStepChange('registration');
@@ -445,9 +491,10 @@ export default function EieEventSetupSteps({
         const { error: offerUpdateError } = await supabase
           .from('event_offers')
           .update({
-            name: 'Registration',
+            name: registration.registration_item_name.trim() || 'Registration',
+            description: registration.registration_description.trim() || null,
             price: basePrice,
-            charge_by: details.structure === 'team' ? 'team' : 'player',
+            charge_by: registration.registration_charge_by || (details.structure === 'team' ? 'team' : 'player'),
             is_required: true,
             is_default: true,
             availability_start: registration.availability_start ? String(registration.availability_start).slice(0, 10) : null,
@@ -464,10 +511,10 @@ export default function EieEventSetupSteps({
           source_app: 'eie',
           source_module: 'registration_setup',
           offer_type: 'registration',
-          name: 'Registration',
-          description: 'Base event registration',
+          name: registration.registration_item_name.trim() || 'Registration',
+          description: registration.registration_description.trim() || 'Base event registration',
           price: basePrice,
-          charge_by: details.structure === 'team' ? 'team' : 'player',
+          charge_by: registration.registration_charge_by || (details.structure === 'team' ? 'team' : 'player'),
           is_required: true,
           is_default: true,
           availability_start: registration.availability_start || null,
@@ -489,9 +536,15 @@ export default function EieEventSetupSteps({
           event_id: event.id,
           price_mode: details.structure === 'team' ? 'per_team' : 'per_player',
           team_payment_mode: details.structure === 'team' && registration.team_payment_mode !== 'captain_all' ? 'split' : 'captain_all',
-          allow_split_team_payments: details.structure === 'team' && ['split_equal', 'each_player'].includes(registration.team_payment_mode),
+          allow_online: Boolean(registration.allow_online),
+          allow_clubhouse: Boolean(registration.allow_clubhouse),
+          allow_split_team_payments: details.structure === 'team' && Boolean(registration.allow_split_team_payments),
+          convenience_fee_type: registration.convenience_fee_type || 'none',
+          convenience_fee_value: registration.convenience_fee_type === 'none' ? 0 : Number(registration.convenience_fee_value || 0),
           clubhouse_hold_mode: 'days',
           clubhouse_hold_days: holdDays,
+          allow_card_guarantee: Boolean(registration.allow_card_guarantee),
+          auto_charge_at_deadline: Boolean(registration.auto_charge_at_deadline),
         }, { onConflict: 'event_id' })
         .select()
         .single();
@@ -711,6 +764,8 @@ export default function EieEventSetupSteps({
         <label>Course / location<input value={details.course} onChange={(e) => setDetail('course', e.target.value)} /></label>
         <label>Day 1<input type="date" value={details.day1} onChange={(e) => setDetail('day1', e.target.value)} /></label>
         <label>Day 2<input type="date" value={details.day2} onChange={(e) => setDetail('day2', e.target.value)} /></label>
+        <label>Event start time<input type="time" value={details.event_start_time} onChange={(e) => setDetail('event_start_time', e.target.value)} /></label>
+        <label>Maximum participants<input type="number" min="1" value={details.max_golfers} onChange={(e) => setDetail('max_golfers', e.target.value)} placeholder="Unlimited" /></label>
         <label>Event structure<select value={details.structure} onChange={(e) => changeStructure(e.target.value)}><option value="individual">Individual</option><option value="team">Team</option></select></label>
         <label>Event audience<select value={details.event_access} onChange={(e) => setDetail('event_access', e.target.value)}><option value="public">Open / Public</option><option value="members_only">Members Only</option></select></label>
         <label>Tournament format<input value={details.tournament_format} onChange={(e) => setDetail('tournament_format', e.target.value)} placeholder="Scramble, stroke play, match play..." /></label>
@@ -719,6 +774,7 @@ export default function EieEventSetupSteps({
       </div>
 
       <div className="eie-option-switches">
+        <label><input type="checkbox" checked={details.google_calendar_sync_enabled} onChange={(e) => setDetail('google_calendar_sync_enabled', e.target.checked)} /><span><strong>Sync to Hangar Google Calendar</strong><small>You can turn calendar sync on or off after the event is created.</small></span></label>
         <label><input type="checkbox" checked={details.divisions_enabled} onChange={(e) => { setDetail('divisions_enabled', e.target.checked); if (!e.target.checked) setRegistrationField('division', 'hidden'); else if (registration.division === 'hidden') setRegistrationField('division', 'optional'); }} /><span><strong>Use Divisions</strong><small>Division choices flow into registration, roster entry, uploads and exports.</small></span></label>
         <label><input type="checkbox" checked={details.flights_enabled} onChange={(e) => setDetail('flights_enabled', e.target.checked)} /><span><strong>Use Flights</strong><small>Keep flight organization available for Event Info and scoring workflows.</small></span></label>
       </div>
@@ -758,11 +814,27 @@ export default function EieEventSetupSteps({
         {details.event_access === 'members_only' && <div className="availability-note"><strong>Members Only</strong><span>Audience controls eligibility. It does not create a separate price.</span></div>}
         {details.structure === 'team' && <label>Players per team<input type="number" min="2" max="12" value={registration.team_size} onChange={(e) => setRegistrationField('team_size', e.target.value)} /></label>}
         {details.structure === 'team' && <label>Team payment<select value={registration.team_payment_mode} onChange={(e) => setRegistrationField('team_payment_mode', e.target.value)}><option value="captain_all">Captain pays all</option><option value="split_equal">Split equally</option><option value="each_player">Each player pays</option></select></label>}
+        <label>Registration item name<input value={registration.registration_item_name} onChange={(e) => setRegistrationField('registration_item_name', e.target.value)} /></label>
+        <label>Registration charge by<select value={registration.registration_charge_by} onChange={(e) => setRegistrationField('registration_charge_by', e.target.value)}><option value="player">Per golfer</option><option value="team">Per team</option><option value="order">Per order</option><option value="flat">Flat amount</option></select></label>
+        <label className="full-span">Registration description<textarea rows="2" value={registration.registration_description} onChange={(e) => setRegistrationField('registration_description', e.target.value)} /></label>
         <label>Days until payment is due<input type="number" min="1" max="365" step="1" value={registration.payment_hold_days} onChange={(e) => setRegistrationField('payment_hold_days', e.target.value)} /><small className="eie-field-help">For Pay at Clubhouse registrations. The due date is calculated from the time the registration is created. Existing registrations keep their already-saved due date.</small></label>
         <label>Registration available from<input type="datetime-local" value={registration.availability_start} onChange={(e) => setRegistrationField('availability_start', e.target.value)} /><small className="eie-field-help">Exact date and time registration becomes available.</small></label>
         <label>Registration available through<input type="datetime-local" value={registration.availability_end} onChange={(e) => setRegistrationField('availability_end', e.target.value)} /><small className="eie-field-help">Exact date and time the public registration window ends.</small></label>
         <label>Registration deadline<input type="datetime-local" value={registration.registration_deadline} onChange={(e) => setRegistrationField('registration_deadline', e.target.value)} /><small className="eie-field-help">Final event registration deadline used by the registration flow.</small></label>
-        <div />
+        <div className="full-span eie-builder-block">
+          <p className="platform-eyebrow">Payment Rules</p>
+          <div className="form-grid two">
+            <label>Convenience fee<select value={registration.convenience_fee_type} onChange={(e) => setRegistrationField('convenience_fee_type', e.target.value)}><option value="percent">Percent</option><option value="flat">Flat amount</option><option value="none">None</option></select></label>
+            {registration.convenience_fee_type !== 'none' && <label>Fee value<input type="number" min="0" step="0.01" value={registration.convenience_fee_value} onChange={(e) => setRegistrationField('convenience_fee_value', e.target.value)} /></label>}
+          </div>
+          <div className="eie-option-switches" style={{ marginTop: 10 }}>
+            <label><input type="checkbox" checked={registration.allow_online} onChange={(e) => setRegistrationField('allow_online', e.target.checked)} /><span><strong>Allow online payment</strong></span></label>
+            <label><input type="checkbox" checked={registration.allow_clubhouse} onChange={(e) => setRegistrationField('allow_clubhouse', e.target.checked)} /><span><strong>Allow clubhouse payment</strong></span></label>
+            {details.structure === 'team' && <label><input type="checkbox" checked={registration.allow_split_team_payments} onChange={(e) => setRegistrationField('allow_split_team_payments', e.target.checked)} /><span><strong>Allow split team payments</strong></span></label>}
+            <label><input type="checkbox" checked={registration.allow_card_guarantee} onChange={(e) => setRegistrationField('allow_card_guarantee', e.target.checked)} /><span><strong>Allow backup card guarantee</strong></span></label>
+            <label><input type="checkbox" checked={registration.auto_charge_at_deadline} onChange={(e) => setRegistrationField('auto_charge_at_deadline', e.target.checked)} /><span><strong>Auto-charge guaranteed card at deadline if balance is unpaid</strong></span></label>
+          </div>
+        </div>
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_team_name} onChange={(e) => setRegistrationField('allow_team_name', e.target.checked)} /><span>Allow team name</span></label>}
         {details.structure === 'team' && <label className="eie-inline-check"><input type="checkbox" checked={registration.allow_partial_team} onChange={(e) => setRegistrationField('allow_partial_team', e.target.checked)} /><span>Allow partial teams / hold incomplete team</span></label>}
       </div>
@@ -811,7 +883,7 @@ export default function EieEventSetupSteps({
       <div className="eie-builder-block">
         <div className="platform-section-heading"><div><p className="platform-eyebrow">Custom Questions</p><h3>Additional Registration Fields</h3></div></div>
         <div className="eie-custom-field-list">
-          {registration.custom_fields.map((field, index) => <div className="eie-custom-field-row" key={field.id || index}><div><strong>{field.label}</strong><span>{field.type || 'text'} · {field.required ? 'required' : 'optional'}</span></div><button className="platform-secondary-button danger-outline" type="button" onClick={() => removeCustomField(index)}>Remove</button></div>)}
+          {registration.custom_fields.map((field, index) => <div className="eie-custom-field-row" key={field.id || index}><div><strong>{field.label}</strong><span>{field.type || 'text'} · {field.required ? 'required' : 'optional'}</span></div><div className="review-actions"><button className="platform-secondary-button" type="button" onClick={() => editCustomField(index)}>Edit</button><button className="platform-secondary-button danger-outline" type="button" onClick={() => removeCustomField(index)}>Remove</button></div></div>)}
           {!registration.custom_fields.length && <div className="availability-note"><strong>No custom questions</strong><span>Add event-specific questions only when this event needs them.</span></div>}
         </div>
         <div className="form-grid three" style={{ marginTop: 14 }}>
@@ -820,7 +892,10 @@ export default function EieEventSetupSteps({
           {customDraft.type === 'select' ? <label>Dropdown choices<input value={Array.isArray(customDraft.options) ? customDraft.options.join(', ') : customDraft.options} onChange={(e) => setCustomDraft((current) => ({ ...current, options: e.target.value }))} placeholder="Small, Medium, Large" /></label> : <label className="eie-inline-check"><input type="checkbox" checked={customDraft.required} onChange={(e) => setCustomDraft((current) => ({ ...current, required: e.target.checked }))} /><span>Required question</span></label>}
         </div>
         {customDraft.type === 'select' && <label className="eie-inline-check" style={{ marginTop: 10 }}><input type="checkbox" checked={customDraft.required} onChange={(e) => setCustomDraft((current) => ({ ...current, required: e.target.checked }))} /><span>Required question</span></label>}
-        <button className="platform-secondary-button" type="button" style={{ marginTop: 12 }} onClick={addCustomField}>+ Add Custom Question</button>
+        <div className="review-actions" style={{ marginTop: 12 }}>
+          {editingCustomIndex >= 0 && <button className="platform-secondary-button" type="button" onClick={() => { setEditingCustomIndex(-1); setCustomDraft(blankCustomField()); }}>Cancel Edit</button>}
+          <button className="platform-secondary-button" type="button" onClick={addCustomField}>{editingCustomIndex >= 0 ? 'Save Question Changes' : '+ Add Custom Question'}</button>
+        </div>
       </div>
 
       <div className="review-actions">

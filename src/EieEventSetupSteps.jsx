@@ -85,6 +85,9 @@ export default function EieEventSetupSteps({
     course: event?.course || organization?.name || '',
     day1: Array.isArray(event?.event_dates) ? event.event_dates[0] || '' : '',
     day2: Array.isArray(event?.event_dates) ? event.event_dates[1] || '' : '',
+    event_start_time: initialSettings.event_start_time || '',
+    max_golfers: '',
+    google_calendar_sync_enabled: event?.google_calendar_sync_enabled === true,
     structure: eventStructure(initialSettings),
     event_access: initialSettings.event_access || 'public',
     divisions_enabled: typeof initialSettings.divisions_enabled === 'boolean'
@@ -103,7 +106,17 @@ export default function EieEventSetupSteps({
     allow_team_name: initialSettings.allow_team_name !== false,
     allow_partial_team: initialSettings.allow_partial_team !== false,
     team_payment_mode: initialSettings.team_payment_mode || 'captain_all',
-    payment_hold_days: '',
+    registration_item_name: 'Registration',
+    registration_description: '',
+    registration_charge_by: eventStructure(initialSettings) === 'team' ? 'team' : 'player',
+    payment_hold_days: '3',
+    allow_online: true,
+    allow_clubhouse: true,
+    allow_split_team_payments: true,
+    convenience_fee_type: 'percent',
+    convenience_fee_value: '3',
+    allow_card_guarantee: true,
+    auto_charge_at_deadline: true,
     availability_start: initialSettings.registration_available_from_at || '',
     availability_end: initialSettings.registration_available_through_at || '',
     registration_deadline: initialSettings.registration_deadline_at || initialSettings.registration_deadline || '',
@@ -123,6 +136,7 @@ export default function EieEventSetupSteps({
   const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
   const [googleRosterUrl, setGoogleRosterUrl] = useState(event?.google_sheet_url || '');
   const [customDraft, setCustomDraft] = useState(blankCustomField);
+  const [editingCustomIndex, setEditingCustomIndex] = useState(-1);
   const [busy, setBusy] = useState(false);
   const [pricingBusy, setPricingBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -130,7 +144,11 @@ export default function EieEventSetupSteps({
   useEffect(() => {
     let cancelled = false;
     async function loadPricing() {
-      const [{ data: offerRows, error: offerError }, { data: paymentRow, error: paymentError }] = await Promise.all([
+      const [
+        { data: offerRows, error: offerError },
+        { data: paymentRow, error: paymentError },
+        { data: masterRow, error: masterError },
+      ] = await Promise.all([
         supabase
           .from('event_offers')
           .select('id,name,description,offer_type,price,charge_by,is_required,availability_start,availability_end,inventory_limit,quantity_max,coupon_eligible,metadata,status,sort_order')
@@ -141,12 +159,22 @@ export default function EieEventSetupSteps({
           .select('*')
           .eq('event_id', event.id)
           .maybeSingle(),
+        event.master_event_id
+          ? supabase.from('events').select('max_golfers,start_time').eq('id', event.master_event_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
       if (cancelled) return;
-      if (offerError || paymentError) {
-        setNotice(offerError?.message || paymentError?.message || 'Unable to load pricing settings.');
+      if (offerError || paymentError || masterError) {
+        setNotice(offerError?.message || paymentError?.message || masterError?.message || 'Unable to load event settings.');
         return;
       }
+
+      setDetails((current) => ({
+        ...current,
+        event_start_time: current.event_start_time || (masterRow?.start_time ? String(masterRow.start_time).slice(0, 5) : ''),
+        max_golfers: masterRow?.max_golfers ?? '',
+        google_calendar_sync_enabled: event?.google_calendar_sync_enabled === true,
+      }));
       const normalizedOffers = (offerRows || []).map((row) => ({
         ...row,
         price: row.price ?? '',
@@ -166,6 +194,9 @@ export default function EieEventSetupSteps({
       if (baseRegistrationOffer) {
         setRegistration((current) => ({
           ...current,
+          registration_item_name: baseRegistrationOffer.name || 'Registration',
+          registration_description: baseRegistrationOffer.description || '',
+          registration_charge_by: baseRegistrationOffer.charge_by || (details.structure === 'team' ? 'team' : 'player'),
           availability_start: current.availability_start || baseRegistrationOffer.availability_start || '',
           availability_end: current.availability_end || baseRegistrationOffer.availability_end || '',
         }));
@@ -174,6 +205,13 @@ export default function EieEventSetupSteps({
       setRegistration((current) => ({
         ...current,
         payment_hold_days: String(paymentRow?.clubhouse_hold_days ?? 3),
+        allow_online: paymentRow?.allow_online !== false,
+        allow_clubhouse: paymentRow?.allow_clubhouse !== false,
+        allow_split_team_payments: paymentRow?.allow_split_team_payments !== false,
+        convenience_fee_type: paymentRow?.convenience_fee_type || 'percent',
+        convenience_fee_value: String(paymentRow?.convenience_fee_value ?? 3),
+        allow_card_guarantee: paymentRow?.allow_card_guarantee !== false,
+        auto_charge_at_deadline: paymentRow?.auto_charge_at_deadline !== false,
         ...(!initialSettings.team_payment_mode && paymentRow?.team_payment_mode
           ? { team_payment_mode: paymentRow.team_payment_mode === 'split' ? 'split_equal' : 'captain_all' }
           : {}),

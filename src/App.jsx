@@ -766,8 +766,8 @@ function accountStateLabel(user) {
   return 'Active';
 }
 
-function EigUserManagement() {
-  const [tab, setTab] = useState('people');
+function EigUserManagement({ onBack, onInviteUser }) {
+  const [tab, setTab] = useState('overview');
   const [query, setQuery] = useState('');
   const [payload, setPayload] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -799,6 +799,7 @@ function EigUserManagement() {
   const invitations = payload?.invitations || [];
   const unclaimed = payload?.identity_review?.unclaimed || [];
   const merged = payload?.identity_review?.merged || [];
+  const failedEmails = payload?.stats?.failed_emails ?? 0;
   const normalizedQuery = query.trim().toLowerCase();
   const filteredUsers = users.filter((user) => {
     if (!normalizedQuery) return true;
@@ -825,133 +826,110 @@ function EigUserManagement() {
     || user?.email?.split('@')?.[0]
     || 'ElevationPilot User';
 
-  return <section className="platform-section-card user-management-card">
-    <div className="platform-section-heading user-management-heading">
+  const navItems = [
+    ['overview', 'Overview'],
+    ['people', 'People'],
+    ['invitations', 'Invitations'],
+    ['identity', 'Identity Review'],
+    ['organizations', 'Organizations'],
+    ['access', 'Access'],
+    ['activity', 'Activity'],
+  ];
+
+  const placeholderCopy = {
+    organizations: ['Organizations', 'Organization relationships will become the platform-wide company and Hangar view.'],
+    access: ['Access', 'Scoped roles and permissions will be managed here without changing the person identity.'],
+    activity: ['Activity', 'Auditable identity, invitation, role, and relationship changes will appear here.'],
+  };
+
+  return <div className="platform-page user-management-page">
+    <section className="platform-hero user-management-hero">
       <div>
-        <p className="platform-eyebrow">Platform Identity</p>
-        <h2>User Management</h2>
-        <p>One ElevationPilot identity, with Hangar, event, and app relationships layered around it.</p>
+        <button className="user-management-back" type="button" onClick={onBack}>← Back to EIG Command Center</button>
+        <p className="platform-eyebrow">EIG Command Center</p>
+        <h1>User Management</h1>
+        <p>Manage the shared ElevationPilot identity layer, relationships, invitations, and access from one platform workspace.</p>
       </div>
-      <button className="platform-secondary-button" type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
-    </div>
+      <div className="platform-role-pill">EIG ADMIN</div>
+    </section>
 
-    <div className="user-management-stats">
-      <div><strong>{payload?.stats?.accounts ?? '—'}</strong><span>Accounts</span></div>
-      <div><strong>{payload?.stats?.verified_accounts ?? '—'}</strong><span>Verified</span></div>
-      <div><strong>{payload?.stats?.pending_invitations ?? '—'}</strong><span>Pending Invites</span></div>
-      <div><strong>{payload?.stats?.unclaimed ?? '—'}</strong><span>Unclaimed</span></div>
-    </div>
+    <nav className="user-management-tabs user-management-primary-nav" role="tablist" aria-label="User Management sections">
+      {navItems.map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} onClick={() => { setTab(key); setQuery(''); }}>{label}</button>)}
+    </nav>
 
-    <div className="user-management-tabs" role="tablist" aria-label="User Management sections">
-      {[
-        ['people', 'People'],
-        ['invitations', 'Invitations'],
-        ['identity', 'Identity Review'],
-      ].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>)}
-    </div>
+    {tab === 'overview' && <section className="user-management-overview">
+      <div className="user-management-stats">
+        <div><strong>{payload?.stats?.accounts ?? '—'}</strong><span>Accounts</span><small>ElevationPilot identities</small></div>
+        <div><strong>{payload?.stats?.verified_accounts ?? '—'}</strong><span>Verified</span><small>Verified email accounts</small></div>
+        <div><strong>{payload?.stats?.pending_invitations ?? '—'}</strong><span>Pending Invites</span><small>Awaiting account claim</small></div>
+        <div><strong>{payload?.stats?.unclaimed ?? '—'}</strong><span>Needs Claim</span><small>Historical or invited identities</small></div>
+        <div><strong>{failedEmails}</strong><span>Failed Emails</span><small>Delivery issues needing attention</small></div>
+      </div>
+      <div className="user-management-overview-grid">
+        <div className="platform-section-card">
+          <div className="platform-section-heading"><div><p className="platform-eyebrow">Primary workspace</p><h2>People</h2><p>Search the permanent person directory and inspect Hangar, event, and Passenger relationships.</p></div><button className="platform-primary-button inline" type="button" onClick={() => setTab('people')}>Open People →</button></div>
+        </div>
+        <div className="platform-section-card">
+          <div className="platform-section-heading"><div><p className="platform-eyebrow">Needs attention</p><h2>Identity Review</h2><p>{unclaimed.length + merged.length} identity records are currently represented in review/history.</p></div><button className="platform-secondary-button" type="button" onClick={() => setTab('identity')}>Review →</button></div>
+        </div>
+        <div className="platform-section-card">
+          <div className="platform-section-heading"><div><p className="platform-eyebrow">Communication</p><h2>Invitations</h2><p>{invitations.length} invitation records are available for lifecycle review.</p></div><button className="platform-secondary-button" type="button" onClick={() => setTab('invitations')}>View Invitations →</button></div>
+        </div>
+      </div>
+    </section>}
 
-    <div className="user-management-toolbar">
-      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'people' ? 'Search name, @username, email, Hangar, event...' : 'Search this section...'} />
-      <span>{tab === 'people' ? filteredUsers.length : tab === 'invitations' ? filteredInvitations.length : unclaimed.length + merged.length} shown</span>
-    </div>
-
-    {error && <div className="platform-error">{error}</div>}
-    {payload?.truncated && <div className="platform-error">The account directory reached its current safety limit. Refine the directory loader before relying on this as a complete platform count.</div>}
-
-    {!error && tab === 'people' && <div className="user-management-layout">
-      <div className="user-directory-list">
-        {!loading && !filteredUsers.length && <p className="platform-login-copy">No matching users.</p>}
-        {filteredUsers.map((user) => {
-          const state = accountStateLabel(user);
-          const username = user.profile?.username ? '@' + user.profile.username : 'No username yet';
-          const membershipCount = (user.memberships || []).filter((row) => row.status === 'active').length;
-          const assignmentCount = (user.assignments || []).filter((row) => row.status === 'active').length;
-          return <button key={user.id} type="button" className={'user-directory-row ' + (selected?.id === user.id ? 'selected' : '')} onClick={() => setSelectedUserId(user.id)}>
-            <div className="user-avatar">{displayName(user).slice(0, 2).toUpperCase()}</div>
-            <div className="user-directory-copy">
-              <strong>{displayName(user)}</strong>
-              <span>{username} · {user.email || 'No email'}</span>
-              <small>{membershipCount} Hangar role{membershipCount === 1 ? '' : 's'} · {assignmentCount} event role{assignmentCount === 1 ? '' : 's'}</small>
+    {tab === 'people' && <section className="platform-section-card user-management-card">
+      <div className="user-management-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, @username, email, Hangar, event..." /><span>{filteredUsers.length} shown</span></div>
+      {error && <div className="platform-error">{error}</div>}
+      {payload?.truncated && <div className="platform-error">The account directory reached its current safety limit. Refine the directory loader before relying on this as a complete platform count.</div>}
+      <div className="user-management-layout">
+        <div className="user-directory-list">
+          {!loading && !filteredUsers.length && <p className="platform-login-copy">No matching users.</p>}
+          {filteredUsers.map((user) => {
+            const state = accountStateLabel(user);
+            const username = user.profile?.username ? '@' + user.profile.username : 'No username yet';
+            const membershipCount = (user.memberships || []).filter((row) => row.status === 'active').length;
+            const assignmentCount = (user.assignments || []).filter((row) => row.status === 'active').length;
+            return <button key={user.id} type="button" className={'user-directory-row ' + (selected?.id === user.id ? 'selected' : '')} onClick={() => setSelectedUserId(user.id)}>
+              <div className="user-avatar">{displayName(user).slice(0, 2).toUpperCase()}</div>
+              <div className="user-directory-copy"><strong>{displayName(user)}</strong><span>{username} · {user.email || 'No email'}</span><small>{membershipCount} Hangar role{membershipCount === 1 ? '' : 's'} · {assignmentCount} event role{assignmentCount === 1 ? '' : 's'}</small></div>
+              <span className={'user-state ' + state.toLowerCase()}>{state}</span>
+            </button>;
+          })}
+        </div>
+        <div className="user-detail-panel">
+          {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
+            <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span></div>
+            <div className="user-detail-grid">
+              <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
+              <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
+              <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>
+              <div><span>Passenger Identity</span><strong>{selected.passenger ? 'Linked' : 'Not created'}</strong><small>{selected.passenger?.claimed_at ? 'Claimed ' + formatAdminTimestamp(selected.passenger.claimed_at) : 'No claimed Passenger record'}</small></div>
             </div>
-            <span className={'user-state ' + state.toLowerCase()}>{state}</span>
-          </button>;
-        })}
+            <div className="user-detail-section"><h4>Hangar Roles</h4>{!(selected.memberships || []).length && <p className="platform-login-copy">No organization memberships.</p>}{(selected.memberships || []).map((row) => <div className="role-history-row" key={row.id}><div><strong>{accessRoleLabel(row.role)}</strong><span>{row.organization?.name || 'Organization'}</span></div><div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}{row.invited_by ? ' · recorded inviter' : ''}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div></div>)}</div>
+            <div className="user-detail-section"><h4>Event Roles</h4>{!(selected.assignments || []).length && <p className="platform-login-copy">No event assignments.</p>}{(selected.assignments || []).map((row) => <div className="role-history-row" key={row.id}><div><strong>{accessRoleLabel(row.role)}</strong><span>{row.event?.name || 'Event'}</span></div><div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div></div>)}</div>
+          </>}
+        </div>
       </div>
+    </section>}
 
-      <div className="user-detail-panel">
-        {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
-          <div className="user-detail-header">
-            <div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div>
-            <div>
-              <h3>{displayName(selected)}</h3>
-              <p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p>
-            </div>
-            <span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>
-          </div>
+    {tab === 'invitations' && <section className="platform-section-card user-management-card">
+      <div className="user-management-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search invitee, email, Hangar, event, or role..." /><span>{filteredInvitations.length} shown</span></div>
+      {error && <div className="platform-error">{error}</div>}
+      <div className="user-management-table"><div className="user-management-table-head"><span>Person</span><span>Access</span><span>Status</span><span>Timeline</span></div>{!loading && !filteredInvitations.length && <p className="platform-login-copy">No invitations match this view.</p>}{filteredInvitations.map((invite) => <div className="user-management-table-row" key={invite.id}><div><strong>{invite.invitee_name || invite.email}</strong><small>{invite.email}</small></div><div><strong>{accessRoleLabel(invite.role)}</strong><small>{invite.event?.name || invite.organization?.name || 'ElevationPilot'}</small></div><div><span className={'user-state ' + invite.status}>{invite.status}</span><small>{invite.recipient_was_existing ? 'Existing account at invite' : (invite.status === 'accepted' ? 'New account created from invite' : 'No account yet at invite')}</small></div><div><strong>Sent {formatAdminTimestamp(invite.sent_at || invite.created_at)}</strong><small>{invite.accepted_at ? 'Accepted ' + formatAdminTimestamp(invite.accepted_at) : invite.expires_at ? 'Expires ' + formatAdminTimestamp(invite.expires_at) : '—'}</small></div></div>)}</div>
+      <div className="user-management-invite-footer"><p>Need to add a person from Command Center? Use the existing secure invitation flow.</p><button className="platform-secondary-button" type="button" onClick={onInviteUser}>+ Invite User</button></div>
+    </section>}
 
-          <div className="user-detail-grid">
-            <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
-            <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
-            <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>
-            <div><span>Passenger Identity</span><strong>{selected.passenger ? 'Linked' : 'Not created'}</strong><small>{selected.passenger?.claimed_at ? 'Claimed ' + formatAdminTimestamp(selected.passenger.claimed_at) : 'No claimed Passenger record'}</small></div>
-          </div>
+    {tab === 'identity' && <section className="platform-section-card user-management-card">
+      {error && <div className="platform-error">{error}</div>}
+      <div className="identity-review-grid"><div className="identity-review-column"><div className="platform-section-heading"><div><p className="platform-eyebrow">Needs Claim</p><h3>Unclaimed People</h3></div><span className="platform-role-pill">{unclaimed.length}</span></div>{!unclaimed.length && <p className="platform-login-copy">No unclaimed Passenger identities right now.</p>}{unclaimed.map((person) => <div className="identity-review-item" key={person.id}><strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Unclaimed person'}</strong><span>{(person.contacts || []).find((row) => row.contact_type === 'email')?.contact_value || 'No email contact'}</span><small>Created {formatAdminTimestamp(person.created_at)}</small></div>)}</div><div className="identity-review-column"><div className="platform-section-heading"><div><p className="platform-eyebrow">History</p><h3>Merged Identities</h3></div><span className="platform-role-pill">{merged.length}</span></div>{!merged.length && <p className="platform-login-copy">No merged identities yet.</p>}{merged.map((person) => <div className="identity-review-item" key={person.id}><strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Merged identity'}</strong><span>Preserved historical identity</span><small>Merged into {person.merged_into_passenger_id || 'canonical identity'}</small></div>)}</div></div>
+    </section>}
 
-          <div className="user-detail-section">
-            <h4>Hangar Roles</h4>
-            {!(selected.memberships || []).length && <p className="platform-login-copy">No organization memberships.</p>}
-            {(selected.memberships || []).map((row) => <div className="role-history-row" key={row.id}>
-              <div><strong>{accessRoleLabel(row.role)}</strong><span>{row.organization?.name || 'Organization'}</span></div>
-              <div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}{row.invited_by ? ' · recorded inviter' : ''}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div>
-            </div>)}
-          </div>
-
-          <div className="user-detail-section">
-            <h4>Event Roles</h4>
-            {!(selected.assignments || []).length && <p className="platform-login-copy">No event assignments.</p>}
-            {(selected.assignments || []).map((row) => <div className="role-history-row" key={row.id}>
-              <div><strong>{accessRoleLabel(row.role)}</strong><span>{row.event?.name || 'Event'}</span></div>
-              <div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div>
-            </div>)}
-          </div>
-        </>}
-      </div>
-    </div>}
-
-    {!error && tab === 'invitations' && <div className="user-management-table">
-      <div className="user-management-table-head"><span>Person</span><span>Access</span><span>Status</span><span>Timeline</span></div>
-      {!loading && !filteredInvitations.length && <p className="platform-login-copy">No invitations match this view.</p>}
-      {filteredInvitations.map((invite) => <div className="user-management-table-row" key={invite.id}>
-        <div><strong>{invite.invitee_name || invite.email}</strong><small>{invite.email}</small></div>
-        <div><strong>{accessRoleLabel(invite.role)}</strong><small>{invite.event?.name || invite.organization?.name || 'ElevationPilot'}</small></div>
-        <div><span className={'user-state ' + invite.status}>{invite.status}</span><small>{invite.recipient_was_existing ? 'Existing account at invite' : (invite.status === 'accepted' ? 'New account created from invite' : 'No account yet at invite')}</small></div>
-        <div><strong>Sent {formatAdminTimestamp(invite.sent_at || invite.created_at)}</strong><small>{invite.accepted_at ? 'Accepted ' + formatAdminTimestamp(invite.accepted_at) : invite.expires_at ? 'Expires ' + formatAdminTimestamp(invite.expires_at) : '—'}</small></div>
-      </div>)}
-    </div>}
-
-    {!error && tab === 'identity' && <div className="identity-review-grid">
-      <div className="identity-review-column">
-        <div className="platform-section-heading"><div><p className="platform-eyebrow">Needs Claim</p><h3>Unclaimed People</h3></div><span className="platform-role-pill">{unclaimed.length}</span></div>
-        {!unclaimed.length && <p className="platform-login-copy">No unclaimed Passenger identities right now.</p>}
-        {unclaimed.map((person) => <div className="identity-review-item" key={person.id}>
-          <strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Unclaimed person'}</strong>
-          <span>{(person.contacts || []).find((row) => row.contact_type === 'email')?.contact_value || 'No email contact'}</span>
-          <small>Created {formatAdminTimestamp(person.created_at)}</small>
-        </div>)}
-      </div>
-      <div className="identity-review-column">
-        <div className="platform-section-heading"><div><p className="platform-eyebrow">History</p><h3>Merged Identities</h3></div><span className="platform-role-pill">{merged.length}</span></div>
-        {!merged.length && <p className="platform-login-copy">No merged identities yet.</p>}
-        {merged.map((person) => <div className="identity-review-item" key={person.id}>
-          <strong>{person.preferred_name || [person.first_name, person.last_name].filter(Boolean).join(' ') || 'Merged identity'}</strong>
-          <span>Preserved historical identity</span>
-          <small>Merged into {person.merged_into_passenger_id || 'canonical identity'}</small>
-        </div>)}
-      </div>
-    </div>}
-  </section>;
+    {['organizations', 'access', 'activity'].includes(tab) && <section className="platform-section-card user-management-placeholder"><p className="platform-eyebrow">User Management</p><h2>{placeholderCopy[tab][0]}</h2><p>{placeholderCopy[tab][1]}</p><span className="platform-role-pill">Planned workspace</span></section>}
+  </div>;
 }
 
-function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, loading }) {
+function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, onOpenUserManagement, loading }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('EIG Test Organization');
   const [organizationType, setOrganizationType] = useState('business');
@@ -970,7 +948,7 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
     finally { setCreating(false); }
   }
 
-  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-role-pill">EIG</div></section><section className="platform-stats-grid"><StatCard label="Hangars" value={clients.length} detail="Businesses and organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Hangars</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Pilot.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}</button></form>}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigUserManagement /><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
+  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-hero-actions"><button className="platform-primary-button" type="button" onClick={onOpenUserManagement}>User Management →</button><div className="platform-role-pill">EIG</div></div></section><section className="platform-stats-grid"><StatCard label="Hangars" value={clients.length} detail="Businesses and organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Hangars</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Contact name" /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="name@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>EIG creates the workspace and onboarding record. The company contact will later receive a secure invitation to finish the Organization Profile and become the first Pilot.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating onboarding...' : 'Create Organization Onboarding'}</button></form>}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
 }
 
 function ProductCard({ product, enabled, onLaunch }) {
@@ -2477,7 +2455,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return; }
@@ -2773,7 +2751,7 @@ export default function App() {
 
   async function signOut() { await supabase.auth.signOut(); }
   function openAirport() { setPortalView('airport'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); setCockpitApp(''); setEieInitialEventId(''); }
-  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); }
+  function openWorkspace(organizationId) { if (!organizationId) return; setActiveOrganizationId(organizationId); setPortalView('workspace'); setCockpitApp(''); setEieInitialEventId(''); setAdminView('command'); } function openUserManagement() { setAdminView('users'); setPortalView('workspace'); setActiveOrganizationId(EIG_ID); setCockpitApp(''); setEieInitialEventId(''); } function closeUserManagement() { setAdminView('command'); }
   function openPassengerProfile() { setPortalView('profile'); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null); }
 
   async function savePassengerProfile(form) {

@@ -2999,7 +2999,7 @@ export default function App() {
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
-              ? <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} />
+              ? adminView === 'users' ? <EigUserManagement onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
                 : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}

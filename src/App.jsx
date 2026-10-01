@@ -783,6 +783,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [auditPayload, setAuditPayload] = useState(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
+  const [selectedAuditIssue, setSelectedAuditIssue] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -1089,7 +1090,23 @@ function EigUserManagement({ onBack, onInviteUser }) {
       {!auditPayload && !auditLoading && <div className="audit-empty"><strong>Ready for an audit</strong><span>Run the audit to inspect account health, identity integrity, invitation health, and protected test accounts.</span></div>}
       {auditPayload && <><div className="audit-summary-grid"><div><strong>{auditPayload.summary?.accounts ?? 0}</strong><span>Accounts scanned</span></div><div><strong>{auditPayload.summary?.issues ?? 0}</strong><span>Findings</span></div><div><strong>{auditPayload.summary?.review_items ?? 0}</strong><span>Needs review</span></div><div><strong>{auditPayload.summary?.test_accounts ?? 0}</strong><span>Test accounts</span></div><div><strong>{auditPayload.summary?.pending_invitations ?? 0}</strong><span>Pending invites</span></div></div>
       <div className="audit-meta"><span>Last audit: {formatAdminTimestamp(auditPayload.generated_at)}</span>{auditPayload.truncated && <span>Account scan reached its configured safety limit.</span>}</div>
-      <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <div className={'audit-issue-row ' + issue.severity} key={issue.key}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Action available' : 'Review'}</span></div>)}</div></>}
+      <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <button type="button" className={'audit-issue-row ' + issue.severity} key={issue.key} onClick={() => issue.count ? setSelectedAuditIssue(issue) : null} disabled={!issue.count}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Review accounts →' : 'Review records →'}</span></button>)}</div>
+      {selectedAuditIssue && <div className="audit-review-panel">
+        <div className="platform-section-heading"><div><p className="platform-eyebrow">Audit finding</p><h3>{selectedAuditIssue.label}</h3><p>{selectedAuditIssue.description}</p></div><button className="platform-secondary-button compact" type="button" onClick={() => setSelectedAuditIssue(null)}>Close</button></div>
+        <div className="audit-record-list">{(selectedAuditIssue.records || []).map((record, index) => {
+          const label = record.label || record.email || record.invitee_name || record.scope || ('Record ' + (index + 1));
+          const detail = record.detail || record.organization_id || record.event_id || '';
+          return <div className="audit-record-row" key={record.id || record.email || index}><div><strong>{label}</strong><small>{detail}</small></div><button className="platform-secondary-button compact" type="button" onClick={() => {
+            if (selectedAuditIssue.key === 'test_account') { setTab('people'); setSelectedUserId(record.id); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'unverified' || selectedAuditIssue.key === 'malformed_email') { setTab('people'); setSelectedUserId(record.id); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'duplicate_email') { setTab('identity'); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'failed_invitation' || selectedAuditIssue.key === 'expired_invitation') { setTab('invitations'); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'orphaned_profile') { setTab('identity'); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'orphaned_membership' || selectedAuditIssue.key === 'orphaned_assignment') { setTab('access'); setSelectedAuditIssue(null); }
+            else setSelectedAuditIssue(null);
+          }}>{selectedAuditIssue.key === 'test_account' ? 'Manage →' : 'Open Review →'}</button></div>;
+        })}</div>
+      </div></>}
     </section>}
 
     {tab === 'reports' && <section className="platform-section-card user-management-card">

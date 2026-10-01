@@ -778,6 +778,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [accessError, setAccessError] = useState('');
   const [editingAccess, setEditingAccess] = useState(null);
   const [accessSaving, setAccessSaving] = useState(false);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [cleanupError, setCleanupError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -795,6 +797,32 @@ function EigUserManagement({ onBack, onInviteUser }) {
       setError(loadError.message || 'Unable to load User Management.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function testAccountAction(user, operation) {
+    if (!user?.id) return;
+    setCleanupBusy(true);
+    setCleanupError('');
+    try {
+      if (operation === 'mark_test') {
+        const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+          body: { action: 'admin_test_account', target_user_id: user.id, operation: 'mark_test' },
+        });
+        if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to mark test account.');
+      } else {
+        const confirmed = window.prompt('Type REMOVE TEST ACCOUNT to permanently remove this test account.');
+        if (confirmed !== 'REMOVE TEST ACCOUNT') return;
+        const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+          body: { action: 'admin_test_account', target_user_id: user.id, operation: 'remove_test', confirmation: confirmed },
+        });
+        if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to remove test account.');
+      }
+      await load();
+    } catch (actionError) {
+      setCleanupError(actionError.message || 'Unable to complete test account action.');
+    } finally {
+      setCleanupBusy(false);
     }
   }
 
@@ -934,7 +962,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
 
     {tab === 'people' && <section className="platform-section-card user-management-card">
       <div className="user-management-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, @username, email, Hangar, event..." /><span>{filteredUsers.length} shown</span></div>
-      {error && <div className="platform-error">{error}</div>}
+      {error && <div className="platform-error">{error}</div>}{cleanupError && <div className="platform-error">{cleanupError}</div>}
       {payload?.truncated && <div className="platform-error">The account directory reached its current safety limit. Refine the directory loader before relying on this as a complete platform count.</div>}
       <div className="user-management-layout">
         <div className="user-directory-list">
@@ -953,8 +981,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
         </div>
         <div className="user-detail-panel">
           {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
-            <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span></div>
-            <div className="user-detail-grid">
+            <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><div className="user-detail-status-stack"><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>{selected.is_test_account && <span className="platform-role-pill">TEST ACCOUNT</span>}</div></div>
+            <div className="user-detail-actions">{selected.is_test_account ? <button className="platform-secondary-button danger-outline" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}>{cleanupBusy ? 'Removing...' : 'Remove Test Account'}</button> : <button className="platform-secondary-button" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}>{cleanupBusy ? 'Saving...' : 'Mark as Test Account'}</button>}<span>Only accounts explicitly marked as test can be permanently removed.</span></div><div className="user-detail-grid">
               <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
               <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
               <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>

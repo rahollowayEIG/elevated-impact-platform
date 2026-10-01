@@ -773,6 +773,11 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accessPayload, setAccessPayload] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessError, setAccessError] = useState('');
+  const [editingAccess, setEditingAccess] = useState(null);
+  const [accessSaving, setAccessSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -793,7 +798,54 @@ function EigUserManagement({ onBack, onInviteUser }) {
     }
   }
 
+  async function loadAccess(organizationId) {
+    const orgId = organizationId || organizationsForAccess[0]?.id;
+    if (!orgId) return;
+    setAccessLoading(true);
+    setAccessError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'list_access', organization_id: orgId },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to load access.');
+      setAccessPayload({ ...data, organizationId: orgId });
+    } catch (loadError) {
+      setAccessError(loadError.message || 'Unable to load access.');
+    } finally {
+      setAccessLoading(false);
+    }
+  }
+
+  async function saveAccess(item) {
+    setAccessSaving(true);
+    setAccessError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: {
+          action: 'update_access',
+          organization_id: accessPayload?.organizationId,
+          assignment_id: item.id,
+          assignment_type: item.assignmentType,
+          access_mode: item.mode,
+          access_start_date: item.startDate || '',
+          access_end_date: item.endDate || '',
+        },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to update access.');
+      setEditingAccess(null);
+      await loadAccess(accessPayload?.organizationId);
+      await load();
+    } catch (saveError) {
+      setAccessError(saveError.message || 'Unable to update access.');
+    } finally {
+      setAccessSaving(false);
+    }
+  }
+
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (tab === 'access' && !accessPayload && !accessLoading) loadAccess();
+  }, [tab]);
 
   const users = payload?.users || [];
   const invitations = payload?.invitations || [];
@@ -821,6 +873,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
       .filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery);
   });
   const selected = users.find((user) => user.id === selectedUserId) || filteredUsers[0] || null;
+  const organizationsForAccess = Array.from(new Map(users.flatMap((user) => (user.memberships || []).map((m) => [m.organization?.id || m.organization?.name, m.organization]))).values()).filter(Boolean);
   const displayName = (user) => user?.profile?.display_name
     || [user?.profile?.first_name, user?.profile?.last_name].filter(Boolean).join(' ')
     || user?.email?.split('@')?.[0]
@@ -935,8 +988,35 @@ function EigUserManagement({ onBack, onInviteUser }) {
     </section>}
 
     {tab === 'access' && <section className="platform-section-card user-management-card">
-      <div className="user-management-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search person, role, organization, or event..." /><span>{users.filter((user) => (user.memberships || []).length || (user.assignments || []).length).filter((user) => !normalizedQuery || [displayName(user), user.email, ...(user.memberships || []).map((m) => m.organization?.name), ...(user.assignments || []).map((a) => a.event?.name), ...(user.memberships || []).map((m) => accessRoleLabel(m.role)), ...(user.assignments || []).map((a) => accessRoleLabel(a.role))].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)).length} shown</span></div>
-      <div className="user-access-table"><div className="user-access-head"><span>Person</span><span>Hangar Access</span><span>Event Access</span></div>{users.filter((user) => (user.memberships || []).length || (user.assignments || []).length).filter((user) => !normalizedQuery || [displayName(user), user.email, ...(user.memberships || []).map((m) => m.organization?.name), ...(user.assignments || []).map((a) => a.event?.name), ...(user.memberships || []).map((m) => accessRoleLabel(m.role)), ...(user.assignments || []).map((a) => accessRoleLabel(a.role))].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)).map((user) => <div className="user-access-row" key={user.id}><button type="button" onClick={() => { setTab('people'); setSelectedUserId(user.id); setQuery(''); }}><strong>{displayName(user)}</strong><small>{user.email || 'No email'}</small></button><div>{(user.memberships || []).map((m) => <span key={m.id}>{accessRoleLabel(m.role)} · {m.organization?.name || 'Hangar'}</span>)}</div><div>{(user.assignments || []).map((a) => <span key={a.id}>{accessRoleLabel(a.role)} · {a.event?.name || 'Event'}</span>)}</div></div>)}</div>
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Scoped permissions</p><h2>Access</h2><p>Review who has Hangar or event access, then manage the effective access window without changing the person's identity.</p></div>
+        {organizationsForAccess.length > 1 && <select className="platform-workspace-select" value={accessPayload?.organizationId || ''} onChange={(event) => { setEditingAccess(null); loadAccess(event.target.value); }}><option value="">Choose Hangar</option>{organizationsForAccess.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}</select>}
+      </div>
+      <div className="user-management-toolbar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search person, role, organization, or event..." /><span>{accessLoading ? 'Loading...' : 'Access records'}</span></div>
+      {accessError && <div className="platform-error">{accessError}</div>}
+      {accessLoading && <p className="platform-login-copy">Loading access assignments...</p>}
+      {!accessLoading && accessPayload && <div className="user-access-table">
+        <div className="user-access-head"><span>Person</span><span>Scope / Role</span><span>Effective Access</span></div>
+        {[...(accessPayload.memberships || []).map((item) => ({ ...item, assignmentType: 'organization', scope: item.profile?.display_name || item.profile?.first_name || item.profile?.username || 'Person', context: item.organization_id ? (organizationsForAccess.find((org) => org.id === accessPayload.organizationId)?.name || 'Hangar') : 'Hangar' })),
+          ...(accessPayload.assignments || []).map((item) => ({ ...item, assignmentType: 'event', scope: item.profile?.display_name || item.profile?.first_name || item.profile?.username || 'Person', context: item.event?.name || 'Event' }))].filter((item) => !normalizedQuery || [item.scope, item.profile?.username, accessRoleLabel(item.role), item.context].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)).map((item) => {
+            const startDate = item.access_starts_at ? new Date(item.access_starts_at).toISOString().slice(0,10) : '';
+            const endDate = item.access_ends_at ? new Date(item.access_ends_at).toISOString().slice(0,10) : '';
+            const isEditing = editingAccess?.id === item.id && editingAccess?.assignmentType === item.assignmentType;
+            return <div className="user-access-row" key={item.assignmentType + ':' + item.id}>
+              <button type="button" onClick={() => { setTab('people'); setSelectedUserId(item.user_id); setQuery(''); }}><strong>{item.profile?.display_name || [item.profile?.first_name, item.profile?.last_name].filter(Boolean).join(' ') || item.profile?.username || 'ElevationPilot User'}</strong><small>{item.profile?.username ? '@' + item.profile.username : ''}</small></button>
+              <div><span>{accessRoleLabel(item.role)}</span><small>{item.context}</small><small>{item.status}</small></div>
+              <div className="user-access-window">
+                {!isEditing ? <><span>{accessWindowLabel(item.access_starts_at, item.access_ends_at)}</span><button className="platform-secondary-button compact" type="button" onClick={() => setEditingAccess({ id: item.id, assignmentType: item.assignmentType, mode: item.access_ends_at ? 'custom' : 'indefinite', startDate, endDate })}>Edit dates</button></> :
+                  <div className="user-access-editor">
+                    <select value={editingAccess.mode} onChange={(event) => setEditingAccess((current) => ({ ...current, mode: event.target.value }))}><option value="indefinite">Indefinite</option><option value="custom">Custom dates</option></select>
+                    {editingAccess.mode === 'custom' && <div className="user-access-date-fields"><label>Start<input type="date" value={editingAccess.startDate} onChange={(event) => setEditingAccess((current) => ({ ...current, startDate: event.target.value }))} /></label><label>End<input type="date" value={editingAccess.endDate} onChange={(event) => setEditingAccess((current) => ({ ...current, endDate: event.target.value }))} /></label></div>}
+                    <div className="user-access-editor-actions"><button className="platform-secondary-button compact" type="button" disabled={accessSaving} onClick={() => setEditingAccess(null)}>Cancel</button><button className="platform-primary-button compact" type="button" disabled={accessSaving || (editingAccess.mode === 'custom' && (!editingAccess.startDate || !editingAccess.endDate))} onClick={() => saveAccess(editingAccess)}>{accessSaving ? 'Saving...' : 'Save access'}</button></div>
+                  </div>}
+              </div>
+            </div>;
+          })}
+        {!accessPayload.memberships?.length && !accessPayload.assignments?.length && <p className="platform-login-copy">No scoped access assignments found.</p>}
+      </div>}
     </section>}
 
     {tab === 'activity' && <section className="platform-section-card user-management-card">

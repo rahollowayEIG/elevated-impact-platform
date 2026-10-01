@@ -31,6 +31,11 @@ ElevationPilot distinguishes test data from real customer data explicitly rather
 10. Sandbox data should support a controlled reset/retirement process.
 11. Sandbox-to-Production should be a deliberate provisioning process, not a bulk copy of demo records into production.
 12. Sandbox architecture should preserve the same identity, role, permission, privacy, and audit principles as production while preventing sandbox records from becoming production records accidentally.
+13. Sandbox implementation should be phased: establish the environment/data boundary first; connect the existing ElevationPilot applications and shared services second; add realistic demo-data provisioning and reset third; then add provider-specific sandbox integrations such as payments, email, SMS, Google Workspace, stores, and other external services.
+14. The Sandbox should reuse the production application workflows and shared identity model rather than creating separate application implementations.
+15. A future EIG Demo Organization should be provisionable as a complete test flight, including a Hangar, Pilot, Co-Pilot, ATC/Crew, Passenger accounts, events, registrations, sponsors, vendors, Squawk conversations, stores, and reports.
+16. Sandbox reset must remove or archive only sandbox-scoped data and must never modify production records.
+17. Sandbox and Production boundaries should be testable and auditable before external organizations are given Sandbox access.
 
 ## 2. Identity Fields
 

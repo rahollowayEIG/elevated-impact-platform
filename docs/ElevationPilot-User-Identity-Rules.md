@@ -15,6 +15,23 @@
 7. A login belongs to the person, not to a company, Hangar, event, or individual application.
 8. One person has one Squawk Box identity across ElevationPilot.
 
+## 1A. Test Data and Sandbox Architecture
+
+ElevationPilot distinguishes test data from real customer data explicitly rather than inferring it from names, email addresses, inactivity, or other heuristics.
+
+1. A **Test Account** is explicitly marked by an authorized EIG administrator and is eligible for the protected test-account cleanup workflow.
+2. A real person who participates in or helps test a Draft/Test event is not automatically classified as a test account.
+3. **Test Organizations** and **Draft/Test Events** are independent statuses and do not automatically convert associated people into test identities.
+4. Test status must be visible in administrative views and must never silently mix test data with production data.
+5. Permanent removal is reserved for explicitly identified test accounts/test data and requires an auditable confirmation step.
+6. Test-account cleanup must not be used as a shortcut for legitimate account closure, identity merging, or removal of historical business records.
+7. ElevationPilot should support a future **isolated Sandbox** for whole-system demonstrations, onboarding, development, and safe testing.
+8. A Sandbox should be separated from production data while using the real ElevationPilot workflows and realistic demo records.
+9. A future Sandbox may provision a demo organization/Hangar, Pilot, Co-Pilot, ATC/Crew, Passenger accounts, events, registrations, sponsors, vendors, Squawk conversations, stores, and reports.
+10. Sandbox data should support a controlled reset/retirement process.
+11. Sandbox-to-Production should be a deliberate provisioning process, not a bulk copy of demo records into production.
+12. Sandbox architecture should preserve the same identity, role, permission, privacy, and audit principles as production while preventing sandbox records from becoming production records accidentally.
+
 ## 2. Identity Fields
 
 The permanent identity hierarchy is:

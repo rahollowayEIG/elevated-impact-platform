@@ -780,6 +780,9 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [accessSaving, setAccessSaving] = useState(false);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [cleanupError, setCleanupError] = useState('');
+  const [auditPayload, setAuditPayload] = useState(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -797,6 +800,22 @@ function EigUserManagement({ onBack, onInviteUser }) {
       setError(loadError.message || 'Unable to load User Management.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function runPlatformAudit() {
+    setAuditLoading(true);
+    setAuditError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'admin_audit' },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to run Platform Audit.');
+      setAuditPayload(data);
+    } catch (auditActionError) {
+      setAuditError(auditActionError.message || 'Unable to run Platform Audit.');
+    } finally {
+      setAuditLoading(false);
     }
   }
 
@@ -915,6 +934,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
     ['organizations', 'Organizations'],
     ['access', 'Access'],
     ['activity', 'Activity'],
+    ['audit', 'Audit & Cleanup'],
     ['reports', 'Reports'],
   ];
 
@@ -1058,6 +1078,18 @@ function EigUserManagement({ onBack, onInviteUser }) {
         ].filter(Boolean)), ...invitations.map((invite) => ({ at: invite.sent_at || invite.created_at, title: 'Invitation sent to ' + (invite.invitee_name || invite.email), detail: accessRoleLabel(invite.role) + ' · ' + (invite.event?.name || invite.organization?.name || 'ElevationPilot'), type: 'Invitation' }))].filter(Boolean).sort((a,b) => new Date(b.at) - new Date(a.at)).slice(0, 50).map((item, index) => <div className="user-activity-row" key={item.type + ':' + item.at + ':' + index}><span className="platform-role-pill">{item.type}</span><div><strong>{item.title}</strong><small>{item.detail}</small></div><time>{formatAdminTimestamp(item.at)}</time></div>)}
         {!users.length && !invitations.length && <p className="platform-login-copy">No activity is available yet.</p>}
       </div>
+    </section>}
+
+    {tab === 'audit' && <section className="platform-section-card user-management-card">
+      <div className="platform-section-heading">
+        <div><p className="platform-eyebrow">Platform health</p><h2>Audit & Cleanup</h2><p>Scan the shared identity system for issues before taking any cleanup action. The audit only reports findings; it does not automatically change records.</p></div>
+        <button className="platform-primary-button" type="button" disabled={auditLoading} onClick={runPlatformAudit}>{auditLoading ? 'Running Audit...' : 'Run Platform Audit'}</button>
+      </div>
+      {auditError && <div className="platform-error">{auditError}</div>}
+      {!auditPayload && !auditLoading && <div className="audit-empty"><strong>Ready for an audit</strong><span>Run the audit to inspect account health, identity integrity, invitation health, and protected test accounts.</span></div>}
+      {auditPayload && <><div className="audit-summary-grid"><div><strong>{auditPayload.summary?.accounts ?? 0}</strong><span>Accounts scanned</span></div><div><strong>{auditPayload.summary?.issues ?? 0}</strong><span>Findings</span></div><div><strong>{auditPayload.summary?.review_items ?? 0}</strong><span>Needs review</span></div><div><strong>{auditPayload.summary?.test_accounts ?? 0}</strong><span>Test accounts</span></div><div><strong>{auditPayload.summary?.pending_invitations ?? 0}</strong><span>Pending invites</span></div></div>
+      <div className="audit-meta"><span>Last audit: {formatAdminTimestamp(auditPayload.generated_at)}</span>{auditPayload.truncated && <span>Account scan reached its configured safety limit.</span>}</div>
+      <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <div className={'audit-issue-row ' + issue.severity} key={issue.key}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Action available' : 'Review'}</span></div>)}</div></>}
     </section>}
 
     {tab === 'reports' && <section className="platform-section-card user-management-card">

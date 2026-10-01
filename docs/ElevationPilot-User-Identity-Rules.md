@@ -270,3 +270,31 @@ The following remain intentionally open until separately approved:
 - final account/membership status vocabulary and UI labels,
 - detailed retention periods and legal/privacy wording,
 - provider-specific import/sync rules for future external integrations.
+
+## 18. Platform-Wide Completion Audit Standard
+
+Every completed software piece must receive a consistency and quality audit before it is considered complete. This applies to a functional page inside an app, an entire app, a system within an app, a workflow, or another meaningful user-facing capability.
+
+The completion audit has four required passes:
+
+1. **Visual pass** — confirm the page or feature fits the established ElevationPilot visual language, including the dark navy/blue shell, blue glass-style cards where appropriate, light text, EIG red primary calls to action, spacing, typography, hierarchy, and responsive presentation.
+2. **Cosmetic pass** — remove rough edges such as inconsistent sizing, spacing, alignment, labels, icons, button treatment, states, shadows, motion, empty states, overflow, and other visible polish issues.
+3. **Functional pass** — exercise the actual workflow from the user's perspective, including navigation, loading, save/cancel/close behavior, confirmations, errors, success states, permissions, routing, persistence, and the intended action path. Verify that existing proven behavior is preserved where it is being migrated or extended.
+4. **Smell-test pass** — perform a final common-sense review for anything that feels confusing, inconsistent, brittle, duplicated, hard-coded, unfinished, out of place, or likely to create problems elsewhere in the platform.
+
+### Consistency Rules
+
+- All apps and pages should use the EIG Interface Behavior System and applicable page-type behavior rather than inventing local interaction patterns.
+- Page types should determine appropriate behavior while preserving a common platform language.
+- Shared patterns include consistent headers/navigation, Manage/Edit behavior, focused and highlighted selected rows, centered management context, confirmations, status indicators, success/error messaging, back behavior, and action-risk treatment.
+- When a user is managing a record, the active working section should have a clear **raised/focused visual treatment** so the current context is unmistakable.
+- Selected records should remain visibly highlighted while their management context is active, and management actions should focus the user on the record being worked on.
+- Common controls such as Save, Cancel, Close, confirmation dialogs, success/error states, status indicators, and navigation should behave consistently across applicable page types.
+- Visual consistency does not mean every page looks identical. Page type and purpose may change layout while shared interaction behavior and design language remain recognizable.
+- Accessibility and responsive/mobile sanity checks are part of the functional and visual audit, using the established EIG accessibility guidance.
+- A completed feature is not considered fully complete until the four-pass audit has been performed and cleanup opportunities have been addressed or intentionally documented.
+- The audit standard applies continuously as the platform grows, so later work should audit the surrounding experience rather than treating each feature as an isolated component.
+
+### Audit Record
+
+Where practical, completion audits should record the feature audited, date, tester/reviewer, findings, fixes made, and any intentionally deferred items. This creates a repeatable quality trail for EIG rather than relying on memory.

@@ -4,6 +4,7 @@ import EieRosterMaintenance from './EieRosterMaintenance';
 import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
+import PublicEventRegistrationPanel from './PublicEventRegistrationPanel';
 import QRCode from 'qrcode';
 
 const EIG_SLUG = 'elevated-impact-group';
@@ -2347,6 +2348,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const [offers, setOffers] = useState([]);
   const [sponsors, setSponsors] = useState([]);
   const [hubSquawks, setHubSquawks] = useState([]);
+  const [paymentSettings, setPaymentSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -2369,9 +2371,10 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
         return;
       }
 
-      const [{ data: offerRows, error: offerError }, { data: sponsorRows, error: sponsorError }] = await Promise.all([
-        supabase.from('event_offers').select('id,name,description,offer_type,price,charge_by,is_required,status,sort_order').eq('golf_event_id', data.id).eq('status', 'active').order('sort_order'),
+      const [{ data: offerRows, error: offerError }, { data: sponsorRows, error: sponsorError }, paymentOptions] = await Promise.all([
+        supabase.from('event_offers').select('id,name,description,offer_type,price,charge_by,is_required,is_default,status,sort_order').eq('golf_event_id', data.id).eq('status', 'active').order('sort_order'),
         supabase.from('sponsors').select('id,event_id,name,business_name,package,status,logo_status').in('event_id', [data.id, data.master_event_id].filter(Boolean)).order('created_at'),
+        supabase.functions.invoke('golf-registration-flow', { body: { action: 'event_payment_options', event_key: data.event_key } }),
       ]);
 
       if (cancelled) return;
@@ -2424,6 +2427,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
 
       setEvent(data);
       setOffers(offerRows || []);
+      setPaymentSettings(paymentOptions?.data?.payment || null);
       setSponsors((sponsorRows || []).filter((sponsor) => sponsor.status !== 'cancelled'));
       setHubSquawks(squawkItems);
       setHub(snapshot?.hubForm || {
@@ -2534,6 +2538,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
           <h2 style={{ color: '#1D245D', fontSize: 38, margin: '7px 0 10px' }}>{membersOnly ? 'Member Registration' : 'Choose Your Registration'}</h2>
           <p style={{ color: '#70727A', lineHeight: 1.7 }}>{membersOnly ? 'This event is limited to eligible members. Member registration options and event add-ons appear here automatically.' : 'This event is open to members and non-members. Registration options, packages, and add-ons connected to this event appear here automatically.'}</p>
         </div>
+        {publicMode ? <PublicEventRegistrationPanel event={event} registrationOffers={registrationOffers} paymentSettings={paymentSettings} /> : <>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
           {(registrationOffers.length ? registrationOffers : [{ id: 'preview', name: 'Registration', description: 'Registration pricing will appear here.', price: 0, charge_by: 'player' }]).map((offer) => <div key={offer.id} style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #dde3ec', boxShadow: '0 7px 22px rgba(31,47,80,.06)' }}>
             <small style={{ color: '#D81C22', fontWeight: 900, textTransform: 'uppercase' }}>{offer.charge_by ? 'Per ' + offer.charge_by : 'Registration'}</small>
@@ -2550,6 +2555,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
             </a>
           </div>)}
         </div>
+        </>}
         {!!addOnOffers.length && <div style={{ marginTop: 24 }}><h3 style={{ color: '#1D245D' }}>Available Add-ons</h3><div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{addOnOffers.map((offer) => <span key={offer.id} style={{ padding: '10px 13px', borderRadius: 999, background: '#fff', border: '1px solid #dde3ec', color: '#1D245D', fontWeight: 800 }}>{offer.name} · {'$' + Number(offer.price || 0).toFixed(2)}</span>)}</div></div>}
       </section>
 
@@ -2653,12 +2659,13 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   const publicEventMatch = window.location.hash.match(/^#events\/([^/?#]+)/);
+  const eventQuerySlug = new URLSearchParams(window.location.search).get('event');
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
   const recoverySearchParams = new URLSearchParams(window.location.search);
   const recoveryHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const recoveryLinkHint = recoverySearchParams.get('recovery') === '1' || recoverySearchParams.get('type') === 'recovery' || recoveryHashParams.get('type') === 'recovery';
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
-  if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
+  if ((publicEventMatch || eventQuerySlug) && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch?.[1] || eventQuerySlug)} publicMode />;
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
@@ -2944,13 +2951,17 @@ export default function App() {
     return data;
   }
 
-  async function finishInviteSetup() {
+  async function finishInviteSetup(result = null) {
     if (!session?.user?.id) return;
     await Promise.all([
       loadMemberships(session.user.id),
       loadAirportData(session.user.id),
     ]);
     await loadPendingInvitations(session.user.id);
+    if (result?.passenger_claimed && result?.public_slug) {
+      window.location.assign(window.location.origin + window.location.pathname + '#events/' + encodeURIComponent(result.public_slug));
+      return;
+    }
     setPortalView('chooser');
   }
 

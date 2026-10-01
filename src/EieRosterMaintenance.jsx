@@ -251,6 +251,41 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
   async function applyBulkAction() {
     if (!bulkSelectedIds.length || !bulkAction || bulkWorking) return;
+    if (bulkAction === 'send_passenger_invite') {
+      const inviteRows = rows.filter((row) => bulkSelectedIds.includes(row.id) && !row.user_id && row.email);
+      if (!inviteRows.length) {
+        setNotice('None of the selected golfers need a Passenger account invitation.');
+        return;
+      }
+      if (inviteRows.length > 25) {
+        setNotice('Send Passenger invitations in groups of 25 or fewer so delivery stays reliable.');
+        return;
+      }
+      if (!window.confirm(`Send Passenger account invitations to ${inviteRows.length} selected golfer${inviteRows.length === 1 ? '' : 's'}?`)) return;
+
+      setBulkWorking(true);
+      setNotice('');
+      let sent = 0;
+      let warnings = 0;
+      try {
+        for (const row of inviteRows) {
+          try {
+            const data = await invoke({ action: 'send_passenger_invite', registration_id: row.id });
+            if (data?.passenger_invite?.email_sent) sent += 1;
+            else warnings += 1;
+          } catch {
+            warnings += 1;
+          }
+        }
+        setBulkSelectedIds([]);
+        setBulkAction('');
+        await onRefresh();
+        setNotice(`${sent} Passenger invitation${sent === 1 ? '' : 's'} sent.${warnings ? ` ${warnings} need attention.` : ''}`);
+      } finally {
+        setBulkWorking(false);
+      }
+      return;
+    }
     if (bulkAction === 'comp' && !bulkReason.trim()) {
       setNotice('A reason is required when comping golfers.');
       return;
@@ -435,7 +470,13 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       setManualReason('');
       setDuplicateWarning(null);
       setManualOpen(false);
-      setNotice(data.sync_warning || 'Golfer added successfully.');
+      const invite = data.passenger_invite;
+      const inviteMessage = invite?.email_sent
+        ? 'Golfer added. Passenger account invitation sent.'
+        : invite?.success
+          ? 'Golfer added. Passenger invitation created, but email delivery needs attention.'
+          : 'Golfer added successfully.';
+      setNotice(data.sync_warning || invite?.warning || inviteMessage);
       await onRefresh();
     } catch (error) {
       if (error?.details?.code === 'possible_duplicate') {
@@ -483,6 +524,10 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     if (action === 'pending' && !window.confirm(
       `Mark ${selected.first_name} ${selected.last_name} as unpaid / pending? This only reverses the roster payment status. It does not reactivate a withdrawn or cancelled registration.`
     )) return;
+    if (action === 'send_passenger_invite' && !selected.email) {
+      setNotice('Add an email address before sending a Passenger account invitation.');
+      return;
+    }
 
     setWorking(true);
     setNotice('');
@@ -533,7 +578,13 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       setAction('');
       setReason('');
       setTeamId('');
-      setNotice(data.sync_warning || 'Roster updated successfully.');
+      const invite = data.passenger_invite;
+      const actionMessage = action === 'send_passenger_invite'
+        ? invite?.email_sent
+          ? 'Passenger account invitation sent.'
+          : invite?.warning || 'Passenger invitation created.'
+        : 'Roster updated successfully.';
+      setNotice(data.sync_warning || actionMessage);
       await onRefresh();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Unable to update golfer.');
@@ -742,6 +793,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                 <select value={bulkAction} onChange={(e) => { setBulkAction(e.target.value); setBulkReason(''); setBulkTeamId(''); setNotice(''); }}>
                   <option value="">Choose an action</option>
                   <option value="paid_clubhouse">Mark Paid</option>
+                  <option value="send_passenger_invite">Send Passenger Account Invites</option>
                   <option value="comp">Comp Players</option>
                   {teamMode && <option value="set_team">Set / Move Team</option>}
                   <option value="withdraw">Withdraw</option>
@@ -750,7 +802,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               </label>
               {bulkAction === 'set_team'
                 ? <label>Team ID *<input value={bulkTeamId} onChange={(e) => setBulkTeamId(e.target.value)} placeholder="Example: 1" /></label>
-                : <label>{bulkAction === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkAction === 'comp' ? 'Required reason for complimentary players' : 'Optional note'} /></label>}
+                : bulkAction === 'send_passenger_invite'
+                  ? <div className="availability-note"><strong>Passenger Invitations</strong><span>Claim links will be emailed only to selected golfers who do not already have a claimed Passenger account. Maximum 25 at a time.</span></div>
+                  : <label>{bulkAction === 'comp' ? 'Reason *' : 'Reason / internal note'}<input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder={bulkAction === 'comp' ? 'Required reason for complimentary players' : 'Optional note'} /></label>}
             </div>
             <div className="review-actions" style={{ marginTop: 12 }}>
               <button className="platform-secondary-button" type="button" disabled={bulkWorking} onClick={() => { setBulkSelectedIds([]); setBulkAction(''); setBulkReason(''); setBulkTeamId(''); }}>Clear Selection</button>
@@ -775,7 +829,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <thead><tr><th><input aria-label="Select all visible golfers" type="checkbox" style={{ width: 'auto' }} checked={visibleRows.length > 0 && visibleRows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => {
                 if (e.target.checked) setBulkSelectedIds((current) => Array.from(new Set([...current, ...visibleRows.map((row) => row.id)])));
                 else setBulkSelectedIds((current) => current.filter((id) => !visibleRows.some((row) => row.id === id)));
-              }} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+              }} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Passenger</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {visibleRows.map((row) => {
                   const isSelected = selected?.id === row.id;
@@ -789,6 +843,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                         <td><strong>{row.first_name} {row.last_name}</strong><small style={{ display: 'block', opacity: .7 }}>{row.membership_status || 'Member'}{row.division ? ` · ${row.division}` : ''}</small></td>
                         {teamMode && <td>{row.team_id || 'Unassigned'}</td>}
                         <td>{row.email || 'No email'}<small style={{ display: 'block', opacity: .7 }}>{row.phone || 'No phone'}</small></td>
+                        <td><span className="pill">{row.user_id || row.passenger_claim_status === 'claimed' ? 'Claimed' : row.passenger_claim_status === 'invited' ? 'Invite Sent' : 'Unclaimed'}</span></td>
                         <td>{money(row.price)}</td>
                         <td><span className="pill">{row.payment_status || 'pending'}</span></td>
                         <td><span className="pill">{row.registration_status || 'active'}</span></td>
@@ -797,12 +852,12 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
                       {isSelected && (
                         <tr className="eie-roster-manage-row">
-                          <td colSpan={teamMode ? 8 : 7}>
+                          <td colSpan={teamMode ? 9 : 8}>
                             <div className="eie-roster-manage-panel">
                               <div>
                                 <p className="platform-eyebrow">Manage Golfer</p>
                                 <h3 style={{ marginTop: 4 }}>{selected.first_name} {selected.last_name}</h3>
-                                <p className="platform-login-copy">Payment and roster status are tracked separately. Every action is written to the existing EIE audit history. Manual Paid or Comp status can be returned to Unpaid / Pending here. Stripe-paid registrations stay protected from a status-only reversal because changing EIE status does not refund a Stripe charge.</p>
+                                <p className="platform-login-copy">Payment, roster status, and Passenger identity are tracked separately. Unclaimed golfers can be invited to claim an EIG Passenger account and then manage or pay their balance online. Every action is written to the EIE audit history. Manual Paid or Comp status can be returned to Unpaid / Pending here. Stripe-paid registrations stay protected from a status-only reversal because changing EIE status does not refund a Stripe charge.</p>
                               </div>
                               <div className="form-grid two">
                                 <label>Action
@@ -810,6 +865,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                                     <option value="">Choose an action</option>
                                     <option value="paid_clubhouse">Mark Paid</option>
                                     {selected.payment_status !== 'pending' && !selected.stripe_payment_intent_id && !selected.stripe_checkout_session_id && <option value="pending">Mark Unpaid / Pending</option>}
+                                    {!selected.user_id && selected.email && <option value="send_passenger_invite">{selected.passenger_claim_status === 'invited' ? 'Resend Passenger Invite' : 'Send Passenger Account Invite'}</option>}
                                     <option value="comp">Comp Player</option>
                                     {!selected.user_id && selected.email && <option value="resend_account_invite">Resend Account Invite</option>}
                                     <option value="withdraw">Withdraw</option>

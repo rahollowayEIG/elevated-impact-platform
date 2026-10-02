@@ -1044,8 +1044,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-2"></i>Access</span>
                     <button className="user-action-item level-2" type="button" onClick={() => setTab('access')}><span>Manage Access</span><small>Roles, scope and dates</small></button>
-                    <button className="user-action-item level-2" type="button" disabled><span>Manage Roles</span><small>Action coming in the next batch</small></button>
-                    <button className="user-action-item level-2" type="button" disabled><span>Expire / Restore Access</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-2" type="button" onClick={() => { setTab('access'); setQuery(displayName(selected)); }}><span>Manage Roles</span><small>Open this person's scoped roles</small></button>
+                    <button className="user-action-item level-3" type="button" onClick={() => { setTab('access'); setQuery(displayName(selected)); }}><span>Expire / Restore Access</span><small>Open this person's access</small></button>
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>

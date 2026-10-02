@@ -900,6 +900,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
           access_mode: item.mode,
           access_start_date: item.startDate || '',
           access_end_date: item.endDate || '',
+          new_role: item.role || '',
+          access_status: item.status || 'active',
         },
       });
       if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to update access.');
@@ -1122,9 +1124,9 @@ function EigUserManagement({ onBack, onInviteUser }) {
               <button type="button" onClick={() => { setTab('people'); setSelectedUserId(item.user_id); setQuery(''); }}><strong>{item.profile?.display_name || [item.profile?.first_name, item.profile?.last_name].filter(Boolean).join(' ') || item.profile?.username || 'ElevationPilot User'}</strong><small>{item.profile?.username ? '@' + item.profile.username : ''}</small></button>
               <div><span>{accessRoleLabel(item.role)}</span><small>{item.context}</small><small>{item.status}</small></div>
               <div className="user-access-window">
-                {!isEditing ? <><span>{accessWindowLabel(item.access_starts_at, item.access_ends_at)}</span><button className="platform-secondary-button compact" type="button" onClick={() => setEditingAccess({ id: item.id, assignmentType: item.assignmentType, mode: item.access_ends_at ? 'custom' : 'indefinite', startDate, endDate })}>Edit dates</button></> :
+                {!isEditing ? <><span>{accessWindowLabel(item.access_starts_at, item.access_ends_at)}</span><button className="platform-secondary-button compact" type="button" onClick={() => setEditingAccess({ id: item.id, assignmentType: item.assignmentType, mode: item.access_ends_at ? 'custom' : 'indefinite', startDate, endDate, role: item.role || '', status: item.status || 'active' })}>Edit dates</button></> :
                   <div className="user-access-editor">
-                    <select value={editingAccess.mode} onChange={(event) => setEditingAccess((current) => ({ ...current, mode: event.target.value }))}><option value="indefinite">Indefinite</option><option value="custom">Custom dates</option></select>
+                    <div className="user-access-editor-row"><label>Role<select value={editingAccess.role || ''} onChange={(event) => setEditingAccess((current) => ({ ...current, role: event.target.value }))}><option value="organization_staff">Co-Pilot</option><option value="organization_admin">Pilot</option><option value="event_staff">Crew</option><option value="event_coordinator">ATC</option><option value="eig_admin">EIG Admin</option></select></label><label>Status<select value={editingAccess.status || 'active'} onChange={(event) => setEditingAccess((current) => ({ ...current, status: event.target.value }))}><option value="active">Active</option><option value="revoked">Revoked</option></select></label><label>Access<select value={editingAccess.mode} onChange={(event) => setEditingAccess((current) => ({ ...current, mode: event.target.value }))}><option value="indefinite">Indefinite</option><option value="custom">Custom dates</option></select></label></div>
                     {editingAccess.mode === 'custom' && <div className="user-access-date-fields"><label>Start<input type="date" value={editingAccess.startDate} onChange={(event) => setEditingAccess((current) => ({ ...current, startDate: event.target.value }))} /></label><label>End<input type="date" value={editingAccess.endDate} onChange={(event) => setEditingAccess((current) => ({ ...current, endDate: event.target.value }))} /></label></div>}
                     <div className="user-access-editor-actions"><button className="platform-secondary-button compact" type="button" disabled={accessSaving} onClick={() => setEditingAccess(null)}>Cancel</button><button className="platform-primary-button compact" type="button" disabled={accessSaving || (editingAccess.mode === 'custom' && (!editingAccess.startDate || !editingAccess.endDate))} onClick={() => saveAccess(editingAccess)}>{accessSaving ? 'Saving...' : 'Save access'}</button></div>
                   </div>}

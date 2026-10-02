@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "api/event-share.js": { "includeFiles": "dist/index.html" },
+    "api/event-image.js": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/events/:slug", "destination": "/api/event-share?slug=:slug" }
+  ]
+}

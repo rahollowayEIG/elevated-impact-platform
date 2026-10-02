@@ -5,6 +5,7 @@ import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 import QRCode from 'qrcode';
+import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -1106,7 +1107,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
             else setSelectedAuditIssue(null);
           }}>{selectedAuditIssue.key === 'test_account' ? 'Manage →' : 'Open Review →'}</button></div>;
         })}</div>
-      </div></>}
+      </div>}
+      </>}
     </section>}
 
     {tab === 'reports' && <section className="platform-section-card user-management-card">
@@ -1292,6 +1294,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
     check_in_time: '',
     event_start_time: '',
     venue_details: '',
+    venue_address: '',
     food_beverage: '',
     parking_arrival: '',
     dress_code: '',
@@ -1522,6 +1525,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
       check_in_time: settings.hub_check_in_time || '',
       event_start_time: settings.event_start_time || '',
       venue_details: settings.hub_venue_details || '',
+      venue_address: eventVenueAddress(event),
       food_beverage: settings.hub_food_beverage || '',
       parking_arrival: settings.hub_parking_arrival || '',
       dress_code: settings.hub_dress_code || '',
@@ -1617,7 +1621,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 
   function publicHubUrl(event = setupEvent) {
     if (event?.public_slug) {
-      return ELEVATIONPILOT_PUBLIC_URL + '/#events/' + encodeURIComponent(event.public_slug);
+      return eventHubUrl(event.public_slug, ELEVATIONPILOT_PUBLIC_URL);
     }
     const legacyUrl = event?.field_settings?.public_hub_url;
     return legacyUrl || '';
@@ -1660,7 +1664,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
       if (navigator.share) {
         await navigator.share({
           title: setupEvent?.name || 'ElevationPilot Event Hub',
-          text: setupEvent?.name ? 'Open the ' + setupEvent.name + ' Event Hub.' : 'Open this ElevationPilot Event Hub.',
+          text: [setupEvent?.name || 'ElevationPilot Event Hub', setupEvent?.course, hubForm.venue_address || eventVenueAddress(setupEvent)].filter(Boolean).join(' · '),
           url,
         });
         setSetupNotice('Public Hub share sheet opened.');
@@ -1696,6 +1700,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         hub_check_in_time: hubForm.check_in_time || null,
         event_start_time: hubForm.event_start_time || null,
         hub_venue_details: hubForm.venue_details.trim(),
+        hub_venue_address: (hubForm.venue_address || '').trim(),
         hub_food_beverage: hubForm.food_beverage.trim(),
         hub_parking_arrival: hubForm.parking_arrival.trim(),
         hub_dress_code: hubForm.dress_code.trim(),
@@ -1757,6 +1762,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         hub_check_in_time: hubForm.check_in_time || null,
         event_start_time: hubForm.event_start_time || null,
         hub_venue_details: hubForm.venue_details.trim(),
+        hub_venue_address: (hubForm.venue_address || '').trim(),
         hub_food_beverage: hubForm.food_beverage.trim(),
         hub_parking_arrival: hubForm.parking_arrival.trim(),
         hub_dress_code: hubForm.dress_code.trim(),
@@ -1937,6 +1943,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
             <label>Check-in time<input type="time" value={hubForm.check_in_time} onChange={(e) => updateHub('check_in_time', e.target.value)} /></label>
             <label style={{ marginTop: 12 }}>Event start time<input type="time" value={hubForm.event_start_time} onChange={(e) => updateHub('event_start_time', e.target.value)} /></label>
           </div>
+          <label>Public venue address<input value={hubForm.venue_address || ''} onChange={(e) => updateHub('venue_address', e.target.value)} placeholder="Street address, city, state and ZIP" /><small>Shown on the Hub and in shared event previews.</small></label>
           <label>Venue / course details<textarea rows="4" value={hubForm.venue_details} onChange={(e) => updateHub('venue_details', e.target.value)} placeholder="Where to go, clubhouse location, entrance details, or venue notes." /></label>
           <label>Food & beverage<textarea rows="4" value={hubForm.food_beverage} onChange={(e) => updateHub('food_beverage', e.target.value)} placeholder="Meal included, meal time, beverages, guest meal information, etc." /></label>
           <label>Parking / arrival instructions<textarea rows="4" value={hubForm.parking_arrival} onChange={(e) => updateHub('parking_arrival', e.target.value)} placeholder="Where to park and what to do when participants arrive." /></label>
@@ -2342,6 +2349,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
 
 
 function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
+  const [shareNotice, setShareNotice] = useState('');
   const [event, setEvent] = useState(null);
   const [hub, setHub] = useState(null);
   const [offers, setOffers] = useState([]);
@@ -2352,6 +2360,9 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (publicMode && publicSlug && /^#events\//.test(window.location.hash)) {
+      window.history.replaceState(null, '', '/events/' + encodeURIComponent(publicSlug) + window.location.search);
+    }
     async function loadSite() {
       setLoading(true);
       setError('');
@@ -2431,6 +2442,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
         check_in_time: settings.hub_check_in_time || '',
         event_start_time: settings.event_start_time || '',
         venue_details: settings.hub_venue_details || '',
+        venue_address: eventVenueAddress(data),
         food_beverage: settings.hub_food_beverage || '',
         parking_arrival: settings.hub_parking_arrival || '',
         dress_code: settings.hub_dress_code || '',
@@ -2467,6 +2479,14 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   const hasSquawks = hubSquawks.length > 0;
   const membersOnly = event.field_settings?.event_access === 'members_only';
 
+  async function shareEvent() {
+    const url = eventHubUrl(event.public_slug, ELEVATIONPILOT_PUBLIC_URL);
+    try {
+      if (navigator.share) await navigator.share({ title: event.name, text: [event.name, event.course, hub.venue_address].filter(Boolean).join(' · '), url });
+      else { await navigator.clipboard.writeText(url); setShareNotice('Event link copied.'); }
+    } catch (error) { if (error?.name !== 'AbortError') setShareNotice('Unable to share. Copy the address from your browser.'); }
+  }
+
   const shell = { maxWidth: 1220, margin: '0 auto', background: '#fff', color: '#17213f', minHeight: '100vh', borderRadius: publicMode ? 0 : 22, overflow: 'hidden', boxShadow: publicMode ? 'none' : '0 24px 70px rgba(0,0,0,.28)' };
   const whiteSection = { padding: '54px clamp(22px,5vw,64px)', background: '#fff' };
   const softSection = { padding: '54px clamp(22px,5vw,64px)', background: '#f4f6fa' };
@@ -2491,6 +2511,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
             <div style={{ minWidth: 0 }}><strong style={{ display: 'block', color: '#1D245D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.name}</strong><small style={{ color: '#70727A' }}>{event.course || 'Event venue'}</small></div>
           </div>
           <nav style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+            {publicMode && <button type="button" onClick={shareEvent} style={{ background: '#fff', color: '#1D245D', border: '1px solid #c7c8cc', borderRadius: 10, padding: '10px 14px', fontWeight: 800, cursor: 'pointer' }}>Share Hub</button>}
             <a href="#overview" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Overview</a>
             <a href="#registration" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Registration</a>
             {hasSquawks && <a href="#squawks" style={{ color: '#1D245D', fontWeight: 800, textDecoration: 'none' }}>Updates</a>}
@@ -2503,6 +2524,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
         </div>
       </header>
 
+      {shareNotice && <div role="status" style={{ padding: '12px 24px', color: '#1D245D', background: '#f4f6fa' }}>{shareNotice}</div>}
       <section id="overview" style={{ minHeight: 520, padding: '70px clamp(22px,6vw,76px)', display: 'grid', alignItems: 'center', background: hub.banner_url ? 'linear-gradient(90deg,rgba(13,23,48,.94),rgba(13,23,48,.68)), url(' + hub.banner_url + ') center/cover' : 'linear-gradient(135deg,#1D245D,#111936)', color: '#fff' }}>
         <div style={{ maxWidth: 760 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -2519,6 +2541,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
       </section>
 
       <section style={{ ...whiteSection, paddingTop: 30, paddingBottom: 30 }}>
+        {hub.venue_address && <p style={{ color: '#1D245D', fontSize: 18 }}><strong>{event.course}</strong><br /><a href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(hub.venue_address)} target="_blank" rel="noreferrer">{hub.venue_address}</a></p>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 1, background: '#dfe4ed', border: '1px solid #dfe4ed', borderRadius: 16, overflow: 'hidden' }}>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>DATE</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{eventDate}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>CHECK-IN</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{checkInLabel}</strong></div>
@@ -2541,7 +2564,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
             <p style={{ color: '#70727A', minHeight: 44 }}>{offer.description || 'Event registration'}</p>
             <strong style={{ color: '#1D245D', fontSize: 30 }}>{'$' + Number(offer.price || 0).toFixed(2)}</strong>
             <a
-              href={`https://golf.elevatedimpactgroup.net/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(event.public_slug ? ELEVATIONPILOT_PUBLIC_URL + '/#events/' + event.public_slug : window.location.href)}`}
+              href={`https://golf.elevatedimpactgroup.net/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(event.public_slug ? eventHubUrl(event.public_slug, ELEVATIONPILOT_PUBLIC_URL) : window.location.href)}`}
               style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, textAlign: 'center', textDecoration: 'none' }}
             >
               {publicMode
@@ -2652,7 +2675,7 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 
 export default function App() {
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
-  const publicEventMatch = window.location.hash.match(/^#events\/([^/?#]+)/);
+  const publicEventMatch = window.location.pathname.match(/^\/events\/([^/?#]+)\/?$/) || window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
   const recoverySearchParams = new URLSearchParams(window.location.search);
   const recoveryHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -3153,7 +3176,7 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
-  function openFlightHub(flight) { if (flight?.publicSlug) window.open(`${window.location.origin}${window.location.pathname}#events/${encodeURIComponent(flight.publicSlug)}`, '_blank', 'noopener,noreferrer'); }
+  function openFlightHub(flight) { if (flight?.publicSlug) window.open(eventHubUrl(flight.publicSlug, window.location.origin), '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;

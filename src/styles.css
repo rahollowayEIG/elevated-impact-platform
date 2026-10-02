@@ -1479,3 +1479,74 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
 .user-activity-row time{color:#91a3b7;font-size:11px;white-space:nowrap}
 @media(max-width:900px){.user-org-grid{grid-template-columns:1fr}.user-access-head,.user-access-row{grid-template-columns:1fr}.user-access-head{display:none}}
 @media(max-width:720px){.user-activity-row{grid-template-columns:1fr}.user-activity-row time{white-space:normal}}
+
+
+/* EIG Interface Behavior System · User Management focus treatment */
+.user-management-page{font-size:13px}
+.user-management-page h1{font-size:clamp(30px,3.2vw,44px)}
+.user-management-page h2{font-size:20px}
+.user-management-page h3{font-size:16px}
+.user-management-page h4{font-size:13px}
+.user-management-page p,.user-management-page span,.user-management-page small,.user-management-page label{font-size:12px}
+.user-management-page button{font-size:12px}
+.user-management-primary-nav button.active{
+  position:relative;
+  transform:translateY(-2px);
+  border-color:rgba(96,165,250,.72);
+  background:rgba(29,36,93,.72);
+  box-shadow:0 0 0 1px rgba(96,165,250,.22),0 0 18px rgba(96,165,250,.28),0 8px 22px rgba(0,0,0,.22);
+  color:#fff;
+}
+.user-management-primary-nav button.active::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius:999px;
+  pointer-events:none;
+  box-shadow:0 0 14px rgba(96,165,250,.24);
+}
+.user-management-page .user-management-card{
+  border-color:rgba(255,255,255,.08);
+}
+.user-management-page .user-directory-row.selected{
+  transform:translateY(-1px);
+  border-color:rgba(96,165,250,.72);
+  background:rgba(29,36,93,.46);
+  box-shadow:0 0 0 1px rgba(96,165,250,.18),0 0 20px rgba(96,165,250,.20),0 10px 24px rgba(0,0,0,.24);
+}
+.user-management-page .user-detail-panel{
+  border-color:rgba(96,165,250,.55);
+  box-shadow:0 0 0 1px rgba(96,165,250,.14),0 0 24px rgba(96,165,250,.16),0 14px 30px rgba(0,0,0,.24);
+}
+.user-management-page .audit-issue-row{
+  position:relative;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.user-management-page .audit-issue-row:not(:disabled):hover,
+.user-management-page .audit-issue-row:not(:disabled):focus-visible{
+  transform:translateY(-2px);
+  border-color:rgba(96,165,250,.7);
+  box-shadow:0 0 0 1px rgba(96,165,250,.16),0 0 20px rgba(96,165,250,.18),0 10px 24px rgba(0,0,0,.22);
+  outline:none;
+}
+.user-management-page .audit-review-panel{
+  margin-top:18px;
+  padding:20px;
+  border-radius:18px;
+  border:1px solid rgba(96,165,250,.72);
+  background:rgba(6,15,28,.72);
+  box-shadow:0 0 0 1px rgba(96,165,250,.16),0 0 28px rgba(96,165,250,.22),0 18px 36px rgba(0,0,0,.28);
+  scroll-margin-top:24px;
+}
+.user-management-page .audit-record-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.025);
+}
+.user-management-page .audit-record-row>div{min-width:0;display:grid;gap:3px}
+.user-management-page .audit-record-row small{color:#91a3b7;overflow-wrap:anywhere}

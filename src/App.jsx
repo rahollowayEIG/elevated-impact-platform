@@ -1031,7 +1031,46 @@ function EigUserManagement({ onBack, onInviteUser }) {
         <div className="user-detail-panel">
           {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
             <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><div className="user-detail-status-stack"><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>{selected.is_test_account && <span className="platform-role-pill">TEST ACCOUNT</span>}</div></div>
-            <div className="user-detail-actions"><div className="user-account-help-actions"><strong>Account Help</strong><div><button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'reset_password')}>{accountHelpBusy ? 'Sending...' : 'Reset Password'}</button>{!selected.email_confirmed_at && <button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'resend_verification')}>Resend Verification</button>}<button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'account_recovery')}>Account Recovery</button></div></div>{accountHelpError && <div className="platform-error">{accountHelpError}</div>}{selected.is_test_account ? <button className="platform-secondary-button danger-outline" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}>{cleanupBusy ? 'Removing...' : 'Remove Test Account'}</button> : <button className="platform-secondary-button" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}>{cleanupBusy ? 'Saving...' : 'Mark as Test Account'}</button>}<span>Only accounts explicitly marked as test can be permanently removed.</span></div><div className="user-detail-grid">
+            <div className="user-detail-actions">
+              <div className="user-action-center">
+                <div><strong>Manage Account</strong><small>Choose an action. Risk levels indicate how much the action changes the account or its access.</small></div>
+                <div className="user-action-menu-grid">
+                  <div className="user-action-group">
+                    <span className="user-action-group-title"><i className="action-risk-dot level-1"></i>Account Help</span>
+                    <button className="user-action-item level-1" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'reset_password')}><span>Reset Password</span><small>Send secure reset link</small></button>
+                    {!selected.email_confirmed_at && <button className="user-action-item level-1" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'resend_verification')}><span>Resend Verification</span><small>Send a new verification link</small></button>}
+                    <button className="user-action-item level-1" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'account_recovery')}><span>Account Recovery</span><small>Send secure recovery link</small></button>
+                  </div>
+                  <div className="user-action-group">
+                    <span className="user-action-group-title"><i className="action-risk-dot level-2"></i>Access</span>
+                    <button className="user-action-item level-2" type="button" onClick={() => setTab('access')}><span>Manage Access</span><small>Roles, scope and dates</small></button>
+                    <button className="user-action-item level-2" type="button" disabled><span>Manage Roles</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-2" type="button" disabled><span>Expire / Restore Access</span><small>Action coming in the next batch</small></button>
+                  </div>
+                  <div className="user-action-group">
+                    <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
+                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Disable Account</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Unlock Account</span><small>Action coming in the next batch</small></button>
+                  </div>
+                  <div className="user-action-group">
+                    <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Identity</span>
+                    <button className="user-action-item level-3" type="button" disabled><span>Identity Review</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Claim History</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Resolve Duplicate</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Merge Accounts</span><small>Action coming in the next batch</small></button>
+                  </div>
+                  <div className="user-action-group">
+                    <span className="user-action-group-title"><i className="action-risk-dot level-4"></i>Cleanup</span>
+                    {selected.is_test_account ? <button className="user-action-item level-4" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}><span>Remove Test Account</span><small>Permanent removal with confirmation</small></button> : <button className="user-action-item level-2" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}><span>Mark as Test Account</span><small>Explicit test designation</small></button>}
+                    <button className="user-action-item level-2" type="button" disabled><span>Close / Deactivate Account</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Review Orphaned Records</span><small>Action coming in the next batch</small></button>
+                  </div>
+                </div>
+                <div className="user-action-risk-key"><span><i className="action-risk-dot level-1"></i>Safe</span><span><i className="action-risk-dot level-2"></i>Account Change</span><span><i className="action-risk-dot level-3"></i>Significant</span><span><i className="action-risk-dot level-4"></i>Destructive</span></div>
+              </div>
+              {accountHelpError && <div className="platform-error">{accountHelpError}</div>}
+            </div><div className="user-detail-grid">
               <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
               <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
               <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>

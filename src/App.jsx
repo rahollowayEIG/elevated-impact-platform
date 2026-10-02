@@ -785,6 +785,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
   const [selectedAuditIssue, setSelectedAuditIssue] = useState(null);
+  const [accountHelpBusy, setAccountHelpBusy] = useState(false);
+  const [accountHelpError, setAccountHelpError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -818,6 +820,25 @@ function EigUserManagement({ onBack, onInviteUser }) {
       setAuditError(auditActionError.message || 'Unable to run Platform Audit.');
     } finally {
       setAuditLoading(false);
+    }
+  }
+
+  async function accountHelpAction(user, operation) {
+    if (!user?.id) return;
+    const labels = { reset_password: 'Reset Password', resend_verification: 'Resend Verification', account_recovery: 'Account Recovery' };
+    const label = labels[operation] || 'Account Help';
+    if (!window.confirm(`${label}\\n\\nSend a secure account email to ${user.email || 'this user'}?`)) return;
+    setAccountHelpBusy(true);
+    setAccountHelpError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'admin_account_help', target_user_id: user.id, operation },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || `Unable to ${label.toLowerCase()}.`);
+    } catch (actionError) {
+      setAccountHelpError(actionError.message || `Unable to ${label.toLowerCase()}.`);
+    } finally {
+      setAccountHelpBusy(false);
     }
   }
 
@@ -1004,7 +1025,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
         <div className="user-detail-panel">
           {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
             <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><div className="user-detail-status-stack"><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>{selected.is_test_account && <span className="platform-role-pill">TEST ACCOUNT</span>}</div></div>
-            <div className="user-detail-actions">{selected.is_test_account ? <button className="platform-secondary-button danger-outline" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}>{cleanupBusy ? 'Removing...' : 'Remove Test Account'}</button> : <button className="platform-secondary-button" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}>{cleanupBusy ? 'Saving...' : 'Mark as Test Account'}</button>}<span>Only accounts explicitly marked as test can be permanently removed.</span></div><div className="user-detail-grid">
+            <div className="user-detail-actions"><div className="user-account-help-actions"><strong>Account Help</strong><div><button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'reset_password')}>{accountHelpBusy ? 'Sending...' : 'Reset Password'}</button>{!selected.email_confirmed_at && <button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'resend_verification')}>Resend Verification</button>}<button className="platform-secondary-button compact" type="button" disabled={accountHelpBusy || !selected.email} onClick={() => accountHelpAction(selected, 'account_recovery')}>Account Recovery</button></div></div>{accountHelpError && <div className="platform-error">{accountHelpError}</div>}{selected.is_test_account ? <button className="platform-secondary-button danger-outline" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}>{cleanupBusy ? 'Removing...' : 'Remove Test Account'}</button> : <button className="platform-secondary-button" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}>{cleanupBusy ? 'Saving...' : 'Mark as Test Account'}</button>}<span>Only accounts explicitly marked as test can be permanently removed.</span></div><div className="user-detail-grid">
               <div><span>Email</span><strong>{selected.email || '—'}</strong><small>{selected.email_confirmed_at ? 'Verified ' + formatAdminTimestamp(selected.email_confirmed_at) : 'Not verified'}</small></div>
               <div><span>Account Created</span><strong>{formatAdminTimestamp(selected.created_at)}</strong><small>Permanent auth account</small></div>
               <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>

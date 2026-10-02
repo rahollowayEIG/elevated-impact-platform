@@ -5,13 +5,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "@vercel/og": "0.8.6",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "qrcode": "1.5.4",
     "react": "latest",
     "react-dom": "latest",
-    "@supabase/supabase-js": "latest",
     "read-excel-file": "9.3.10",
-    "qrcode": "1.5.4"
-  },
-  "devDependencies": {}
+    "vite": "latest"
+  }
 }

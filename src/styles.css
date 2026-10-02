@@ -1520,7 +1520,65 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
 }
 .user-management-page .audit-issue-row{
   position:relative;
+  width:100%;
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:18px;
+  padding:16px 18px;
+  margin:0;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:15px;
+  background:rgba(6,15,28,.42);
+  color:#fff;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
   transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.user-management-page .audit-issue-row:disabled{
+  opacity:1;
+  cursor:default;
+}
+.user-management-page .audit-issue-row.clear{
+  cursor:default;
+  background:rgba(255,255,255,.025);
+  color:#aebdce;
+}
+.user-management-page .audit-issue-row.clear .audit-issue-status{
+  color:#86efac;
+}
+.user-management-page .audit-issue-row .audit-issue-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.user-management-page .audit-issue-row .audit-issue-title strong{
+  font-size:13px;
+  line-height:1.3;
+}
+.user-management-page .audit-issue-row .audit-issue-title span{
+  min-width:28px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  text-align:center;
+  font-size:11px;
+  font-weight:900;
+}
+.user-management-page .audit-issue-row p{
+  margin:6px 0 0;
+  color:#91a3b7;
+  line-height:1.45;
+}
+.user-management-page .audit-issue-status{
+  white-space:nowrap;
+  color:#aebdce;
+  font-size:11px;
+  font-weight:900;
 }
 .user-management-page .audit-issue-row:not(:disabled):hover,
 .user-management-page .audit-issue-row:not(:disabled):focus-visible{

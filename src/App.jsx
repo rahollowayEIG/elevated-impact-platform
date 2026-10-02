@@ -785,6 +785,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
   const [selectedAuditIssue, setSelectedAuditIssue] = useState(null);
+  const auditReviewRef = useRef(null);
   const [accountHelpBusy, setAccountHelpBusy] = useState(false);
   const [accountHelpError, setAccountHelpError] = useState('');
 
@@ -912,6 +913,11 @@ function EigUserManagement({ onBack, onInviteUser }) {
     }
   }
 
+  useEffect(() => {
+    if (selectedAuditIssue && auditReviewRef.current) {
+      requestAnimationFrame(() => auditReviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  }, [selectedAuditIssue]);
   useEffect(() => { load(); }, []);
   useEffect(() => {
     if (tab === 'access' && !accessPayload && !accessLoading) loadAccess();
@@ -1113,7 +1119,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
       {auditPayload && <><div className="audit-summary-grid"><div><strong>{auditPayload.summary?.accounts ?? 0}</strong><span>Accounts scanned</span></div><div><strong>{auditPayload.summary?.issues ?? 0}</strong><span>Findings</span></div><div><strong>{auditPayload.summary?.review_items ?? 0}</strong><span>Needs review</span></div><div><strong>{auditPayload.summary?.test_accounts ?? 0}</strong><span>Test accounts</span></div><div><strong>{auditPayload.summary?.pending_invitations ?? 0}</strong><span>Pending invites</span></div></div>
       <div className="audit-meta"><span>Last audit: {formatAdminTimestamp(auditPayload.generated_at)}</span>{auditPayload.truncated && <span>Account scan reached its configured safety limit.</span>}</div>
       <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <button type="button" className={'audit-issue-row ' + issue.severity} key={issue.key} onClick={() => issue.count ? setSelectedAuditIssue(issue) : null} disabled={!issue.count}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Review accounts →' : 'Review records →'}</span></button>)}</div>
-      {selectedAuditIssue && <div className="audit-review-panel">
+      {selectedAuditIssue && <div ref={auditReviewRef} className="audit-review-panel">
         <div className="platform-section-heading"><div><p className="platform-eyebrow">Audit finding</p><h3>{selectedAuditIssue.label}</h3><p>{selectedAuditIssue.description}</p></div><button className="platform-secondary-button compact" type="button" onClick={() => setSelectedAuditIssue(null)}>Close</button></div>
         <div className="audit-record-list">{(selectedAuditIssue.records || []).map((record, index) => {
           const label = record.label || record.email || record.invitee_name || record.scope || ('Record ' + (index + 1));

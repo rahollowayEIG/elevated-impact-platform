@@ -2783,7 +2783,7 @@ export default function App() {
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
   const recoverySearchParams = new URLSearchParams(window.location.search);
   const recoveryHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const recoveryLinkHint = recoverySearchParams.get('recovery') === '1' || recoverySearchParams.get('type') === 'recovery' || recoveryHashParams.get('type') === 'recovery';
+  const recoveryLinkHint = recoverySearchParams.get('recovery') === '1' || recoverySearchParams.get('type') === 'recovery' || recoveryHashParams.get('type') === 'recovery' || recoveryHashParams.get('access_token') && recoveryHashParams.get('refresh_token');
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
@@ -2829,12 +2829,16 @@ export default function App() {
             refresh_token: hashRefreshToken,
           });
           if (error) throw error;
-          if (data?.session && !cancelled) setSession(data.session);
+          if (data?.session && !cancelled) {
+            setRecoveryMode(hashParams.get('type') === 'recovery' || recoverySearchParams.get('recovery') === '1' || hashParams.get('type') === 'recovery');
+            setSession(data.session);
+          }
           hashParams.delete('access_token');
           hashParams.delete('refresh_token');
           hashParams.delete('expires_at');
           hashParams.delete('expires_in');
-          hashParams.delete('type');
+          const hashType = hashParams.get('type');
+          if (hashType === 'recovery') hashParams.delete('type');
           const cleanHash = hashParams.toString() ? '#' + hashParams.toString() : '';
           window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : '') + cleanHash);
         } else {

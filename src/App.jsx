@@ -1075,6 +1075,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
                     <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next batch</small></button>
                     {accountStateLabel(selected) === 'Disabled' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'unlock_account' })}><span>Unlock Account</span><small>Restore sign-in access</small></button> : <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'disable_account' })}><span>Disable Account</span><small>Block sign-in until restored</small></button>}
+                    {accountStateLabel(selected) === 'Deactivated' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'reactivate_account' })}><span>Reactivate Account</span><small>Restore EIG platform access</small></button> : <button className="user-action-item level-2" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'deactivate_account' })}><span>Deactivate Account</span><small>Make this EIG account inactive</small></button>}
                     <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in a later security batch</small></button>
                   </div>
                   <div className="user-action-group">
@@ -1226,15 +1227,19 @@ function EigUserManagement({ onBack, onInviteUser }) {
       {securityAction && <div className="platform-confirm-backdrop" role="presentation">
         <div className="platform-confirm-modal action-risk-level-3" role="dialog" aria-modal="true" aria-labelledby="security-action-title">
           <div className="platform-confirm-risk"><i className="action-risk-dot level-3"></i> Significant account change</div>
-          <h3 id="security-action-title">{securityAction.operation === 'disable_account' ? 'Disable Account?' : 'Unlock Account?'}</h3>
+          <h3 id="security-action-title">{securityAction.operation === 'disable_account' ? 'Disable Account?' : securityAction.operation === 'unlock_account' ? 'Unlock Account?' : securityAction.operation === 'deactivate_account' ? 'Deactivate Account?' : 'Reactivate Account?'}</h3>
           <p>{securityAction.operation === 'disable_account'
             ? 'This will block this account from signing in until an EIG Admin restores access.'
-            : 'This will lift the account restriction and allow the user to sign in again.'}</p>
+            : securityAction.operation === 'unlock_account'
+              ? 'This will lift the sign-in restriction on this account.'
+              : securityAction.operation === 'deactivate_account'
+                ? 'This will mark the EIG account inactive and prevent normal platform access until it is reactivated.'
+                : 'This will restore the EIG account to active platform status.'}</p>
           <div className="platform-confirm-subject"><strong>{displayName(securityAction.user)}</strong><span>{securityAction.user.email || 'No email'}</span></div>
           {securityError && <div className="platform-error">{securityError}</div>}
           <div className="platform-confirm-actions">
             <button className="platform-secondary-button" type="button" disabled={securityBusy} onClick={() => { setSecurityAction(null); setSecurityError(''); }}>Cancel</button>
-            <button className="platform-primary-button risk-confirm" type="button" disabled={securityBusy} onClick={securityActionConfirm}>{securityBusy ? 'Saving...' : securityAction.operation === 'disable_account' ? 'Disable Account' : 'Unlock Account'}</button>
+            <button className="platform-primary-button risk-confirm" type="button" disabled={securityBusy} onClick={securityActionConfirm}>{securityBusy ? 'Saving...' : securityAction.operation === 'disable_account' ? 'Disable Account' : securityAction.operation === 'unlock_account' ? 'Unlock Account' : securityAction.operation === 'deactivate_account' ? 'Deactivate Account' : 'Reactivate Account'}</button>
           </div>
         </div>
       </div>}

@@ -5355,7 +5355,13 @@ export default function App() {
         const hashAccessToken = hashParams.get('access_token');
         const hashRefreshToken = hashParams.get('refresh_token');
         const isRecoveryLink = params.get('recovery') === '1' || verificationType === 'recovery' || hashParams.get('type') === 'recovery';
+        const hasRecoveryCredentials = Boolean((tokenHash && verificationType) || authCode || (hashAccessToken && hashRefreshToken));
         if (!cancelled && isRecoveryLink) setRecoveryMode(true);
+        if (hasRecoveryCredentials) {
+          // A recovery link must establish the target user's session, never reuse whoever is already signed in.
+          await supabase.auth.signOut({ scope: 'local' });
+          if (!cancelled) setSession(null);
+        }
         if (tokenHash && verificationType) {
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,

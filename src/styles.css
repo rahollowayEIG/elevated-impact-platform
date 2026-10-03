@@ -1634,3 +1634,17 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
 .user-action-risk-key{display:flex;gap:14px;flex-wrap:wrap;padding-top:2px;color:#91a3b7;font-size:10px;font-weight:800}
 .user-action-risk-key span{display:inline-flex;align-items:center;gap:5px}
 @media(max-width:720px){.user-action-menu-grid{grid-template-columns:1fr}}
+
+
+/* EIG Point of No Return */
+.platform-confirm-backdrop{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px;background:rgba(2,7,15,.58);backdrop-filter:blur(7px)}
+.platform-confirm-modal{width:min(520px,100%);padding:24px;border-radius:20px;border:1px solid rgba(251,146,60,.62);background:rgba(7,17,29,.97);box-shadow:0 0 0 1px rgba(251,146,60,.12),0 0 28px rgba(251,146,60,.16),0 24px 60px rgba(0,0,0,.45)}
+.platform-confirm-risk{display:flex;align-items:center;gap:7px;margin-bottom:10px;color:#fdba74;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.09em}
+.platform-confirm-modal h3{margin:0;font-size:22px}
+.platform-confirm-modal>p{margin:9px 0 16px;color:#aebdce;line-height:1.55;font-size:12px}
+.platform-confirm-subject{display:grid;gap:3px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035)}
+.platform-confirm-subject strong{font-size:13px}
+.platform-confirm-subject span{color:#91a3b7;font-size:11px}
+.platform-confirm-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.platform-confirm-modal .risk-confirm{background:#c2410c}
+.platform-confirm-modal .risk-confirm:hover{filter:brightness(1.08)}

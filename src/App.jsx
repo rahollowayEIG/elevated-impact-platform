@@ -762,6 +762,7 @@ function formatAdminTimestamp(value) {
 }
 
 function accountStateLabel(user) {
+  if (user?.profile?.account_status === 'deactivated') return 'Deactivated';
   if (user?.banned_until && new Date(user.banned_until).getTime() > Date.now()) return 'Disabled';
   if (!user?.email_confirmed_at) return 'Unverified';
   return 'Active';

@@ -2798,10 +2798,12 @@ export default function App() {
         const params = new URLSearchParams(window.location.search);
         const tokenHash = params.get('token_hash');
         const verificationType = params.get('type');
+        const authCode = params.get('code');
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-        if (!cancelled && (params.get('recovery') === '1' || verificationType === 'recovery' || hashParams.get('type') === 'recovery')) {
-          setRecoveryMode(true);
-        }
+        const hashAccessToken = hashParams.get('access_token');
+        const hashRefreshToken = hashParams.get('refresh_token');
+        const isRecoveryLink = params.get('recovery') === '1' || verificationType === 'recovery' || hashParams.get('type') === 'recovery';
+        if (!cancelled && isRecoveryLink) setRecoveryMode(true);
         if (tokenHash && verificationType) {
           const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
@@ -2814,6 +2816,27 @@ export default function App() {
           params.delete('boarding');
           const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
           window.history.replaceState({}, '', clean);
+        } else if (authCode) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (error) throw error;
+          if (data?.session && !cancelled) setSession(data.session);
+          params.delete('code');
+          const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+          window.history.replaceState({}, '', clean);
+        } else if (hashAccessToken && hashRefreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+          if (error) throw error;
+          if (data?.session && !cancelled) setSession(data.session);
+          hashParams.delete('access_token');
+          hashParams.delete('refresh_token');
+          hashParams.delete('expires_at');
+          hashParams.delete('expires_in');
+          hashParams.delete('type');
+          const cleanHash = hashParams.toString() ? '#' + hashParams.toString() : '';
+          window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : '') + cleanHash);
         } else {
           const { data } = await supabase.auth.getSession();
           if (!cancelled) setSession(data.session || null);

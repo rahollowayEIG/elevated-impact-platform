@@ -257,6 +257,18 @@ function LoginScreen({ initialForgotMode = false }) {
   );
 }
 
+function RecoveryLinkProblemScreen({ onBack }) {
+  return <div className="platform-auth-screen">
+    <div className="platform-login-card">
+      <div className="platform-logo-mark">EIG</div>
+      <p className="platform-eyebrow">ElevationPilot Account Recovery</p>
+      <h1>We couldn't open that recovery link.</h1>
+      <p className="platform-login-copy">The recovery link did not establish a verified password-reset session. No password was changed.</p>
+      <button className="platform-secondary-button" type="button" onClick={onBack}>Back to sign in</button>
+    </div>
+  </div>;
+}
+
 function PasswordRecoveryScreen({ onComplete }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -5327,7 +5339,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [recoveryVerified, setRecoveryVerified] = useState(false); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return; }
@@ -5350,7 +5362,7 @@ export default function App() {
             type: verificationType,
           });
           if (error) throw error;
-          if (data?.session && !cancelled) setSession(data.session);
+          if (data?.session && !cancelled) { setRecoveryVerified(verificationType === 'recovery'); setSession(data.session); }
           params.delete('token_hash');
           params.delete('type');
           params.delete('boarding');
@@ -5359,7 +5371,7 @@ export default function App() {
         } else if (authCode) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
           if (error) throw error;
-          if (data?.session && !cancelled) setSession(data.session);
+          if (data?.session && !cancelled) { setRecoveryVerified(verificationType === 'recovery' || params.get('recovery') === '1'); setSession(data.session); }
           params.delete('code');
           const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
           window.history.replaceState({}, '', clean);
@@ -5370,7 +5382,8 @@ export default function App() {
           });
           if (error) throw error;
           if (data?.session && !cancelled) {
-            setRecoveryMode(hashParams.get('type') === 'recovery' || recoverySearchParams.get('recovery') === '1' || hashParams.get('type') === 'recovery');
+            setRecoveryMode(true);
+            setRecoveryVerified(true);
             setSession(data.session);
           }
           hashParams.delete('access_token');
@@ -5396,7 +5409,7 @@ export default function App() {
 
     bootstrapAuth();
     const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
+      if (event === 'PASSWORD_RECOVERY') { setRecoveryMode(true); setRecoveryVerified(true); }
       setSession(nextSession || null);
       if (!nextSession) {
         setMemberships([]);
@@ -5851,8 +5864,8 @@ export default function App() {
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
   if (!authReady) return <LoadingScreen />;
-  if (recoveryMode && session) return <PasswordRecoveryScreen onComplete={() => window.location.reload()} />;
-  if (recoveryMode && !session) return <LoginScreen initialForgotMode />;
+  if (recoveryMode && session && recoveryVerified) return <PasswordRecoveryScreen onComplete={() => window.location.reload()} />;
+  if (recoveryMode) return <RecoveryLinkProblemScreen onBack={() => { const url = new URL(window.location.href); ['recovery','recovery_email','token_hash','type','code'].forEach((key) => url.searchParams.delete(key)); window.history.replaceState({}, '', url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '') + url.hash); setRecoveryMode(false); }} />;
   if (!session) return <LoginScreen />;
   if (inviteCheckUserId !== session.user.id) return <LoadingScreen message="Checking your ElevationPilot access..." />;
   if (pendingInvitations.length) return <AccountSetupScreen user={session.user} invitation={pendingInvitations[0]} profile={inviteProfile || profile} onComplete={finishInviteSetup} />;

@@ -299,6 +299,7 @@ The completion audit has four required passes:
 - Visual consistency does not mean every page looks identical. Page type and purpose may change layout while shared interaction behavior and design language remain recognizable.
 - Accessibility and responsive/mobile sanity checks are part of the functional and visual audit, using the established EIG accessibility guidance.
 - A completed feature is not considered fully complete until the four-pass audit has been performed and cleanup opportunities have been addressed or intentionally documented.
+- **Audit Coverage Rule:** When we add an action, account state, workflow, relationship, permission, or other meaningful system capability, decide as part of the implementation whether it creates a durable state or condition that should be visible to the platform audit. If it does, add an audit finding/count and drill-down path. If the state is intentional and not inherently a problem, report it as informational rather than automatically classifying it as a finding that needs correction. The audit should remain the authoritative operational view of account/system conditions that EIG administrators need to know about.
 - The audit standard applies continuously as the platform grows, so later work should audit the surrounding experience rather than treating each feature as an isolated component.
 
 ### Audit Record

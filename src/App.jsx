@@ -1073,10 +1073,9 @@ function EigUserManagement({ onBack, onInviteUser }) {
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
-                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next batch</small></button>
+                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next security batch</small></button>
                     {accountStateLabel(selected) === 'Disabled' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'unlock_account' })}><span>Unlock Account</span><small>Restore sign-in access</small></button> : <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'disable_account' })}><span>Disable Account</span><small>Block sign-in until restored</small></button>}
-                    {accountStateLabel(selected) === 'Deactivated' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'reactivate_account' })}><span>Reactivate Account</span><small>Restore EIG platform access</small></button> : <button className="user-action-item level-2" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'deactivate_account' })}><span>Deactivate Account</span><small>Make this EIG account inactive</small></button>}
-                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in a later security batch</small></button>
+                    {accountStateLabel(selected) === 'Deactivated' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'reactivate_account' })}><span>Reactivate Account</span><small>Restore EIG platform access</small></button> : <button className="user-action-item level-2" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'deactivate_account' })}><span>Deactivate Account</span><small>Make this EIG account inactive</small></button>
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Identity</span>
@@ -1088,7 +1087,6 @@ function EigUserManagement({ onBack, onInviteUser }) {
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-4"></i>Cleanup</span>
                     {selected.is_test_account ? <button className="user-action-item level-4" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'remove_test')}><span>Remove Test Account</span><small>Permanent removal with confirmation</small></button> : <button className="user-action-item level-2" type="button" disabled={cleanupBusy} onClick={() => testAccountAction(selected, 'mark_test')}><span>Mark as Test Account</span><small>Explicit test designation</small></button>}
-                    <button className="user-action-item level-2" type="button" disabled><span>Close / Deactivate Account</span><small>Action coming in the next batch</small></button>
                     <button className="user-action-item level-3" type="button" disabled><span>Review Orphaned Records</span><small>Action coming in the next batch</small></button>
                   </div>
                 </div>

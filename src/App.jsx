@@ -788,6 +788,9 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const auditReviewRef = useRef(null);
   const [accountHelpBusy, setAccountHelpBusy] = useState(false);
   const [accountHelpError, setAccountHelpError] = useState('');
+  const [securityAction, setSecurityAction] = useState(null);
+  const [securityBusy, setSecurityBusy] = useState(false);
+  const [securityError, setSecurityError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -840,6 +843,24 @@ function EigUserManagement({ onBack, onInviteUser }) {
       setAccountHelpError(actionError.message || `Unable to ${label.toLowerCase()}.`);
     } finally {
       setAccountHelpBusy(false);
+    }
+  }
+
+  async function securityActionConfirm() {
+    if (!securityAction?.user?.id) return;
+    setSecurityBusy(true);
+    setSecurityError('');
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
+        body: { action: 'admin_security', target_user_id: securityAction.user.id, operation: securityAction.operation },
+      });
+      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to update account security.');
+      setSecurityAction(null);
+      await load();
+    } catch (actionError) {
+      setSecurityError(actionError.message || 'Unable to update account security.');
+    } finally {
+      setSecurityBusy(false);
     }
   }
 
@@ -1052,8 +1073,8 @@ function EigUserManagement({ onBack, onInviteUser }) {
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
                     <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next batch</small></button>
-                    <button className="user-action-item level-3" type="button" disabled><span>Disable Account</span><small>Action coming in the next batch</small></button>
-                    <button className="user-action-item level-3" type="button" disabled><span>Unlock Account</span><small>Action coming in the next batch</small></button>
+                    {accountStateLabel(selected) === 'Disabled' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'unlock_account' })}><span>Unlock Account</span><small>Restore sign-in access</small></button> : <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'disable_account' })}><span>Disable Account</span><small>Block sign-in until restored</small></button>}
+                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in a later security batch</small></button>
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Identity</span>
@@ -1201,6 +1222,21 @@ function EigUserManagement({ onBack, onInviteUser }) {
         <span>Choose a report above to enable actions.</span>
       </div>
     </section>}
+      {securityAction && <div className="platform-confirm-backdrop" role="presentation">
+        <div className="platform-confirm-modal action-risk-level-3" role="dialog" aria-modal="true" aria-labelledby="security-action-title">
+          <div className="platform-confirm-risk"><i className="action-risk-dot level-3"></i> Significant account change</div>
+          <h3 id="security-action-title">{securityAction.operation === 'disable_account' ? 'Disable Account?' : 'Unlock Account?'}</h3>
+          <p>{securityAction.operation === 'disable_account'
+            ? 'This will block this account from signing in until an EIG Admin restores access.'
+            : 'This will lift the account restriction and allow the user to sign in again.'}</p>
+          <div className="platform-confirm-subject"><strong>{displayName(securityAction.user)}</strong><span>{securityAction.user.email || 'No email'}</span></div>
+          {securityError && <div className="platform-error">{securityError}</div>}
+          <div className="platform-confirm-actions">
+            <button className="platform-secondary-button" type="button" disabled={securityBusy} onClick={() => { setSecurityAction(null); setSecurityError(''); }}>Cancel</button>
+            <button className="platform-primary-button risk-confirm" type="button" disabled={securityBusy} onClick={securityActionConfirm}>{securityBusy ? 'Saving...' : securityAction.operation === 'disable_account' ? 'Disable Account' : 'Unlock Account'}</button>
+          </div>
+        </div>
+      </div>}
   </div>;
 }
 

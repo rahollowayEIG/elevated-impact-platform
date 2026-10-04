@@ -2,8 +2,9 @@
   "scripts": {
     "dev": "vite",
     "test:recovery": "node --test tests/recovery-session.test.mjs",
-    "build": "npm run test:recovery && vite build",
-    "preview": "vite preview"
+    "build": "npm run test:account-states && npm run test:recovery && vite build",
+    "preview": "vite preview",
+    "test:account-states": "node --test tests/account-state.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

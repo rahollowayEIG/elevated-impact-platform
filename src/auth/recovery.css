@@ -1,0 +1,18 @@
+/* A focused recovery surface, not a second application theme. */
+.eig-recovery { padding: 24px 16px; }
+.eig-recovery-card { width: min(520px, 100%); border-color: rgba(96,165,250,.38); box-shadow: 0 16px 40px rgba(0,0,0,.24); }
+.eig-recovery-card h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.14; overflow-wrap: anywhere; }
+.eig-recovery-card h1:focus { outline: none; }
+.eig-recovery-card p { font-size: 14px; line-height: 1.55; }
+.eig-recovery-card .platform-login-form label { font-size: 14px; }
+.eig-recovery-card input { font-size: 16px; min-height: 44px; }
+.eig-recovery-card button, .eig-recovery-back { font-size: 14px; min-height: 44px; }
+.eig-recovery-card input:focus-visible, .eig-recovery-card button:focus-visible, .eig-recovery-card a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+.eig-recovery-identity { display: grid; gap: 6px; margin: 22px 0 12px; padding: 14px; border: 1px solid rgba(147,197,253,.3); border-radius: 12px; background: rgba(29,36,93,.32); }
+.eig-recovery-identity span { font-size: 12px; color: #c7c8cc; }
+.eig-recovery-identity strong, .eig-recovery-success strong { font-size: 16px; color: #fff; overflow-wrap: anywhere; }
+.eig-recovery-back { display: flex; justify-content: center; align-items: center; margin-top: 18px; text-decoration: none; }
+.eig-recovery-support { color: #bfdbfe; text-underline-offset: 3px; }
+.eig-recovery-success { margin-top: 20px; }
+.eig-recovery-success p { color: #c7c8cc; }
+@media (max-width: 520px) { .eig-recovery-card { padding: 24px; border-radius: 20px; } }

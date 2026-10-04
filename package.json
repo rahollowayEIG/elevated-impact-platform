@@ -1,7 +1,8 @@
 {
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "test:recovery": "node --test tests/recovery-session.test.mjs",
+    "build": "npm run test:recovery && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

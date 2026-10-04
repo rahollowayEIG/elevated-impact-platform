@@ -128,3 +128,4 @@ export default function AccountStateControls({ user, currentUserId, invoke, onSn
     {notice && <p className="eig-state-notice" role="status">{notice}</p>}
     {pending && <StateConfirmation pending={pending} busy={busy} onCancel={() => setPending(null)} onConfirm={confirm} />}
   </section>;
+}

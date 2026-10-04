@@ -1,0 +1,42 @@
+name: Recovery safety checks
+on:
+  push:
+    branches: ['fix/isolated-password-recovery-20261004']
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.jsx'
+      - 'src/PlatformApp.jsx'
+      - 'src/auth/**'
+      - 'tests/recovery*'
+      - 'package*.json'
+      - '.github/workflows/recovery-safety.yml'
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      VITE_SUPABASE_URL: https://recovery.example.test
+      VITE_SUPABASE_ANON_KEY: synthetic-public-key-not-a-live-project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install isolated browser-test tooling
+        run: npm install --no-save --package-lock=false playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - name: Test real recovery UI against synthetic Auth responses
+        run: node tests/recovery-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recovery-browser-evidence
+          path: test-results/recovery/
+          if-no-files-found: ignore
+          retention-days: 7

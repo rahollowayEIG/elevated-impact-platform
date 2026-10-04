@@ -2,10 +2,10 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 import RecoveryScreen from './auth/RecoveryScreen.jsx';
 import { parseRecoveryEntry, cleanRecoveryUrl, createRecoveryApi, createRecoveryController } from './auth/recovery-session.mjs';
 
-// Do not statically import the platform here. Its normal Supabase client must
-// not initialize, consume a callback, or supply a session to password recovery.
+// Do not initialize the shared Supabase client on a recovery entry.
 const PlatformApp = lazy(() => import('./PlatformApp.jsx'));
 let entrySequence = 0;
+let handledHref = '';
 
 function captureEntry() {
   if (typeof window === 'undefined') return { kind: 'normal' };
@@ -13,9 +13,11 @@ function captureEntry() {
   const entry = parseRecoveryEntry(href);
   if (entry.kind === 'normal') {
     if (entry.normalizedUrl) window.history.replaceState({}, '', entry.normalizedUrl);
+    handledHref = window.location.href;
     return { kind: 'normal' };
   }
   window.history.replaceState({}, '', cleanRecoveryUrl(href));
+  handledHref = window.location.href;
   const id = ++entrySequence;
   try {
     const api = createRecoveryApi({
@@ -28,13 +30,18 @@ function captureEntry() {
   }
 }
 
-// Capture and scrub once, before rendering or initializing the normal app.
 const initialEntry = captureEntry();
 
 export default function App() {
   const [entry, setEntry] = useState(initialEntry);
   useEffect(() => {
-    const changed = () => setEntry(captureEntry());
+    const changed = () => {
+      // A history traversal can emit both popstate and hashchange. Do not
+      // replace a verified controller with a second, already-scrubbed entry.
+      if (window.location.href === handledHref) return;
+      const next = captureEntry();
+      setEntry((current) => current.kind === 'normal' && next.kind === 'normal' ? current : next);
+    };
     window.addEventListener('hashchange', changed);
     window.addEventListener('popstate', changed);
     return () => {

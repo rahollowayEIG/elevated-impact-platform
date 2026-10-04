@@ -28,7 +28,9 @@ jobs:
       - name: Check password recovery regression suite
         env:
           VITE_SUPABASE_URL: https://recovery.example.test
-        run: node tests/recovery-browser.mjs
+        run: |
+          npm run build
+          node tests/recovery-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

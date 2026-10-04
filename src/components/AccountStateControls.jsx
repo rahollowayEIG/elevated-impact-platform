@@ -28,6 +28,7 @@ export function AccountStateBadges({ user }) {
   return <div className="eig-account-badges">
     <span className={state.active === true ? 'state-on' : 'state-off'}>Platform: {state.active === null ? 'Unknown' : state.active ? 'Active' : 'Inactive'}</span>
     <span className={state.unlocked === true ? 'state-on' : 'state-off'}>Sign-in: {state.unlocked === null ? 'Unknown' : state.unlocked ? 'Unlocked' : 'Locked'}</span>
+    <span className={user?.email_confirmed_at ? 'state-on' : 'state-off'}>Email: {user?.email_confirmed_at ? 'Verified' : 'Unverified'}</span>
   </div>;
 }
 
@@ -127,4 +128,3 @@ export default function AccountStateControls({ user, currentUserId, invoke, onSn
     {notice && <p className="eig-state-notice" role="status">{notice}</p>}
     {pending && <StateConfirmation pending={pending} busy={busy} onCancel={() => setPending(null)} onConfirm={confirm} />}
   </section>;
-}

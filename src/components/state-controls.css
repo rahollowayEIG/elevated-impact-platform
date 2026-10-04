@@ -1,0 +1,44 @@
+/* Shared state-first control: status color is not an action-risk indicator. */
+.eig-account-states { margin:16px 0; padding:16px; border:1px solid #344867; border-radius:16px; background:#0b192c; color:#f3f6fc; }
+.eig-state-heading { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px; }
+.eig-state-heading h3 { margin:0; font-size:17px; }
+.eig-state-heading p { margin:5px 0 0; color:#c0cdde; line-height:1.5; }
+.eig-state-refresh { flex:none; min-height:44px; padding:8px 12px; border:1px solid #425776; border-radius:10px; background:#15253b; color:#f3f6fc; font:inherit; cursor:pointer; }
+.eig-state-controls { display:grid; gap:10px; }
+.eig-state-control { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px; border:1px solid #30435e; border-radius:12px; background:#101f33; }
+.eig-state-copy { display:grid; min-width:0; gap:4px; }
+.user-management-page .eig-state-copy strong { font-size:14px; }
+.user-management-page .eig-state-copy .eig-state-value { font-size:14px; font-weight:800; color:#f3f6fc; }
+.user-management-page .eig-state-copy small { font-size:12px; color:#bfccdc; line-height:1.5; }
+.eig-state-switch { display:flex; align-items:center; justify-content:center; gap:8px; flex:none; min-width:96px; min-height:48px; padding:5px; border:1px solid transparent; border-radius:9px; background:transparent; color:#f3f6fc; cursor:pointer; font:inherit; }
+.eig-switch-track { display:block; width:44px; height:26px; border:2px solid #ce9a61; border-radius:99px; background:#514331; padding:3px; }
+.eig-switch-track > span { display:block; width:16px; height:16px; border-radius:50%; background:#fff; transform:translateX(0); transition:transform .12s ease; }
+.eig-state-switch[aria-checked="true"] .eig-switch-track { border-color:#7dc7ac; background:#24604c; }
+.eig-state-switch[aria-checked="true"] .eig-switch-track > span { transform:translateX(18px); }
+.eig-switch-word { min-width:24px; font-weight:800; }
+.eig-state-switch:focus-visible,.eig-state-refresh:focus-visible,.eig-state-dialog button:focus-visible { outline:3px solid #91bbff; outline-offset:3px; }
+.eig-state-switch:disabled,.eig-state-refresh:disabled,.eig-state-dialog button:disabled { opacity:.65; cursor:not-allowed; }
+.user-management-page .eig-state-combined-note { margin:12px 0 0; color:#c0cdde; font-size:12px; line-height:1.6; }
+.eig-state-error,.eig-state-notice { padding:10px 12px; border-radius:9px; line-height:1.5; }
+.eig-state-error { background:#412b30; color:#ffe0e0; border:1px solid #895154; }
+.eig-state-notice { background:#1c3534; color:#d4ffef; border:1px solid #417564; }
+.eig-account-badges { display:grid; gap:5px; font-size:11px; }
+.eig-account-badges > span { display:block; padding:4px 7px; border-radius:7px; border:1px solid; white-space:nowrap; font-weight:700; }
+.eig-account-badges .state-on { background:#153932; color:#c0f3df; border-color:#3e7564; }
+.eig-account-badges .state-off { background:#3a302b; color:#f9ddbc; border-color:#846247; }
+.eig-state-unknown { color:#e7d1ac; font-size:12px; }
+.eig-state-dialog { box-sizing:border-box; width:min(500px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; margin:auto; padding:24px; border:1px solid #98734f; border-radius:18px; background:#0b192c; color:#f3f6fc; box-shadow:0 15px 55px #0008; }
+.eig-state-dialog::backdrop { background:#02081499; backdrop-filter:blur(3px); }
+.eig-state-dialog h2 { margin:8px 0 16px; font-size:24px; line-height:1.2; }
+.eig-state-dialog p { line-height:1.55; font-size:14px; }
+.eig-state-risk { margin:0; color:#f3c693; font-size:11px!important; font-weight:800; letter-spacing:.04em; }
+.eig-state-subject { display:grid; gap:5px; padding:12px; border:1px solid #344867; border-radius:10px; overflow-wrap:anywhere; }
+.eig-state-subject span { font-size:13px; color:#bfccdc; }
+.eig-state-transition { font-weight:800; }
+.eig-state-email-note { color:#bfccdc; font-size:12px!important; }
+.eig-state-dialog-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+.eig-state-dialog-actions button { min-height:44px; padding:10px 16px; border:1px solid #52627b; border-radius:10px; color:#fff; background:#24344c; font:inherit; font-weight:700; cursor:pointer; }
+.eig-state-dialog-actions .eig-state-confirm { background:#864224; border-color:#c68456; }
+@media(max-width:600px) { .eig-state-heading { flex-direction:column; } .eig-account-states { padding:12px; } .eig-state-control { gap:8px; padding:10px; } .eig-state-switch { min-width:78px; gap:4px; } .eig-state-dialog-actions { flex-wrap:wrap; } }
+@media(prefers-reduced-motion:reduce) { .eig-switch-track > span { transition:none; } }
+@media(forced-colors:active) { .eig-state-control,.eig-state-switch,.eig-switch-track,.eig-state-dialog { border:1px solid CanvasText; } .eig-switch-track > span { background:ButtonText; } }

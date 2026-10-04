@@ -308,3 +308,12 @@ The completion audit has four required passes:
 ### Audit Record
 
 Where practical, completion audits should record the feature audited, date, tester/reviewer, findings, fixes made, and any intentionally deferred items. This creates a repeatable quality trail for EIG rather than relying on memory.
+
+
+### State-First Switch Rule
+
+Prefer a fixed-label switch for a genuine two-way setting when both directions already have authorized backend behavior. Use a positive, fixed label and show the saved state in words beside the switch. On means the labeled setting is enabled, not merely that an operation was requested. Unknown, missing or stale state must never be represented as an assured Active/On state. Read-only facts such as email verification are badges, not switches.
+
+Sensitive switches request an explicit confirmation identifying the immutable target account and the old/new state. Cancel leaves the state unchanged. Disable repeat submissions while saving, re-read the same target, and show the new state only after server confirmation. Reject stale confirmations and require refresh after an uncertain write; never automatically retry a toggle. Backend authorization remains authoritative.
+
+Account lifecycle and sign-in security remain independent. An account can be Active and Locked, or Inactive and Unlocked; show both. Do not use a single display-status label to select both actions. Switching either must never silently change the other, verification, roles, dates, or passwords. Apply this consideration across EIG pages without forcing multi-state workflows, emails, money movements, deletion, merges, or irreversible actions into binary controls. See State-First-Control-Audit.md for the current conversion and explicit exclusions.

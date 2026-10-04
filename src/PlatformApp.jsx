@@ -1,3 +1,4 @@
+import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
@@ -768,7 +769,7 @@ function accountStateLabel(user) {
   return 'Active';
 }
 
-function EigUserManagement({ onBack, onInviteUser }) {
+function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
   const [tab, setTab] = useState('overview');
   const [query, setQuery] = useState('');
   const [payload, setPayload] = useState(null);
@@ -789,9 +790,6 @@ function EigUserManagement({ onBack, onInviteUser }) {
   const auditReviewRef = useRef(null);
   const [accountHelpBusy, setAccountHelpBusy] = useState(false);
   const [accountHelpError, setAccountHelpError] = useState('');
-  const [securityAction, setSecurityAction] = useState(null);
-  const [securityBusy, setSecurityBusy] = useState(false);
-  const [securityError, setSecurityError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -844,24 +842,6 @@ function EigUserManagement({ onBack, onInviteUser }) {
       setAccountHelpError(actionError.message || `Unable to ${label.toLowerCase()}.`);
     } finally {
       setAccountHelpBusy(false);
-    }
-  }
-
-  async function securityActionConfirm() {
-    if (!securityAction?.user?.id) return;
-    setSecurityBusy(true);
-    setSecurityError('');
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
-        body: { action: 'admin_security', target_user_id: securityAction.user.id, operation: securityAction.operation },
-      });
-      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to update account security.');
-      setSecurityAction(null);
-      await load();
-    } catch (actionError) {
-      setSecurityError(actionError.message || 'Unable to update account security.');
-    } finally {
-      setSecurityBusy(false);
     }
   }
 
@@ -1048,13 +1028,16 @@ function EigUserManagement({ onBack, onInviteUser }) {
             return <button key={user.id} type="button" className={'user-directory-row ' + (selected?.id === user.id ? 'selected' : '')} onClick={() => setSelectedUserId(user.id)}>
               <div className="user-avatar">{displayName(user).slice(0, 2).toUpperCase()}</div>
               <div className="user-directory-copy"><strong>{displayName(user)}</strong><span>{username} · {user.email || 'No email'}</span><small>{membershipCount} Hangar role{membershipCount === 1 ? '' : 's'} · {assignmentCount} event role{assignmentCount === 1 ? '' : 's'}</small></div>
-              <span className={'user-state ' + state.toLowerCase()}>{state}</span>
+              <AccountStateBadges user={user} />
             </button>;
           })}
         </div>
         <div className="user-detail-panel">
           {!selected ? <p className="platform-login-copy">Select a person to view their account relationships.</p> : <>
-            <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><div className="user-detail-status-stack"><span className={'user-state ' + accountStateLabel(selected).toLowerCase()}>{accountStateLabel(selected)}</span>{selected.is_test_account && <span className="platform-role-pill">TEST ACCOUNT</span>}</div></div>
+            <div className="user-detail-header"><div className="user-avatar large">{displayName(selected).slice(0, 2).toUpperCase()}</div><div><h3>{displayName(selected)}</h3><p>{selected.profile?.username ? '@' + selected.profile.username : 'No @username yet'}</p></div><div className="user-detail-status-stack"><AccountStateBadges user={selected} />{selected.is_test_account && <span className="platform-role-pill">TEST ACCOUNT</span>}</div></div>
+            <AccountStateControls key={selected.id} user={selected} currentUserId={currentUserId}
+              invoke={(body) => supabase.functions.invoke('platform-invite', { body })}
+              onSnapshot={setPayload} />
             <div className="user-detail-actions">
               <div className="user-action-center">
                 <div><strong>Manage Account</strong><small>Choose an action. Risk levels indicate how much the action changes the account or its access.</small></div>
@@ -1074,8 +1057,6 @@ function EigUserManagement({ onBack, onInviteUser }) {
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
                     <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next security batch</small></button>
-                    {accountStateLabel(selected) === 'Disabled' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'unlock_account' })}><span>Unlock Account</span><small>Restore sign-in access</small></button> : <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'disable_account' })}><span>Disable Account</span><small>Block sign-in until restored</small></button>}
-                    {accountStateLabel(selected) === 'Deactivated' ? <button className="user-action-item level-3" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'reactivate_account' })}><span>Reactivate Account</span><small>Restore EIG platform access</small></button> : <button className="user-action-item level-2" type="button" onClick={() => setSecurityAction({ user: selected, operation: 'deactivate_account' })}><span>Deactivate Account</span><small>Make this EIG account inactive</small></button>}
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Identity</span>
@@ -1222,25 +1203,7 @@ function EigUserManagement({ onBack, onInviteUser }) {
         <span>Choose a report above to enable actions.</span>
       </div>
     </section>}
-      {securityAction && <div className="platform-confirm-backdrop" role="presentation">
-        <div className="platform-confirm-modal action-risk-level-3" role="dialog" aria-modal="true" aria-labelledby="security-action-title">
-          <div className="platform-confirm-risk"><i className="action-risk-dot level-3"></i> Significant account change</div>
-          <h3 id="security-action-title">{securityAction.operation === 'disable_account' ? 'Disable Account?' : securityAction.operation === 'unlock_account' ? 'Unlock Account?' : securityAction.operation === 'deactivate_account' ? 'Deactivate Account?' : 'Reactivate Account?'}</h3>
-          <p>{securityAction.operation === 'disable_account'
-            ? 'This will block this account from signing in until an EIG Admin restores access.'
-            : securityAction.operation === 'unlock_account'
-              ? 'This will lift the sign-in restriction on this account.'
-              : securityAction.operation === 'deactivate_account'
-                ? 'This will mark the EIG account inactive and prevent normal platform access until it is reactivated.'
-                : 'This will restore the EIG account to active platform status.'}</p>
-          <div className="platform-confirm-subject"><strong>{displayName(securityAction.user)}</strong><span>{securityAction.user.email || 'No email'}</span></div>
-          {securityError && <div className="platform-error">{securityError}</div>}
-          <div className="platform-confirm-actions">
-            <button className="platform-secondary-button" type="button" disabled={securityBusy} onClick={() => { setSecurityAction(null); setSecurityError(''); }}>Cancel</button>
-            <button className="platform-primary-button risk-confirm" type="button" disabled={securityBusy} onClick={securityActionConfirm}>{securityBusy ? 'Saving...' : securityAction.operation === 'disable_account' ? 'Disable Account' : securityAction.operation === 'unlock_account' ? 'Unlock Account' : securityAction.operation === 'deactivate_account' ? 'Deactivate Account' : 'Reactivate Account'}</button>
-          </div>
-        </div>
-      </div>}
+
   </div>;
 }
 
@@ -3362,10 +3325,13 @@ export default function App() {
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
-              ? adminView === 'users' ? <EigUserManagement onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
+              ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
                 : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
     </PlatformShell>
   </SquawkProvider>;
 }
+
+
+export { EigUserManagement };

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPostRecoverySignInController } from './post-recovery-signin.mjs';
+import PasswordField from '../components/PasswordField.jsx';
 import './post-recovery-signin.css';
 
 // Mounted only after the isolated recovery controller confirms completion.
@@ -59,7 +60,7 @@ export default function PostRecoverySignIn({ identity }) {
     {phase === 'preparing' && <p className="platform-login-copy" role="status">Preparing a fresh sign-in. No account will open automatically.</p>}
     {formVisible && <form className="platform-login-form" onSubmit={submit}>
       <label htmlFor="post-recovery-email">Account email<input id="post-recovery-email" name="username" type="email" value={identity.email} readOnly autoComplete="username" /></label>
-      <label htmlFor="post-recovery-password">Newly created password<input id="post-recovery-password" ref={input} name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required disabled={phase !== 'ready'} /></label>
+      <PasswordField label="Newly created password" id="post-recovery-password" inputRef={input} name="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required disabled={phase !== 'ready'} />
       <p className="platform-login-copy">This sign-in is only for the email shown above. Your password reset did not sign you in.</p>
       <button className="platform-primary-button" type="submit" disabled={phase !== 'ready'}>{phase === 'signing_in' ? 'Checking sign-in...' : 'Sign in'}</button>
     </form>}

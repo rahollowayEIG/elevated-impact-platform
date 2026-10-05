@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
-import { rosterMatchesSearch } from './rosterSearch.mjs';
+import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
 
 function emptyGolfer() {
   return {
@@ -74,6 +74,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [syncWorking, setSyncWorking] = useState(false);
   const [rosterView, setRosterView] = useState('all');
   const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterSort, setRosterSort] = useState({ field: '', direction: 'asc' });
   const [requiredRosterWorking, setRequiredRosterWorking] = useState(false);
   const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState(event?.google_sheet_url || '');
@@ -559,9 +560,40 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   );
   const viewRows = rosterView === 'confirmed' ? confirmedRows : rows;
   const visibleRows = useMemo(
-    () => viewRows.filter((row) => rosterMatchesSearch(row, rosterSearch)),
-    [viewRows, rosterSearch]
+    () => sortRosterRows(
+      viewRows.filter((row) => rosterMatchesSearch(row, rosterSearch)),
+      rosterSort
+    ),
+    [viewRows, rosterSearch, rosterSort]
   );
+
+  function toggleRosterSort(field) {
+    setRosterSort((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }
+
+  function sortDirection(field) {
+    return rosterSort.field === field ? rosterSort.direction : 'none';
+  }
+
+  function SortHeader({ field, children }) {
+    const direction = sortDirection(field);
+    const indicator = direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '↕';
+    return (
+      <th aria-sort={direction === 'none' ? 'none' : direction === 'asc' ? 'ascending' : 'descending'}>
+        <button
+          type="button"
+          className="eie-sort-header"
+          onClick={() => toggleRosterSort(field)}
+          aria-label={`Sort by ${children}. ${direction === 'none' ? 'Not currently sorted.' : direction === 'asc' ? 'Ascending.' : 'Descending.'}`}
+        >
+          <span>{children}</span><span aria-hidden="true">{indicator}</span>
+        </button>
+      </th>
+    );
+  }
 
   return (
     <>
@@ -805,7 +837,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <thead><tr><th><input aria-label="Select all visible golfers" type="checkbox" style={{ width: 'auto' }} checked={visibleRows.length > 0 && visibleRows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => {
                 if (e.target.checked) setBulkSelectedIds((current) => Array.from(new Set([...current, ...visibleRows.map((row) => row.id)])));
                 else setBulkSelectedIds((current) => current.filter((id) => !visibleRows.some((row) => row.id === id)));
-              }} /></th><th>Golfer</th>{teamMode && <th>Team</th>}<th>Contact</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+              }} /></th><SortHeader field="golfer">Golfer</SortHeader>{teamMode && <SortHeader field="team">Team</SortHeader>}<SortHeader field="contact">Contact</SortHeader><SortHeader field="price">Price</SortHeader><SortHeader field="payment">Payment</SortHeader><SortHeader field="status">Status</SortHeader><th></th></tr></thead>
               <tbody>
                 {visibleRows.map((row) => {
                   const isSelected = selected?.id === row.id;

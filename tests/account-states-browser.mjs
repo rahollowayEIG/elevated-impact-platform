@@ -23,6 +23,7 @@ async function fixture(initial = user(), mode = {}) {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers, body: '{}' });
     const body = route.request().postDataJSON(); data.requests.push(body);
     if (body.action === 'admin_users') return route.fulfill({ status: 200, headers, body: JSON.stringify({ success: true, users: [data.target], invitations: [], identity_review: { unclaimed: [], merged: [] }, stats: { accounts: 1 } }) });
+    if (body.action === 'admin_account_history') return route.fulfill({ status: 200, headers, body: JSON.stringify({ success: true, entries: [] }) });
     assert.equal(body.action, 'admin_security'); data.writes.push(body);
     if (mode.delay) await new Promise((resolve) => setTimeout(resolve, 350));
     if (mode.fail) return route.fulfill({ status: 500, headers, body: JSON.stringify({ success: false, error: 'Synthetic save failure' }) });
@@ -105,3 +106,4 @@ try {
   });
   await writeFile('test-results/account-states/report.json', JSON.stringify({ passed: results.length, cases: results, syntheticOnly: true }, null, 2));
 } finally { await browser.close(); await server.close(); }
+

@@ -48,6 +48,8 @@ The permanent identity hierarchy is:
 
 Changing email, username, or display name must not break history or relationships.
 
+Display names may repeat. Administrative labels fall back through **display name → full name → @username → ElevationPilot User**, trimming blank values. Never derive a display label from the email local part. Show the unique @username beside the label and email only within authorized administrative views. Management shortcuts use the immutable account ID or unique username rather than a display name.
+
 ## 3. Username Rules
 
 1. Usernames are globally unique across ElevationPilot and compared case-insensitively.
@@ -317,3 +319,4 @@ Prefer a fixed-label switch for a genuine two-way setting when both directions a
 Sensitive switches request an explicit confirmation identifying the immutable target account and the old/new state. Cancel leaves the state unchanged. Disable repeat submissions while saving, re-read the same target, and show the new state only after server confirmation. Reject stale confirmations and require refresh after an uncertain write; never automatically retry a toggle. Backend authorization remains authoritative.
 
 Account lifecycle and sign-in security remain independent. An account can be Active and Locked, or Inactive and Unlocked; show both. Do not use a single display-status label to select both actions. Switching either must never silently change the other, verification, roles, dates, or passwords. Apply this consideration across EIG pages without forcing multi-state workflows, emails, money movements, deletion, merges, or irreversible actions into binary controls. See State-First-Control-Audit.md for the current conversion and explicit exclusions.
+

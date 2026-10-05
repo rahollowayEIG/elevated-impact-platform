@@ -1,3 +1,5 @@
+import AccountSecurityHistory from './components/AccountSecurityHistory.jsx';
+import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -943,6 +945,7 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
       profile.display_name,
       profile.first_name,
       profile.last_name,
+      user.id,
       ...(user.memberships || []).map((row) => row.organization?.name),
       ...(user.assignments || []).map((row) => row.event?.name),
     ].filter(Boolean).join(' ').toLowerCase();
@@ -955,10 +958,7 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
   });
   const selected = users.find((user) => user.id === selectedUserId) || filteredUsers[0] || null;
   const organizationsForAccess = Array.from(new Map(users.flatMap((user) => (user.memberships || []).map((m) => [m.organization?.id || m.organization?.name, m.organization]))).values()).filter(Boolean);
-  const displayName = (user) => user?.profile?.display_name
-    || [user?.profile?.first_name, user?.profile?.last_name].filter(Boolean).join(' ')
-    || user?.email?.split('@')?.[0]
-    || 'ElevationPilot User';
+  const displayName = accountDisplayName;
 
   const navItems = [
     ['overview', 'Overview'],
@@ -1052,12 +1052,12 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-2"></i>Access</span>
                     <button className="user-action-item level-2" type="button" onClick={() => setTab('access')}><span>Manage Access</span><small>Roles, scope and dates</small></button>
-                    <button className="user-action-item level-2" type="button" onClick={() => { setTab('access'); setQuery(displayName(selected)); }}><span>Manage Roles</span><small>Open this person's scoped roles</small></button>
-                    <button className="user-action-item level-3" type="button" onClick={() => { setTab('access'); setQuery(displayName(selected)); }}><span>Expire / Restore Access</span><small>Open this person's access</small></button>
+                    <button className="user-action-item level-2" type="button" onClick={() => { setTab('access'); setQuery(selected.profile?.username || selected.id); }}><span>Manage Roles</span><small>Open this person's scoped roles</small></button>
+                    <button className="user-action-item level-3" type="button" onClick={() => { setTab('access'); setQuery(selected.profile?.username || selected.id); }}><span>Expire / Restore Access</span><small>Open this person's access</small></button>
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Security</span>
-                    <button className="user-action-item level-3" type="button" disabled><span>Sign Out All Sessions</span><small>Action coming in the next security batch</small></button>
+                    <button type="button" className="user-action-item level-3" onClick={() => { document.getElementById('account-security-history')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('account-signout-button')?.focus({ preventScroll: true }); }}><span>Sign Out All Sessions / Account History</span><small>Review security and account changes</small></button>
                   </div>
                   <div className="user-action-group">
                     <span className="user-action-group-title"><i className="action-risk-dot level-3"></i>Identity</span>
@@ -1081,6 +1081,7 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
               <div><span>Last Sign-In</span><strong>{formatAdminTimestamp(selected.last_sign_in_at)}</strong><small>Authentication activity</small></div>
               <div><span>Passenger Identity</span><strong>{selected.passenger ? 'Linked' : 'Not created'}</strong><small>{selected.passenger?.claimed_at ? 'Claimed ' + formatAdminTimestamp(selected.passenger.claimed_at) : 'No claimed Passenger record'}</small></div>
             </div>
+            <AccountSecurityHistory key={selected.id} user={selected} currentUserId={currentUserId} invoke={(body) => supabase.functions.invoke('platform-invite', { body })} />
             <div className="user-detail-section"><h4>Hangar Roles</h4>{!(selected.memberships || []).length && <p className="platform-login-copy">No organization memberships.</p>}{(selected.memberships || []).map((row) => <div className="role-history-row" key={row.id}><div><strong>{accessRoleLabel(row.role)}</strong><span>{row.organization?.name || 'Organization'}</span></div><div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}{row.invited_by ? ' · recorded inviter' : ''}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div></div>)}</div>
             <div className="user-detail-section"><h4>Event Roles</h4>{!(selected.assignments || []).length && <p className="platform-login-copy">No event assignments.</p>}{(selected.assignments || []).map((row) => <div className="role-history-row" key={row.id}><div><strong>{accessRoleLabel(row.role)}</strong><span>{row.event?.name || 'Event'}</span></div><div><span>{row.status}</span><small>Assigned {formatAdminTimestamp(row.created_at)}</small><small>{accessWindowLabel(row.access_starts_at, row.access_ends_at)}</small></div></div>)}</div>
           </>}
@@ -1119,12 +1120,12 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
       {!accessLoading && accessPayload && <div className="user-access-table">
         <div className="user-access-head"><span>Person</span><span>Scope / Role</span><span>Effective Access</span></div>
         {[...(accessPayload.memberships || []).map((item) => ({ ...item, assignmentType: 'organization', scope: item.profile?.display_name || item.profile?.first_name || item.profile?.username || 'Person', context: item.organization_id ? (organizationsForAccess.find((org) => org.id === accessPayload.organizationId)?.name || 'Hangar') : 'Hangar' })),
-          ...(accessPayload.assignments || []).map((item) => ({ ...item, assignmentType: 'event', scope: item.profile?.display_name || item.profile?.first_name || item.profile?.username || 'Person', context: item.event?.name || 'Event' }))].filter((item) => !normalizedQuery || [item.scope, item.profile?.username, accessRoleLabel(item.role), item.context].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)).map((item) => {
+          ...(accessPayload.assignments || []).map((item) => ({ ...item, assignmentType: 'event', scope: item.profile?.display_name || item.profile?.first_name || item.profile?.username || 'Person', context: item.event?.name || 'Event' }))].filter((item) => !normalizedQuery || [item.user_id, item.scope, item.profile?.username, accessRoleLabel(item.role), item.context].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery)).map((item) => {
             const startDate = item.access_starts_at ? new Date(item.access_starts_at).toISOString().slice(0,10) : '';
             const endDate = item.access_ends_at ? new Date(item.access_ends_at).toISOString().slice(0,10) : '';
             const isEditing = editingAccess?.id === item.id && editingAccess?.assignmentType === item.assignmentType;
             return <div className="user-access-row" key={item.assignmentType + ':' + item.id}>
-              <button type="button" onClick={() => { setTab('people'); setSelectedUserId(item.user_id); setQuery(''); }}><strong>{item.profile?.display_name || [item.profile?.first_name, item.profile?.last_name].filter(Boolean).join(' ') || item.profile?.username || 'ElevationPilot User'}</strong><small>{item.profile?.username ? '@' + item.profile.username : ''}</small></button>
+              <button type="button" onClick={() => { setTab('people'); setSelectedUserId(item.user_id); setQuery(''); }}><strong>{accountDisplayName({ profile: item.profile })}</strong><small>{item.profile?.username ? '@' + item.profile.username : ''}</small></button>
               <div><span>{accessRoleLabel(item.role)}</span><small>{item.context}</small><small>{item.status}</small></div>
               <div className="user-access-window">
                 {!isEditing ? <><span>{accessWindowLabel(item.access_starts_at, item.access_ends_at)}</span><button className="platform-secondary-button compact" type="button" onClick={() => setEditingAccess({ id: item.id, assignmentType: item.assignmentType, mode: item.access_ends_at ? 'custom' : 'indefinite', startDate, endDate, role: item.role || '', status: item.status || 'active' })}>Edit dates</button></> :
@@ -1162,14 +1163,15 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
       {!auditPayload && !auditLoading && <div className="audit-empty"><strong>Ready for an audit</strong><span>Run the audit to inspect account health, identity integrity, invitation health, and protected test accounts.</span></div>}
       {auditPayload && <><div className="audit-summary-grid"><div><strong>{auditPayload.summary?.accounts ?? 0}</strong><span>Accounts scanned</span></div><div><strong>{auditPayload.summary?.issues ?? 0}</strong><span>Findings</span></div><div><strong>{auditPayload.summary?.review_items ?? 0}</strong><span>Needs review</span></div><div><strong>{auditPayload.summary?.test_accounts ?? 0}</strong><span>Test accounts</span></div><div><strong>{auditPayload.summary?.pending_invitations ?? 0}</strong><span>Pending invites</span></div></div>
       <div className="audit-meta"><span>Last audit: {formatAdminTimestamp(auditPayload.generated_at)}</span>{auditPayload.truncated && <span>Account scan reached its configured safety limit.</span>}</div>
-      <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <button type="button" className={'audit-issue-row ' + issue.severity} key={issue.key} onClick={() => issue.count ? setSelectedAuditIssue(issue) : null} disabled={!issue.count}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Review accounts →' : 'Review records →'}</span></button>)}</div>
+      <div className="audit-issue-list">{(auditPayload.issues || []).map((issue) => <button type="button" className={'audit-issue-row ' + issue.severity} key={issue.key} onClick={() => issue.count ? setSelectedAuditIssue(issue) : null} disabled={!issue.count}><div><div className="audit-issue-title"><strong>{issue.label}</strong><span>{issue.count}</span></div><p>{issue.description}</p></div><span className="audit-issue-status">{issue.severity === 'info' ? 'View history →' : issue.severity === 'clear' ? 'Clear' : issue.severity === 'action' ? 'Review accounts →' : 'Review records →'}</span></button>)}</div>
       {selectedAuditIssue && <div ref={auditReviewRef} className="audit-review-panel">
         <div className="platform-section-heading"><div><p className="platform-eyebrow">Audit finding</p><h3>{selectedAuditIssue.label}</h3><p>{selectedAuditIssue.description}</p></div><button className="platform-secondary-button compact" type="button" onClick={() => setSelectedAuditIssue(null)}>Close</button></div>
         <div className="audit-record-list">{(selectedAuditIssue.records || []).map((record, index) => {
           const label = record.label || record.email || record.invitee_name || record.scope || ('Record ' + (index + 1));
           const detail = record.detail || record.organization_id || record.event_id || '';
-          return <div className="audit-record-row" key={record.id || record.email || index}><div><strong>{label}</strong><small>{detail}</small></div><button className="platform-secondary-button compact" type="button" onClick={() => {
-            if (selectedAuditIssue.key === 'test_account') { setTab('people'); setSelectedUserId(record.id); setSelectedAuditIssue(null); }
+          return <div className="audit-record-row" key={record.id || record.email || index}><div><strong>{label}</strong><small>{detail}</small></div><button className="platform-secondary-button compact" type="button" disabled={selectedAuditIssue.key === 'session_revocations' && !users.some((user) => user.id === record.user_id)} onClick={() => {
+            if (selectedAuditIssue.key === 'session_revocations') { if (!users.some((user) => user.id === record.user_id)) return; setTab('people'); setSelectedUserId(record.user_id); setQuery(''); setSelectedAuditIssue(null); }
+            else if (selectedAuditIssue.key === 'test_account') { setTab('people'); setSelectedUserId(record.id); setSelectedAuditIssue(null); }
             else if (selectedAuditIssue.key === 'unverified' || selectedAuditIssue.key === 'malformed_email') { setTab('people'); setSelectedUserId(record.id); setSelectedAuditIssue(null); }
             else if (selectedAuditIssue.key === 'duplicate_email') { setTab('identity'); setSelectedAuditIssue(null); }
             else if (selectedAuditIssue.key === 'failed_invitation' || selectedAuditIssue.key === 'expired_invitation') { setTab('invitations'); setSelectedAuditIssue(null); }
@@ -3336,3 +3338,4 @@ export default function App() {
 
 
 export { EigUserManagement };
+

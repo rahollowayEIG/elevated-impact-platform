@@ -44,6 +44,23 @@ async function readFunctionError(error, fallback) {
   return { error: error?.message || fallback };
 }
 
+function RosterSortHeader({ field, label, sort, onSort }) {
+  const direction = sort.field === field ? sort.direction : 'none';
+  const indicator = direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '↕';
+  return (
+    <th aria-sort={direction === 'none' ? 'none' : direction === 'asc' ? 'ascending' : 'descending'}>
+      <button
+        type="button"
+        className="eie-sort-header"
+        onClick={() => onSort(field)}
+        aria-label={`Sort by ${label}. ${direction === 'none' ? 'Not currently sorted.' : direction === 'asc' ? 'Ascending.' : 'Descending.'}`}
+      >
+        <span>{label}</span><span aria-hidden="true">{indicator}</span>
+      </button>
+    </th>
+  );
+}
+
 export default function EieRosterMaintenance({ event, rows, loading, onRefresh }) {
   const settings = event?.field_settings || {};
   const customFields = Array.isArray(settings.custom_fields) ? settings.custom_fields : [];
@@ -578,22 +595,6 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     return rosterSort.field === field ? rosterSort.direction : 'none';
   }
 
-  function SortHeader({ field, children }) {
-    const direction = sortDirection(field);
-    const indicator = direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '↕';
-    return (
-      <th aria-sort={direction === 'none' ? 'none' : direction === 'asc' ? 'ascending' : 'descending'}>
-        <button
-          type="button"
-          className="eie-sort-header"
-          onClick={() => toggleRosterSort(field)}
-          aria-label={`Sort by ${children}. ${direction === 'none' ? 'Not currently sorted.' : direction === 'asc' ? 'Ascending.' : 'Descending.'}`}
-        >
-          <span>{children}</span><span aria-hidden="true">{indicator}</span>
-        </button>
-      </th>
-    );
-  }
 
   return (
     <>
@@ -837,7 +838,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <thead><tr><th><input aria-label="Select all visible golfers" type="checkbox" style={{ width: 'auto' }} checked={visibleRows.length > 0 && visibleRows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => {
                 if (e.target.checked) setBulkSelectedIds((current) => Array.from(new Set([...current, ...visibleRows.map((row) => row.id)])));
                 else setBulkSelectedIds((current) => current.filter((id) => !visibleRows.some((row) => row.id === id)));
-              }} /></th><SortHeader field="golfer">Golfer</SortHeader>{teamMode && <SortHeader field="team">Team</SortHeader>}<SortHeader field="contact">Contact</SortHeader><SortHeader field="price">Price</SortHeader><SortHeader field="payment">Payment</SortHeader><SortHeader field="status">Status</SortHeader><th></th></tr></thead>
+              }} /></th><RosterSortHeader field="golfer" label="Golfer" sort={rosterSort} onSort={toggleRosterSort} />{teamMode && <RosterSortHeader field="team" label="Team" sort={rosterSort} onSort={toggleRosterSort} />}<RosterSortHeader field="contact" label="Contact" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="price" label="Price" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="payment" label="Payment" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="status" label="Status" sort={rosterSort} onSort={toggleRosterSort} /><th></th></tr></thead>
               <tbody>
                 {visibleRows.map((row) => {
                   const isSelected = selected?.id === row.id;

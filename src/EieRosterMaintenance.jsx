@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
+import { rosterMatchesSearch } from './rosterSearch.mjs';
 
 function emptyGolfer() {
   return {
@@ -72,6 +73,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncWorking, setSyncWorking] = useState(false);
   const [rosterView, setRosterView] = useState('all');
+  const [rosterSearch, setRosterSearch] = useState('');
   const [requiredRosterWorking, setRequiredRosterWorking] = useState(false);
   const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState(event?.google_sheet_url || '');
@@ -555,7 +557,11 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     ['paid', 'comp'].includes(row.payment_status) &&
     (row.registration_status || 'active') === 'active'
   );
-  const visibleRows = rosterView === 'confirmed' ? confirmedRows : rows;
+  const viewRows = rosterView === 'confirmed' ? confirmedRows : rows;
+  const visibleRows = useMemo(
+    () => viewRows.filter((row) => rosterMatchesSearch(row, rosterSearch)),
+    [viewRows, rosterSearch]
+  );
 
   return (
     <>
@@ -725,6 +731,26 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <span>{rows.length} total</span>
         </div>
 
+        <div className="eie-roster-search">
+          <label htmlFor="eie-roster-search-input">Search roster</label>
+          <div>
+            <input
+              id="eie-roster-search-input"
+              type="search"
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              placeholder="Name, email, phone, team, GHIN..."
+              autoComplete="off"
+            />
+            {rosterSearch && <button type="button" onClick={() => setRosterSearch('')}>Clear</button>}
+          </div>
+          <small>
+            {rosterSearch.trim()
+              ? `${visibleRows.length} match${visibleRows.length === 1 ? '' : 'es'} in ${rosterView === 'confirmed' ? 'Confirmed Roster' : 'All Registrations'}`
+              : 'Search by golfer, contact, team, GHIN, division, status, or custom registration details.'}
+          </small>
+        </div>
+
         <div className="eie-roster-tabs" role="tablist" aria-label="Roster view">
           <button type="button" className={rosterView === 'all' ? 'active' : ''} onClick={() => setRosterView('all')}>
             All Registrations <span>{rows.length}</span>
@@ -766,8 +792,12 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
         {!visibleRows.length ? (
           <div className="availability-note">
-            <strong>{rosterView === 'confirmed' ? 'No confirmed golfers yet' : 'No golfers yet'}</strong>
-            <span>{rosterView === 'confirmed' ? 'Confirmed golfers are active registrations with Paid or Comp status.' : 'Add a golfer manually or upload an organizer roster.'}</span>
+            <strong>{rosterSearch.trim() ? 'No roster matches' : rosterView === 'confirmed' ? 'No confirmed golfers yet' : 'No golfers yet'}</strong>
+            <span>{rosterSearch.trim()
+              ? 'Try a different name, email, phone number, team, GHIN, division, or status.'
+              : rosterView === 'confirmed'
+                ? 'Confirmed golfers are active registrations with Paid or Comp status.'
+                : 'Add a golfer manually or upload an organizer roster.'}</span>
           </div>
         ) : (
           <div className="table-wrap">

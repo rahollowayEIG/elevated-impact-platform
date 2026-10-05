@@ -57,6 +57,18 @@ const { mkdir } = require('node:fs/promises');
     await page.waitForFunction(() => !document.getElementById('account-signout-button').disabled);
     const second = await confirm(); await second.getByText('other@example.test', { exact: true }).waitFor();
     await second.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await open();
+    await page.evaluate(() => { window.securityFixture.historyFail = true; });
+    await page.getByRole('button', { name: 'Refresh History' }).click();
+    await page.getByRole('alert').filter({ hasText: 'Synthetic history failure' }).waitFor();
+    assert.equal(await page.getByText('History unavailable', { exact: true }).count(), 1);
+    assert.equal(await page.getByText('No recorded account changes yet.', { exact: true }).count(), 0);
+    assert.equal(await page.getByText('0 matches', { exact: true }).count(), 0);
+    assert.equal(await page.getByLabel('Search account history').isDisabled(), true);
+    await page.evaluate(() => { window.securityFixture.historyFail = false; });
+    await page.getByRole('button', { name: 'Refresh History' }).click();
+    await page.getByText('2 matches', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('alert').count(), 0);
     assert.deepEqual(errors, []);
     console.log('PASS: history search/sort, exact-account dialog, required reason, cancellation/focus, single request, durable history refresh, mobile overflow, self protection, uncertain-request lock, same-name distinction; no browser errors.');
   } finally { await browser.close(); }

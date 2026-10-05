@@ -32,6 +32,7 @@ export default function AccountSecurityHistory({ user, currentUserId, invoke }) 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [historyError, setHistoryError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(false);
@@ -45,16 +46,23 @@ export default function AccountSecurityHistory({ user, currentUserId, invoke }) 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current += 1; }; }, []);
   async function request(body) {
     const { data, error: invokeError } = await invoke(body);
-    if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'The account request failed.');
+    let detail = data?.error;
+    if (invokeError && !detail && invokeError.context?.json) {
+      try {
+        const response = invokeError.context.clone?.() || invokeError.context;
+        detail = (await response.json())?.error;
+      } catch { /* Keep a useful fallback when the response has no JSON body. */ }
+    }
+    if (invokeError || detail || !data?.success) throw new Error(detail || invokeError?.message || 'The account request failed.');
     return data;
   }
   async function load() {
     const current = ++generation.current;
-    setLoading(true); setError('');
+    setLoading(true); setHistoryError('');
     try {
       const data = await request({ action: 'admin_account_history', target_user_id: user.id });
       if (mounted.current && current === generation.current) { setRows(data.entries || []); setHasMore(Boolean(data.has_more)); }
-    } catch (err) { if (mounted.current && current === generation.current) setError(err.message); }
+    } catch (err) { if (mounted.current && current === generation.current) setHistoryError(err.message); }
     finally { if (mounted.current && current === generation.current) setLoading(false); }
   }
   useEffect(() => { load(); }, [user.id, user.banned_until, user.profile?.account_status]);
@@ -87,11 +95,12 @@ export default function AccountSecurityHistory({ user, currentUserId, invoke }) 
     {currentUserId === user.id && <p>Your own sessions are protected here. Use normal sign-out or ask another EIG administrator.</p>}
     {notice && <p role="status" className="eig-state-notice">{notice}</p>}
     {error && <p role="alert" className="eig-state-error">{error}</p>}
+    {historyError && <p role="alert" className="eig-state-error">History could not be loaded. {historyError} Use Refresh History to try again.</p>}
     {uncertain && <p>Review the history, then leave and reopen this account to enable another request.</p>}
-    <div className="security-history-search"><label>Search account history<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Action, administrator, reason or state" /></label><span>{visible.length} matches{hasMore ? ' in latest 100 entries' : ''}</span><button type="button" onClick={() => setQuery('')} disabled={!query}>Clear</button></div>
+    <div className="security-history-search"><label>Search account history<input value={query} disabled={loading || Boolean(historyError)} onChange={(event) => setQuery(event.target.value)} placeholder="Action, administrator, reason or state" /></label><span>{loading ? 'Loading history…' : historyError ? 'History unavailable' : `${visible.length} matches${hasMore ? ' in latest 100 entries' : ''}`}</span><button type="button" onClick={() => setQuery('')} disabled={!query}>Clear</button></div>
     <p>History begins when this feature is enabled. Earlier changes are not reconstructed.</p>
-    <div className="security-history-scroll"><table><thead><tr>{heading('created_at', 'When')}{heading('action', 'Action')}{heading('actor_label', 'Changed By')}<th>Details</th></tr></thead><tbody>{visible.map((row) => <tr key={row.id}><td><time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString()}</time></td><td>{row.action.replaceAll('_', ' ')}<small>{row.outcome}</small></td><td>{row.actor_label}<small>{row.actor_user_id || 'System / legacy action'}</small></td><td>{row.reason && <p>{row.reason}</p>}{row.before_state && <small>Before: {JSON.stringify(row.before_state)}</small>}{row.after_state && <small>After: {JSON.stringify(row.after_state)}</small>}</td></tr>)}</tbody></table></div>
-    {!loading && !visible.length && <p>{query ? 'No history matches this search.' : 'No recorded account changes yet.'}</p>}
+    {!loading && !historyError && <div className="security-history-scroll"><table><thead><tr>{heading('created_at', 'When')}{heading('action', 'Action')}{heading('actor_label', 'Changed By')}<th>Details</th></tr></thead><tbody>{visible.map((row) => <tr key={row.id}><td><time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString()}</time></td><td>{row.action.replaceAll('_', ' ')}<small>{row.outcome}</small></td><td>{row.actor_label}<small>{row.actor_user_id || 'System / legacy action'}</small></td><td>{row.reason && <p>{row.reason}</p>}{row.before_state && <small>Before: {JSON.stringify(row.before_state)}</small>}{row.after_state && <small>After: {JSON.stringify(row.after_state)}</small>}</td></tr>)}</tbody></table></div>}
+    {!loading && !historyError && !visible.length && <p>{query ? 'No history matches this search.' : 'No recorded account changes yet.'}</p>}
     {pending && <SignoutConfirmation user={user} busy={busy} onCancel={() => setPending(false)} onConfirm={confirm} />}
   </section>;
 }

@@ -12,10 +12,12 @@ Date: October 5, 2026. Status: implementation ready for preview review; browser 
 - Account history records account-status, security-lock, membership-role, event-role, and access-window updates from rollout onward. PostgreSQL triggers capture changes atomically, including paths outside this UI. Trusted service calls carry the validated actor ID; Auth-service writes also receive attributed requested/completed records from the Edge Function.
 - History retains immutable actor and target IDs without foreign-key cascades. Auth-service or legacy writes without actor attribution are explicitly shown as System / legacy action. Earlier history is not reconstructed.
 - The panel searches and sorts the latest 100 entries. Session revocations have an informational Platform Audit count and account drill-down; they are excluded from the problem count.
+- Failed history reads show History unavailable and a refresh instruction, without claiming zero matches or no recorded changes. History-loading errors remain separate from uncertain security-action outcomes. JSON error details from the function are retained when available.
 
 ## Verification
 
 - Production build passes all 49 included Node tests.
+- Five additional HTTP-handler tests pass under Node 24 (`npm run test:account-security-handler`), exercising active-session validation, exact-account reads and writes, actor attribution, denial, confirmation validation, pagination, and actor labels without real credentials or sessions.
 - Edge Function TypeScript syntax passes Node's parser. Full Deno dependency/type checking was blocked by registry connectivity.
 - Database rollback fixture passed authorization, self-protection, missing-session rejection, reason validation, exact-account revocation, refresh-token removal, unrelated-session preservation, actor attribution, request idempotency, profile-state history, and membership-role history. Synthetic changes were rolled back.
 - RLS and grants prevent anon/authenticated access to audit rows and sensitive RPCs. Definer functions live in the non-exposed eig_private schema; public wrappers use invoker security and are service-role-only.
@@ -31,6 +33,8 @@ Date: October 5, 2026. Status: implementation ready for preview review; browser 
 ## Rollout
 
 The additive database migration has been applied and starts capturing future changes. The Edge Function and UI updates remain on this PR branch pending the browser audit. Do not merge or describe the UI as live until that audit passes.
+
+Ryan and Kellie confirmed the new UI is visible in the Vercel preview. Their screenshot shows the history request failing against the deployed version 24, which does not implement `admin_account_history` or `admin_session_signout`. The preview error-state correction is included on this branch. The attempted shared-function deployment was rejected by automatic approval review because explicit authorization for a production-impacting backend deployment is required; no function deployment occurred. The reviewed function source matches this branch, JWT verification remains enabled, and the database rollback checks passed again. Backend deployment awaits Ryan's explicit approval; preview history/session-action testing remains blocked until it is deployed.
 
 Deploy the updated platform-invite function with JWT verification enabled before enabling the UI. The stored migration is already applied; do not run it a second time. The deployed version 24 was captured as the baseline so this change preserves existing invitation, registration, and recovery behavior.
 

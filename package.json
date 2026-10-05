@@ -2,6 +2,7 @@
   "scripts": {
     "dev": "vite",
     "test:recovery": "node --test tests/recovery-session.test.mjs",
+    "test:account-security-handler": "node --test tests/account-security-handler.test.mjs",
     "build": "node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && vite build",
     "preview": "vite preview",
     "test:account-states": "node --test tests/account-state.test.mjs",
@@ -19,4 +20,3 @@
     "vite": "latest"
   }
 }
-

@@ -1,4 +1,5 @@
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
+import PasswordField from './components/PasswordField.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
@@ -213,7 +214,7 @@ function LoginScreen({ initialForgotMode = false }) {
           <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
           <form onSubmit={submit} className="platform-login-form">
             <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
-            <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
+            <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             {error && <div className="platform-error">{error}</div>}
             <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Signing in...' : 'Sign in to ElevationPilot'}</button>
             <button className="platform-secondary-button" type="button" onClick={() => { setJoinMode(true); setForgotMode(false); setError(''); }}>Join ElevationPilot</button>
@@ -229,8 +230,8 @@ function LoginScreen({ initialForgotMode = false }) {
             <label>Email<input value={joinEmail} onChange={(e) => setJoinEmail(e.target.value)} type="email" autoComplete="email" required /></label>
             <label>Choose @username<input value={joinUsername} onChange={(e) => setJoinUsername(e.target.value.replace(/^@/, ''))} autoComplete="username" required /></label>
             <div className="form-grid two">
-              <label>Create password<input value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
-              <label>Confirm password<input value={joinConfirmPassword} onChange={(e) => setJoinConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+              <PasswordField label="Create password" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} autoComplete="new-password" required minLength={8} />
+              <PasswordField label="Confirm password" value={joinConfirmPassword} onChange={(e) => setJoinConfirmPassword(e.target.value)} autoComplete="new-password" required minLength={8} />
             </div>
             {error && <div className="platform-error">{error}</div>}
             <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Creating account...' : 'Create Passenger Account'}</button>
@@ -297,8 +298,8 @@ function PasswordRecoveryScreen({ onComplete }) {
       <h1>Choose a new password.</h1>
       <p className="platform-login-copy">Use at least 8 characters. This becomes your normal ElevationPilot sign-in password.</p>
       <form className="platform-login-form" onSubmit={submit}>
-        <label>New password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
-        <label>Confirm password<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required minLength={8} /></label>
+        <PasswordField label="New password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={8} />
+        <PasswordField label="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required minLength={8} />
         {error && <div className="platform-error">{error}</div>}
         <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Saving password...' : 'Set Password & Continue'}</button>
       </form>
@@ -424,8 +425,8 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
           </label>
         </>}
         {requiresPassword && <div className="form-grid two">
-          <label>Create password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" required /></label>
-          <label>Confirm password<input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" autoComplete="new-password" required /></label>
+          <PasswordField label="Create password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+          <PasswordField label="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
         </div>}
         {error && <div className="platform-error">{error}</div>}
         <button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Activating access...' : primaryButton}</button>

@@ -32,13 +32,20 @@ export default function PasswordField({
 
   useEffect(() => {
     const hide = () => setVisible(false);
+    const hideWhenBackgrounded = () => {
+      if (document.visibilityState === 'hidden') hide();
+    };
     window.addEventListener('blur', hide);
-    return () => window.removeEventListener('blur', hide);
+    document.addEventListener('visibilitychange', hideWhenBackgrounded);
+    return () => {
+      window.removeEventListener('blur', hide);
+      document.removeEventListener('visibilitychange', hideWhenBackgrounded);
+    };
   }, []);
 
   return (
-    <label htmlFor={inputId} className={['eig-password-field', className].filter(Boolean).join(' ')}>
-      {labelText}
+    <div className={['eig-password-field', className].filter(Boolean).join(' ')}>
+      <label htmlFor={inputId}>{labelText}</label>
       <span className="eig-password-input-wrap">
         <input
           {...inputProps}
@@ -59,6 +66,6 @@ export default function PasswordField({
           <EyeIcon visible={visible} />
         </button>
       </span>
-    </label>
+    </div>
   );
 }

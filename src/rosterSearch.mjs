@@ -42,3 +42,47 @@ export function rosterMatchesSearch(row, query) {
   if (compactQuery.length < 3) return false;
   return compact(haystack).includes(compactQuery);
 }
+
+
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function sortValue(row, field) {
+  switch (field) {
+    case 'golfer':
+      return [row?.last_name, row?.first_name].filter(Boolean).join(', ');
+    case 'team':
+      return row?.team_id ?? '';
+    case 'contact':
+      return row?.email || row?.phone || '';
+    case 'price':
+      return Number(row?.price || 0);
+    case 'payment':
+      return row?.payment_status || '';
+    case 'status':
+      return row?.registration_status || 'active';
+    default:
+      return '';
+  }
+}
+
+export function sortRosterRows(rows, sort) {
+  if (!Array.isArray(rows) || !sort?.field) return Array.isArray(rows) ? [...rows] : [];
+  const direction = sort.direction === 'desc' ? -1 : 1;
+
+  return rows
+    .map((row, index) => ({ row, index, value: sortValue(row, sort.field) }))
+    .sort((a, b) => {
+      const aValue = a.value;
+      const bValue = b.value;
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        if (aValue !== bValue) return (aValue - bValue) * direction;
+      } else {
+        const compared = collator.compare(String(aValue ?? ''), String(bValue ?? ''));
+        if (compared !== 0) return compared * direction;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ row }) => row);
+}

@@ -447,7 +447,7 @@ button {
   outline: none;
 }
 .platform-login-form input:focus { border-color: #e11d2e; box-shadow: 0 0 0 3px rgba(225,29,46,.15); }
-.eig-password-field { min-width: 0; }
+.eig-password-field { display: grid; gap: 8px; min-width: 0; }
 .eig-password-input-wrap { position: relative; display: block; min-width: 0; }
 .platform-login-form .eig-password-input-wrap input { padding-right: 54px; }
 .eig-password-visibility {

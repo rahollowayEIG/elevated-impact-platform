@@ -1,5 +1,6 @@
 import AccountSecurityHistory from './components/AccountSecurityHistory.jsx';
 import { accountDisplayName } from './lib/accountDisplayName.mjs';
+import { createSessionVerifier } from './lib/sessionValidity.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -684,7 +685,11 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
       const { data, error: invokeError } = await supabase.functions.invoke('platform-invite', {
         body: { action: 'list_access', organization_id: organization.id },
       });
-      if (invokeError || data?.error || !data?.success) throw new Error(data?.error || invokeError?.message || 'Unable to load access assignments.');
+      let detail = data?.error;
+      if (invokeError?.context?.json && !detail) {
+        try { detail = (await (invokeError.context.clone?.() || invokeError.context).json())?.error; } catch { /* Use the fallback below. */ }
+      }
+      if (invokeError || detail || !data?.success) throw new Error(detail || invokeError?.message || 'Unable to load access assignments.');
       const membershipItems = (data.memberships || [])
         .filter((item) => item.role === 'organization_staff')
         .map((item) => ({ ...item, assignment_type: 'organization' }));
@@ -743,8 +748,8 @@ function HangarPeopleAccessSection({ organization, currentRole, events, onInvite
     <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(112,114,122,.2)' }}>
       <div className="platform-section-heading"><div><p className="platform-eyebrow">Active / Scheduled Roles</p><h3>Access Dates</h3><p>Change a date here and the permission window changes. The person's Passenger account remains permanent.</p></div><button className="platform-secondary-button" type="button" onClick={loadAccess} disabled={accessLoading}>{accessLoading ? 'Refreshing...' : 'Refresh'}</button></div>
       {accessError && <div className="platform-error">{accessError}</div>}
-      {!accessLoading && !accessItems.length && <p className="platform-login-copy">No accepted Co-Pilot, ATC, or Crew assignments yet.</p>}
-      <div style={{ display: 'grid', gap: 12 }}>{accessItems.map((item) => <AccessWindowEditor key={item.assignment_type + ':' + item.id} item={item} organizationId={organization.id} onSaved={loadAccess} />)}</div>
+      {!accessLoading && !accessError && !accessItems.length && <p className="platform-login-copy">No accepted Co-Pilot, ATC, or Crew assignments yet.</p>}
+      {!accessLoading && !accessError && <div style={{ display: 'grid', gap: 12 }}>{accessItems.map((item) => <AccessWindowEditor key={item.assignment_type + ':' + item.id} item={item} organizationId={organization.id} onSaved={loadAccess} />)}</div>}
     </div>
   </section>;
 }
@@ -2759,6 +2764,12 @@ export default function App() {
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
+  const currentAuthSession = useRef(null);
+  function acceptAuthSession(nextSession) {
+    currentAuthSession.current = nextSession || null;
+    setSession(nextSession || null);
+  }
+
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return; }
     let cancelled = false;
@@ -2780,7 +2791,7 @@ export default function App() {
             type: verificationType,
           });
           if (error) throw error;
-          if (data?.session && !cancelled) setSession(data.session);
+          if (data?.session && !cancelled) acceptAuthSession(data.session);
           params.delete('token_hash');
           params.delete('type');
           params.delete('boarding');
@@ -2789,7 +2800,7 @@ export default function App() {
         } else if (authCode) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
           if (error) throw error;
-          if (data?.session && !cancelled) setSession(data.session);
+          if (data?.session && !cancelled) acceptAuthSession(data.session);
           params.delete('code');
           const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
           window.history.replaceState({}, '', clean);
@@ -2801,7 +2812,7 @@ export default function App() {
           if (error) throw error;
           if (data?.session && !cancelled) {
             setRecoveryMode(hashParams.get('type') === 'recovery' || recoverySearchParams.get('recovery') === '1' || hashParams.get('type') === 'recovery');
-            setSession(data.session);
+            acceptAuthSession(data.session);
           }
           hashParams.delete('access_token');
           hashParams.delete('refresh_token');
@@ -2813,12 +2824,12 @@ export default function App() {
           window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : '') + cleanHash);
         } else {
           const { data } = await supabase.auth.getSession();
-          if (!cancelled) setSession(data.session || null);
+          if (!cancelled) acceptAuthSession(data.session || null);
         }
       } catch (error) {
         console.error('Unable to verify ElevationPilot invitation link', error);
         const { data } = await supabase.auth.getSession();
-        if (!cancelled) setSession(data.session || null);
+        if (!cancelled) acceptAuthSession(data.session || null);
       } finally {
         if (!cancelled) setAuthReady(true);
       }
@@ -2827,7 +2838,7 @@ export default function App() {
     bootstrapAuth();
     const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
-      setSession(nextSession || null);
+      acceptAuthSession(nextSession || null);
       if (!nextSession) {
         setMemberships([]);
         setActiveOrganizationId('');
@@ -2836,6 +2847,30 @@ export default function App() {
     });
     return () => { cancelled = true; listener.subscription.unsubscribe(); };
   }, []);
+  useEffect(() => {
+    if (!supabase || !session?.access_token || recoveryMode) return;
+    const guard = createSessionVerifier({
+      auth: supabase.auth, session,
+      isCurrent: () => currentAuthSession.current?.access_token === session.access_token,
+      onInvalid: () => {
+        acceptAuthSession(null);
+        setMemberships([]); setActiveOrganizationId(''); setOrganizationProfile(null);
+        setProfile(null); setPassenger(null); setPassengerProfile(null);
+        setAirportFlights([]); setActiveFlight(null); setAtcEvent(null); setAtcOrganization(null);
+        setDataError(''); setPortalView('chooser');
+      },
+    });
+    const checkVisible = () => { if (!document.hidden) void guard.check(); };
+    checkVisible();
+    const timer = window.setInterval(checkVisible, 30000);
+    window.addEventListener('focus', checkVisible);
+    document.addEventListener('visibilitychange', checkVisible);
+    return () => {
+      guard.stop(); window.clearInterval(timer);
+      window.removeEventListener('focus', checkVisible);
+      document.removeEventListener('visibilitychange', checkVisible);
+    };
+  }, [session?.access_token, recoveryMode]);
   useEffect(() => { if (session?.user?.id) { loadMemberships(session.user.id); loadAirportData(session.user.id); loadPendingInvitations(session.user.id); } else { setPendingInvitations([]); setInviteProfile(null); setInviteCheckUserId(''); } }, [session?.user?.id]);
   useEffect(() => { if (activeOrganizationId) { setCockpitApp(''); setEieEvents([]); loadWorkspaceData(activeOrganizationId); } }, [activeOrganizationId]);
 
@@ -3338,4 +3373,3 @@ export default function App() {
 
 
 export { EigUserManagement };
-

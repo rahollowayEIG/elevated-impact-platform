@@ -2,9 +2,10 @@
   "scripts": {
     "dev": "vite",
     "test:recovery": "node --test tests/recovery-session.test.mjs",
-    "build": "npm run test:account-states && npm run test:recovery && vite build",
+    "build": "npm run test:account-states && npm run test:recovery && npm run test:password-visibility && vite build",
     "preview": "vite preview",
-    "test:account-states": "node --test tests/account-state.test.mjs"
+    "test:account-states": "node --test tests/account-state.test.mjs",
+    "test:password-visibility": "node --test tests/password-visibility-source.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

@@ -447,6 +447,40 @@ button {
   outline: none;
 }
 .platform-login-form input:focus { border-color: #e11d2e; box-shadow: 0 0 0 3px rgba(225,29,46,.15); }
+.eig-password-field { display: grid; gap: 8px; min-width: 0; }
+.eig-password-input-wrap { position: relative; display: block; min-width: 0; }
+.platform-login-form .eig-password-input-wrap input { padding-right: 54px; }
+.eig-password-visibility {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 40px;
+  height: 40px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b8c8d9;
+  cursor: pointer;
+}
+.eig-password-visibility:hover { background: rgba(255,255,255,.08); color: #fff; }
+.eig-password-visibility:focus-visible { outline: 2px solid #f87171; outline-offset: 2px; }
+.eig-password-visibility:disabled { opacity: .45; cursor: not-allowed; }
+.eig-password-visibility svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 640px) {
+  .eig-password-visibility { width: 44px; height: 44px; right: 5px; }
+  .platform-login-form .eig-password-input-wrap input { padding-right: 58px; }
+}
 .platform-primary-button, .platform-secondary-button {
   border: 0;
   border-radius: 14px;

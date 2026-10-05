@@ -32,11 +32,11 @@ Date: October 5, 2026. Status: implementation ready for preview review; browser 
 
 ## Rollout
 
-The additive database migration has been applied and starts capturing future changes. The Edge Function and UI updates remain on this PR branch pending the browser audit. Do not merge or describe the UI as live until that audit passes.
+The additive database migration has been applied and starts capturing future changes. The shared production Edge Function is deployed as version 25, ACTIVE, with JWT verification enabled. The UI remains in the Vercel preview pending the browser audit; PR #17 is still draft and the production UI has not been merged.
 
-Ryan and Kellie confirmed the new UI is visible in the Vercel preview. Their screenshot shows the history request failing against the deployed version 24, which does not implement `admin_account_history` or `admin_session_signout`. The preview error-state correction is included on this branch. The attempted shared-function deployment was rejected by automatic approval review because explicit authorization for a production-impacting backend deployment is required; no function deployment occurred. The reviewed function source matches this branch, JWT verification remains enabled, and the database rollback checks passed again. Backend deployment awaits Ryan's explicit approval; preview history/session-action testing remains blocked until it is deployed.
+Ryan and Kellie confirmed the new UI is visible in the Vercel preview. Their screenshot showed the history request failing against version 24, which did not implement `admin_account_history` or `admin_session_signout`. The preview error-state correction is included on this branch. Automatic approval review initially rejected deployment pending explicit production authorization. On October 5, Ryan explicitly approved production deployment; version 25 was deployed at approximately 21:02 UTC. A fresh function read confirmed its source exactly matches the reviewed PR function and JWT verification remains enabled. The database rollback checks and 54 automated tests passed before deployment. No real account sessions were revoked and no emails were sent during deployment verification. Kellie can resume history/session-action testing in the preview.
 
-Deploy the updated platform-invite function with JWT verification enabled before enabling the UI. The stored migration is already applied; do not run it a second time. The deployed version 24 was captured as the baseline so this change preserves existing invitation, registration, and recovery behavior.
+The stored migration is already applied; do not run it a second time. Version 24 was captured as the deployment baseline. Browser testing of the authenticated workflow remains the next verification step; deployment metadata and public endpoint checks do not substitute for that test.
 
 ## Follow-up
 

@@ -87,7 +87,10 @@ try {
       const first=t.page.locator('#recovery-password'); const confirm=t.page.locator('#recovery-confirmation');
       await first.waitFor();
       assert.equal(await first.getAttribute('type'),'password'); assert.equal(await confirm.getAttribute('type'),'password');
-      await t.page.getByRole('button',{name:'Show new password',exact:true}).click();
+      const showFirst=t.page.getByRole('button',{name:'Show new password',exact:true});
+      const firstBox=await first.boundingBox(); const firstEyeBox=await showFirst.boundingBox();
+      assert.ok(firstBox && firstEyeBox); assert.ok(firstEyeBox.x >= firstBox.x + firstBox.width - 72); assert.ok(firstEyeBox.y >= firstBox.y - 1 && firstEyeBox.y + firstEyeBox.height <= firstBox.y + firstBox.height + 1);
+      await showFirst.click();
       assert.equal(await first.getAttribute('type'),'text'); assert.equal(await confirm.getAttribute('type'),'password');
       await t.page.getByRole('button',{name:'Hide new password',exact:true}).click();
       assert.equal(await first.getAttribute('type'),'password');
@@ -97,7 +100,10 @@ try {
       await switchButton(t).click();
       const switched=t.page.locator('#post-recovery-password'); await switched.waitFor();
       assert.equal(await switched.getAttribute('type'),'password');
-      await t.page.getByRole('button',{name:'Show newly created password',exact:true}).click();
+      const showSwitched=t.page.getByRole('button',{name:'Show newly created password',exact:true});
+      const switchedBox=await switched.boundingBox(); const switchedEyeBox=await showSwitched.boundingBox();
+      assert.ok(switchedBox && switchedEyeBox); assert.ok(switchedEyeBox.x >= switchedBox.x + switchedBox.width - 76); assert.ok(switchedEyeBox.y >= switchedBox.y - 1 && switchedEyeBox.y + switchedEyeBox.height <= switchedBox.y + switchedBox.height + 1);
+      await showSwitched.click();
       assert.equal(await switched.getAttribute('type'),'text');
       await t.page.evaluate(()=>window.dispatchEvent(new Event('blur')));
       await t.page.waitForFunction(()=>document.querySelector('#post-recovery-password')?.getAttribute('type')==='password');

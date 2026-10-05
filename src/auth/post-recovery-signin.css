@@ -1,0 +1,7 @@
+.eig-post-recovery{margin-top:22px;padding-top:18px;border-top:1px solid rgba(199,200,204,.22);min-width:0}
+.eig-post-recovery h2{font-size:1.15rem;line-height:1.4;margin:0 0 12px;color:#fff}
+.eig-post-recovery h2:focus-visible{outline:2px solid #C7C8CC;outline-offset:4px}
+.eig-post-recovery strong,.eig-post-recovery-button{overflow-wrap:anywhere}
+.eig-post-recovery-button{width:100%;height:auto;white-space:normal;min-height:44px;line-height:1.4}
+.eig-post-recovery input[readonly]{color:#C7C8CC;cursor:default}
+.eig-post-recovery button:focus-visible,.eig-post-recovery input:focus-visible{outline:2px solid #C7C8CC;outline-offset:3px}

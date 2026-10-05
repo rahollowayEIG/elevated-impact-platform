@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import PasswordField from '../components/PasswordField.jsx';
+import PostRecoverySignIn from './PostRecoverySignIn.jsx';
 import './recovery.css';
 
 export default function RecoveryScreen({ controller, initialError }) {
@@ -57,8 +59,8 @@ export default function RecoveryScreen({ controller, initialError }) {
         <div className="eig-recovery-identity"><span>Verified account being reset</span><strong>{identity.email}</strong></div>
         <p className="platform-login-copy">Only this account's password will change. Resetting a password does not reactivate or unlock an account.</p>
         <form className="platform-login-form" onSubmit={submit}>
-          <label htmlFor="recovery-password">New password<input id="recovery-password" name="new-password" value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="new-password" minLength={8} required disabled={phase === 'saving'} /></label>
-          <label htmlFor="recovery-confirmation">Confirm new password<input id="recovery-confirmation" name="confirm-new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type="password" autoComplete="new-password" minLength={8} required disabled={phase === 'saving'} /></label>
+          <PasswordField label="New password" id="recovery-password" name="new-password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} required disabled={phase === 'saving'} />
+          <PasswordField label="Confirm new password" id="recovery-confirmation" name="confirm-new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" minLength={8} required disabled={phase === 'saving'} />
           {error && <p className="platform-error" role="alert">{error.message}</p>}
           <button className="platform-primary-button" type="submit" disabled={phase === 'saving'}>{phase === 'saving' ? 'Saving password...' : 'Set password for this account'}</button>
         </form>
@@ -68,8 +70,11 @@ export default function RecoveryScreen({ controller, initialError }) {
         <p className="platform-login-copy">This page will not use another account's existing sign-in session. It will not automatically send another reset email.</p>
         <a className="eig-recovery-support" href="mailto:info@elevatedimpactgroup.net?subject=ElevationPilot%20account%20recovery%20help">Contact EIG for account help</a>
       </>}
-      {phase === 'complete' && <div className="eig-recovery-success" role="status"><strong>{identity.email}</strong><p>The account service confirmed the new password. This page no longer holds an active recovery credential.</p></div>}
-      {phase !== 'verifying' && phase !== 'saving' && <a className="platform-secondary-button eig-recovery-back" href="/">Return to ElevationPilot</a>}
+      {phase === 'complete' && <>
+        <div className="eig-recovery-success" role="status"><strong>{identity.email}</strong><p>The account service confirmed the new password. This page no longer holds an active recovery credential.</p></div>
+        <PostRecoverySignIn key={identity.id} identity={identity} />
+      </>}
+      {phase !== 'verifying' && phase !== 'saving' && phase !== 'complete' && <a className="platform-secondary-button eig-recovery-back" href="/">Return to ElevationPilot</a>}
     </section>
   </main>;
 }

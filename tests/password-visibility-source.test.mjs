@@ -7,6 +7,7 @@ const files = {
   recovery: await readFile(new URL('../src/auth/RecoveryScreen.jsx', import.meta.url), 'utf8'),
   postRecovery: await readFile(new URL('../src/auth/PostRecoverySignIn.jsx', import.meta.url), 'utf8'),
   field: await readFile(new URL('../src/components/PasswordField.jsx', import.meta.url), 'utf8'),
+  styles: await readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
 };
 
 test('active platform authentication forms use the shared password visibility control', () => {
@@ -24,4 +25,6 @@ test('password visibility is presentation-only and hidden by default', () => {
   assert.match(files.field, /aria-pressed=\{visible\}/);
   assert.match(files.field, /window\.addEventListener\('blur', hide\)/);
   assert.doesNotMatch(files.field, /fetch\(|signIn|updateUser|localStorage|sessionStorage/);
+  assert.match(files.styles, /\.eig-password-visibility\s*\{/);
+  assert.match(files.styles, /\.platform-login-form \.eig-password-input-wrap input\s*\{/);
 });

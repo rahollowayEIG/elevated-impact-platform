@@ -80,6 +80,30 @@ const stored=(t)=>t.page.evaluate((key)=>JSON.parse(localStorage.getItem(key)||'
 async function check(label,run) { try { await run(); results.push({label,passed:true}); console.log('PASS: '+label); } catch(e) { results.push({label,passed:false,error:e.message}); throw e; } }
 try {
   await ready(); browser=await chromium.launch({headless:true});
+  await check('Password reveal controls are independent, hidden by default and re-hide on window blur',async()=>{
+    const t=await setup({seed:false});
+    try {
+      await t.page.goto(ORIGIN+VALID);
+      const first=t.page.locator('#recovery-password'); const confirm=t.page.locator('#recovery-confirmation');
+      await first.waitFor();
+      assert.equal(await first.getAttribute('type'),'password'); assert.equal(await confirm.getAttribute('type'),'password');
+      await t.page.getByRole('button',{name:'Show new password',exact:true}).click();
+      assert.equal(await first.getAttribute('type'),'text'); assert.equal(await confirm.getAttribute('type'),'password');
+      await t.page.getByRole('button',{name:'Hide new password',exact:true}).click();
+      assert.equal(await first.getAttribute('type'),'password');
+      await first.fill('Synthetic-new-password-123'); await confirm.fill('Synthetic-new-password-123');
+      await t.page.getByRole('button',{name:'Set password for this account'}).click();
+      await t.page.getByRole('heading',{name:'Password updated.',exact:true}).waitFor();
+      await switchButton(t).click();
+      const switched=t.page.locator('#post-recovery-password'); await switched.waitFor();
+      assert.equal(await switched.getAttribute('type'),'password');
+      await t.page.getByRole('button',{name:'Show newly created password',exact:true}).click();
+      assert.equal(await switched.getAttribute('type'),'text');
+      await t.page.evaluate(()=>window.dispatchEvent(new Event('blur')));
+      await t.page.waitForFunction(()=>document.querySelector('#post-recovery-password')?.getAttribute('type')==='password');
+      assert.deepEqual(t.errors,[]);
+    } finally { await t.context.close(); }
+  });
   await check('Completed reset preserves admin until consent, then authenticates only the target using a fresh password',async()=>{
     const t=await setup();
     try {
@@ -103,7 +127,7 @@ try {
     const t=await setup({seed:false}); try { await reset(t); await switchButton(t).click(); await t.page.locator('#post-recovery-password').waitFor(); assert.equal(signins(t).length,0); assert.equal(await stored(t),null); assert.deepEqual(t.errors,[]); } finally { await t.context.close(); }
   });
   await check('Failed local logout cannot expose the new sign-in form or reopen an account',async()=>{
-    const t=await setup({signoutFailure:true}); try { await reset(t); await switchButton(t).click(); await t.page.getByRole('alert').waitFor(); assert.match(await t.page.getByRole('alert').innerText(),/could not finish signing out/); assert.equal(await t.page.locator('#post-recovery-password').count(),0); assert.equal(signins(t).length,0); assert.equal((await stored(t)).user.id,ADMIN.id); assert.deepEqual(t.errors,[]); } finally { await t.context.close(); }
+    const t=await setup({signoutFailure:true}); try { await reset(t); await switchButton(t).click(); await t.page.getByRole('alert').waitFor(); assert.match(await t.page.getByRole('alert').innerText(),/could not finish signing out/); assert.equal(await t.page.locator('#post-recovery-password').count(),0); assert.equal(signins(t).length,0); const remaining=await stored(t); assert.notEqual(remaining?.user?.id,TARGET.id); assert.notEqual(t.page.url(),ORIGIN+'/'); assert.deepEqual(t.errors,[]); } finally { await t.context.close(); }
   });
   await check('Rejected new password stays on target sign-in without reviving the previous session',async()=>{
     const t=await setup({badPassword:true}); try { await reset(t); await switchButton(t).click(); await t.page.locator('#post-recovery-password').fill('Incorrect-synthetic'); await t.page.getByRole('button',{name:'Sign in',exact:true}).click(); await t.page.getByRole('alert').waitFor(); assert.equal(await stored(t),null); assert.equal(await t.page.locator('#post-recovery-password').inputValue(),''); assert.equal(signins(t).length,1); assert.notEqual(t.page.url(),ORIGIN+'/'); assert.deepEqual(t.errors,[]); } finally { await t.context.close(); }

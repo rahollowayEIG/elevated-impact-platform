@@ -1,3 +1,5 @@
+import EventPacketStudio from './components/EventPacketStudio.jsx';
+import EventAgreementPanel from './components/EventAgreementPanel.jsx';
 import AccountSecurityHistory from './components/AccountSecurityHistory.jsx';
 import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
@@ -11,7 +13,9 @@ import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
+import { canUseAutoResizer } from './lib/imageResize.mjs';
 
+const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
 const ELEVATIONPILOT_PUBLIC_URL = 'https://elevated-impact-platform.vercel.app';
@@ -497,11 +501,11 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null }) {
+function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions"><button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -1242,7 +1246,7 @@ function ProductCard({ product, enabled, onLaunch }) {
   return <div className={`platform-product-card ${enabled ? 'enabled' : ''}`}><div className="platform-product-topline"><span>{product.category || 'EIG Product'}</span><span className={`platform-status-pill ${enabled ? 'enabled' : comingSoon ? 'soon' : ''}`}>{enabled ? 'Enabled' : comingSoon ? 'Coming Soon' : 'Not Enabled'}</span></div><h3>{product.product_key === 'golf_event_registration' ? 'EIE · Events' : product.name}</h3><p>{product.product_key === 'golf_event_registration' ? 'Create, publish, register, collect payments, manage rosters, communicate, and prepare Golf Genius exports.' : product.description}</p>{enabled && product.product_key === 'golf_event_registration' && <button className="platform-primary-button inline" onClick={onLaunch}>Open EIE</button>}</div>;
 }
 
-function VenueConfirmationForm({ request, onClose, onSaved }) {
+function VenueConfirmationForm({ request, onClose, onSaved, canManageAgreement }) {
   const dateOptions = [request.preferred_date, request.alternate_date, request.second_alternate_date].filter(Boolean);
   const [form, setForm] = useState({ status: request.status || 'submitted', confirmed_date: request.confirmed_date || request.preferred_date || '', confirmed_start_type: request.confirmed_start_type || request.preferred_start_type || '', confirmed_start_time: request.confirmed_start_time || request.preferred_start_time || '', confirmed_capacity: request.confirmed_capacity || request.estimated_participants || '', confirmed_package: request.confirmed_package || '', venue_response: request.venue_response || '', venue_internal_notes: request.venue_internal_notes || '', deposit_amount: request.deposit_amount ?? '', lock_date: request.locked_fields?.includes('confirmed_date') ?? true, lock_start: request.locked_fields?.includes('confirmed_start') ?? true, lock_capacity: request.locked_fields?.includes('confirmed_capacity') ?? true, lock_package: request.locked_fields?.includes('confirmed_package') ?? true });
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [nowMs, setNowMs] = useState(Date.now());
@@ -1252,19 +1256,19 @@ function VenueConfirmationForm({ request, onClose, onSaved }) {
   function commonPayload() { return { confirmed_date: form.confirmed_date || null, confirmed_start_type: form.confirmed_start_type || null, confirmed_start_time: form.confirmed_start_time || null, confirmed_capacity: form.confirmed_capacity ? Number(form.confirmed_capacity) : null, confirmed_package: form.confirmed_package || null, venue_response: form.venue_response || null, venue_internal_notes: form.venue_internal_notes || null, deposit_amount: form.deposit_amount === '' ? null : Number(form.deposit_amount), locked_fields: lockedFields(), venue_reviewed_at: new Date().toISOString() }; }
   async function updateRequest(payload) { setBusy(true); setError(''); const { error: updateError } = await supabase.from('event_requests').update(payload).eq('id', request.id); if (updateError) setError(updateError.message); else onSaved(); setBusy(false); }
   async function save(nextStatus = form.status) { await updateRequest({ ...commonPayload(), status: nextStatus }); }
-  async function placeHold() { if (!form.confirmed_date) { setError('Choose the date the venue is placing on hold.'); return; } const startedAt = new Date(); const expiresAt = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000); const depositAmount = form.deposit_amount === '' ? null : Number(form.deposit_amount); const depositRequired = depositAmount !== null && depositAmount > 0; await updateRequest({ ...commonPayload(), status: 'hold', hold_started_at: startedAt.toISOString(), hold_expires_at: expiresAt.toISOString(), hold_released_at: null, contract_status: request.contract_status === 'signed' ? 'signed' : 'not_sent', deposit_status: request.deposit_status === 'paid' || request.deposit_status === 'waived' ? request.deposit_status : depositRequired ? 'pending' : 'not_required', deposit_due_at: depositRequired ? expiresAt.toISOString() : null, calendar_status: request.calendar_status || 'not_created' }); }
+  async function placeHold() { if (!form.confirmed_date) { setError('Choose the date the venue is placing on hold.'); return; } const startedAt = new Date(); const expiresAt = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000); const depositAmount = form.deposit_amount === '' ? null : Number(form.deposit_amount); const depositRequired = depositAmount !== null && depositAmount > 0; await updateRequest({ ...commonPayload(), status: 'hold', hold_started_at: startedAt.toISOString(), hold_expires_at: expiresAt.toISOString(), hold_released_at: null, deposit_status: request.deposit_status === 'paid' || request.deposit_status === 'waived' ? request.deposit_status : depositRequired ? 'pending' : 'not_required', deposit_due_at: depositRequired ? expiresAt.toISOString() : null, calendar_status: request.calendar_status || 'not_created' }); }
   async function extendHold() { const currentExpiration = request.hold_expires_at ? new Date(request.hold_expires_at) : new Date(); const base = currentExpiration.getTime() > Date.now() ? currentExpiration : new Date(); const nextExpiration = new Date(base.getTime() + 24 * 60 * 60 * 1000); await updateRequest({ ...commonPayload(), status: 'hold', hold_extended_at: new Date().toISOString(), hold_expires_at: nextExpiration.toISOString(), deposit_due_at: request.deposit_status === 'pending' ? nextExpiration.toISOString() : request.deposit_due_at }); }
   async function releaseHold() { await updateRequest({ ...commonPayload(), status: 'hold_expired', hold_released_at: new Date().toISOString(), calendar_status: request.calendar_status === 'hold' ? 'released' : request.calendar_status }); }
   function formatCountdown(expiresAt) { if (!expiresAt) return ''; const remaining = new Date(expiresAt).getTime() - nowMs; if (remaining <= 0) return 'Hold time has expired'; const totalSeconds = Math.floor(remaining / 1000); const hours = Math.floor(totalSeconds / 3600); const minutes = Math.floor((totalSeconds % 3600) / 60); const seconds = totalSeconds % 60; return `${hours}h ${minutes}m ${seconds}s remaining`; }
   const holdIsActive = request.status === 'hold' && request.hold_expires_at;
-  return <div className="review-panel"><div className="review-panel-heading"><div><p className="platform-eyebrow">Venue Review</p><h2>{request.group_name || request.contact_full_name || 'Outing Request'}</h2></div><button className="platform-secondary-button" onClick={onClose}>Close</button></div>{holdIsActive && <div style={{ marginBottom: 22, padding: 18, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)', background: 'rgba(255,255,255,.06)' }}><p className="platform-eyebrow" style={{ marginBottom: 6 }}>24-Hour Venue Hold</p><h3 style={{ margin: 0 }}>{formatCountdown(request.hold_expires_at)}</h3><p style={{ margin: '8px 0 0', opacity: .8 }}>Held until {new Date(request.hold_expires_at).toLocaleString()}. The event is not finally confirmed until the contract and deposit requirements are complete.</p><div className="review-actions" style={{ marginTop: 14 }}><button className="platform-secondary-button" disabled={busy} onClick={extendHold}>Extend Another 24 Hours</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={releaseHold}>Release Hold</button></div></div>}<div className="review-summary-grid"><div><span>Contact</span><strong>{request.contact_full_name || '—'}</strong><small>{request.contact_email}<br />{request.contact_phone}</small></div><div><span>Players</span><strong>{request.estimated_participants || '—'}</strong><small>{request.event_type || 'Golf Outing'}</small></div><div><span>Start</span><strong>{request.preferred_start_type || 'Not Sure'}</strong><small>{request.preferred_start_time || 'Time not specified'}</small></div><div><span>Golf Format</span><strong>{request.golf_format || 'Not Sure'}</strong><small>{request.food_needed === true ? 'Food / banquet requested' : request.food_needed === false ? 'No food requested' : 'Food needs not decided'}</small></div></div><div className="review-date-choices"><h3>Requested Dates</h3><div>{dateOptions.map((date, index) => <button key={date} type="button" className={form.confirmed_date === date ? 'selected' : ''} onClick={() => update('confirmed_date', date)}><span>Choice {index + 1}</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString()}</strong></button>)}</div>{request.unavailable_date_notes && <p><strong>Date not shown note:</strong> {request.unavailable_date_notes}</p>}</div><div className="form-grid two review-fields"><label>Held / Proposed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label><label>Confirmed Start Type<select value={form.confirmed_start_type} onChange={(e) => update('confirmed_start_type', e.target.value)}><option value="">Select</option><option>Shotgun</option><option>Tee Times</option><option>Not Sure</option></select></label><label>Confirmed Start Time<input type="time" value={form.confirmed_start_time || ''} onChange={(e) => update('confirmed_start_time', e.target.value)} /></label><label>Confirmed Capacity<input type="number" min="1" value={form.confirmed_capacity} onChange={(e) => update('confirmed_capacity', e.target.value)} /></label><label>Deposit Amount<input type="number" min="0" step="0.01" value={form.deposit_amount} onChange={(e) => update('deposit_amount', e.target.value)} placeholder="0.00" /></label><label>Deposit Status<input value={request.deposit_status?.replaceAll('_', ' ') || 'not required'} disabled /></label><label className="full-span">Venue Package / Pricing Summary<input value={form.confirmed_package} onChange={(e) => update('confirmed_package', e.target.value)} placeholder="Example: Golf + cart + lunch package" /></label><label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Hold details, pricing, questions, or alternate plan..." /></label><label className="full-span">Internal Venue Notes<textarea rows="3" value={form.venue_internal_notes} onChange={(e) => update('venue_internal_notes', e.target.value)} placeholder="Private notes not intended for the organizer." /></label></div><div className="locked-fields-box"><div><h3>Lock venue-confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div><label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Date</label><label><input type="checkbox" checked={form.lock_start} onChange={(e) => update('lock_start', e.target.checked)} /> Start type / time</label><label><input type="checkbox" checked={form.lock_capacity} onChange={(e) => update('lock_capacity', e.target.checked)} /> Capacity</label><label><input type="checkbox" checked={form.lock_package} onChange={(e) => update('lock_package', e.target.checked)} /> Venue package / pricing</label></div>{error && <div className="platform-error">{error}</div>}<div className="review-actions"><button className="platform-secondary-button" disabled={busy} onClick={() => save('needs_response')}>Ask a Question</button><button className="platform-secondary-button" disabled={busy} onClick={() => save('tentative')}>Mark Tentative</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={() => save('declined')}>Decline</button>{!holdIsActive && <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={placeHold}>{busy ? 'Saving...' : 'Confirm Terms + Place 24-Hour Hold'}</button>}</div></div>;
+  return <div className="review-panel"><div className="review-panel-heading"><div><p className="platform-eyebrow">Venue Review</p><h2>{request.group_name || request.contact_full_name || 'Outing Request'}</h2></div><button className="platform-secondary-button" onClick={onClose}>Close</button></div>{holdIsActive && <div style={{ marginBottom: 22, padding: 18, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)', background: 'rgba(255,255,255,.06)' }}><p className="platform-eyebrow" style={{ marginBottom: 6 }}>24-Hour Venue Hold</p><h3 style={{ margin: 0 }}>{formatCountdown(request.hold_expires_at)}</h3><p style={{ margin: '8px 0 0', opacity: .8 }}>Held until {new Date(request.hold_expires_at).toLocaleString()}. The event is not finally confirmed until the contract and deposit requirements are complete.</p><div className="review-actions" style={{ marginTop: 14 }}><button className="platform-secondary-button" disabled={busy} onClick={extendHold}>Extend Another 24 Hours</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={releaseHold}>Release Hold</button></div></div>}<div className="review-summary-grid"><div><span>Contact</span><strong>{request.contact_full_name || '—'}</strong><small>{request.contact_email}<br />{request.contact_phone}</small></div><div><span>Players</span><strong>{request.estimated_participants || '—'}</strong><small>{request.event_type || 'Golf Outing'}</small></div><div><span>Start</span><strong>{request.preferred_start_type || 'Not Sure'}</strong><small>{request.preferred_start_time || 'Time not specified'}</small></div><div><span>Golf Format</span><strong>{request.golf_format || 'Not Sure'}</strong><small>{request.food_needed === true ? 'Food / banquet requested' : request.food_needed === false ? 'No food requested' : 'Food needs not decided'}</small></div></div><div className="review-date-choices"><h3>Requested Dates</h3><div>{dateOptions.map((date, index) => <button key={date} type="button" className={form.confirmed_date === date ? 'selected' : ''} onClick={() => update('confirmed_date', date)}><span>Choice {index + 1}</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString()}</strong></button>)}</div>{request.unavailable_date_notes && <p><strong>Date not shown note:</strong> {request.unavailable_date_notes}</p>}</div><div className="form-grid two review-fields"><label>Held / Proposed Date<input type="date" value={form.confirmed_date} onChange={(e) => update('confirmed_date', e.target.value)} /></label><label>Confirmed Start Type<select value={form.confirmed_start_type} onChange={(e) => update('confirmed_start_type', e.target.value)}><option value="">Select</option><option>Shotgun</option><option>Tee Times</option><option>Not Sure</option></select></label><label>Confirmed Start Time<input type="time" value={form.confirmed_start_time || ''} onChange={(e) => update('confirmed_start_time', e.target.value)} /></label><label>Confirmed Capacity<input type="number" min="1" value={form.confirmed_capacity} onChange={(e) => update('confirmed_capacity', e.target.value)} /></label><label>Deposit Amount<input type="number" min="0" step="0.01" value={form.deposit_amount} onChange={(e) => update('deposit_amount', e.target.value)} placeholder="0.00" /></label><label>Deposit Status<input value={request.deposit_status?.replaceAll('_', ' ') || 'not required'} disabled /></label><label className="full-span">Venue Package / Pricing Summary<input value={form.confirmed_package} onChange={(e) => update('confirmed_package', e.target.value)} placeholder="Example: Golf + cart + lunch package" /></label><label className="full-span">Message to Organizer<textarea rows="4" value={form.venue_response} onChange={(e) => update('venue_response', e.target.value)} placeholder="Hold details, pricing, questions, or alternate plan..." /></label><label className="full-span">Internal Venue Notes<textarea rows="3" value={form.venue_internal_notes} onChange={(e) => update('venue_internal_notes', e.target.value)} placeholder="Private notes not intended for the organizer." /></label></div><div className="locked-fields-box"><div><h3>Lock venue-confirmed fields for organizer</h3><p>The organizer receives these values prefilled. Locked items require the venue to approve a change.</p></div><label><input type="checkbox" checked={form.lock_date} onChange={(e) => update('lock_date', e.target.checked)} /> Date</label><label><input type="checkbox" checked={form.lock_start} onChange={(e) => update('lock_start', e.target.checked)} /> Start type / time</label><label><input type="checkbox" checked={form.lock_capacity} onChange={(e) => update('lock_capacity', e.target.checked)} /> Capacity</label><label><input type="checkbox" checked={form.lock_package} onChange={(e) => update('lock_package', e.target.checked)} /> Venue package / pricing</label></div>{canManageAgreement ? <EventAgreementPanel request={request} onSaved={onSaved} /> : <p>The venue Pilot manages quote approval, agreements and booking deposits.</p>}{error && <div className="platform-error">{error}</div>}<div className="review-actions"><button className="platform-secondary-button" disabled={busy} onClick={() => save('needs_response')}>Ask a Question</button><button className="platform-secondary-button" disabled={busy} onClick={() => save('tentative')}>Mark Tentative</button><button className="platform-secondary-button danger-outline" disabled={busy} onClick={() => save('declined')}>Decline</button>{!holdIsActive && <button className="platform-primary-button" disabled={busy || !form.confirmed_date} onClick={placeHold}>{busy ? 'Saving...' : 'Confirm Terms + Place 24-Hour Hold'}</button>}</div></div>;
 }
 
-function EventRequestsSection({ organization, requests, loading, onReload }) {
+function EventRequestsSection({ organization, requests, loading, onReload, canManageAgreement }) {
   const [selected, setSelected] = useState(null);
   const inquiryUrl = `${window.location.origin}${window.location.pathname}#inquiry/${organization.slug}`;
   function copyInquiryLink() { navigator.clipboard?.writeText(inquiryUrl); }
-  if (selected) return <VenueConfirmationForm request={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); onReload(); }} />;
+  if (selected) return <VenueConfirmationForm canManageAgreement={canManageAgreement} request={selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); onReload(); }} />;
   return <section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Venue Workflow</p><h2>Outing Inquiries</h2></div><div className="section-actions"><button className="platform-secondary-button" onClick={() => window.open(inquiryUrl, '_blank')}>Open Inquiry Page</button><button className="platform-secondary-button" onClick={copyInquiryLink}>Copy Inquiry Link</button></div></div><div className="inquiry-link-box"><div><strong>Public inquiry link</strong><span>{inquiryUrl}</span></div><small>Use this on the venue website, in email, or anywhere someone wants to request an outing.</small></div>{loading ? <p>Loading inquiries...</p> : <div className="request-list">{requests.map((request) => <button key={request.id} className="request-row" onClick={() => setSelected(request)}><div><strong>{request.group_name || request.contact_full_name || 'New Outing Inquiry'}</strong><span>{request.contact_full_name} · {request.contact_email}</span></div><div><strong>{request.preferred_date ? new Date(`${request.preferred_date}T12:00:00`).toLocaleDateString() : 'No date'}</strong><span>{request.estimated_participants ? `${request.estimated_participants} players` : 'Player count pending'}</span></div><div><span className={`request-status ${request.status}`}>{request.status?.replaceAll('_', ' ')}</span>{request.status === 'hold' && request.hold_expires_at && <small>Hold until {new Date(request.hold_expires_at).toLocaleString()}</small>}<b>Review →</b></div></button>)}{!requests.length && <div className="empty-state"><strong>No outing inquiries yet.</strong><span>Share the public inquiry link to start collecting requests.</span></div>}</div>}</section>;
 }
 
@@ -1333,7 +1337,7 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
 }
 
 
-function EieEventDirectory({ organization, events, loading, onReload, onBack, initialEventId = '', atcOnly = false }) {
+function EieEventDirectory({ organization, events, loading, onReload, onBack, initialEventId = '', atcOnly = false, onOpenInception, onCreativeDirtyChange }) {
   const { openComposer } = useSquawk();
   const emptyItem = () => ({
     name: 'Registration',
@@ -1353,6 +1357,10 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   const [createdEvent, setCreatedEvent] = useState(null);
   const [setupEvent, setSetupEvent] = useState(null);
   const [setupStep, setSetupStep] = useState('details');
+  const [creativeDirty,setCreativeDirty]=useState(false);
+  useEffect(() => { onCreativeDirtyChange?.(creativeDirty); return () => onCreativeDirtyChange?.(false); }, [creativeDirty, onCreativeDirtyChange]);
+  function leaveCreative(){return !creativeDirty||window.confirm('Leave without saving the event packet changes?');}
+  function changeSetupStep(step){if(step===setupStep||leaveCreative())setSetupStep(step);}
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
   const [assetBusy, setAssetBusy] = useState('');
@@ -1389,6 +1397,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   });
   const [form, setForm] = useState({
     name: '',
+    event_kind: 'golf',
     course: organization?.name || '',
     event_start: '',
     event_start_time: '',
@@ -1524,7 +1533,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         throw new Error('Add at least one Registration pricing item.');
       }
 
-      const { data, error } = await supabase.rpc('create_eie_quick_registration_event', {
+      const createOptions = {
         p_organization_id: organization.id,
         p_name: form.name.trim(),
         p_course: form.course.trim(),
@@ -1545,7 +1554,8 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         p_allow_card_guarantee: form.allow_card_guarantee,
         p_auto_charge_at_deadline: form.auto_charge_at_hold_expiry,
         p_google_calendar_sync_enabled: form.google_calendar_sync_enabled,
-      });
+      };
+      const { data, error } = await supabase.rpc(form.event_kind === 'general' ? 'create_eie_regular_event' : 'create_eie_quick_registration_event', form.event_kind === 'general' ? { p_options: createOptions } : createOptions);
       if (error) throw error;
       if (!data?.success) throw new Error('Unable to create the EIE event.');
 
@@ -1984,7 +1994,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
           <p>Set up the event in order so Registration, Pricing, Roster, and the Public Hub all inherit the same rules.</p>
         </div>
         <div className="review-actions">
-          <button className="platform-secondary-button" onClick={() => atcOnly ? onBack?.() : setSetupEvent(null)}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
+          <button className="platform-secondary-button" onClick={() => {if(leaveCreative())atcOnly ? onBack?.() : setSetupEvent(null);}}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
           <button className="platform-secondary-button" type="button" onClick={() => openComposer(setupEvent.id)}>SB · Squawk Event</button>
           <div className="platform-role-pill">EIE</div>
         </div>
@@ -1994,12 +2004,14 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         event={setupEvent}
         organization={organization}
         activeStep={setupStep}
-        onStepChange={setSetupStep}
+        onStepChange={changeSetupStep}
         onEventUpdated={(updatedEvent) => setSetupEvent((current) => ({ ...current, ...updatedEvent }))}
         onReload={onReload}
       />
 
       {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') || setupNotice.startsWith('Event website') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      {setupStep === 'creative' && <EventPacketStudio key={setupEvent.id} event={setupEvent} onDirtyChange={setCreativeDirty} onOpenDesign={onOpenInception} />}
 
       {setupStep === 'roster' && <EieRosterMaintenance
         event={setupEvent}
@@ -2206,13 +2218,13 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         <div style={{ marginBottom: 18 }}>
           <p className="platform-eyebrow">1 · Event Basics</p>
           <div className="form-grid two">
-            <label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder="Fall Charity Scramble" /></label>
+            <label>Event type<select value={form.event_kind} onChange={(e) => { update('event_kind', e.target.value); if (e.target.value === 'general') update('registration_format', 'individual'); }}><option value="golf">Golf outing</option><option value="general">Regular event</option></select></label><label>Event name<input value={form.name} onChange={(e) => update('name', e.target.value)} required placeholder={form.event_kind === 'general' ? 'Community dinner or celebration' : 'Fall Charity Scramble'} /></label>
             <label>Course / venue<input value={form.course} onChange={(e) => update('course', e.target.value)} required /></label>
             <label>Event date<input type="date" value={form.event_start} onChange={(e) => update('event_start', e.target.value)} required /></label>
             <label>Event start time<input type="time" value={form.event_start_time} onChange={(e) => update('event_start_time', e.target.value)} /></label>
             <label>End date, if multi-day<input type="date" value={form.event_end} onChange={(e) => update('event_end', e.target.value)} /></label>
             <label>Registration structure<select value={form.registration_format} onChange={(e) => update('registration_format', e.target.value)}><option value="team">Team</option><option value="individual">Individual</option></select></label>
-            {form.registration_format === 'team' && <label>Players per team<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
+            {form.registration_format === 'team' && <label>{form.event_kind === 'general' ? 'Participants per group' : 'Players per team'}<input type="number" min="2" max="12" value={form.team_size} onChange={(e) => update('team_size', e.target.value)} /></label>}
             <label>Maximum participants<input type="number" min="1" value={form.max_golfers} onChange={(e) => update('max_golfers', e.target.value)} placeholder="144" /></label>
             <label>Registration deadline<input type="date" value={form.registration_deadline} onChange={(e) => update('registration_deadline', e.target.value)} /></label>
           </div>
@@ -2230,7 +2242,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
                 <label>Item name<input value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} required placeholder="Registration" /></label>
                 <label>Item type<select value={item.item_type} onChange={(e) => updateItem(index, 'item_type', e.target.value)}><option value="registration">Registration</option><option value="add_on">Add-On</option><option value="package">Package</option><option value="donation">Donation</option><option value="other">Other</option></select></label>
                 <label>Price<input type="number" min="0" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} placeholder="0.00" required /></label>
-                <label>Charge by<select value={item.charge_by} onChange={(e) => updateItem(index, 'charge_by', e.target.value)}><option value="player">Player</option><option value="team">Team</option><option value="order">Order</option><option value="flat">Flat</option></select></label>
+                <label>Charge by<select value={item.charge_by} onChange={(e) => updateItem(index, 'charge_by', e.target.value)}><option value="player">Participant</option><option value="team">Team</option><option value="order">Order</option><option value="flat">Flat</option></select></label>
                 <label>Available from<input type="date" value={item.available_start} onChange={(e) => updateItem(index, 'available_start', e.target.value)} /></label>
                 <label>Available until<input type="date" value={item.available_end} onChange={(e) => updateItem(index, 'available_end', e.target.value)} /></label>
               </div>
@@ -2299,7 +2311,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 }
 
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile, onInviteUser }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile, onInviteUser, onOpenInception }) {
   const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
@@ -2417,12 +2429,13 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
         <div><p className="platform-eyebrow">Systems Panel</p><h2>Apps & Tools</h2></div>
         <span className="cockpit-panel-code">SYS / {enabledCount.toString().padStart(2, '0')}</span>
       </div>
+      <button className="platform-primary-button inline" type="button" onClick={() => onOpenInception?.()}>Open InceptionApex · Design Studio</button>
       <div className="platform-product-grid cockpit-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div>
     </section>
 
     <HangarPeopleAccessSection organization={organization} currentRole={role} events={eieEvents} onInvite={onInviteUser} />
     <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
-    {canReviewRequests && <EventRequestsSection organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
+    {canReviewRequests && <EventRequestsSection canManageAgreement={['eig_admin','organization_admin'].includes(role)} organization={organization} requests={eventRequests} loading={loadingRequests} onReload={onReloadRequests} />}
   </div>;
 }
 
@@ -2545,6 +2558,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
   if (error && !event) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>{publicMode ? 'Event site unavailable.' : 'Hub preview unavailable.'}</h1><p>{error}</p>{!publicMode && <button className="platform-secondary-button" onClick={() => window.close()}>Close</button>}</div></div>;
   if (!event || !hub) return null;
 
+  const generalEvent=event.field_settings?.event_kind==='general';
   const dates = Array.isArray(event.event_dates) ? event.event_dates : [];
   const eventDate = dates[0] ? new Date(dates[0] + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Date to be announced';
   const timeLabel = hub.event_start_time ? new Date('2000-01-01T' + hub.event_start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'TBD';
@@ -2625,7 +2639,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>DATE</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{eventDate}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>CHECK-IN</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{checkInLabel}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>START</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{timeLabel}</strong></div>
-          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>FORMAT</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + '-Player Team' : 'Individual'}</strong></div>
+          <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>FORMAT</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{event.field_settings?.registration_format === 'team' ? (event.field_settings?.team_size || 4) + (generalEvent ? '-Person Group' : '-Player Team') : 'Individual'}</strong></div>
           <div style={{ background: '#fff', padding: 22 }}><small style={{ color: '#70727A', fontWeight: 900 }}>AUDIENCE</small><strong style={{ display: 'block', color: '#1D245D', fontSize: 20, marginTop: 6 }}>{membersOnly ? 'Members Only' : 'Open / Public'}</strong></div>
         </div>
       </section>
@@ -2753,6 +2767,10 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 
 
 export default function App() {
+  const [inceptionEventId, setInceptionEventId] = useState('');
+  const [inceptionDirty, setInceptionDirty] = useState(false);
+  const [eventStudioDirty, setEventStudioDirty] = useState(false);
+  const inceptionReturn = useRef('chooser');
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   const publicEventMatch = window.location.pathname.match(/^\/events\/([^/?#]+)\/?$/) || window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
@@ -2762,7 +2780,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState(window.location.hash === '#inception-apex' ? 'inception' : 'chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   const currentAuthSession = useRef(null);
   function acceptAuthSession(nextSession) {
@@ -2984,7 +3002,7 @@ export default function App() {
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedEventId = deepLinkParams.get('event_id');
       const openAirportFlight = deepLinkParams.get('airport') === '1' || Boolean(requestedEventId);
-      if (openAirportFlight) {
+      if (openAirportFlight && window.location.hash !== '#inception-apex') {
         const requestedFlight = requestedEventId
           ? flights.find((flight) => String(flight.eventId) === String(requestedEventId))
           : null;
@@ -3312,6 +3330,17 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
+  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty) || window.confirm('Leave without saving your design or event packet changes?'); }
+  function openInception(event) {
+    if (portalView === 'inception' || !canLeaveInception()) return;
+    if (portalView !== 'inception') inceptionReturn.current = portalView;
+    setInceptionEventId(event?.id || ''); setInceptionDirty(false); setPortalView('inception');
+    window.history.replaceState({}, '', window.location.pathname + window.location.search + '#inception-apex');
+  }
+  function closeInception() {
+    setInceptionDirty(false); setPortalView(inceptionReturn.current);
+    window.history.replaceState({}, '', window.location.pathname + window.location.search);
+  }
   function openFlightHub(flight) { if (flight?.publicSlug) window.open(eventHubUrl(flight.publicSlug, window.location.origin), '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
@@ -3342,9 +3371,11 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={signOut} onAirport={openAirport} onRoleHome={openRoleLanding} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
-      {portalView === 'chooser'
+      {portalView === 'inception'
+        ? <React.Suspense fallback={<LoadingScreen message="Opening InceptionApex…" />}><InceptionApex key={session.user.id + ':' + inceptionEventId} initialEventId={inceptionEventId} onBack={closeInception} onDirtyChange={setInceptionDirty} canUseResizer={canUseAutoResizer(memberships)} /></React.Suspense>
+        : portalView === 'chooser'
         ? <PortalChooser profile={profile} passenger={passenger} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />
         : portalView === 'atc_select'
           ? <AtcAssignmentChooser flights={roleLanding()?.flights || []} onBack={openAirport} onSelect={enterAssignedAtc} />
@@ -3358,15 +3389,15 @@ export default function App() {
             ? atcLoading
               ? <LoadingScreen message="Opening ATC / EIE..." />
               : atcEvent && atcOrganization
-                ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
+                ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
                 : <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
               : cockpitApp === 'eie'
-                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
-                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
+                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => Promise.all([loadEventRequests(activeOrganizationId), loadEieEvents(activeOrganizationId)])} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} onOpenInception={openInception} />}
     </PlatformShell>
   </SquawkProvider>;
 }

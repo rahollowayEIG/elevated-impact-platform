@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rental Space Layout Planner</title>
+<style>
+:root{
+  --bg:#12213b; --panel:#ffffff; --ink:#172033; --muted:#657086; --line:#d8deea;
+  --accent:#1f6feb; --accent-dark:#1557bc; --soft:#eef5ff; --danger:#b42318; --ok:#157f3b;
+  --shadow:0 12px 34px rgba(20,31,54,.12); --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:9px 12px;background:var(--accent);color:white;font-weight:700;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+button:hover{background:var(--accent-dark)}
+button.secondary{background:#eef2f8;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+button.secondary:hover{background:#e4ebf6}
+button.danger{background:#fff0f0;color:var(--danger);border:1px solid #ffd0d0;box-shadow:none}
+button.small{padding:6px 9px;font-size:12px;border-radius:8px}
+button.palette{display:flex;justify-content:space-between;align-items:center;width:100%;margin:5px 0;background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none;text-align:left;font-weight:650}
+button.palette span{color:var(--muted);font-weight:600;font-size:12px}
+.app-header{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand h1{margin:0;font-size:20px;line-height:1.1}.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}.header-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.shell{display:grid;grid-template-columns:360px minmax(0,1fr) 310px;gap:16px;padding:16px;max-width:1740px;margin:0 auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px}.panel h2{margin:0 0 10px;font-size:16px}.panel h3{margin:15px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tabs{display:flex;flex-direction:column;gap:7px}.tab{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 11px;background:#fff;color:var(--ink);box-shadow:none;text-align:left}.tab.active{border-color:var(--accent);background:var(--soft);box-shadow:inset 0 0 0 1px rgba(31,111,235,.2)}.tab b{display:block;font-size:13px}.tab span{font-size:12px;color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field{display:flex;flex-direction:column;gap:4px;margin:7px 0}.field label{font-size:12px;color:var(--muted);font-weight:700}.field input,.field textarea,.field select{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px;color:var(--ink)}.field textarea{min-height:72px;resize:vertical}.full{grid-column:1 / -1}
+.stage-card{padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.stage-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px}.toolbar-left,.toolbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.canvas-wrap{position:relative;overflow:auto;background:#e9edf5;border:1px solid var(--line);border-radius:14px;padding:16px;min-height:640px}.layout-canvas{display:block;margin:0 auto;background:white;border-radius:10px;box-shadow:0 9px 24px rgba(20,31,54,.16);max-width:100%;height:calc(100vh - 220px);min-height:580px;touch-action:none}.hint{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#f7f9fd;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:var(--muted)}.warning{margin-top:10px;padding:10px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px}.ok{margin-top:10px;padding:10px;border-radius:12px;background:#edfdf4;border:1px solid #b7ebc9;color:#166534;font-size:13px}.item-list{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px}.item-row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}.item-row:last-child{border-bottom:0}.item-row.active{background:var(--soft)}.muted{color:var(--muted)}
+.print-summary{display:none}.print-all{display:none}.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 8px;font-size:12px;color:var(--muted)}.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 5px;background:#fff;color:var(--ink);font-weight:700}.file-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.file-row input[type=file]{max-width:100%;font-size:12px}.website-note{background:#f8fbff;border:1px dashed #b9cdf3;border-radius:12px;padding:10px;color:#2c3c59;font-size:13px}.custom-item-box{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfcff;margin-top:8px}
+@media (max-width:1180px){.shell{grid-template-columns:320px minmax(0,1fr)}.right-panel{grid-column:1 / -1}.layout-canvas{height:620px}}@media (max-width:820px){.app-header{position:static;align-items:flex-start;flex-direction:column}.shell{grid-template-columns:1fr;padding:10px}.canvas-wrap{min-height:480px;padding:8px}.layout-canvas{height:520px}.header-actions{justify-content:flex-start}}
+@media print{
+  @page{size:landscape;margin:.35in}.app-header,.left-panel,.right-panel,.stage-toolbar,.hint{display:none!important}.shell{display:block;padding:0;max-width:none}.stage-card{box-shadow:none;border:0;padding:0}.canvas-wrap{overflow:visible;border:0;background:white;padding:0}.layout-canvas{height:6.9in;width:10.1in;box-shadow:none;border:1px solid #333;border-radius:0}.print-summary{display:block;margin:0 0 .12in;font-size:10pt}.print-summary h1{font-size:16pt;margin:0}.print-summary p{margin:.03in 0;color:#333}.print-summary .line{display:flex;gap:.2in;flex-wrap:wrap}.print-summary b{color:#111}.item-list-print{font-size:8pt;margin-top:.08in;columns:3}.item-list-print div{break-inside:avoid;border-bottom:1px solid #ddd;padding:1px 0}body.blank-print #itemsLayer{display:none!important}body.blank-print .item-list-print{display:none!important}.print-all{display:none}body.printing-all-blanks .shell,body.printing-all-blanks .app-header{display:none!important}body.printing-all-blanks .print-all{display:block}.blank-page{page-break-after:always}.blank-page h1{font-size:16pt;margin:0 0 .08in}.blank-page p{font-size:9pt;margin:.02in 0}.worksheet-svg{width:10in;height:6.45in;border:1px solid #333}.notes-lines{font-size:9pt;margin-top:.06in}.notes-lines div{border-bottom:1px solid #aaa;height:.22in}
+}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand"><h1>Rental Space Layout Planner</h1><p>CHGC rental layout · Connected to your event packet</p></div>
+  <div class="header-actions">
+    <button id="printBtn">Print / Save PDF</button>
+    <button id="blankBtn" class="secondary">Print blank current area</button>
+    <button id="blankAllBtn" class="secondary">Print all blank worksheets</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="panel left-panel">
+    <h2>Rental areas</h2>
+    <div id="tabs" class="tabs"></div><button id="addArea" class="secondary" style="margin-top:12px">Add rental area</button>
+
+    <h3>Area details</h3>
+    <div class="form-grid">
+      <div class="field full"><label>Area name</label><input id="spaceName" /></div>
+      <div class="field"><label>Width (ft)</label><input id="spaceWidth" type="number" min="1" step="1" /></div>
+      <div class="field"><label>Length (ft)</label><input id="spaceLength" type="number" min="1" step="1" /></div>
+      <div class="field full"><label>Area notes</label><textarea id="spaceNotes" placeholder="Example: mark posts, steps, doors, power, no-table zones..."></textarea></div>
+    </div>
+    <button id="applySpace" class="secondary">Update area size</button>
+
+    <h3>Event info for printout</h3>
+    <div class="form-grid">
+      <div class="field"><label>Customer</label><input id="customerName" placeholder="Name" /></div>
+      <div class="field"><label>Event date</label><input id="eventDate" type="date" /></div>
+      <div class="field"><label>Guest count</label><input id="guestCount" type="number" min="0" /></div>
+      <div class="field"><label>Event type</label><input id="eventType" placeholder="Wedding, party..." /></div>
+      <div class="field full"><label>Customer notes</label><textarea id="customerNotes" placeholder="Special requests, timing, access, vendor notes..."></textarea></div>
+    </div>
+  </aside>
+
+  <main class="stage-card">
+    <div class="print-summary" id="printSummary"></div>
+    <div class="stage-toolbar">
+      <div class="toolbar-left">
+        <span class="badge">Drag items on grid</span>
+        <span class="badge">1 grid square = 1 ft</span>
+        <span class="badge"><span class="kbd">R</span> rotate</span>
+        <span class="badge"><span class="kbd">Del</span> delete</span>
+      </div>
+      <div class="toolbar-right">
+        <button id="rotateBtn" class="secondary small">Rotate</button>
+        <button id="duplicateBtn" class="secondary small">Duplicate</button>
+        <button id="deleteBtn" class="danger small">Delete</button>
+        <button id="clearBtn" class="danger small">Clear area</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <svg id="canvas" class="layout-canvas" aria-label="Interactive layout canvas"></svg>
+    </div>
+    <div class="hint">Tip: use the same planner on the website, then print the finished layout for the event file. For paper-only customers, print a blank worksheet.</div>
+  </main>
+
+  <aside class="panel right-panel">
+    <h2>Add rentals</h2>
+    <button class="palette" data-add="round60">60&quot; round table <span>8 seats</span></button>
+    <button class="palette" data-add="rect8">8 ft rectangle table <span>8 seats</span></button>
+    <button class="palette" data-add="rect6">6 ft rectangle table <span>6 seats</span></button>
+    <button class="palette" data-add="dance">Dance floor <span>12 × 12</span></button>
+    <button class="palette" data-add="buffet">Buffet / bar <span>8 × 3</span></button>
+    <button class="palette" data-add="dj">DJ / band <span>10 × 8</span></button>
+    <button class="palette" data-add="stage">Stage <span>16 × 8</span></button>
+    <button class="palette" data-add="ceremony">Ceremony rows <span>20 seats</span></button>
+    <button class="palette" data-add="entrance">Entrance / exit <span>marker</span></button>
+
+    <div class="custom-item-box">
+      <h3 style="margin-top:0">Custom item</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Label</label><input id="customLabel" placeholder="Photo booth, dessert table..." /></div>
+        <div class="field"><label>W ft</label><input id="customW" type="number" min="1" value="8" /></div>
+        <div class="field"><label>L ft</label><input id="customD" type="number" min="1" value="4" /></div>
+        <div class="field"><label>Seats</label><input id="customSeats" type="number" min="0" value="0" /></div>
+        <div class="field"><label>Shape</label><select id="customShape"><option value="rect">Rectangle</option><option value="round">Round</option></select></div>
+      </div>
+      <button id="addCustom" class="secondary">Add custom item</button>
+    </div>
+
+    <h3>Counts</h3>
+    <div class="stats">
+      <div class="stat"><b id="seatCount">0</b><span>Total seats</span></div>
+      <div class="stat"><b id="tableCount">0</b><span>Tables</span></div>
+      <div class="stat"><b id="itemCount">0</b><span>Items</span></div>
+      <div class="stat"><b id="areaSize">0</b><span>Square feet</span></div>
+    </div>
+    <div id="warnings"></div>
+
+    <h3>Items in this area</h3>
+    <div id="itemList" class="item-list"></div>
+
+    <h3>Save / load</h3>
+    <div class="file-row">
+      <button id="saveBrowser" class="secondary small">Add to event packet</button>
+      <button id="downloadJson" class="secondary small">Download layout</button>
+      <input id="uploadJson" type="file" accept="application/json" />
+    </div>
+
+    <h3>Website handoff</h3>
+    <div class="website-note">
+      This single HTML file can be used as a prototype for your website. A developer can embed it, connect the final layout data to your quote/request form, and keep the same print/PDF mode for customers who prefer paperwork.
+    </div>
+  </aside>
+</div>
+
+<section id="printAll" class="print-all"></section>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const STORAGE_KEY = 'rentalSpaceLayoutPlanner_v1';
+const defaultSpaces = [
+  {id:'tent', name:'40 x 60 Event Tent', width:40, length:60, notes:'Known tent size. Mark tent openings, buffet, DJ, dance floor, tables, and service access.', items:[]},
+  {id:'clubhouse', name:'Clubhouse', width:40, length:30, notes:'Placeholder size. Update with exact clubhouse dimensions, doors, walls, fixed counters, columns, and no-table zones.', items:[]},
+  {id:'patio', name:'Patio', width:50, length:30, notes:'Placeholder size. Update with exact patio dimensions, steps, railings, planters, and permanent furniture.', items:[]},
+  {id:'coveredPatio', name:'Covered Patio', width:40, length:25, notes:'Placeholder size. Update with exact covered patio dimensions, posts/columns, roof edge, power, heaters/fans, and service access.', items:[]},
+  {id:'openField', name:'Open Field', width:100, length:80, notes:'Placeholder size. Update with usable field dimensions, slopes, wet areas, generator/power, vendor access, ceremony area, parking, and tent locations.', items:[]}
+];
+const templates = {
+  round60:{label:'60 in round + 8 chairs', w:10, d:10, seats:8, kind:'round', table:true},
+  rect8:{label:'8 ft rectangle + chairs', w:10, d:6, seats:8, kind:'rectTable', table:true, tableW:8, tableD:2.5},
+  rect6:{label:'6 ft rectangle + chairs', w:8, d:6, seats:6, kind:'rectTable', table:true, tableW:6, tableD:2.5},
+  dance:{label:'Dance floor', w:12, d:12, seats:0, kind:'dance'},
+  buffet:{label:'Buffet / bar', w:8, d:3, seats:0, kind:'bar'},
+  dj:{label:'DJ / band', w:10, d:8, seats:0, kind:'dj'},
+  stage:{label:'Stage', w:16, d:8, seats:0, kind:'stage'},
+  ceremony:{label:'Ceremony chair rows', w:20, d:14, seats:20, kind:'ceremony'},
+  entrance:{label:'Entrance / exit', w:8, d:2, seats:0, kind:'marker'}
+};
+let state = {
+  active:'tent',
+  event:{customerName:'', eventDate:'', guestCount:'', eventType:'', customerNotes:''},
+  spaces: JSON.parse(JSON.stringify(defaultSpaces))
+};
+let selectedId = null;
+let drag = null;
+const $ = (id)=>document.getElementById(id);
+const canvas = $('canvas');
+function currentSpace(){return state.spaces.find(s=>s.id===state.active)}
+function uid(){return 'i'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3)}
+function esc(s){return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function init(){
+
+  bind(); renderAll();
+}
+function bind(){
+  $('addArea').addEventListener('click',()=>{if(state.spaces.length>=15){alert('Up to 15 rental areas per event.');return;}const name=prompt('Rental area name');if(!name)return;const area={id:uid(),name:name.slice(0,120),width:40,length:40,notes:'Placeholder dimensions. Confirm the actual venue dimensions and fixed features before use.',items:[]};state.spaces.push(area);state.active=area.id;selectedId=null;saveQuiet();renderAll();});
+  $('tabs').addEventListener('click', e=>{const btn=e.target.closest('[data-space]'); if(!btn) return; state.active=btn.dataset.space; selectedId=null; syncInputs(); renderAll();});
+  $('applySpace').addEventListener('click', ()=>{const s=currentSpace(); s.name=$('spaceName').value.trim()||s.name; s.width=Math.max(1,+$('spaceWidth').value||s.width); s.length=Math.max(1,+$('spaceLength').value||s.length); s.notes=$('spaceNotes').value; saveQuiet(); renderAll();});
+  ['customerName','eventDate','guestCount','eventType','customerNotes'].forEach(id=>$(id).addEventListener('input',()=>{state.event[id]=$(id).value; saveQuiet(); renderStats();}));
+  document.querySelectorAll('[data-add]').forEach(btn=>btn.addEventListener('click',()=>addItem(btn.dataset.add)));
+  $('addCustom').addEventListener('click', addCustomItem);
+  $('rotateBtn').addEventListener('click', rotateSelected);
+  $('duplicateBtn').addEventListener('click', duplicateSelected);
+  $('deleteBtn').addEventListener('click', deleteSelected);
+  $('clearBtn').addEventListener('click', ()=>{if(confirm('Clear all items from this area?')){currentSpace().items=[]; selectedId=null; saveQuiet(); renderAll();}});
+  $('saveBrowser').addEventListener('click', ()=>{saveQuiet(); alert('Layout added to the event packet draft. Use Save event packet to save it to the event.');});
+  $('downloadJson').addEventListener('click', downloadJson);
+  $('uploadJson').addEventListener('change', uploadJson);
+  $('printBtn').addEventListener('click', ()=>{preparePrintSummary(); document.body.classList.remove('blank-print','printing-all-blanks'); window.print();});
+  $('blankBtn').addEventListener('click', ()=>{preparePrintSummary(true); document.body.classList.add('blank-print'); document.body.classList.remove('printing-all-blanks'); window.print(); setTimeout(()=>document.body.classList.remove('blank-print'),500);});
+  $('blankAllBtn').addEventListener('click', ()=>{buildAllBlankWorksheets(); document.body.classList.add('printing-all-blanks'); document.body.classList.remove('blank-print'); window.print(); setTimeout(()=>document.body.classList.remove('printing-all-blanks'),500);});
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  window.addEventListener('keydown', e=>{
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    if(e.key==='Delete' || e.key==='Backspace') deleteSelected();
+    if(e.key.toLowerCase()==='r') rotateSelected();
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='d'){e.preventDefault(); duplicateSelected();}
+  });
+}
+function saveQuiet(){window.parent.postMessage({type:'chgc-layout-changed',state},'*');}
+function syncInputs(){
+  const s=currentSpace();
+  $('spaceName').value=s.name; $('spaceWidth').value=s.width; $('spaceLength').value=s.length; $('spaceNotes').value=s.notes||'';
+  Object.keys(state.event).forEach(k=>{if($(k)) $(k).value=state.event[k]||''});
+}
+function renderAll(){renderTabs(); syncInputs(); renderCanvas(); renderStats();}
+function renderTabs(){
+  $('tabs').innerHTML = state.spaces.map(s=>`<button class="tab ${s.id===state.active?'active':''}" data-space="${s.id}"><span><b>${esc(s.name)}</b><span>${s.width} × ${s.length} ft</span></span><span>${s.items.length} item${s.items.length===1?'':'s'}</span></button>`).join('');
+}
+function svgEl(name, attrs={}){const el=document.createElementNS(NS,name); for(const [k,v] of Object.entries(attrs)){el.setAttribute(k,v)} return el;}
+function renderCanvas(){
+  const s=currentSpace();
+  canvas.setAttribute('viewBox', `-2 -2 ${s.width+4} ${s.length+4}`);
+  canvas.innerHTML='';
+  const defs=svgEl('defs');
+  const minor=svgEl('pattern',{id:'minorGrid',width:'1',height:'1',patternUnits:'userSpaceOnUse'});
+  minor.appendChild(svgEl('path',{d:'M 1 0 L 0 0 0 1',fill:'none',stroke:'rgba(23,32,51,.10)','stroke-width':'.035'}));
+  const major=svgEl('pattern',{id:'majorGrid',width:'5',height:'5',patternUnits:'userSpaceOnUse'});
+  major.appendChild(svgEl('path',{d:'M 5 0 L 0 0 0 5',fill:'none',stroke:'rgba(31,111,235,.32)','stroke-width':'.08'}));
+  defs.append(minor,major); canvas.appendChild(defs);
+  canvas.appendChild(svgEl('rect',{x:0,y:0,width:s.width,height:s.length,fill:'#fff'}));
+  canvas.appendChild(svgEl('rect',{x:0,y:0,width:s.width,height:s.length,fill:'url(#minorGrid)'}));
+  canvas.appendChild(svgEl('rect',{x:0,y:0,width:s.width,height:s.length,fill:'url(#majorGrid)'}));
+  canvas.appendChild(svgEl('rect',{x:0,y:0,width:s.width,height:s.length,fill:'none',stroke:'#172033','stroke-width':'.18'}));
+  const topText=svgEl('text',{x:s.width/2,y:-.65,'text-anchor':'middle','font-size':'1.2',fill:'#172033','font-weight':'700'}); topText.textContent=s.width+' ft wide'; canvas.appendChild(topText);
+  const sideText=svgEl('text',{x:-.85,y:s.length/2,transform:`rotate(-90 -.85 ${s.length/2})`,'text-anchor':'middle','font-size':'1.2',fill:'#172033','font-weight':'700'}); sideText.textContent=s.length+' ft long'; canvas.appendChild(sideText);
+  const layer=svgEl('g',{id:'itemsLayer'}); canvas.appendChild(layer);
+  s.items.forEach(item=>layer.appendChild(drawItem(item)));
+}
+function drawItem(item){
+  const g=svgEl('g',{transform:`translate(${item.x} ${item.y}) rotate(${item.rot||0})`, 'data-id':item.id, tabindex:'0', role:'button', 'aria-label':item.label});
+  g.style.cursor='grab';
+  const selected = item.id===selectedId;
+  const sw = selected ? .18 : .08;
+  const stroke = selected ? '#1f6feb' : '#243047';
+  const fill = selected ? '#eaf3ff' : '#f7f9fd';
+  if(item.kind==='round'){
+    g.appendChild(svgEl('circle',{cx:0,cy:0,r:item.w/2,fill,stroke, 'stroke-width':sw, 'stroke-dasharray':'0.45 0.25'}));
+    g.appendChild(svgEl('circle',{cx:0,cy:0,r:2.5,fill:'#fff',stroke:'#172033','stroke-width':.08}));
+    for(let a=0;a<360;a+=45){const rad=a*Math.PI/180; const cx=Math.cos(rad)*3.85; const cy=Math.sin(rad)*3.85; g.appendChild(svgEl('circle',{cx,cy,r:.32,fill:'#172033'}));}
+  } else if(item.kind==='rectTable'){
+    g.appendChild(svgEl('rect',{x:-item.w/2,y:-item.d/2,width:item.w,height:item.d,rx:.35,fill,stroke, 'stroke-width':sw, 'stroke-dasharray':'0.45 0.25'}));
+    g.appendChild(svgEl('rect',{x:-(item.tableW||item.w*.75)/2,y:-(item.tableD||2.5)/2,width:item.tableW||item.w*.75,height:item.tableD||2.5,rx:.18,fill:'#fff',stroke:'#172033','stroke-width':.08}));
+    const count = Math.max(2, Math.round((item.tableW||item.w*.75)/2));
+    for(let i=0;i<count;i++){const x=-(item.tableW||item.w*.75)/2 + (i+.5)*((item.tableW||item.w*.75)/count); g.appendChild(svgEl('rect',{x:x-.18,y:-item.d/2+.22,width:.36,height:.28,fill:'#172033'})); g.appendChild(svgEl('rect',{x:x-.18,y:item.d/2-.5,width:.36,height:.28,fill:'#172033'}));}
+  } else if(item.kind==='dance'){
+    g.appendChild(svgEl('rect',{x:-item.w/2,y:-item.d/2,width:item.w,height:item.d,fill:'#f4f6fa',stroke, 'stroke-width':sw}));
+    for(let x=-item.w/2;x<=item.w/2;x+=3) g.appendChild(svgEl('line',{x1:x,y1:-item.d/2,x2:x,y2:item.d/2,stroke:'#c9d1df','stroke-width':.04}));
+    for(let y=-item.d/2;y<=item.d/2;y+=3) g.appendChild(svgEl('line',{x1:-item.w/2,y1:y,x2:item.w/2,y2:y,stroke:'#c9d1df','stroke-width':.04}));
+  } else if(item.kind==='marker'){
+    g.appendChild(svgEl('rect',{x:-item.w/2,y:-item.d/2,width:item.w,height:item.d,rx:.2,fill:'#e8fff0',stroke:'#157f3b','stroke-width':selected?.16:.08}));
+  } else if(item.kind==='ceremony'){
+    g.appendChild(svgEl('rect',{x:-item.w/2,y:-item.d/2,width:item.w,height:item.d,rx:.4,fill,stroke,'stroke-width':sw}));
+    for(let r=0;r<4;r++){for(let c=0;c<5;c++){g.appendChild(svgEl('circle',{cx:-item.w/2+2+c*4,cy:-item.d/2+2+r*3,r:.32,fill:'#172033'}));}}
+  } else {
+    g.appendChild(svgEl('rect',{x:-item.w/2,y:-item.d/2,width:item.w,height:item.d,rx:.35,fill,stroke,'stroke-width':sw}));
+  }
+  const text=svgEl('text',{x:0,y:.25,'text-anchor':'middle','font-size':Math.min(1.15, Math.max(.62, item.w/10)),fill:'#172033','font-weight':'700',style:'pointer-events:none'}); text.textContent=item.label; g.appendChild(text);
+  const sub=svgEl('text',{x:0,y:1.35,'text-anchor':'middle','font-size':'.7',fill:'#657086',style:'pointer-events:none'}); sub.textContent=`${item.w}×${item.d} ft${item.seats?` / ${item.seats} seats`:''}`; g.appendChild(sub);
+  g.addEventListener('pointerdown', startDrag);
+  g.addEventListener('click', e=>{e.stopPropagation(); selectedId=item.id; renderAll();});
+  return g;
+}
+canvas.addEventListener('click', ()=>{selectedId=null; renderAll();});
+function addItem(type){
+  const s=currentSpace(); const t=templates[type]; if(!t) return;
+  const item={...t,id:uid(),x:Math.min(s.width/2, Math.max(t.w/2, 8 + Math.random()*4)), y:Math.min(s.length/2, Math.max(t.d/2, 8 + Math.random()*4)), rot:0};
+  s.items.push(item); selectedId=item.id; saveQuiet(); renderAll();
+}
+function addCustomItem(){
+  const s=currentSpace(); const label=$('customLabel').value.trim()||'Custom item'; const w=Math.max(1,+$('customW').value||8); const d=Math.max(1,+$('customD').value||4); const seats=Math.max(0,+$('customSeats').value||0); const shape=$('customShape').value;
+  const item={id:uid(),label,w,d,seats,kind:shape==='round'?'round':'custom',x:s.width/2,y:s.length/2,rot:0,table:false};
+  s.items.push(item); selectedId=item.id; saveQuiet(); renderAll();
+}
+function selectedItem(){const s=currentSpace(); return s.items.find(i=>i.id===selectedId)}
+function rotateSelected(){const item=selectedItem(); if(!item) return; item.rot=((item.rot||0)+15)%360; saveQuiet(); renderAll();}
+function duplicateSelected(){const s=currentSpace(); const item=selectedItem(); if(!item) return; const copy={...item,id:uid(),x:Math.min(s.width, item.x+2),y:Math.min(s.length,item.y+2),label:item.label}; s.items.push(copy); selectedId=copy.id; saveQuiet(); renderAll();}
+function deleteSelected(){const s=currentSpace(); if(!selectedId) return; s.items=s.items.filter(i=>i.id!==selectedId); selectedId=null; saveQuiet(); renderAll();}
+function getSvgPoint(evt){const pt=canvas.createSVGPoint(); pt.x=evt.clientX; pt.y=evt.clientY; return pt.matrixTransform(canvas.getScreenCTM().inverse());}
+function startDrag(evt){evt.stopPropagation(); const id=evt.currentTarget.dataset.id; selectedId=id; const item=selectedItem(); const p=getSvgPoint(evt); drag={id,dx:p.x-item.x,dy:p.y-item.y}; canvas.setPointerCapture(evt.pointerId); renderAll();}
+function onPointerMove(evt){if(!drag) return; const s=currentSpace(); const item=s.items.find(i=>i.id===drag.id); if(!item) return; const p=getSvgPoint(evt); let x=p.x-drag.dx; let y=p.y-drag.dy; x=Math.round(x*2)/2; y=Math.round(y*2)/2; item.x=Math.max(0,Math.min(s.width,x)); item.y=Math.max(0,Math.min(s.length,y)); renderCanvas(); renderStats();}
+function endDrag(evt){if(drag){drag=null; saveQuiet(); renderAll();}}
+function approxOutside(item,s){return item.x-item.w/2<0 || item.y-item.d/2<0 || item.x+item.w/2>s.width || item.y+item.d/2>s.length;}
+function renderStats(){
+  const s=currentSpace(); const seats=s.items.reduce((sum,i)=>sum+(+i.seats||0),0); const tables=s.items.filter(i=>i.table).length;
+  $('seatCount').textContent=seats; $('tableCount').textContent=tables; $('itemCount').textContent=s.items.length; $('areaSize').textContent=(s.width*s.length).toLocaleString();
+  const outside=s.items.filter(i=>approxOutside(i,s)); const guest=+state.event.guestCount||0; let html='';
+  if(outside.length) html+=`<div class="warning">${outside.length} item${outside.length===1?' is':'s are'} partly outside the area. Move or resize before final approval.</div>`;
+  if(guest && seats < guest) html+=`<div class="warning">Seat count is below guest count by ${guest-seats}.</div>`;
+  if(!outside.length && (!guest || seats>=guest)) html+=`<div class="ok">Review clearances, rotated objects, accessibility, exits and venue rules before approval.</div>`;
+  $('warnings').innerHTML=html;
+  $('itemList').innerHTML=s.items.length?s.items.map(i=>`<div class="item-row ${i.id===selectedId?'active':''}" data-row="${i.id}"><div><b>${esc(i.label)}</b><br><span class="muted">${i.w}×${i.d} ft${i.seats?` · ${i.seats} seats`:''}</span></div><button class="secondary small" onclick="selectById('${i.id}')">Select</button></div>`).join(''):'<div class="item-row"><span class="muted">No items added yet.</span></div>';
+  renderTabs();
+}
+window.selectById=function(id){selectedId=id; renderAll();}
+function preparePrintSummary(blank=false){
+  const s=currentSpace(); const seats=s.items.reduce((sum,i)=>sum+(+i.seats||0),0); const tables=s.items.filter(i=>i.table).length;
+  $('printSummary').innerHTML=`<h1>${blank?'Blank worksheet: ':''}${esc(s.name)} Layout</h1><div class="line"><p><b>Customer:</b> ${esc(state.event.customerName)||'________________'}</p><p><b>Event date:</b> ${esc(state.event.eventDate)||'________________'}</p><p><b>Guest count:</b> ${esc(state.event.guestCount)||'____'}</p><p><b>Area:</b> ${s.width} × ${s.length} ft</p><p><b>Seats shown:</b> ${blank?'____':seats}</p><p><b>Tables:</b> ${blank?'____':tables}</p></div><p><b>Notes:</b> ${esc(state.event.customerNotes||s.notes||'')}</p><div class="item-list-print">${s.items.map(i=>`<div>${esc(i.label)} - ${i.w}×${i.d} ft${i.seats?` - ${i.seats} seats`:''}</div>`).join('')}</div>`;
+}
+function buildAllBlankWorksheets(){
+  $('printAll').innerHTML = state.spaces.map(s=>`<section class="blank-page"><h1>${esc(s.name)} Blank Layout Worksheet</h1><p><b>Customer:</b> ____________________ &nbsp; <b>Event date:</b> ____________________ &nbsp; <b>Guest count:</b> ______ &nbsp; <b>Area:</b> ${s.width} × ${s.length} ft</p><p>${esc(s.notes||'')}</p>${svgMarkup(s)}<div class="notes-lines"><b>Notes / special instructions:</b><div></div><div></div><div></div></div></section>`).join('');
+}
+function svgMarkup(s){
+  return `<svg class="worksheet-svg" viewBox="0 0 ${s.width} ${s.length}" role="img"><defs><pattern id="m${s.id}" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M 1 0 L 0 0 0 1" fill="none" stroke="rgba(23,32,51,.14)" stroke-width=".035"/></pattern><pattern id="M${s.id}" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M 5 0 L 0 0 0 5" fill="none" stroke="rgba(31,111,235,.38)" stroke-width=".08"/></pattern></defs><rect x="0" y="0" width="${s.width}" height="${s.length}" fill="white"/><rect x="0" y="0" width="${s.width}" height="${s.length}" fill="url(#m${s.id})"/><rect x="0" y="0" width="${s.width}" height="${s.length}" fill="url(#M${s.id})"/><rect x="0" y="0" width="${s.width}" height="${s.length}" fill="none" stroke="#172033" stroke-width=".22"/></svg>`;
+}
+function downloadJson(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='event-layout-planner.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+}
+function uploadJson(evt){
+  const file=evt.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{try{state=validateState(JSON.parse(reader.result)); selectedId=null; saveQuiet(); renderAll();}catch(e){alert('Could not load that layout file.')}}; reader.readAsText(file);
+}
+init();
+function validateState(input){
+ if(!input || !Array.isArray(input.spaces) || !input.spaces.length || input.spaces.length>15) throw Error('Invalid rental layout');
+ const n=(v,min,max,fallback)=>Number.isFinite(Number(v))?Math.max(min,Math.min(max,Number(v))):fallback;
+ const t=(v,max=1500)=>String(v??'').slice(0,max);
+ const spaces=input.spaces.map((s,i)=>({id:'area-'+i,name:t(s.name,120),width:n(s.width,1,1000,40),length:n(s.length,1,1000,60),notes:t(s.notes),items:(Array.isArray(s.items)?s.items:[]).slice(0,300).map((v,j)=>({id:'item-'+j,label:t(v.label,120),w:n(v.w,1,200,8),d:n(v.d,1,200,4),x:n(v.x,0,1000,10),y:n(v.y,0,1000,10),rot:n(v.rot,0,360,0),seats:n(v.seats,0,100,0),kind:['round','rectTable','dance','bar','dj','stage','ceremony','marker','custom'].includes(v.kind)?v.kind:'custom',table:v.table===true,tableW:n(v.tableW,1,200,8),tableD:n(v.tableD,1,200,2.5)}))}));
+ const oldIndex=input.spaces.findIndex(s=>s.id===input.active);
+ return {active:spaces[Math.max(0,oldIndex)].id,event:{customerName:t(input.event?.customerName),eventDate:t(input.event?.eventDate,10),guestCount:t(input.event?.guestCount,10),eventType:t(input.event?.eventType),customerNotes:t(input.event?.customerNotes)},spaces};
+}
+window.addEventListener('message',e=>{if(e.source!==window.parent || e.data?.type!=='chgc-layout-load')return;try{if(e.data.state)state=validateState(e.data.state);if(e.data.event)state.event={...state.event,...e.data.event};selectedId=null;renderAll();}catch{alert('Could not restore that rental layout.');}});
+window.parent.postMessage({type:'chgc-layout-ready'},'*');
+
+</script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+.ia-app {
+  color: #eef4ff;
+  max-width: 1400px;
+  background: #071527;
+  padding: 24px clamp(16px, 3vw, 36px);
+  box-sizing: border-box;
+  border-radius: 16px;
+}
+.ia-app > * { min-width: 0; max-width: 100%; }
+.ia-app .platform-secondary-button { background: #223551; color: #eef4ff; border-color: #7183a2; }
+.ia-table-wrap { min-width: 0; max-width: 100%; }
+.ia-header,
+.ia-start,
+.ia-library-heading,
+.ia-project-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.ia-header {
+  padding: 26px 0 30px;
+  border-bottom: 2px solid #ffffff20;
+  margin-bottom: 30px;
+}
+.ia-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.ia-mark {
+  display: grid;
+  place-items: center;
+  background: #1d245d;
+  color: white;
+  font-size: 24px;
+  font-weight: 900;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  border-bottom: 5px solid #d81c22;
+}
+.ia-wordmark p,
+.ia-kicker {
+  margin: 0 0 5px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.ia-wordmark h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.035em;
+}
+.ia-start h2,
+.ia-library h2 {
+  margin: 4px 0;
+  font-size: 28px;
+}
+.ia-actions,
+.ia-library-controls,
+.ia-editor-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.ia-materials {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 36px;
+}
+.ia-material {
+  min-height: 185px;
+  text-align: left;
+  padding: 22px;
+  border: 1px solid #ffffff26;
+  border-radius: 14px;
+  background: #12213b;
+  color: #eef4ff;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 4px 12px #1d245d09;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+.ia-material:hover {
+  transform: translateY(-3px);
+  border-color: #91a3b7;
+}
+.ia-material strong {
+  font-size: 21px;
+}
+.ia-material > span:not(.ia-material-code) {
+  font-size: 14px;
+  color: #b7c5d8;
+  line-height: 1.5;
+}
+.ia-material b {
+  font-size: 14px;
+  color: #fda4af;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.ia-material-code {
+  width: 38px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: #ffffff12;
+  border-radius: 7px;
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.ia-material-flyer {
+  background: #1d245d;
+  color: white;
+  border-color: #8895d6;
+}
+.ia-material-flyer > span:not(.ia-material-code) {
+  color: #e1e2ee;
+}
+.ia-material-flyer b {
+  color: white;
+}
+.ia-material-flyer .ia-material-code {
+  background: #ffffff20;
+  color: white;
+}
+.ia-new-project {
+  padding: 24px;
+  border: 2px solid #7183a2;
+  border-radius: 14px;
+  background: #12213b;
+  margin: 0 0 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.ia-new-project h2,
+.ia-new-project .ia-actions,
+.ia-new-project p {
+  grid-column: 1/-1;
+  margin: 0;
+}
+.ia-app label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 0;
+}
+.ia-app input:not([type="checkbox"]),
+.ia-app textarea,
+.ia-app select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-weight: 400;
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid #7183a2;
+  border-radius: 7px;
+  background: #0d2037;
+  color: #eef4ff;
+  box-sizing: border-box;
+}
+.ia-app textarea {
+  resize: vertical;
+}
+.ia-app input::placeholder,
+.ia-app textarea::placeholder {
+  color: #a9b8cc;
+}
+.ia-app p {
+  line-height: 1.6;
+}
+.ia-library {
+  background: #12213b;
+  border: 1px solid #ffffff26;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.ia-library-heading > span {
+  font-size: 14px;
+  color: #b7c5d8;
+}
+.ia-library-controls {
+  margin: 22px 0;
+}
+.ia-library-controls label:first-child {
+  flex: 1;
+}
+.ia-empty {
+  padding: 35px 10px;
+  border-top: 1px solid #ffffff20;
+  text-align: center;
+}
+.ia-empty strong {
+  font-size: 20px;
+}
+.ia-empty p {
+  margin: 7px 0 0;
+  color: #b7c5d8;
+  font-size: 16px;
+}
+.ia-table-wrap {
+  overflow: auto;
+}
+.ia-library table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ia-library td,
+.ia-library th {
+  padding: 14px 10px;
+  text-align: left;
+  border-bottom: 1px solid #ffffff20;
+  font-size: 14px;
+}
+.ia-library th button {
+  border: 0;
+  background: transparent;
+  color: #eef4ff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+.ia-project-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  color: #eef4ff;
+  cursor: pointer;
+}
+.ia-project-link .ia-thumbnail {
+  width: 48px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #f0f1f7;
+}
+.ia-project-link strong {
+  font-size: 16px;
+}
+.ia-project-link small {
+  display: block;
+  margin-top: 4px;
+  color: #b7c5d8;
+  font-size: 13px;
+}
+.ia-status {
+  text-transform: capitalize;
+  background: #223551;
+  padding: 5px 9px;
+  border-radius: 5px;
+}
+.ia-status.approved {
+  background: #173b32;
+  color: #b9f3d5;
+}
+.ia-connections {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 6px 0 30px;
+  font-size: 14px;
+}
+.ia-connections span {
+  color: #b7c5d8;
+}
+.ia-project-bar {
+  background: #12213b;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #ffffff26;
+  margin-bottom: 20px;
+}
+.ia-project-bar > label {
+  flex: 1;
+}
+.ia-project-state {
+  font-size: 14px;
+}
+.ia-project-state strong {
+  display: block;
+  margin-top: 5px;
+}
+.ia-editor-tabs {
+  margin-bottom: 24px;
+}
+.ia-editor-tabs button {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  background: #223551;
+  color: #eef4ff;
+  border: 1px solid #7183a2;
+  border-radius: 7px;
+  padding: 11px 16px;
+  cursor: pointer;
+}
+.ia-editor-tabs button[aria-pressed="true"] {
+  background: #d81c22;
+  color: white;
+}
+.ia-details {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 28px;
+  background: #12213b;
+  padding: 24px;
+  border: 1px solid #ffffff26;
+  border-radius: 12px;
+}
+.ia-details h2 {
+  margin-top: 0;
+  font-size: 23px;
+}
+.ia-details > div {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+.ia-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.ia-check {
+  display: flex !important;
+  align-items: center;
+}
+.ia-proof {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr);
+  gap: 32px;
+  padding: 26px;
+  border: 1px solid #ffffff26;
+  background: #12213b;
+  border-radius: 12px;
+}
+.ia-proof > .ia-thumbnail {
+  width: 100%;
+  max-height: 720px;
+  object-fit: contain;
+  background: #0d2037;
+}
+.ia-proof > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.ia-proof h2,
+.ia-proof p {
+  margin: 0;
+}
+.ia-backup {
+  margin: 22px 0;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 14px;
+}
+.ia-notice {
+  background: #e9f2ee;
+  color: #23523b;
+  border-radius: 7px;
+  padding: 14px;
+}
+.ia-app button:focus-visible {
+  outline: 3px solid #d81c22;
+  outline-offset: 3px;
+}
+.ia-app button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ia-app .creative-inspector {
+  color: #eef4ff;
+}
+.ia-app .creative-inspector label {
+  color: #eef4ff;
+}
+.ia-app .flyer-canvas {
+  max-height: 780px;
+}
+@media (max-width: 950px) {
+  .ia-materials {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ia-project-bar {
+    flex-wrap: wrap;
+  }
+  .ia-project-bar > label {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 650px) {
+  .ia-header,
+  .ia-start,
+  .ia-library-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ia-wordmark h1 {
+    font-size: 28px;
+  }
+  .ia-materials {
+    gap: 10px;
+  }
+  .ia-material {
+    min-height: 175px;
+    padding: 16px;
+  }
+  .ia-material strong {
+    font-size: 18px;
+  }
+  .ia-material > span:not(.ia-material-code) {
+    font-size: 14px;
+  }
+  .ia-new-project,
+  .ia-details,
+  .ia-fields,
+  .ia-proof {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ia-library,
+  .ia-details,
+  .ia-proof {
+    padding: 16px;
+  }
+  .ia-backup {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ia-library-controls label {
+    width: 100%;
+  }
+  .ia-project-bar {
+    gap: 16px;
+  }
+  .ia-connections {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.ia-library-code {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 54px;
+  background: #223551;
+  border-radius: 7px;
+  color: #eef4ff;
+  font-weight: 900;
+  flex-shrink: 0;
+}

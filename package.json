@@ -4,11 +4,15 @@
     "test:recovery": "node --test tests/recovery-session.test.mjs",
     "test:account-security-handler": "node --test tests/account-security-handler.test.mjs",
     "test:session-validity": "node --test tests/session-validity.test.mjs",
-    "build": "npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && vite build",
+    "build": "npm run test:event-builder && npm run test:inception-apex && npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && vite build",
     "preview": "vite preview",
     "test:account-states": "node --test tests/account-state.test.mjs",
     "test:password-visibility": "node --test tests/password-visibility-source.test.mjs",
-    "test:roster-list-controls": "node --test tests/roster-list-controls.test.mjs"
+    "test:roster-list-controls": "node --test tests/roster-list-controls.test.mjs",
+    "test:event-builder": "node --test tests/event-builder.test.mjs",
+    "test:event-builder-browser": "node tests/event-builder-browser.cjs",
+    "test:inception-apex": "node --test tests/inception-apex.test.mjs",
+    "test:inception-apex-browser": "node tests/inception-apex-browser.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",
@@ -19,5 +23,9 @@
     "react-dom": "latest",
     "read-excel-file": "9.3.10",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "playwright": "1.62.1"
   }
 }

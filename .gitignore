@@ -2,3 +2,6 @@ node_modules/
 dist/
 .env*
 .vercel/
+
+supabase/.temp/
+test-results/

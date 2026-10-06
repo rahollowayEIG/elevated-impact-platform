@@ -7,6 +7,7 @@ const STEP_ITEMS = [
   ['pricing', '3', 'Pricing & Add-ons'],
   ['roster', '4', 'Roster / Event Ops'],
   ['hub', '5', 'Event Info / Hub'],
+  ['creative', '6', 'Creative & Event Packet'],
 ];
 
 function blankDivision() {
@@ -76,6 +77,8 @@ export default function EieEventSetupSteps({
   onReload,
 }) {
   const initialSettings = event?.field_settings || {};
+  const generalEvent = initialSettings.event_kind === 'general' || initialSettings.event_type === 'Venue Rental';
+  const venueLocks = initialSettings.venue_locked_fields || [];
   const initialDivisionDetails = Array.isArray(initialSettings.division_details) && initialSettings.division_details.length
     ? initialSettings.division_details
     : (Array.isArray(event?.divisions) ? event.divisions : []).map((name) => ({ name, eligibility: '', description: '' }));
@@ -837,21 +840,21 @@ export default function EieEventSetupSteps({
       <div className="form-grid two">
         <label>Event name<input value={details.name} onChange={(e) => setDetail('name', e.target.value)} /></label>
         <label>Course / location<input value={details.course} onChange={(e) => setDetail('course', e.target.value)} /></label>
-        <label>Day 1<input type="date" value={details.day1} onChange={(e) => setDetail('day1', e.target.value)} /></label>
-        <label>Day 2<input type="date" value={details.day2} onChange={(e) => setDetail('day2', e.target.value)} /></label>
-        <label>Event start time<input type="time" value={details.event_start_time} onChange={(e) => setDetail('event_start_time', e.target.value)} /></label>
-        <label>Maximum participants<input type="number" min="1" value={details.max_golfers} onChange={(e) => setDetail('max_golfers', e.target.value)} placeholder="Unlimited" /></label>
+        <label>Day 1<input type="date" value={details.day1} disabled={venueLocks.includes('confirmed_date')} onChange={(e) => setDetail('day1', e.target.value)} /></label>
+        <label>Day 2<input type="date" value={details.day2} disabled={venueLocks.includes('confirmed_date')} onChange={(e) => setDetail('day2', e.target.value)} /></label>
+        <label>Event start time<input type="time" value={details.event_start_time} disabled={venueLocks.includes('confirmed_start')} onChange={(e) => setDetail('event_start_time', e.target.value)} /></label>
+        <label>Maximum participants<input type="number" min="1" value={details.max_golfers} disabled={venueLocks.includes('confirmed_capacity')} onChange={(e) => setDetail('max_golfers', e.target.value)} placeholder="Unlimited" /></label>
         <label>Event structure<select value={details.structure} onChange={(e) => changeStructure(e.target.value)}><option value="individual">Individual</option><option value="team">Team</option></select></label>
         <label>Event audience<select value={details.event_access} onChange={(e) => setDetail('event_access', e.target.value)}><option value="public">Open / Public</option><option value="members_only">Members Only</option></select></label>
-        <label>Tournament format<input value={details.tournament_format} onChange={(e) => setDetail('tournament_format', e.target.value)} placeholder="Scramble, stroke play, match play..." /></label>
+        <label>{generalEvent ? 'Event format' : 'Tournament format'}<input value={details.tournament_format} onChange={(e) => setDetail('tournament_format', e.target.value)} placeholder={generalEvent ? "Dinner, meeting, celebration, fundraiser..." : "Scramble, stroke play, match play..."} /></label>
         <label className="full-span">Format description<textarea rows="3" value={details.format_description} onChange={(e) => setDetail('format_description', e.target.value)} placeholder="Explain the format in plain language." /></label>
-        <label className="full-span">What players need to know<textarea rows="4" value={details.player_information} onChange={(e) => setDetail('player_information', e.target.value)} placeholder="Eligibility, rules, check-in, dress code, what is included, and other player notes." /></label>
+        <label className="full-span">What participants need to know<textarea rows="4" value={details.player_information} onChange={(e) => setDetail('player_information', e.target.value)} placeholder="Eligibility, rules, check-in, dress code, what is included, and other player notes." /></label>
       </div>
 
       <div className="eie-option-switches">
         <label><input type="checkbox" checked={details.google_calendar_sync_enabled} onChange={(e) => setDetail('google_calendar_sync_enabled', e.target.checked)} /><span><strong>Sync to Hangar Google Calendar</strong><small>You can turn calendar sync on or off after the event is created.</small></span></label>
         <label><input type="checkbox" checked={details.divisions_enabled} onChange={(e) => { setDetail('divisions_enabled', e.target.checked); if (!e.target.checked) setRegistrationField('division', 'hidden'); else if (registration.division === 'hidden') setRegistrationField('division', 'optional'); }} /><span><strong>Use Divisions</strong><small>Division choices flow into registration, roster entry, uploads and exports.</small></span></label>
-        <label><input type="checkbox" checked={details.flights_enabled} onChange={(e) => setDetail('flights_enabled', e.target.checked)} /><span><strong>Use Flights</strong><small>Keep flight organization available for Event Info and scoring workflows.</small></span></label>
+        {!generalEvent && <label><input type="checkbox" checked={details.flights_enabled} onChange={(e) => setDetail('flights_enabled', e.target.checked)} /><span><strong>Use Flights</strong><small>Keep flight organization available for Event Info and scoring workflows.</small></span></label>}
       </div>
 
       {details.divisions_enabled && <div className="eie-builder-block">
@@ -943,15 +946,15 @@ export default function EieEventSetupSteps({
       </div>
 
       <div className="eie-builder-block">
-        <p className="platform-eyebrow">Golfer Information</p>
+        <p className="platform-eyebrow">{generalEvent ? 'Participant Information' : 'Golfer Information'}</p>
         <h3>Required, Optional or Hidden</h3>
         <div className="eie-registration-settings">
           {[
             ['dob', 'Date of Birth'],
             ['gender', 'Gender'],
             ...(details.divisions_enabled ? [['division', 'Division']] : []),
-            ...(details.event_access === 'public' ? [['membership', 'Club Membership Status']] : []),
-            ['ghin', 'GHIN #'],
+            ...(!generalEvent && details.event_access === 'public' ? [['membership', 'Club Membership Status']] : []),
+            ...(!generalEvent ? [['ghin', 'GHIN #']] : []),
           ].map(([key, label]) => <div className="eie-registration-setting" key={key}>
             <strong>{label}</strong>
             <select value={registration[key]} onChange={(e) => setRegistrationField(key, e.target.value)}>

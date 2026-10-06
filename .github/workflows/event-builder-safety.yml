@@ -1,0 +1,51 @@
+name: Event Builder checks
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "api/event-builder.js"
+      - "server/event-builder.cjs"
+      - "src/components/Event*"
+      - "src/components/FlyerEditor.jsx"
+      - "src/components/SponsorBuilder.jsx"
+      - "src/lib/event*"
+      - "src/lib/sponsor*"
+      - "src/lib/inception*"
+      - "src/components/InceptionApex.jsx"
+      - "src/components/inception-apex.css"
+      - "src/PlatformApp.jsx"
+      - "src/EieEventSetupSteps.jsx"
+      - "public/chgc-layout-planner.html"
+      - "supabase/migrations/*event_builder*"
+      - "tests/event-builder*"
+      - "tests/inception-apex*"
+      - "supabase/migrations/*inception_apex*"
+      - "tests/fixtures/event-builder*"
+      - "package*.json"
+      - ".github/workflows/event-builder-safety.yml"
+permissions:
+  contents: read
+jobs:
+  builder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:event-builder-browser
+      - run: npm run test:inception-apex-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: event-builder-browser-evidence
+          path: |
+            test-results/event-builder/
+            test-results/inception-apex/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -10,6 +10,19 @@ InceptionApex is a simple creative app inside ElevationPilot. This draft adds it
 - Personal or event-linked projects, search/filter/sort, favorites, private saves, reopen, compare-and-swap version checks, unsaved-change guards and JSON backup/import. Imports create a new personal project rather than inheriting another event's access context.
 - Saved approval of a specific version; immutable revision history; approved artwork snapshots in an authorized event packet. Further edits clear approval. Packet attachment preserves existing maps, layouts and itinerary and causes stale packet saves to fail.
 - SVG artwork, exact-facts creative briefs and contextual draft production-request exports. No purchase, payment or order is submitted by downloading a request.
+- EIG-only Auto Resizer: destination dropdown, automatic preview, fit with padding or crop with a selected focal point/zoom, custom dimensions, PNG/JPEG/WebP, quality and background controls, and a text field for requested changes with a separate instructions download.
+
+## Auto Resizer rollout and verification
+
+The initial entry point requires a current active `eig_admin` membership in the `elevated-impact-group` organization, with start/end dates checked. An unrelated Pilot/Co-Pilot/ATC/Passenger membership does not grant this tool. Existing platform session verification still precedes the app. This is a browser-local rollout gate: there is no resizer server endpoint, private media service, billable provider or stored media to authorize. If resizing later uploads media, invokes AI or adds paid entitlements, implement server authorization before exposing those services.
+
+Images are selected locally and processed in the browser. No Shopify, Adobe, Canva or AI request is made, and no files are published automatically. Downloads do not modify the source image, project library, event packet or store. No external notification is required; this tool creates no durable platform condition needing a new audit finding.
+
+Shopify's square product/collection preset is 2048 × 2048, following its official product-media guidance: https://help.shopify.com/en/manual/products/product-media/product-media-types. The EIG Hub artwork preset is 1200 × 340, matching the image area in `api/event-image.js`; a separate 1200 × 630 canvas supports website share images. Website hero/card/logo and display presets are labeled starter sizes rather than universal requirements. Users can adjust custom dimensions for the actual layout.
+
+The change-request field preserves the user's wording for the next edit and downloads it with the selected output filename, destination and dimensions. It does not claim that natural-language editing is connected. Notes remain in the open tool until closed; download them to keep a copy.
+
+`test:auto-resizer` checks the rollout gate, expired/revoked/future access, proportional fit, edge-safe focal cropping, dimensions and filenames. `test:auto-resizer-browser` uses real exported pixels to verify destination dimensions, transparent PNG padding, opaque JPEG padding, left/right focal crops, keyboard controls, instructions download, rejected inputs and desktop/mobile behavior. Recheck the existing InceptionApex browser workflow and production build after integration.
 
 ## Database and access
 

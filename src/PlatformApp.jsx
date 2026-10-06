@@ -13,6 +13,7 @@ import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
+import { canUseAutoResizer } from './lib/imageResize.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
@@ -3373,7 +3374,7 @@ export default function App() {
     <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {portalView === 'inception'
-        ? <React.Suspense fallback={<LoadingScreen message="Opening InceptionApex…" />}><InceptionApex key={session.user.id + ':' + inceptionEventId} initialEventId={inceptionEventId} onBack={closeInception} onDirtyChange={setInceptionDirty} /></React.Suspense>
+        ? <React.Suspense fallback={<LoadingScreen message="Opening InceptionApex…" />}><InceptionApex key={session.user.id + ':' + inceptionEventId} initialEventId={inceptionEventId} onBack={closeInception} onDirtyChange={setInceptionDirty} canUseResizer={canUseAutoResizer(memberships)} /></React.Suspense>
         : portalView === 'chooser'
         ? <PortalChooser profile={profile} passenger={passenger} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />
         : portalView === 'atc_select'

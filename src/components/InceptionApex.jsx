@@ -20,6 +20,8 @@ import {
 } from "../lib/eventCreative.mjs";
 import "./inception-apex.css";
 
+const AutoResizer = React.lazy(() => import("./AutoResizer.jsx"));
+
 const LABELS = {
   name: "Headline",
   date: "Date",
@@ -72,7 +74,9 @@ export default function InceptionApex({
   store = inceptionStore,
   onBack,
   onDirtyChange,
+  canUseResizer = false,
 }) {
+  const [resizerOpen, setResizerOpen] = useState(false);
   const [projects, setProjects] = useState([]),
     [events, setEvents] = useState([]),
     [project, setProject] = useState(null);
@@ -330,6 +334,7 @@ export default function InceptionApex({
   function closeProject() {
     if (!leave()) return;
     setProject(null);
+    setResizerOpen(false);
     setDirty(false);
     setPlanner(null);
     setPlannerDirty(false);
@@ -350,7 +355,7 @@ export default function InceptionApex({
           </div>
         </div>
         <div className="ia-actions">
-          {(project || planner) && (
+          {(project || planner || (resizerOpen && canUseResizer)) && (
             <button
               type="button"
               className="platform-secondary-button"
@@ -386,7 +391,11 @@ export default function InceptionApex({
       )}
       {loading && <p role="status">Opening your design workspace…</p>}
       {busy && !project && <p role="status">Opening design…</p>}
-      {planner ? (
+      {resizerOpen && canUseResizer ? (
+        <React.Suspense fallback={<p role="status">Opening Auto Resizer…</p>}>
+          <AutoResizer allowed={canUseResizer} />
+        </React.Suspense>
+      ) : planner ? (
         <EventPacketStudio event={planner} onDirtyChange={setPlannerDirty} />
       ) : project ? (
         <>
@@ -486,8 +495,8 @@ export default function InceptionApex({
                       {LABELS[key]}
                       <textarea
                         rows={key === "description" ? 3 : 1}
-                      maxLength={1500}
-                      aria-label={LABELS[key]}
+                        maxLength={1500}
+                        aria-label={LABELS[key]}
                         value={project.data.facts[key] || ""}
                         onChange={(e) =>
                           changeData({
@@ -509,8 +518,8 @@ export default function InceptionApex({
                   Creative direction
                   <textarea
                     rows={5}
-                  maxLength={4000}
-                  aria-label="Creative direction"
+                    maxLength={4000}
+                    aria-label="Creative direction"
                     placeholder="Style, colors, mood, and details you love"
                     value={project.data.brief}
                     onChange={(e) =>
@@ -811,6 +820,29 @@ export default function InceptionApex({
                   </p>
                 )}
               </form>
+            )}
+            {canUseResizer && (
+              <section className="ia-team-tools" aria-label="EIG team tools">
+                <div>
+                  <p className="ia-kicker">EIG TEAM TOOLS</p>
+                  <h2>Auto Resizer</h2>
+                  <p>
+                    Prepare images for Shopify, the EIG website and displays.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="platform-primary-button"
+                  onClick={() => {
+                    setResizerOpen(true);
+                    setNotice("");
+                    setError("");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Open Auto Resizer
+                </button>
+              </section>
             )}
             <section className="ia-library">
               <div className="ia-library-heading">

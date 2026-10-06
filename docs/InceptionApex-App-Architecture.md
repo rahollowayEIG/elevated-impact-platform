@@ -50,6 +50,8 @@ The implementation branch now includes a standalone InceptionApex dashboard with
 
 The first version supports flyers, invitations, sponsor signs, banners, swag artwork, book covers and digital displays. Maps and venue layouts open the event's existing planning tools. Users can upload raster backgrounds and separate logos/photos, edit artwork and exact event facts, save favorites, reopen versioned projects, approve a saved version and attach it to the authorized event packet. Approved artwork can be exported as a contextual draft production request; this does not create an order.
 
+Auto Resizer is initially an EIG team tool inside InceptionApex. Offer it only to current active `eig_admin` memberships in the Elevated Impact Group organization, using the existing authenticated session. Other app users do not see its entry point. It prepares local images for Shopify, EIG website slots, displays or custom dimensions, with fit/crop controls and downloadable change instructions. Broader customer availability remains a later rollout decision. These instructions do not automatically trigger AI edits.
+
 Private project storage, immutable revision history and approval/packet handoff migrations are implemented and tested locally. They have not been applied to the live database. Provider connections are visibly pending. Background AI generation, selected-product mockups, multipage books, proof messaging and live EIC catalog/checkout remain to be connected and verified.
 
 See `InceptionApex-Implementation-Audit.md` for validation and release setup. Expand the shared workspace without presenting unconnected integrations as live features.

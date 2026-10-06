@@ -11,6 +11,9 @@ on:
       - "src/lib/event*"
       - "src/lib/sponsor*"
       - "src/lib/inception*"
+      - "src/lib/imageResize.mjs"
+      - "src/components/AutoResizer.jsx"
+      - "src/components/auto-resizer.css"
       - "src/components/InceptionApex.jsx"
       - "src/components/inception-apex.css"
       - "src/PlatformApp.jsx"
@@ -19,6 +22,7 @@ on:
       - "supabase/migrations/*event_builder*"
       - "tests/event-builder*"
       - "tests/inception-apex*"
+      - "tests/auto-resizer*"
       - "supabase/migrations/*inception_apex*"
       - "tests/fixtures/event-builder*"
       - "package*.json"
@@ -40,6 +44,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:event-builder-browser
       - run: npm run test:inception-apex-browser
+      - run: npm run test:auto-resizer-browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -47,5 +52,6 @@ jobs:
           path: |
             test-results/event-builder/
             test-results/inception-apex/
+            test-results/auto-resizer/
           retention-days: 7
           if-no-files-found: ignore

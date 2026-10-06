@@ -60,5 +60,8 @@ const store = {
   },
 };
 createRoot(document.getElementById("root")).render(
-  <InceptionApex store={store} />,
+  <InceptionApex
+    store={store}
+    canUseResizer={new URLSearchParams(location.search).get("eig") === "1"}
+  />,
 );

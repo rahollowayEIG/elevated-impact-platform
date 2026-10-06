@@ -6,9 +6,19 @@
   box-sizing: border-box;
   border-radius: 16px;
 }
-.ia-app > * { min-width: 0; max-width: 100%; }
-.ia-app .platform-secondary-button { background: #223551; color: #eef4ff; border-color: #7183a2; }
-.ia-table-wrap { min-width: 0; max-width: 100%; }
+.ia-app > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.ia-app .platform-secondary-button {
+  background: #223551;
+  color: #eef4ff;
+  border-color: #7183a2;
+}
+.ia-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
 .ia-header,
 .ia-start,
 .ia-library-heading,
@@ -470,4 +480,29 @@
   color: #eef4ff;
   font-weight: 900;
   flex-shrink: 0;
+}
+
+.ia-team-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid #7183a2;
+  border-radius: 12px;
+  background: #12213b;
+}
+.ia-team-tools h2 {
+  margin: 5px 0;
+  font-size: 22px;
+}
+.ia-team-tools p {
+  margin: 0;
+  color: #b7c5d8;
+}
+@media (max-width: 650px) {
+  .ia-team-tools {
+    padding: 16px;
+  }
 }

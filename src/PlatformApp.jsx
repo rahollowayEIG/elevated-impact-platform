@@ -15,6 +15,7 @@ import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
+const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
 const ELEVATIONPILOT_PUBLIC_URL = 'https://elevated-impact-platform.vercel.app';
@@ -500,11 +501,11 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception }) {
+function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception, onSocial }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onSocial && <button className="platform-secondary-button" type="button" onClick={onSocial}>Social Media & Ads</button>}{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -2765,6 +2766,8 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 export default function App() {
   const [inceptionEventId, setInceptionEventId] = useState('');
   const [inceptionDirty, setInceptionDirty] = useState(false);
+  const [socialDirty, setSocialDirty] = useState(false);
+  const socialReturn = useRef('chooser');
   const [eventStudioDirty, setEventStudioDirty] = useState(false);
   const inceptionReturn = useRef('chooser');
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
@@ -2776,7 +2779,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState(window.location.hash === '#inception-apex' ? 'inception' : 'chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState(window.location.hash === '#social-media' ? 'social' : window.location.hash === '#inception-apex' ? 'inception' : 'chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   const currentAuthSession = useRef(null);
   function acceptAuthSession(nextSession) {
@@ -2998,7 +3001,7 @@ export default function App() {
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedEventId = deepLinkParams.get('event_id');
       const openAirportFlight = deepLinkParams.get('airport') === '1' || Boolean(requestedEventId);
-      if (openAirportFlight && window.location.hash !== '#inception-apex') {
+      if (openAirportFlight && !['#inception-apex','#social-media'].includes(window.location.hash)) {
         const requestedFlight = requestedEventId
           ? flights.find((flight) => String(flight.eventId) === String(requestedEventId))
           : null;
@@ -3326,16 +3329,25 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
-  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty) || window.confirm('Leave without saving your design or event packet changes?'); }
+  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty) || window.confirm('Leave without saving your campaign, design or event packet changes?'); }
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
     if (portalView !== 'inception') inceptionReturn.current = portalView;
-    setInceptionEventId(event?.id || ''); setInceptionDirty(false); setPortalView('inception');
+    setInceptionEventId(event?.id || ''); setInceptionDirty(false); setSocialDirty(false); setPortalView('inception');
     window.history.replaceState({}, '', window.location.pathname + window.location.search + '#inception-apex');
   }
   function closeInception() {
-    setInceptionDirty(false); setPortalView(inceptionReturn.current);
-    window.history.replaceState({}, '', window.location.pathname + window.location.search);
+    setInceptionDirty(false); setSocialDirty(false); setPortalView(inceptionReturn.current);
+    window.history.replaceState({}, '', window.location.pathname + window.location.search + (inceptionReturn.current === 'social' ? '#social-media' : ''));
+  }
+  function openSocial() {
+    if (portalView === 'social' || !canLeaveInception()) return;
+    socialReturn.current = portalView; setSocialDirty(false); setInceptionDirty(false); setEventStudioDirty(false); setPortalView('social');
+    window.history.replaceState({}, '', window.location.pathname + window.location.search + '#social-media');
+  }
+  function closeSocial() {
+    setSocialDirty(false); setPortalView(socialReturn.current);
+    window.history.replaceState({}, '', window.location.pathname + window.location.search + (socialReturn.current === 'inception' ? '#inception-apex' : ''));
   }
   function openFlightHub(flight) { if (flight?.publicSlug) window.open(eventHubUrl(flight.publicSlug, window.location.origin), '_blank', 'noopener,noreferrer'); }
 
@@ -3367,9 +3379,11 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
-      {portalView === 'inception'
+      {portalView === 'social'
+        ? <React.Suspense fallback={<LoadingScreen message="Opening Social Media & Ads…" />}><SocialMediaApp key={session.user.id} onBack={closeSocial} onArtwork={() => openInception()} onDirtyChange={setSocialDirty} /></React.Suspense>
+        : portalView === 'inception'
         ? <React.Suspense fallback={<LoadingScreen message="Opening InceptionApex…" />}><InceptionApex key={session.user.id + ':' + inceptionEventId} initialEventId={inceptionEventId} onBack={closeInception} onDirtyChange={setInceptionDirty} canUseResizer={canUseAutoResizer(memberships)} /></React.Suspense>
         : portalView === 'chooser'
         ? <PortalChooser profile={profile} passenger={passenger} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />

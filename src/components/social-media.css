@@ -1,0 +1,359 @@
+.sm-app {
+  color: #fff;
+  background: #071527;
+  padding: 28px;
+  border-radius: 20px;
+  max-width: 1500px;
+  margin: auto;
+}
+.sm-header,
+.sm-section-heading,
+.sm-brand,
+.sm-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sm-header,
+.sm-section-heading {
+  justify-content: space-between;
+}
+.sm-header {
+  padding-bottom: 28px;
+  border-bottom: 1px solid #ffffff26;
+}
+.sm-brand > span {
+  background: #1d245d;
+  border-bottom: 5px solid #d81c22;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 24px;
+  font-weight: 800;
+}
+.sm-app h1 {
+  font-size: 32px;
+  margin: 4px 0;
+}
+.sm-app h2 {
+  font-size: 25px;
+  margin: 6px 0 16px;
+}
+.sm-app h3 {
+  font-size: 18px;
+}
+.sm-app p {
+  line-height: 1.6;
+  color: #c7c8cc;
+}
+.sm-kicker {
+  font-size: 12px !important;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 !important;
+  color: #c7c8cc !important;
+}
+.sm-actions {
+  gap: 10px;
+}
+.sm-app button,
+.sm-app input,
+.sm-app select,
+.sm-app textarea {
+  font: inherit;
+}
+.sm-app button {
+  cursor: pointer;
+}
+.sm-app button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.sm-app :focus-visible {
+  outline: 3px solid #91b7ff;
+  outline-offset: 3px;
+}
+.sm-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 28px 0;
+}
+.sm-summary > div,
+.sm-opportunity-grid > article,
+.sm-connection-grid > article {
+  background: #12213b;
+  border: 1px solid #ffffff26;
+  border-radius: 14px;
+  padding: 20px;
+}
+.sm-summary strong,
+.sm-summary span {
+  display: block;
+}
+.sm-summary strong {
+  font-size: 22px;
+}
+.sm-summary span {
+  font-size: 13px;
+  color: #c7c8cc;
+  margin-top: 8px;
+}
+.sm-editor,
+.sm-opportunities,
+.sm-library,
+.sm-connections {
+  margin-top: 32px;
+  padding: 24px;
+  background: #0e1c32;
+  border: 1px solid #ffffff26;
+  border-radius: 16px;
+}
+.sm-editor {
+  background: #162744;
+  border: 1px solid #91b7ff;
+  box-shadow: 0 14px 45px #0005;
+  scroll-margin-top: 24px;
+}
+.sm-compose {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin: 24px 0;
+}
+.sm-fields {
+  display: grid;
+  gap: 16px;
+}
+.sm-app label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 0;
+}
+.sm-app input:not([type="checkbox"]),
+.sm-app select,
+.sm-app textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #8c9eb480;
+  border-radius: 9px;
+  color: #fff;
+  background: #0b1d33;
+  padding: 11px;
+  min-width: 0;
+}
+.sm-app small,
+.sm-help {
+  font-size: 13px !important;
+  color: #c7c8cc;
+}
+.sm-time-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.sm-preview {
+  border: 1px solid #ffffff33;
+  border-radius: 14px;
+  background: #12213b;
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.sm-preview > p {
+  white-space: pre-wrap;
+}
+.sm-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 9px;
+}
+.sm-preview-cta {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #d81c22;
+}
+.sm-app fieldset {
+  border: 1px solid #ffffff33;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+}
+.sm-destinations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.sm-destinations label {
+  flex-direction: row;
+  align-items: center;
+}
+.sm-destinations input {
+  width: 18px;
+  height: 18px;
+  accent-color: #d81c22;
+}
+.sm-control-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 24px 0;
+}
+.sm-control-types button {
+  background: #12213b;
+  color: #fff;
+  padding: 20px;
+  border: 1px solid #667896;
+  border-radius: 12px;
+  text-align: left;
+}
+.sm-control-types button[aria-pressed="true"] {
+  background: #1d245d;
+  border-color: #91b7ff;
+}
+.sm-control-types strong,
+.sm-control-types span {
+  display: block;
+}
+.sm-control-types span {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #c7c8cc;
+  margin-top: 8px;
+}
+.sm-search {
+  max-width: 650px;
+}
+.sm-opportunity-grid,
+.sm-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.sm-opportunity-grid > article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.sm-opportunity-grid > article p {
+  flex: 1;
+  font-size: 14px;
+}
+.sm-badge {
+  display: inline-block;
+  color: #c7c8cc;
+  border: 1px solid #ffffff33;
+  border-radius: 20px;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.sm-connection-grid a {
+  display: block;
+  color: #aecbff;
+  font-size: 13px;
+  margin-top: 15px;
+}
+.sm-library-controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+.sm-table-wrap {
+  overflow: auto;
+}
+.sm-app table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.sm-app td,
+.sm-app th {
+  text-align: left;
+  padding: 14px;
+  border-bottom: 1px solid #ffffff26;
+}
+.sm-app td button,
+.sm-app th button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  padding: 4px;
+}
+.sm-app th button {
+  font-weight: 800;
+}
+.sm-app td button:hover {
+  text-decoration: underline;
+}
+.sm-app tr.selected {
+  background: #1d245d;
+}
+.sm-notice {
+  padding: 14px;
+  border-radius: 10px;
+  background: #153f3b;
+  color: #caffec !important;
+}
+.sm-app .platform-error {
+  padding: 14px;
+  border-radius: 10px;
+  background: #471b2a;
+  color: #ffe0e3;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  .sm-compose {
+    grid-template-columns: 1fr;
+  }
+  .sm-opportunity-grid,
+  .sm-connection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .sm-app {
+    padding: 16px;
+  }
+  .sm-app h1 {
+    font-size: 25px;
+  }
+  .sm-editor,
+  .sm-opportunities,
+  .sm-library,
+  .sm-connections {
+    padding: 16px;
+  }
+  .sm-summary,
+  .sm-control-types,
+  .sm-library-controls,
+  .sm-opportunity-grid,
+  .sm-connection-grid,
+  .sm-time-fields {
+    grid-template-columns: 1fr;
+  }
+  .sm-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+  .sm-actions button {
+    max-width: 100%;
+  }
+  .sm-destinations {
+    grid-template-columns: 1fr;
+  }
+  .sm-app td,
+  .sm-app th {
+    padding: 10px;
+  }
+  .sm-summary {
+    gap: 10px;
+  }
+  .sm-brand {
+    align-items: flex-start;
+  }
+}

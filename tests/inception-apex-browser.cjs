@@ -92,7 +92,10 @@ const fs = require("node:fs/promises");
         .evaluate((img) => img.complete && img.naturalWidth > 0),
       true,
     );
-    await page.screenshot({ path: "test-results/inception-apex/expanded-preview-desktop.png", fullPage: true });
+    await page.screenshot({
+      path: "test-results/inception-apex/expanded-preview-desktop.png",
+      fullPage: true,
+    });
     await page.keyboard.press("Escape");
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     assert.equal(
@@ -270,9 +273,160 @@ const fs = require("node:fs/promises");
     await page
       .getByRole("heading", { name: "What are we designing?" })
       .waitFor();
+    // Product entry points keep product/imprint context through the existing project lifecycle.
+    await page.evaluate(() => {
+      window.inceptionFixture.conflict = false;
+    });
+    await page
+      .getByRole("button", { name: "Create Custom Products", exact: true })
+      .click();
+    const starters = [
+      ["Create swag", "Golf towel"],
+      ["Create apparel", "T-shirt"],
+      ["Create gifts", "Tumbler"],
+    ];
+    for (const [button, product] of starters) {
+      await page
+        .getByRole("button", { name: new RegExp(`^${button}\\b`) })
+        .click();
+      assert.equal(
+        await page
+          .getByLabel("Product to customize", { exact: true })
+          .inputValue(),
+        product,
+      );
+    }
+    await page.screenshot({
+      path: "test-results/inception-apex/products-mobile.png",
+      fullPage: true,
+    });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    );
+    await page.getByRole("button", { name: /^Create apparel\b/ }).click();
+    await page
+      .getByLabel("Product to customize", { exact: true })
+      .selectOption("Polo");
+    await page
+      .getByLabel("Connect to an event", { exact: true })
+      .selectOption("synthetic-event");
+    await page
+      .getByLabel("Finished size / imprint area", { exact: true })
+      .fill("3 x 3 in left chest");
+    await page
+      .getByRole("button", { name: "Open designer", exact: true })
+      .click();
+    assert.equal(
+      await page.getByLabel("Project name", { exact: true }).inputValue(),
+      "Community Dinner · Polo artwork",
+    );
+    await page
+      .getByRole("button", {
+        name: "Details & creative direction",
+        exact: true,
+      })
+      .click();
+    assert.equal(
+      await page.getByLabel("Product or output", { exact: true }).inputValue(),
+      "Polo",
+    );
+    assert.equal(
+      await page
+        .getByLabel("Finished size / imprint area", { exact: true })
+        .inputValue(),
+      "3 x 3 in left chest",
+    );
+    await page
+      .getByRole("button", { name: "Save to My Designs", exact: true })
+      .click();
+    await page
+      .getByText("Saved to My Designs. Version 1.", { exact: true })
+      .waitFor();
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
+    await page.getByLabel("Search designs", { exact: true }).fill("Polo");
+    await page.getByLabel("Show", { exact: true }).selectOption("all");
+    await page
+      .getByRole("button", {
+        name: /^Community Dinner · Polo artwork/,
+      })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Details & creative direction",
+        exact: true,
+      })
+      .click();
+    assert.equal(
+      await page.getByLabel("Product or output", { exact: true }).inputValue(),
+      "Polo",
+    );
+    assert.equal(
+      await page
+        .getByLabel("Finished size / imprint area", { exact: true })
+        .inputValue(),
+      "3 x 3 in left chest",
+    );
+    await page
+      .getByRole("button", { name: "Preview & approve", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Save & approve design", exact: true })
+      .click();
+    await page
+      .getByText("Design approved. Version 2.", { exact: true })
+      .waitFor();
+    const productDownload = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Download production request", exact: true })
+      .click();
+    const productHandoff = JSON.parse(
+      await fs.readFile(await (await productDownload).path(), "utf8"),
+    );
+    assert.equal(productHandoff.production.product, "Polo");
+    assert.equal(productHandoff.production.size, "3 x 3 in left chest");
+    assert.equal(productHandoff.event_id, "synthetic-event");
+    assert.equal(productHandoff.order_status, "draft_request");
+    // Other products supports custom ideas; personal projects do not inherit the previous event.
+    await page
+      .getByRole("button", { name: "Create Custom Products", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: /^Create other products\b/ })
+      .click();
+    await page
+      .getByLabel("Your product idea", { exact: true })
+      .fill("Sponsor gift box");
+    await page
+      .getByLabel("Connect to an event", { exact: true })
+      .selectOption("");
+    await page
+      .getByRole("button", { name: "Open designer", exact: true })
+      .click();
+    assert.equal(
+      await page.getByLabel("Project name", { exact: true }).inputValue(),
+      "Sponsor gift box artwork",
+    );
+    await page
+      .getByRole("button", { name: "Create Custom Products", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.locator(".ia-material-swag").click();
+    assert.equal(
+      await page
+        .getByLabel("Product to customize", { exact: true })
+        .inputValue(),
+      "Golf towel",
+    );
+    await page.setViewportSize({ width: 1360, height: 950 });
+    await page.screenshot({
+      path: "test-results/inception-apex/products-desktop.png",
+      fullPage: true,
+    });
     assert.deepEqual(errors, []);
     process.stdout.write(
-      "InceptionApex desktop/mobile, logo editing, saved projects, approval, handoff, conflict recovery and backups passed.\n",
+      "InceptionApex desktop/mobile, logo editing, saved projects, approval, handoff, conflict recovery, custom product starters/save/reopen/handoff and backups passed.\n",
     );
   } finally {
     if (browser) await browser.close();

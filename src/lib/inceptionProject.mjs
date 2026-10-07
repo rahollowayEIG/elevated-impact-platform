@@ -65,6 +65,39 @@ export const MATERIALS = [
     code: "DS",
   },
 ];
+// Product starters identify the desired artwork; these are not purchasable catalog SKUs.
+export const CUSTOM_PRODUCT_CATEGORIES = [
+  {
+    id: "swag",
+    label: "Swag",
+    detail: "Golf towels, bags and event giveaways",
+    products: [
+      "Golf towel",
+      "Tote bag",
+      "Drawstring bag",
+      "Sticker",
+      "Custom swag",
+    ],
+  },
+  {
+    id: "apparel",
+    label: "Apparel",
+    detail: "Shirts, polos, hats and more",
+    products: ["T-shirt", "Polo", "Hat", "Hoodie", "Custom apparel"],
+  },
+  {
+    id: "gifts",
+    label: "Gifts",
+    detail: "Mugs, tumblers and keepsakes",
+    products: ["Tumbler", "Mug", "Notebook", "Keepsake", "Custom gift"],
+  },
+  {
+    id: "other",
+    label: "Other products",
+    detail: "Bring your own product idea",
+    products: [],
+  },
+];
 export const FACT_FIELDS = FLYER_FIELDS.filter((f) => f !== "custom");
 const text = (v, limit = 1500) =>
   typeof v === "string" ? v.slice(0, limit) : "";

@@ -4,6 +4,7 @@ import EventPacketStudio from "./EventPacketStudio.jsx";
 import { inceptionStore } from "../lib/inceptionStore.js";
 import {
   MATERIALS,
+  CUSTOM_PRODUCT_CATEGORIES,
   FACT_FIELDS,
   materialById,
   materialDesign,
@@ -124,6 +125,17 @@ export default function InceptionApex({
   const [resizerOpen, setResizerOpen] = useState(false);
   const [libraryOnly, setLibraryOnly] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [productsOpen, setProductsOpen] = useState(false),
+    [productCategory, setProductCategory] = useState("swag"),
+    [productChoice, setProductChoice] = useState("Golf towel"),
+    [customProduct, setCustomProduct] = useState(""),
+    [imprintSize, setImprintSize] = useState("");
+  const category = CUSTOM_PRODUCT_CATEGORIES.find(
+    (c) => c.id === productCategory,
+  );
+  const productName =
+    productChoice === "custom" ? customProduct.trim() : productChoice;
+
   const [projects, setProjects] = useState([]),
     [events, setEvents] = useState([]),
     [project, setProject] = useState(null);
@@ -254,9 +266,49 @@ export default function InceptionApex({
     }
   }
   function begin(type) {
+    setProductsOpen(type === "swag");
+    if (type === "swag") {
+      setProductCategory("swag");
+      setProductChoice("Golf towel");
+      setCustomProduct("");
+      setImprintSize("");
+    }
     setNewType(type);
     setName("");
     setNotice("");
+  }
+  function chooseProductCategory(value) {
+    const next = CUSTOM_PRODUCT_CATEGORIES.find((c) => c.id === value);
+    setProductCategory(value);
+    setProductChoice(next.products[0] || "custom");
+    setCustomProduct("");
+    setImprintSize("");
+    setName("");
+    setNewType("swag");
+    setError("");
+  }
+  function showProducts() {
+    if (inflight.current || !leave()) return;
+    setProject(null);
+    setPlanner(null);
+    setPlannerDirty(false);
+    setDirty(false);
+    setResizerOpen(false);
+    setLibraryOnly(false);
+    setProductsOpen(true);
+    setNewType("swag");
+    setName("");
+    setNotice("");
+    setError("");
+    setProductCategory("swag");
+    setProductChoice("Golf towel");
+    setCustomProduct("");
+    setImprintSize("");
+    requestAnimationFrame(() =>
+      document
+        .getElementById("ia-custom-products")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
   function create(e) {
     e.preventDefault();
@@ -275,6 +327,23 @@ export default function InceptionApex({
       newType,
       contextEvent ? eventFlyerFacts(contextEvent, window.location.origin) : {},
     );
+    if (newType === "swag") {
+      if (!productName) {
+        setError("Tell us which product you want to customize.");
+        return;
+      }
+      p.data.production = {
+        ...p.data.production,
+        product: productName,
+        size: imprintSize.trim(),
+      };
+      p.data.design.name = `${productName} artwork`;
+      p.name =
+        `${contextEvent ? contextEvent.name + " · " : ""}${productName} artwork`.slice(
+          0,
+          160,
+        );
+    }
     p.name = name.trim() || p.name;
     p.event_id = contextEvent?.id || null;
     setProject(p);
@@ -386,6 +455,7 @@ export default function InceptionApex({
     if (!leave()) return;
     setLibraryOnly(true);
     setNewType("");
+    setProductsOpen(false);
     setProject(null);
     setResizerOpen(false);
     setDirty(false);
@@ -418,6 +488,15 @@ export default function InceptionApex({
               New design
             </button>
           )}
+          <button
+            type="button"
+            className="platform-primary-button"
+            disabled={busy || loading}
+            onClick={showProducts}
+            aria-expanded={productsOpen && !project && !planner && !resizerOpen}
+          >
+            Create Custom Products
+          </button>
           <button
             type="button"
             className="platform-secondary-button"
@@ -472,7 +551,10 @@ export default function InceptionApex({
             </label>
             <div className="ia-project-state">
               <span>
-                {materialById(project.material).label} ·{" "}
+                {project.material === "swag"
+                  ? project.data.production.product || "Custom product"
+                  : materialById(project.material).label}{" "}
+                ·{" "}
                 {projectEvent?.name ||
                   (project.event_id ? "Event project" : "Personal project")}
               </span>
@@ -500,6 +582,14 @@ export default function InceptionApex({
               Save to My Designs
             </button>
           </section>
+          {project.material === "swag" && (
+            <p className="ia-product-context">
+              Customize your {project.data.production.product || "product"}{" "}
+              artwork. Upload a logo, add text, preview and save to My Designs.
+              Product photos, supplier mockups and ordering are connection
+              pending.
+            </p>
+          )}
           <nav className="ia-editor-tabs" aria-label="Design workspace">
             {[
               ["design", "Design"],
@@ -830,13 +920,42 @@ export default function InceptionApex({
                     <b>Open event planner</b>
                   </button>
                 </section>
+                {productsOpen && (
+                  <section
+                    className="ia-products"
+                    id="ia-custom-products"
+                    aria-labelledby="ia-products-title"
+                  >
+                    <h2 id="ia-products-title">Create custom products</h2>
+                    <p>
+                      Choose what to customize, then create the artwork you
+                      love.
+                    </p>
+                    <div className="ia-product-categories">
+                      {CUSTOM_PRODUCT_CATEGORIES.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="ia-product-category"
+                          aria-pressed={productCategory === c.id}
+                          onClick={() => chooseProductCategory(c.id)}
+                        >
+                          <strong>Create {c.label.toLowerCase()}</strong>
+                          <span>{c.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 {newType && (
                   <form className="ia-new-project" onSubmit={create}>
                     <h2>
                       {newType === "planner"
                         ? "Choose an event to plan"
-                        : "Start your " +
-                          materialById(newType).label.toLowerCase()}
+                        : newType === "swag"
+                          ? "Start your custom product"
+                          : "Start your " +
+                            materialById(newType).label.toLowerCase()}
                     </h2>
                     <label>
                       Connect to an event
@@ -869,6 +988,57 @@ export default function InceptionApex({
                         />
                       </label>
                     )}
+                    {newType === "swag" && (
+                      <>
+                        {category.products.length > 0 && (
+                          <label>
+                            Product to customize
+                            <select
+                              aria-label="Product to customize"
+                              value={productChoice}
+                              onChange={(e) => setProductChoice(e.target.value)}
+                            >
+                              {category.products.map((product) => (
+                                <option key={product} value={product}>
+                                  {product}
+                                </option>
+                              ))}
+                              <option value="custom">
+                                Describe another product
+                              </option>
+                            </select>
+                          </label>
+                        )}
+                        {productChoice === "custom" && (
+                          <label>
+                            Your product idea
+                            <input
+                              aria-label="Your product idea"
+                              maxLength={160}
+                              required
+                              value={customProduct}
+                              onChange={(e) => setCustomProduct(e.target.value)}
+                              placeholder="Golf ball marker, sponsor gift box…"
+                            />
+                          </label>
+                        )}
+                        <label>
+                          Finished size / imprint area
+                          <input
+                            aria-label="Finished size / imprint area"
+                            maxLength={160}
+                            value={imprintSize}
+                            onChange={(e) => setImprintSize(e.target.value)}
+                            placeholder="Optional · use your supplier’s actual dimensions"
+                          />
+                        </label>
+                        <p className="ia-product-help">
+                          You’re creating the imprint artwork. Product mockups
+                          and ordering will be available when the supplier
+                          connection is ready.
+                        </p>
+                      </>
+                    )}
                     <div className="ia-actions">
                       <button
                         type="submit"
@@ -882,7 +1052,10 @@ export default function InceptionApex({
                       <button
                         type="button"
                         className="platform-secondary-button"
-                        onClick={() => setNewType("")}
+                        onClick={() => {
+                          setNewType("");
+                          setProductsOpen(false);
+                        }}
                       >
                         Cancel
                       </button>

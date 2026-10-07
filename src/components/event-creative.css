@@ -1,0 +1,208 @@
+.creative-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 24px;
+  align-items: start;
+}
+.creative-toolbar,
+.creative-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+.creative-tabs button[aria-pressed="true"] {
+  background: #e02f41;
+  color: #fff;
+  border-color: #e02f41;
+}
+.creative-tabs button,
+.creative-toolbar button,
+.creative-inspector button {
+  padding: 10px 14px;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #223551;
+  color: #eef4ff;
+}
+.creative-inspector {
+  padding: 18px;
+  background: #0c192f;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+}
+.creative-inspector label,
+.creative-toolbar label {
+  display: grid;
+  gap: 6px;
+}
+.creative-source-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.flyer-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+.flyer-canvas [role="button"] {
+  cursor: grab;
+}
+.flyer-canvas [role="button"]:focus {
+  outline: none;
+}
+.flyer-canvas [role="button"]:focus rect {
+  stroke: #67ccff;
+}
+.course-map-canvas {
+  position: relative;
+  touch-action: none;
+  cursor: crosshair;
+  background: #0d1a30;
+  border: 1px dashed #7183a2;
+}
+.course-map-canvas > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.course-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  background: #d72339;
+  color: white;
+  border-radius: 50%;
+  min-width: 32px;
+  min-height: 32px;
+  cursor: grab;
+  z-index: 1;
+}
+.course-pin.selected {
+  outline: 4px solid #67ccff;
+}
+.creative-empty {
+  min-height: 350px;
+  display: grid;
+  place-content: center;
+  padding: 30px;
+  text-align: center;
+}
+.rental-planner-frame {
+  width: 100%;
+  height: 1000px;
+  border: 1px solid #7183a2;
+  border-radius: 12px;
+  background: #13213a;
+}
+.creative-table-wrap {
+  overflow: auto;
+}
+.creative-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 850px;
+}
+.creative-table-wrap td,
+.creative-table-wrap th {
+  padding: 12px;
+  border-bottom: 1px solid #ffffff20;
+  text-align: left;
+  vertical-align: top;
+}
+.creative-table-wrap th button {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+.creative-table-wrap textarea {
+  min-width: 120px;
+  min-height: 90px;
+}
+.creative-table-wrap input {
+  display: block;
+  min-width: 130px;
+  margin: 5px 0;
+}
+.eie-setup-steps {
+  flex-wrap: wrap;
+}
+.creative-inspector input[type="color"] {
+  height: 44px;
+  width: 100%;
+}
+@media (max-width: 850px) {
+  .creative-editor-grid {
+    grid-template-columns: 1fr;
+  }
+  .creative-inspector {
+    width: 100%;
+  }
+  .rental-planner-frame {
+    height: 1450px;
+  }
+  .creative-tabs {
+    gap: 6px;
+  }
+  .creative-tabs button {
+    padding: 9px;
+    font-size: 13px;
+  }
+}
+
+.creative-selected-row {
+  background: #254467;
+}
+.creative-material-row {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  background: #223551;
+  color: #eef4ff;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.creative-inspector select[multiple] {
+  min-height: 160px;
+}
+
+.creative-inspector input:not([type="checkbox"]),
+.creative-inspector select,
+.creative-inspector textarea,
+.creative-toolbar input,
+.creative-toolbar select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #7183a2;
+  background: #0d1a2a;
+  color: #eef4ff;
+}
+.creative-inspector .builder-checkbox {
+  display: flex;
+  align-items: center;
+}
+.creative-inspector .builder-checkbox input {
+  width: auto;
+  margin: 0;
+}
+.creative-table-wrap {
+  min-width: 0;
+}
+.creative-editor-grid > div {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .builder-working-panel > .platform-section-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .builder-working-panel > .platform-section-heading > button {
+    width: 100%;
+  }
+}

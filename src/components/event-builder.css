@@ -1,0 +1,74 @@
+.builder-working-panel {
+  margin: 24px 0;
+  padding: 24px;
+  border: 1px solid #526990;
+  border-radius: 18px;
+  background: #12213b;
+  color: #eef4ff;
+  box-shadow: 0 14px 38px #0004;
+  scroll-margin-top: 24px;
+}
+.builder-working-panel h3 {
+  margin: 0 0 12px;
+}
+.builder-working-panel input,
+.builder-working-panel select,
+.builder-working-panel textarea {
+  max-width: 100%;
+}
+.builder-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.builder-status-grid > div {
+  padding: 12px;
+  background: #ffffff0b;
+  border-radius: 10px;
+}
+.builder-status-grid span,
+.builder-status-grid strong {
+  display: block;
+}
+.builder-status-grid span {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 5px;
+}
+.builder-action-box {
+  padding: 18px;
+  margin: 18px 0;
+  border: 1px solid #ffffff26;
+  border-radius: 12px;
+}
+.builder-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 15px 0;
+}
+.builder-checkbox input {
+  width: auto;
+}
+.builder-working-panel code {
+  overflow-wrap: anywhere;
+}
+.builder-working-panel details {
+  margin-top: 20px;
+}
+.builder-working-panel button {
+  cursor: pointer;
+}
+.builder-working-panel button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+@media (max-width: 600px) {
+  .builder-working-panel {
+    padding: 16px;
+  }
+  .builder-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -35,3 +35,18 @@ Implementation requirements:
 - Do not make action columns or fields without meaningful ordering sortable.
 - If search or sorting is intentionally omitted, the workflow should provide an obvious reason rather than relying on accidental inconsistency.
 
+## Paid upgrade sponsorship reminder
+
+Before creating or changing paid upgrade flows, read:
+
+- `docs/EIG-Paid-Upgrade-Sponsorship-Rule.md`
+
+Every paid upgrade review must include Ella, Marshal, and Maverick's sponsorship reminder and an event-scoped action to get sponsorship help, with the upgrade price visible before purchase.
+
+## InceptionApex shared creative app
+
+Before adding creative tooling or routing artwork between apps, read:
+
+- `docs/InceptionApex-App-Architecture.md`
+
+InceptionApex is the shared creative app. Event Builder tools are an entry point into its design workflow. Reuse saved designs and contextual event/product facts across connected apps, and preserve EIC's ownership of purchases and orders.

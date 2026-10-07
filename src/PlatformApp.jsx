@@ -1,3 +1,4 @@
+import EventPacketStudio from './components/EventPacketStudio.jsx';
 import AccountSecurityHistory from './components/AccountSecurityHistory.jsx';
 import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
@@ -11,7 +12,9 @@ import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
+import { canUseAutoResizer } from './lib/imageResize.mjs';
 
+const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
 const ELEVATIONPILOT_PUBLIC_URL = 'https://elevated-impact-platform.vercel.app';
@@ -497,11 +500,11 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null }) {
+function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions"><button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -1333,7 +1336,7 @@ function OrganizationProfileSection({ organization, profile, role, onSave }) {
 }
 
 
-function EieEventDirectory({ organization, events, loading, onReload, onBack, initialEventId = '', atcOnly = false }) {
+function EieEventDirectory({ organization, events, loading, onReload, onBack, initialEventId = '', atcOnly = false, onOpenInception, onCreativeDirtyChange }) {
   const { openComposer } = useSquawk();
   const emptyItem = () => ({
     name: 'Registration',
@@ -1353,6 +1356,10 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   const [createdEvent, setCreatedEvent] = useState(null);
   const [setupEvent, setSetupEvent] = useState(null);
   const [setupStep, setSetupStep] = useState('details');
+  const [creativeDirty,setCreativeDirty]=useState(false);
+  useEffect(() => { onCreativeDirtyChange?.(creativeDirty); return () => onCreativeDirtyChange?.(false); }, [creativeDirty, onCreativeDirtyChange]);
+  function leaveCreative(){return !creativeDirty||window.confirm('Leave without saving the event packet changes?');}
+  function changeSetupStep(step){if(step===setupStep||leaveCreative())setSetupStep(step);}
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
   const [assetBusy, setAssetBusy] = useState('');
@@ -1984,7 +1991,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
           <p>Set up the event in order so Registration, Pricing, Roster, and the Public Hub all inherit the same rules.</p>
         </div>
         <div className="review-actions">
-          <button className="platform-secondary-button" onClick={() => atcOnly ? onBack?.() : setSetupEvent(null)}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
+          <button className="platform-secondary-button" onClick={() => {if(leaveCreative())atcOnly ? onBack?.() : setSetupEvent(null);}}>{atcOnly ? '← Airport' : '← Event Directory'}</button>
           <button className="platform-secondary-button" type="button" onClick={() => openComposer(setupEvent.id)}>SB · Squawk Event</button>
           <div className="platform-role-pill">EIE</div>
         </div>
@@ -1994,12 +2001,14 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
         event={setupEvent}
         organization={organization}
         activeStep={setupStep}
-        onStepChange={setSetupStep}
+        onStepChange={changeSetupStep}
         onEventUpdated={(updatedEvent) => setSetupEvent((current) => ({ ...current, ...updatedEvent }))}
         onReload={onReload}
       />
 
       {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') || setupNotice.startsWith('Event website') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
+
+      {setupStep === 'creative' && <EventPacketStudio key={setupEvent.id} event={setupEvent} onDirtyChange={setCreativeDirty} onOpenDesign={onOpenInception} />}
 
       {setupStep === 'roster' && <EieRosterMaintenance
         event={setupEvent}
@@ -2299,7 +2308,7 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 }
 
 
-function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile, onInviteUser }) {
+function OrganizationDashboard({ organization, profile, role, products, entitlements, eventRequests, eieEvents = [], loadingRequests, onReloadRequests, onLaunchGolfRegistration, onOpenEventAtc, onSaveProfile, onInviteUser, onOpenInception }) {
   const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
@@ -2417,6 +2426,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
         <div><p className="platform-eyebrow">Systems Panel</p><h2>Apps & Tools</h2></div>
         <span className="cockpit-panel-code">SYS / {enabledCount.toString().padStart(2, '0')}</span>
       </div>
+      <button className="platform-primary-button inline" type="button" onClick={() => onOpenInception?.()}>Open InceptionApex · Design Studio</button>
       <div className="platform-product-grid cockpit-product-grid">{products.map((product) => <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />)}</div>
     </section>
 
@@ -2753,6 +2763,10 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 
 
 export default function App() {
+  const [inceptionEventId, setInceptionEventId] = useState('');
+  const [inceptionDirty, setInceptionDirty] = useState(false);
+  const [eventStudioDirty, setEventStudioDirty] = useState(false);
+  const inceptionReturn = useRef('chooser');
   const publicMatch = window.location.hash.match(/^#inquiry\/([^/?#]+)/);
   const publicEventMatch = window.location.pathname.match(/^\/events\/([^/?#]+)\/?$/) || window.location.hash.match(/^#events\/([^/?#]+)/);
   const hubPreviewMatch = window.location.hash.match(/^#eie-hub-preview\/([^/?#]+)/);
@@ -2762,7 +2776,7 @@ export default function App() {
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
-  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState('chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+  const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState(window.location.hash === '#inception-apex' ? 'inception' : 'chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
 
   const currentAuthSession = useRef(null);
   function acceptAuthSession(nextSession) {
@@ -2984,7 +2998,7 @@ export default function App() {
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedEventId = deepLinkParams.get('event_id');
       const openAirportFlight = deepLinkParams.get('airport') === '1' || Boolean(requestedEventId);
-      if (openAirportFlight) {
+      if (openAirportFlight && window.location.hash !== '#inception-apex') {
         const requestedFlight = requestedEventId
           ? flights.find((flight) => String(flight.eventId) === String(requestedEventId))
           : null;
@@ -3312,6 +3326,17 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
+  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty) || window.confirm('Leave without saving your design or event packet changes?'); }
+  function openInception(event) {
+    if (portalView === 'inception' || !canLeaveInception()) return;
+    if (portalView !== 'inception') inceptionReturn.current = portalView;
+    setInceptionEventId(event?.id || ''); setInceptionDirty(false); setPortalView('inception');
+    window.history.replaceState({}, '', window.location.pathname + window.location.search + '#inception-apex');
+  }
+  function closeInception() {
+    setInceptionDirty(false); setPortalView(inceptionReturn.current);
+    window.history.replaceState({}, '', window.location.pathname + window.location.search);
+  }
   function openFlightHub(flight) { if (flight?.publicSlug) window.open(eventHubUrl(flight.publicSlug, window.location.origin), '_blank', 'noopener,noreferrer'); }
 
   if (!isSupabaseConfigured) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Supabase environment variables are missing.</h1><p>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.</p></div></div>;
@@ -3342,9 +3367,11 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={signOut} onAirport={openAirport} onRoleHome={openRoleLanding} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
-      {portalView === 'chooser'
+      {portalView === 'inception'
+        ? <React.Suspense fallback={<LoadingScreen message="Opening InceptionApex…" />}><InceptionApex key={session.user.id + ':' + inceptionEventId} initialEventId={inceptionEventId} onBack={closeInception} onDirtyChange={setInceptionDirty} canUseResizer={canUseAutoResizer(memberships)} /></React.Suspense>
+        : portalView === 'chooser'
         ? <PortalChooser profile={profile} passenger={passenger} user={session.user} secondaryLabel={roleLanding()?.label || ''} secondaryDetail={roleLanding()?.detail || ''} onAirport={openAirport} onSecondary={openRoleLanding} />
         : portalView === 'atc_select'
           ? <AtcAssignmentChooser flights={roleLanding()?.flights || []} onBack={openAirport} onSelect={enterAssignedAtc} />
@@ -3358,15 +3385,15 @@ export default function App() {
             ? atcLoading
               ? <LoadingScreen message="Opening ATC / EIE..." />
               : atcEvent && atcOrganization
-                ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
+                ? <EieEventDirectory organization={atcOrganization} events={[atcEvent]} loading={false} initialEventId={atcEvent.id} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} atcOnly onReload={() => loadAtcEvent(atcEvent.id, atcOrganization.id)} onBack={openAirport} />
                 : <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
               : cockpitApp === 'eie'
-                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
-                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => loadEventRequests(activeOrganizationId)} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} />}
+                ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
+                : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => Promise.all([loadEventRequests(activeOrganizationId), loadEieEvents(activeOrganizationId)])} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} onOpenInception={openInception} />}
     </PlatformShell>
   </SquawkProvider>;
 }

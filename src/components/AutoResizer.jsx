@@ -3,36 +3,74 @@ import {
   RESIZE_PRESETS,
   resizeDimensions,
   imagePlacement,
-  resizeFilename,
 } from "../lib/imageResize.mjs";
 import "./auto-resizer.css";
 
-const MIME = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
+import {
+  openResizeImage,
+  encodeResizeImage,
+  buildResizeBatch,
+  changeInstructions,
+  downloadResizeFile,
+  MAX_IMAGES,
+  MAX_INPUT_BYTES,
+} from "../lib/imageResizeBrowser.mjs";
+import { saveResizeToDrive } from "../lib/inceptionDrive.js";
 const GROUPS = [...new Set(RESIZE_PRESETS.map((p) => p.group))];
 
-export default function AutoResizer({ allowed = false }) {
+export default function AutoResizer({
+  allowed = false,
+  drive = saveResizeToDrive,
+}) {
+  const [images, setImages] = useState([]),
+    [selectedId, setSelectedId] = useState("");
   const [image, setImage] = useState(null),
     [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState(""),
+    [sort, setSort] = useState(null);
   const [presetId, setPresetId] = useState("shopify-product"),
     [customWidth, setCustomWidth] = useState("1200"),
     [customHeight, setCustomHeight] = useState("1200");
   const [mode, setMode] = useState("fit"),
     [format, setFormat] = useState("png"),
     [transparent, setTransparent] = useState(true),
-    [background, setBackground] = useState("#ffffff");
-  const [focal, setFocal] = useState({ x: 0.5, y: 0.5 }),
-    [zoom, setZoom] = useState(1),
+    [background, setBackground] = useState("#ffffff"),
     [quality, setQuality] = useState(0.9);
   const [output, setOutput] = useState(null),
     [encoding, setEncoding] = useState(false),
     [error, setError] = useState("");
-  const [changeNotes, setChangeNotes] = useState("");
+  const [batch, setBatch] = useState(null),
+    [savingDrive, setSavingDrive] = useState(false),
+    [driveResult, setDriveResult] = useState(null);
+  const selected = images.find((i) => i.id === selectedId);
+  const focal = selected?.focal || { x: 0.5, y: 0.5 },
+    zoom = selected?.zoom || 1,
+    changeNotes = selected?.notes || "";
   const originalCanvas = useRef(null),
     uploadEpoch = useRef(0),
-    outputEpoch = useRef(0);
+    outputEpoch = useRef(0),
+    batchAbort = useRef(null),
+    alive = useRef(true),
+    driveRequests = useRef(new Map());
+  const busy = uploading || !!batch || savingDrive;
+  function updateSelected(field, value) {
+    setImages((items) =>
+      items.map((i) =>
+        i.id === selectedId
+          ? {
+              ...i,
+              [field]: typeof value === "function" ? value(i[field]) : value,
+            }
+          : i,
+      ),
+    );
+  }
+  const setFocal = (value) => updateSelected("focal", value),
+    setZoom = (value) => updateSelected("zoom", value),
+    setChangeNotes = (value) => updateSelected("notes", value);
   const preset = RESIZE_PRESETS.find((p) => p.id === presetId);
-  const width = presetId === "custom" ? customWidth : preset.width;
-  const height = presetId === "custom" ? customHeight : preset.height;
+  const width = presetId === "custom" ? customWidth : preset.width,
+    height = presetId === "custom" ? customHeight : preset.height;
   let dimensions = null,
     dimensionsError = "";
   try {
@@ -40,6 +78,17 @@ export default function AutoResizer({ allowed = false }) {
   } catch (e) {
     dimensionsError = e.message;
   }
+  const settings = {
+    width: Number(width),
+    height: Number(height),
+    presetId,
+    mode,
+    format,
+    transparent,
+    background,
+    quality,
+    destination: `${preset.group} / ${preset.label}`,
+  };
   const placement =
     image && dimensions
       ? imagePlacement(
@@ -53,14 +102,33 @@ export default function AutoResizer({ allowed = false }) {
           zoom,
         )
       : null;
+  const visible = images.filter((i) =>
+    i.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  if (sort)
+    visible.sort(
+      (a, b) =>
+        sort.direction *
+        (sort.key === "name"
+          ? a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+          : a.file.size - b.file.size),
+    );
+  function sortBy(key) {
+    setSort((current) => ({
+      key,
+      direction: current?.key === key ? -current.direction : 1,
+    }));
+  }
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       uploadEpoch.current++;
       outputEpoch.current++;
-    },
-    [],
-  );
+      batchAbort.current?.abort();
+    };
+  }, []);
   useEffect(
     () => () => {
       image?.bitmap.close();
@@ -74,6 +142,29 @@ export default function AutoResizer({ allowed = false }) {
     [output],
   );
   useEffect(() => {
+    let cancelled = false;
+    setImage(null);
+    if (!allowed || !selected) return;
+    openResizeImage(selected.file)
+      .then((bitmap) => {
+        if (cancelled) bitmap.close();
+        else
+          setImage({
+            bitmap,
+            id: selected.id,
+            name: selected.name,
+            width: bitmap.width,
+            height: bitmap.height,
+          });
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowed, selectedId, selected?.file]);
+  useEffect(() => {
     if (!allowed || !image || !originalCanvas.current) return;
     const canvas = originalCanvas.current,
       scale = Math.min(1, 500 / Math.max(image.width, image.height));
@@ -86,72 +177,30 @@ export default function AutoResizer({ allowed = false }) {
   useEffect(() => {
     const epoch = ++outputEpoch.current;
     setOutput(null);
-    if (!allowed || !image || !dimensions) {
+    if (!allowed || !image || image.id !== selectedId || !dimensions) {
       setEncoding(false);
       return;
     }
     setEncoding(true);
-    const canvas = document.createElement("canvas");
-    canvas.width = dimensions.width;
-    canvas.height = dimensions.height;
-    const ctx = canvas.getContext("2d");
-    if (!transparent || format === "jpeg") {
-      ctx.fillStyle = background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    const p = imagePlacement(
-      image.width,
-      image.height,
-      canvas.width,
-      canvas.height,
-      mode,
-      focal.x,
-      focal.y,
-      zoom,
-    );
-    ctx.drawImage(image.bitmap, p.x, p.y, p.drawWidth, p.drawHeight);
-    canvas.toBlob(
-      (blob) => {
+    encodeResizeImage(image.bitmap, settings, selected)
+      .then((result) => {
         if (epoch !== outputEpoch.current) return;
+        setOutput({ ...result, url: URL.createObjectURL(result.blob) });
         setEncoding(false);
-        if (!blob || blob.type !== MIME[format]) {
-          setError(
-            "This browser cannot export that format. Choose PNG or JPEG.",
-          );
-          return;
+      })
+      .catch((e) => {
+        if (epoch === outputEpoch.current) {
+          setError(e.message);
+          setEncoding(false);
         }
-        if (blob.size >= 20 * 1024 * 1024) {
-          setError(
-            "This export exceeds 20 MB. Choose JPEG/WebP, reduce quality or use smaller dimensions.",
-          );
-          return;
-        }
-        setError("");
-        setOutput({
-          blob,
-          url: URL.createObjectURL(blob),
-          width: canvas.width,
-          height: canvas.height,
-          filename: resizeFilename(
-            image.name,
-            presetId,
-            canvas.width,
-            canvas.height,
-            format,
-          ),
-        });
-      },
-      MIME[format],
-      quality,
-    );
+      });
     return () => {
       outputEpoch.current++;
     };
   }, [
     allowed,
     image,
+    selectedId,
     width,
     height,
     mode,
@@ -166,50 +215,128 @@ export default function AutoResizer({ allowed = false }) {
   ]);
 
   async function upload(event) {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!allowed || !file) return;
+    if (!allowed || !files.length || busy) return;
     const epoch = ++uploadEpoch.current;
     setUploading(true);
     setError("");
-    let bitmap;
+    setDriveResult(null);
     try {
-      if (
-        !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-        file.size > 20 * 1024 * 1024
-      )
-        throw new Error(
-          "Choose a PNG, JPEG or WebP image up to 20 MB. Animated files are exported as a still image.",
-        );
-      bitmap = await createImageBitmap(file);
-      if (bitmap.width * bitmap.height > 25000000)
-        throw new Error("Use an image of 25 megapixels or less.");
-      if (epoch !== uploadEpoch.current) {
-        bitmap.close();
-        return;
+      if (files.length > MAX_IMAGES)
+        throw new Error("Choose up to 20 images at a time.");
+      if (files.reduce((sum, f) => sum + f.size, 0) > MAX_INPUT_BYTES)
+        throw new Error("Choose a batch of 100 MB or less.");
+      const valid = [],
+        skipped = [];
+      for (const file of files) {
+        let bitmap;
+        try {
+          bitmap = await openResizeImage(file);
+          if (epoch !== uploadEpoch.current) return;
+          valid.push({
+            id: crypto.randomUUID(),
+            file,
+            name: file.name,
+            width: bitmap.width,
+            height: bitmap.height,
+            focal: { x: 0.5, y: 0.5 },
+            zoom: 1,
+            notes: "",
+          });
+        } catch (e) {
+          skipped.push(`${file.name}: ${e.message}`);
+        } finally {
+          bitmap?.close();
+        }
       }
-      setImage({
-        bitmap,
-        name: file.name,
-        width: bitmap.width,
-        height: bitmap.height,
-      });
-      bitmap = null;
-      setFocal({ x: 0.5, y: 0.5 });
-      setZoom(1);
+      if (epoch !== uploadEpoch.current) return;
+      if (valid.length) {
+        setImages(valid);
+        setSelectedId(valid[0].id);
+        setSearch("");
+        setSort(null);
+      }
+      if (skipped.length)
+        setError(
+          `Skipped ${skipped.length} file${skipped.length === 1 ? "" : "s"}. ${skipped.join(" ")}`,
+        );
     } catch (e) {
-      bitmap?.close();
-      if (epoch === uploadEpoch.current)
-        setError(e.message || "That image could not be opened.");
+      if (epoch === uploadEpoch.current) setError(e.message);
     } finally {
       if (epoch === uploadEpoch.current) setUploading(false);
+    }
+  }
+  function removeImage(id) {
+    const remaining = images.filter((i) => i.id !== id);
+    setImages(remaining);
+    if (selectedId === id) setSelectedId(remaining[0]?.id || "");
+  }
+  async function makeBatch() {
+    const controller = new AbortController();
+    batchAbort.current = controller;
+    setBatch({ completed: 0, total: images.length, name: "" });
+    try {
+      return await buildResizeBatch(images, settings, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (alive.current) setBatch(progress);
+        },
+      });
+    } finally {
+      batchAbort.current = null;
+      if (alive.current) setBatch(null);
+    }
+  }
+  async function exportBatch(toDrive = false) {
+    if (busy || !dimensions || images.length < 2) return;
+    setError("");
+    setDriveResult(null);
+    try {
+      const archive = await makeBatch();
+      if (!alive.current) return;
+      if (toDrive) await saveDrive(archive);
+      else downloadResizeFile(archive);
+    } catch (e) {
+      if (alive.current && e.name !== "AbortError") setError(e.message);
+    }
+  }
+  async function saveDrive(file = output) {
+    if (!file || !allowed) return;
+    setSavingDrive(true);
+    setDriveResult(null);
+    setError("");
+    try {
+      const digest = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", await file.blob.arrayBuffer()),
+        ),
+        (b) => b.toString(16).padStart(2, "0"),
+      ).join("");
+      const key = `${file.filename}:${digest}`;
+      // Reuse the request ID after an uncertain result so retry never silently creates a second Drive file.
+      if (!driveRequests.current.has(key))
+        driveRequests.current.set(key, crypto.randomUUID());
+      const result = await drive({
+        ...file,
+        requestId: driveRequests.current.get(key),
+      });
+      if (alive.current) setDriveResult({ ...result, filename: file.filename });
+    } catch (e) {
+      if (alive.current)
+        setError(
+          e.message ||
+            "Google Drive could not save this file. Your download is still available.",
+        );
+    } finally {
+      if (alive.current) setSavingDrive(false);
     }
   }
   function choosePreset(value) {
     const next = RESIZE_PRESETS.find((p) => p.id === value);
     setPresetId(value);
     setMode(next.mode);
-    setZoom(1);
+    setImages((items) => items.map((i) => ({ ...i, zoom: 1 })));
     setError("");
   }
   function chooseFocal(event) {
@@ -234,24 +361,17 @@ export default function AutoResizer({ allowed = false }) {
     }));
   }
   function download() {
-    if (!allowed || uploading || encoding || !output || dimensionsError) return;
-    const link = document.createElement("a");
-    link.href = output.url;
-    link.download = output.filename;
-    link.click();
+    if (!allowed || busy || encoding || !output || dimensionsError) return;
+    downloadResizeFile(output);
   }
   function downloadNotes() {
-    if (!allowed || !output || encoding || uploading || !changeNotes.trim())
-      return;
-    const text = `InceptionApex — image change request\n\nImage: ${output.filename}\nDestination: ${preset.group} / ${preset.label}\nSize: ${output.width} x ${output.height} pixels\nFraming: ${mode === "fit" ? "Fit entire image" : "Crop to fill"}\nFormat: ${format.toUpperCase()}\n\nRequested changes:\n${changeNotes.trim()}\n\nResize/crop controls determine this image export. Other requested edits still need to be performed and reviewed.\n`;
-    const url = URL.createObjectURL(
-      new Blob([text], { type: "text/plain;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = output.filename.replace(/\.[^.]+$/, "_changes.txt");
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!output || busy || encoding || !changeNotes.trim()) return;
+    downloadResizeFile({
+      blob: new Blob([changeInstructions(selected, output, settings)], {
+        type: "text/plain;charset=utf-8",
+      }),
+      filename: output.filename.replace(/\.[^.]+$/, "_changes.txt"),
+    });
   }
   if (!allowed) return null;
   return (
@@ -260,24 +380,120 @@ export default function AutoResizer({ allowed = false }) {
         <div>
           <p className="ia-kicker">EIG TEAM TOOLS</p>
           <h2 id="resizer-title">Auto Resizer</h2>
-          <p>One image. The right size for every destination.</p>
+          <p>One image or a whole batch. Ready for your destination.</p>
         </div>
         <span className="ia-resizer-badge">EIG access</span>
       </div>
       <div className="ia-resizer-grid">
-        <div className="ia-resizer-controls">
+        <fieldset className="ia-resizer-controls" disabled={busy}>
           <label>
-            Upload image
+            Upload images
             <input
               type="file"
+              multiple
               accept="image/png,image/jpeg,image/webp"
               onChange={upload}
             />
           </label>
           <p className="ia-resizer-help">
-            PNG, JPEG or WebP · up to 20 MB / 25 MP. Processing stays in your
-            browser. The original file stays intact.
+            PNG, JPEG or WebP · up to 20 images, 20 MB / 25 MP each, 100 MB
+            total. Selecting files replaces the current batch. Resizing happens
+            in your browser; files are uploaded only when you choose Google
+            Drive. Animated files become still images.
           </p>
+          {images.length > 0 && (
+            <div className="ia-resizer-queue">
+              <p>
+                <strong>
+                  {images.length} image{images.length === 1 ? "" : "s"}
+                </strong>{" "}
+                · Shared destination and format; crop and notes are per image.
+              </p>
+              {images.length > 1 && (
+                <label>
+                  Find an image
+                  <input
+                    type="search"
+                    aria-label="Find an image"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
+              )}
+              <div className="ia-resizer-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th
+                        aria-sort={
+                          sort?.key === "name"
+                            ? sort.direction === 1
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                      >
+                        <button type="button" onClick={() => sortBy("name")}>
+                          Image{" "}
+                          {sort?.key === "name" &&
+                            (sort.direction === 1 ? "↑" : "↓")}
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
+                          sort?.key === "size"
+                            ? sort.direction === 1
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                      >
+                        <button type="button" onClick={() => sortBy("size")}>
+                          Size{" "}
+                          {sort?.key === "size" &&
+                            (sort.direction === 1 ? "↑" : "↓")}
+                        </button>
+                      </th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((i) => (
+                      <tr key={i.id}>
+                        <td>
+                          <button
+                            type="button"
+                            aria-pressed={i.id === selectedId}
+                            onClick={() => setSelectedId(i.id)}
+                          >
+                            {i.name}
+                          </button>
+                          <small>
+                            {i.width} × {i.height}
+                          </small>
+                        </td>
+                        <td>{(i.file.size / 1024).toFixed(0)} KB</td>
+                        <td>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${i.name}`}
+                            onClick={() => removeImage(i.id)}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="ia-resizer-help">
+                {visible.length} of {images.length} shown. Batch exports include
+                all {images.length} images, including those hidden by search.
+              </p>
+              {!visible.length && <p>No images match your search.</p>}
+            </div>
+          )}
           <label>
             Where will this image be used?
             <select
@@ -460,6 +676,7 @@ export default function AutoResizer({ allowed = false }) {
               aria-label="Describe the changes you want"
               rows="4"
               maxLength="3000"
+              disabled={!selected}
               value={changeNotes}
               onChange={(e) => setChangeNotes(e.target.value)}
               placeholder="Keep the whole logo, move the focus to Ella and the dogs, leave room for sponsor text…"
@@ -477,7 +694,7 @@ export default function AutoResizer({ allowed = false }) {
           <button
             type="button"
             className="platform-primary-button"
-            disabled={!output || encoding || uploading || !!dimensionsError}
+            disabled={!output || encoding || busy || !!dimensionsError}
             onClick={download}
           >
             Download resized image
@@ -496,24 +713,79 @@ export default function AutoResizer({ allowed = false }) {
           >
             Download change instructions
           </button>
+          <button
+            type="button"
+            className="platform-secondary-button"
+            disabled={!output || encoding || busy || !!dimensionsError}
+            onClick={() => saveDrive()}
+          >
+            Add to Google Drive
+          </button>
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="platform-primary-button"
+                disabled={!dimensions || busy}
+                onClick={() => exportBatch()}
+              >
+                Download batch ZIP ({images.length} images)
+              </button>
+              <button
+                type="button"
+                className="platform-secondary-button"
+                disabled={!dimensions || busy}
+                onClick={() => exportBatch(true)}
+              >
+                Add batch to Google Drive
+              </button>
+            </>
+          )}
           <p className="ia-resizer-help">
-            Download only. Upload the finished file to your chosen website or
-            store when ready.
+            Drive saves to EIG’s connected shared folder: Hangars / Elevated
+            Impact Group / InceptionApex / Resized Images. Batch ZIPs include
+            change notes and a size manifest; up to 50 MB per ZIP. My Designs
+            holds editable projects.
           </p>
-        </div>
+        </fieldset>
         <div className="ia-resizer-previews" aria-live="polite">
+          {batch && (
+            <div className="ia-resizer-job">
+              <p role="status">
+                Preparing batch {batch.completed} / {batch.total} · {batch.name}
+              </p>
+              <progress value={batch.completed} max={batch.total} />
+              <button
+                type="button"
+                className="platform-secondary-button"
+                onClick={() => batchAbort.current?.abort()}
+              >
+                Cancel batch
+              </button>
+            </div>
+          )}
+          {savingDrive && <p role="status">Saving to EIG Google Drive…</p>}
+          {driveResult && (
+            <div className="ia-resizer-job" role="status">
+              <strong>Saved to Google Drive</strong>
+              <p className="ia-resizer-filename">{driveResult.filename}</p>
+              <a href={driveResult.url} target="_blank" rel="noreferrer">
+                Open in Google Drive
+              </a>
+            </div>
+          )}
           {uploading && <p role="status">Opening image…</p>}
           {image ? (
             <>
               <div className="ia-resizer-original">
                 <h3>
-                  Original · {image.width} × {image.height}
+                  {image.name} · Original · {image.width} × {image.height}
                 </h3>
                 <button
                   type="button"
                   className="ia-focal-image"
                   aria-label="Choose focal point on original image"
-                  disabled={mode !== "crop"}
+                  disabled={mode !== "crop" || busy}
                   onClick={chooseFocal}
                   onKeyDown={moveFocal}
                 >

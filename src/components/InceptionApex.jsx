@@ -119,6 +119,7 @@ export default function InceptionApex({
   onBack,
   onDirtyChange,
   canUseResizer = false,
+  resizerDrive,
 }) {
   const [resizerOpen, setResizerOpen] = useState(false);
   const [libraryOnly, setLibraryOnly] = useState(false);
@@ -454,7 +455,7 @@ export default function InceptionApex({
       {busy && !project && <p role="status">Opening design…</p>}
       {resizerOpen && canUseResizer ? (
         <React.Suspense fallback={<p role="status">Opening Auto Resizer…</p>}>
-          <AutoResizer allowed={canUseResizer} />
+          <AutoResizer allowed={canUseResizer} drive={resizerDrive} />
         </React.Suspense>
       ) : planner ? (
         <EventPacketStudio event={planner} onDirtyChange={setPlannerDirty} />

@@ -52,6 +52,50 @@ function DesignPreview({ project }) {
     />
   );
 }
+function ArtworkPreview({ project, unsaved, onClose }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    return () => element.close();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="ia-preview-dialog"
+      aria-labelledby="ia-preview-title"
+      onClose={onClose}
+    >
+      <header className="ia-preview-heading">
+        <div>
+          <h2 id="ia-preview-title">{project.name}</h2>
+          <p>
+            {materialById(project.material).label} · {project.data.design.width}{" "}
+            × {project.data.design.height} pixels
+          </p>
+        </div>
+        <button
+          type="button"
+          className="platform-secondary-button"
+          onClick={() => dialog.current.close()}
+          autoFocus
+        >
+          Close preview
+        </button>
+      </header>
+      <p className="ia-preview-state">
+        {unsaved
+          ? "Unsaved preview. Save to My Designs to keep these changes."
+          : project.status === "approved"
+            ? "Approved design · Version " + project.version
+            : "Saved draft · Version " + project.version}
+      </p>
+      <div className="ia-preview-artwork">
+        <DesignPreview project={project} />
+      </div>
+    </dialog>
+  );
+}
 function backup(project) {
   downloadCreative(
     JSON.stringify(
@@ -77,6 +121,8 @@ export default function InceptionApex({
   canUseResizer = false,
 }) {
   const [resizerOpen, setResizerOpen] = useState(false);
+  const [libraryOnly, setLibraryOnly] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [projects, setProjects] = useState([]),
     [events, setEvents] = useState([]),
     [project, setProject] = useState(null);
@@ -184,7 +230,7 @@ export default function InceptionApex({
     setDirty(true);
     setNotice("");
   }
-  async function open(p) {
+  async function open(p, previewOnly = false) {
     if (inflight.current || !leave()) return;
     inflight.current = true;
     setBusy(true);
@@ -192,9 +238,13 @@ export default function InceptionApex({
     setNotice("");
     try {
       const saved = store.read ? await store.read(p.id) : p;
-      setProject({ ...saved, data: cleanProjectData(saved.data) });
-      setDirty(false);
-      setPanel("design");
+      const opened = { ...saved, data: cleanProjectData(saved.data) };
+      if (previewOnly) setPreview({ project: opened, unsaved: false });
+      else {
+        setProject(opened);
+        setDirty(false);
+        setPanel("design");
+      }
     } catch (problem) {
       setError(problem.message || "Unable to open this project.");
     } finally {
@@ -258,7 +308,7 @@ export default function InceptionApex({
       } else
         setProject((p) => ({ ...p, version: saved.version, status: "draft" }));
       setNotice(
-        (status === "approved" ? "Design approved" : "Project saved") +
+        (status === "approved" ? "Design approved" : "Saved to My Designs") +
           ". Version " +
           saved.version +
           ".",
@@ -333,6 +383,8 @@ export default function InceptionApex({
   }
   function closeProject() {
     if (!leave()) return;
+    setLibraryOnly(true);
+    setNewType("");
     setProject(null);
     setResizerOpen(false);
     setDirty(false);
@@ -340,6 +392,7 @@ export default function InceptionApex({
     setPlannerDirty(false);
     setNotice("");
     setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -355,16 +408,24 @@ export default function InceptionApex({
           </div>
         </div>
         <div className="ia-actions">
-          {(project || planner || (resizerOpen && canUseResizer)) && (
+          {libraryOnly && !project && !planner && !resizerOpen && (
             <button
               type="button"
-              className="platform-secondary-button"
-              disabled={busy}
-              onClick={closeProject}
+              className="platform-primary-button"
+              onClick={() => setLibraryOnly(false)}
             >
-              My designs
+              New design
             </button>
           )}
+          <button
+            type="button"
+            className="platform-secondary-button"
+            disabled={busy}
+            onClick={closeProject}
+            aria-pressed={libraryOnly && !project && !planner && !resizerOpen}
+          >
+            My Designs
+          </button>
           {onBack && (
             <button
               type="button"
@@ -424,11 +485,18 @@ export default function InceptionApex({
             </div>
             <button
               type="button"
+              className="platform-secondary-button"
+              onClick={() => setPreview({ project, unsaved: dirty })}
+            >
+              View Preview
+            </button>
+            <button
+              type="button"
               className="platform-primary-button"
               disabled={busy || (!dirty && project.version > 0)}
               onClick={() => persist()}
             >
-              Save project
+              Save to My Designs
             </button>
           </section>
           <nav className="ia-editor-tabs" aria-label="Design workspace">
@@ -709,149 +777,160 @@ export default function InceptionApex({
       ) : (
         !loading && (
           <>
-            <section className="ia-start">
-              <div>
-                <p className="ia-kicker">CREATE SOMETHING YOU LOVE</p>
-                <h2>What are we designing?</h2>
-              </div>
-              <button
-                type="button"
-                className="platform-secondary-button"
-                onClick={() => importInput.current.click()}
-              >
-                Import project backup
-              </button>
-            </section>
-            <input
-              ref={importInput}
-              type="file"
-              accept=".json,application/json"
-              hidden
-              aria-label="Import project backup file"
-              onChange={importBackup}
-            />
-            <section className="ia-materials" aria-label="Start a design">
-              {MATERIALS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={"ia-material ia-material-" + m.id}
-                  onClick={() => begin(m.id)}
-                >
-                  <span className="ia-material-code" aria-hidden="true">
-                    {m.code}
-                  </span>
-                  <strong>{m.label}</strong>
-                  <span>{m.detail}</span>
-                  <b>Customize</b>
-                </button>
-              ))}
-              <button
-                type="button"
-                className="ia-material ia-planner"
-                onClick={() => begin("planner")}
-              >
-                <span className="ia-material-code" aria-hidden="true">
-                  MP
-                </span>
-                <strong>Maps & venue layouts</strong>
-                <span>Plan on your actual venue</span>
-                <b>Open event planner</b>
-              </button>
-            </section>
-            {newType && (
-              <form className="ia-new-project" onSubmit={create}>
-                <h2>
-                  {newType === "planner"
-                    ? "Choose an event to plan"
-                    : "Start your " + materialById(newType).label.toLowerCase()}
-                </h2>
-                <label>
-                  Connect to an event
-                  <select
-                    aria-label="Connect to an event"
-                    value={eventId}
-                    onChange={(e) => setEventId(e.target.value)}
-                    required={newType === "planner"}
-                  >
-                    <option value="">
-                      {newType === "planner"
-                        ? "Choose an event"
-                        : "Personal project · no event"}
-                    </option>
-                    {events.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {newType !== "planner" && (
-                  <label>
-                    Project name
-                    <input
-                      maxLength={160}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Optional · we can fill this in"
-                    />
-                  </label>
-                )}
-                <div className="ia-actions">
-                  <button
-                    type="submit"
-                    className="platform-primary-button"
-                    disabled={newType === "planner" && !contextEvent}
-                  >
-                    {newType === "planner" ? "Open planner" : "Open designer"}
-                  </button>
+            {!libraryOnly && (
+              <>
+                <section className="ia-start">
+                  <div>
+                    <p className="ia-kicker">CREATE SOMETHING YOU LOVE</p>
+                    <h2>What are we designing?</h2>
+                  </div>
                   <button
                     type="button"
                     className="platform-secondary-button"
-                    onClick={() => setNewType("")}
+                    onClick={() => importInput.current.click()}
                   >
-                    Cancel
+                    Import project backup
                   </button>
-                </div>
-                {newType === "planner" && !events.length && (
-                  <p>
-                    An event you are authorized to manage is required for course
-                    pins and venue layouts.
-                  </p>
+                </section>
+                <input
+                  ref={importInput}
+                  type="file"
+                  accept=".json,application/json"
+                  hidden
+                  aria-label="Import project backup file"
+                  onChange={importBackup}
+                />
+                <section className="ia-materials" aria-label="Start a design">
+                  {MATERIALS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={"ia-material ia-material-" + m.id}
+                      onClick={() => begin(m.id)}
+                    >
+                      <span className="ia-material-code" aria-hidden="true">
+                        {m.code}
+                      </span>
+                      <strong>{m.label}</strong>
+                      <span>{m.detail}</span>
+                      <b>Customize</b>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="ia-material ia-planner"
+                    onClick={() => begin("planner")}
+                  >
+                    <span className="ia-material-code" aria-hidden="true">
+                      MP
+                    </span>
+                    <strong>Maps & venue layouts</strong>
+                    <span>Plan on your actual venue</span>
+                    <b>Open event planner</b>
+                  </button>
+                </section>
+                {newType && (
+                  <form className="ia-new-project" onSubmit={create}>
+                    <h2>
+                      {newType === "planner"
+                        ? "Choose an event to plan"
+                        : "Start your " +
+                          materialById(newType).label.toLowerCase()}
+                    </h2>
+                    <label>
+                      Connect to an event
+                      <select
+                        aria-label="Connect to an event"
+                        value={eventId}
+                        onChange={(e) => setEventId(e.target.value)}
+                        required={newType === "planner"}
+                      >
+                        <option value="">
+                          {newType === "planner"
+                            ? "Choose an event"
+                            : "Personal project · no event"}
+                        </option>
+                        {events.map((e) => (
+                          <option key={e.id} value={e.id}>
+                            {e.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {newType !== "planner" && (
+                      <label>
+                        Project name
+                        <input
+                          maxLength={160}
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Optional · we can fill this in"
+                        />
+                      </label>
+                    )}
+                    <div className="ia-actions">
+                      <button
+                        type="submit"
+                        className="platform-primary-button"
+                        disabled={newType === "planner" && !contextEvent}
+                      >
+                        {newType === "planner"
+                          ? "Open planner"
+                          : "Open designer"}
+                      </button>
+                      <button
+                        type="button"
+                        className="platform-secondary-button"
+                        onClick={() => setNewType("")}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {newType === "planner" && !events.length && (
+                      <p>
+                        An event you are authorized to manage is required for
+                        course pins and venue layouts.
+                      </p>
+                    )}
+                  </form>
                 )}
-              </form>
+                {canUseResizer && (
+                  <section
+                    className="ia-team-tools"
+                    aria-label="EIG team tools"
+                  >
+                    <div>
+                      <p className="ia-kicker">EIG TEAM TOOLS</p>
+                      <h2>Auto Resizer</h2>
+                      <p>
+                        Prepare images for Shopify, the EIG website and
+                        displays.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="platform-primary-button"
+                      onClick={() => {
+                        setResizerOpen(true);
+                        setNotice("");
+                        setError("");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      Open Auto Resizer
+                    </button>
+                  </section>
+                )}
+              </>
             )}
-            {canUseResizer && (
-              <section className="ia-team-tools" aria-label="EIG team tools">
-                <div>
-                  <p className="ia-kicker">EIG TEAM TOOLS</p>
-                  <h2>Auto Resizer</h2>
-                  <p>
-                    Prepare images for Shopify, the EIG website and displays.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="platform-primary-button"
-                  onClick={() => {
-                    setResizerOpen(true);
-                    setNotice("");
-                    setError("");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                >
-                  Open Auto Resizer
-                </button>
-              </section>
-            )}
-            <section className="ia-library">
+            <section className="ia-library" aria-label="My Designs">
               <div className="ia-library-heading">
                 <div>
                   <p className="ia-kicker">YOUR WORKSPACE</p>
-                  <h2>My designs</h2>
+                  <h2>My Designs</h2>
                 </div>
                 <span>
-                  {visible.length} of {projects.length} recent projects
+                  {visible.length} of {projects.length} saved designs
                 </span>
               </div>
               <div className="ia-library-controls">
@@ -909,6 +988,7 @@ export default function InceptionApex({
                             </button>
                           </th>
                         ))}
+                        <th>Preview</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -943,6 +1023,17 @@ export default function InceptionApex({
                             </span>
                           </td>
                           <td>{new Date(p.updated_at).toLocaleDateString()}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="platform-secondary-button"
+                              disabled={busy}
+                              aria-label={"View Preview of " + p.name}
+                              onClick={() => open(p, true)}
+                            >
+                              View Preview
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -958,7 +1049,9 @@ export default function InceptionApex({
                   <p>
                     {projects.length
                       ? "Try a different search or filter."
-                      : "Choose a material above. Your saved projects will appear here."}
+                      : libraryOnly
+                        ? "Choose New design to get started. Your saved designs will appear here."
+                        : "Choose a material above. Your saved designs will appear here."}
                   </p>
                 </div>
               )}
@@ -972,6 +1065,13 @@ export default function InceptionApex({
             </footer>
           </>
         )
+      )}
+      {preview && (
+        <ArtworkPreview
+          project={preview.project}
+          unsaved={preview.unsaved}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   );

@@ -47,8 +47,12 @@ const fs = require("node:fs/promises");
       .selectOption({ label: "1. name" });
     await page.getByLabel("Font size", { exact: true }).fill("48");
     const logo = await page.evaluate(() => {
-      const canvas = document.createElement("canvas"); canvas.width = 120; canvas.height = 60;
-      const ctx = canvas.getContext("2d"); ctx.fillStyle = "#d81c22"; ctx.fillRect(0, 0, 120, 60);
+      const canvas = document.createElement("canvas");
+      canvas.width = 120;
+      canvas.height = 60;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#d81c22";
+      ctx.fillRect(0, 0, 120, 60);
       return canvas.toDataURL("image/png").split(",")[1];
     });
     await page.getByLabel("Add logo or photo", { exact: true }).setInputFiles({
@@ -76,11 +80,57 @@ const fs = require("node:fs/promises");
       .fill("Navy, red accents, relaxed outdoor event");
     await page.getByLabel("Save as a favorite", { exact: true }).check();
     await page
-      .getByRole("button", { name: "Save project", exact: true })
+      .getByRole("button", { name: "View Preview", exact: true })
       .click();
     await page
-      .getByText("Project saved. Version 1.", { exact: true })
+      .getByRole("dialog", { name: "Dinner flyer", exact: true })
       .waitFor();
+    assert.ok(await page.getByText(/Unsaved preview/).isVisible());
+    assert.equal(
+      await page
+        .locator(".ia-preview-dialog img")
+        .evaluate((img) => img.complete && img.naturalWidth > 0),
+      true,
+    );
+    await page.screenshot({ path: "test-results/inception-apex/expanded-preview-desktop.png", fullPage: true });
+    await page.keyboard.press("Escape");
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    assert.equal(
+      await page.getByLabel("Creative direction", { exact: true }).inputValue(),
+      "Navy, red accents, relaxed outdoor event",
+    );
+    await page
+      .getByRole("button", { name: "Save to My Designs", exact: true })
+      .click();
+    await page
+      .getByText("Saved to My Designs. Version 1.", { exact: true })
+      .waitFor();
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
+    assert.equal(
+      await page
+        .getByRole("heading", { name: "What are we designing?" })
+        .count(),
+      0,
+    );
+    await page
+      .getByRole("button", {
+        name: "View Preview of Dinner flyer",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Dinner flyer", exact: true })
+      .waitFor();
+    await page.getByText("Saved draft · Version 1", { exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: "Close preview", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("region", { name: "My Designs", exact: true })
+        .count(),
+      1,
+    );
     await page.reload();
     await page.getByRole("button", { name: /Dinner flyer.*Favorite/ }).click();
     await page
@@ -151,7 +201,7 @@ const fs = require("node:fs/promises");
       window.inceptionFixture.conflict = true;
     });
     await page
-      .getByRole("button", { name: "Save project", exact: true })
+      .getByRole("button", { name: "Save to My Designs", exact: true })
       .click();
     await page.getByText(/Someone saved a newer version/).waitFor();
     assert.ok(
@@ -168,7 +218,7 @@ const fs = require("node:fs/promises");
     );
     assert.equal(backup.name, "Revised dinner flyer");
     assert.equal(backup.data.design.images.length, 1);
-    await page.getByRole("button", { name: "My designs", exact: true }).click();
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
     await page.getByLabel("Search designs", { exact: true }).fill("dinner");
     await page.getByLabel("Show", { exact: true }).selectOption("favorites");
     assert.equal(await page.locator(".ia-library tbody tr").count(), 1);
@@ -203,6 +253,23 @@ const fs = require("node:fs/promises");
         () => document.documentElement.scrollWidth <= innerWidth + 1,
       ),
     );
+    await page
+      .getByRole("button", { name: "View Preview", exact: true })
+      .click();
+    await page.getByRole("dialog").waitFor();
+    assert.ok(
+      await page
+        .locator(".ia-preview-dialog")
+        .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    );
+    await page
+      .getByRole("button", { name: "Close preview", exact: true })
+      .click();
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
+    await page.getByRole("button", { name: "New design", exact: true }).click();
+    await page
+      .getByRole("heading", { name: "What are we designing?" })
+      .waitFor();
     assert.deepEqual(errors, []);
     process.stdout.write(
       "InceptionApex desktop/mobile, logo editing, saved projects, approval, handoff, conflict recovery and backups passed.\n",

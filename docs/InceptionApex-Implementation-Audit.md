@@ -60,3 +60,7 @@ The Event Builder browser suite checks that the reused editor and packet changes
 ## October 7 release verification
 
 The live legacy event/inquiry policy fingerprint stayed identical before and after both creative migrations. Saved projects, active-session access, event authority, immutable versions, approval and attachment passed against the actual creative SQL in isolated PGlite. The production build passed 60 tests. All three browser suites passed, including actual exported pixels and instructions downloads. Live authenticated save/reopen still needs the owner’s signed-in smoke test; no real user was impersonated. Provider generation and purchases remain pending.
+
+## Preview and My Designs update
+
+The editor has a View Preview action that shows current artwork in a larger keyboard-accessible dialog, including unsaved/draft/approved status and output dimensions. Escape or Close preview returns to the working design. The persistent My Designs shortcut opens the saved library directly, with search, filters, sorting, reopen and per-design previews. Save to My Designs uses the same private, versioned server storage and preserves save-conflict recovery. Previewing a saved design fetches its artwork only on request and does not modify it. New design returns to material selection. These actions send no external notifications and make no changes to authorization or the database schema. Desktop/mobile browser checks cover preview dismissal, edits preserved, saved preview, library navigation and reopen.

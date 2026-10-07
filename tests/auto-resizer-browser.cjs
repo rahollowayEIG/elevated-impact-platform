@@ -207,7 +207,8 @@ const fs = require("node:fs/promises");
         () => document.documentElement.scrollWidth <= innerWidth + 1,
       ),
     );
-    await page.getByRole("button", { name: "My designs", exact: true }).click();
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
+    await page.getByRole("button", { name: "New design", exact: true }).click();
     await page
       .getByRole("button", { name: "Open Auto Resizer", exact: true })
       .waitFor();

@@ -1,0 +1,321 @@
+{
+  "items": [
+    {
+      "id": "sponsorship-2",
+      "category": "Physical Signage",
+      "name": "Tee Sign Sponsor",
+      "description": "Sponsor logo or business name displayed on a tee sign at one designated hole.",
+      "available": 18.0,
+      "price": "",
+      "offer_alone": false,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-3",
+      "category": "Physical Signage",
+      "name": "1' x 3' Banner Sponsor",
+      "description": "Sponsor logo or business name displayed on a 1' x 3' banner in the clubhouse or event tent area.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-4",
+      "category": "Physical Signage",
+      "name": "Registration Sponsor",
+      "description": "Sponsor recognition at the registration/check-in area at the clubhouse.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-5",
+      "category": "Physical Signage",
+      "name": "Digital Clubhouse TV Sponsor",
+      "description": "Sponsor logo or message displayed digitally on TVs/screens inside the clubhouse.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-6",
+      "category": "Physical Signage",
+      "name": "Golf Cart Sponsor",
+      "description": "Sponsor recognition displayed on golfer carts.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-7",
+      "category": "Physical Signage",
+      "name": "Beverage Cart Sponsor",
+      "description": "Sponsor logo/signage displayed on or near the beverage cart.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-8",
+      "category": "Physical Signage",
+      "name": "Pin Flag Sponsor",
+      "description": "Sponsor logo or business name displayed on custom pin flags on greens.",
+      "available": 18.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-9",
+      "category": "Physical Signage",
+      "name": "Hole-in-One Sponsor",
+      "description": "Sponsor recognition tied to the hole-in-one program and contest signage.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-10",
+      "category": "Physical Signage",
+      "name": "On-Course Table/Tent Sponsor",
+      "description": "Sponsor activation table/tent at an approved on-course station.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-11",
+      "category": "Food & Beverage",
+      "name": "Breakfast Sponsor",
+      "description": "Sponsor recognition during breakfast or morning check-in.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-12",
+      "category": "Food & Beverage",
+      "name": "Lunch Sponsor",
+      "description": "Sponsor recognition during lunch service or boxed lunch.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-13",
+      "category": "Food & Beverage",
+      "name": "Hot Dog Sponsor",
+      "description": "Sponsor recognition at the hot dog station, grill area, or turn stop.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-14",
+      "category": "Food & Beverage",
+      "name": "Beverage Sponsor",
+      "description": "Sponsor recognition connected to event beverages, drink tickets, or bar service.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-15",
+      "category": "Food & Beverage",
+      "name": "Dinner Sponsor",
+      "description": "Sponsor recognition during post-golf dinner, reception, or awards.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-16",
+      "category": "Food & Beverage",
+      "name": "Dessert Sponsor",
+      "description": "Sponsor recognition connected to dessert service.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-17",
+      "category": "Digital & Online",
+      "name": "Website Sponsor",
+      "description": "Sponsor logo/link featured on event website or registration page.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-18",
+      "category": "Digital & Online",
+      "name": "Social Media Post Sponsor",
+      "description": "Sponsor featured in event-related social media posts.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-19",
+      "category": "Digital & Online",
+      "name": "Live Scoring Sponsor",
+      "description": "Sponsor recognition within live scoring, leaderboard, or scoring displays.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-20",
+      "category": "Digital & Online",
+      "name": "Scorecard Sponsor",
+      "description": "Sponsor logo or business name featured on golfer scorecards.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-21",
+      "category": "Digital & Online",
+      "name": "Email Sponsor",
+      "description": "Sponsor logo or business name included in event email communications.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-22",
+      "category": "Digital & Online",
+      "name": "Leaderboard Sponsor",
+      "description": "Sponsor displayed on printed or digital leaderboard materials.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-23",
+      "category": "Golfer Gifts & Swag",
+      "name": "Golf Ball Sponsor",
+      "description": "Sponsor logo or business name included with golf balls provided to golfers.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-24",
+      "category": "Golfer Gifts & Swag",
+      "name": "Swag Sponsor",
+      "description": "Sponsor logo featured on golfer giveaway items such as tees, towels, coolers, drinkware, bags, or other items.",
+      "available": "",
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-25",
+      "category": "Golfer Gifts & Swag",
+      "name": "Golf Towel Sponsor",
+      "description": "Sponsor logo included on golf towels distributed to golfers.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-26",
+      "category": "Golfer Gifts & Swag",
+      "name": "Cooler Sponsor",
+      "description": "Sponsor logo included on coolers or cooler bags.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-27",
+      "category": "Golfer Gifts & Swag",
+      "name": "Golf Tee Sponsor",
+      "description": "Sponsor connected to golf tees included in golfer gift bags.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    },
+    {
+      "id": "sponsorship-28",
+      "category": "Golfer Gifts & Swag",
+      "name": "Golfer Gift Bag Sponsor",
+      "description": "Sponsor recognition on golfer gift bags or welcome bags.",
+      "available": 1.0,
+      "price": "",
+      "offer_alone": true,
+      "notes": ""
+    }
+  ],
+  "packages": [
+    {
+      "id": "package-2",
+      "name": "Title Sponsor Package",
+      "price": "",
+      "items": [],
+      "foursomes": 0,
+      "course_challenge": false,
+      "notes": ""
+    },
+    {
+      "id": "package-3",
+      "name": "Major Sponsor Package",
+      "price": "",
+      "items": [],
+      "foursomes": 0,
+      "course_challenge": false,
+      "notes": ""
+    },
+    {
+      "id": "package-4",
+      "name": "Foursome Sponsor Package",
+      "price": "",
+      "items": [],
+      "foursomes": 0,
+      "course_challenge": false,
+      "notes": ""
+    },
+    {
+      "id": "package-5",
+      "name": "Digital Exposure Package",
+      "price": "",
+      "items": [],
+      "foursomes": 0,
+      "course_challenge": false,
+      "notes": ""
+    },
+    {
+      "id": "package-6",
+      "name": "Food & Beverage Package",
+      "price": "",
+      "items": [],
+      "foursomes": 0,
+      "course_challenge": false,
+      "notes": ""
+    }
+  ]
+}

@@ -75,7 +75,7 @@ export const RESIZE_PRESETS = [
   },
 ];
 
-// Local tool rollout only: no API, credentials, stored media or paid entitlement.
+// EIG rollout gate; Drive saving also verifies this membership on the server.
 export function canUseAutoResizer(memberships, now = Date.now()) {
   return (memberships || []).some((m) => {
     const starts = m.access_starts_at

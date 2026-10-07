@@ -50,3 +50,7 @@ Before adding creative tooling or routing artwork between apps, read:
 - `docs/InceptionApex-App-Architecture.md`
 
 InceptionApex is the shared creative app. Event Builder tools are an entry point into its design workflow. Reuse saved designs and contextual event/product facts across connected apps, and preserve EIC's ownership of purchases and orders.
+
+## Google Drive organization
+
+Before adding Drive folder creation, exports or sync writers, read `docs/ElevationPilot-Drive-Folder-Rules.md`. Resolve the authorized Hangar first and use stable folder mappings. Event files belong under their owning Hangar and event. Do not claim existing Drive organization is complete until legacy writers and folder parents have been verified.

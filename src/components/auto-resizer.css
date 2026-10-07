@@ -147,3 +147,70 @@
     gap: 12px;
   }
 }
+.ia-resizer-controls {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.ia-resizer-queue {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #0d2037;
+}
+.ia-resizer-queue p {
+  margin: 0 0 10px;
+}
+.ia-resizer-table-wrap {
+  max-height: 290px;
+  overflow: auto;
+  margin: 10px 0;
+}
+.ia-resizer-queue table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ia-resizer-queue th,
+.ia-resizer-queue td {
+  padding: 7px 4px;
+  text-align: left;
+  border-bottom: 1px solid #7183a255;
+}
+.ia-resizer-queue td:first-child {
+  max-width: 180px;
+}
+.ia-resizer-queue button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #d8e9ff;
+  padding: 5px;
+  text-align: left;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.ia-resizer-queue button[aria-pressed="true"] {
+  background: #244774;
+  border-color: #92caff;
+}
+.ia-resizer-queue small {
+  display: block;
+  color: #b7c5d8;
+  padding: 3px 5px;
+}
+.ia-resizer-job {
+  padding: 16px;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #0d2037;
+  overflow-wrap: anywhere;
+}
+.ia-resizer-job a {
+  color: #b9d9ff;
+}
+.ia-resizer-job progress {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+}

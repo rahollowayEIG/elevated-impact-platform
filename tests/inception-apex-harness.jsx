@@ -18,7 +18,13 @@ const event = {
   },
 };
 const key = "inception-synthetic-projects";
-window.inceptionFixture = { conflict: false, delay: 0, attached: [] };
+window.inceptionFixture = {
+  conflict: false,
+  delay: 0,
+  attached: [],
+  driveError: false,
+  driveExports: [],
+};
 const rows = () => JSON.parse(sessionStorage.getItem(key) || "[]");
 const store = {
   list: async () => rows(),
@@ -62,6 +68,22 @@ const store = {
 createRoot(document.getElementById("root")).render(
   <InceptionApex
     store={store}
+    resizerDrive={async ({ blob, filename, requestId }) => {
+      window.inceptionFixture.driveExports.push({
+        filename,
+        requestId,
+        type: blob.type,
+        size: blob.size,
+      });
+      if (window.inceptionFixture.driveError)
+        throw new Error(
+          "Drive connection needs attention. Your download is still available.",
+        );
+      return {
+        file_id: "fixture-file",
+        url: "https://drive.google.com/file/d/fixture-file/view",
+      };
+    }}
     canUseResizer={new URLSearchParams(location.search).get("eig") === "1"}
   />,
 );

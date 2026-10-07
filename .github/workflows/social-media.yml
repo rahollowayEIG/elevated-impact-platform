@@ -1,0 +1,35 @@
+name: Social Media checks
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/SocialMediaApp.jsx'
+      - 'src/components/social-media.css'
+      - 'src/lib/social*'
+      - 'src/PlatformApp.jsx'
+      - 'supabase/migrations/*social_campaign*'
+      - 'tests/social*'
+      - 'package*.json'
+      - '.github/workflows/social-media.yml'
+permissions:
+  contents: read
+jobs:
+  social:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:social-media-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: social-media-browser-evidence
+          path: test-results/social-media/
+          retention-days: 7

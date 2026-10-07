@@ -54,7 +54,7 @@ EIC owns the paid package, checkout and order. The Hangar receives the approved 
 
 ## Latest preferred commercial model — no upfront setup, share each sale
 
-Ryan's latest clarification supersedes the setup-fee proposals: no upfront setup charge to the course or organizer. EIG creates the reusable course asset, the course verifies it and sells the event-use package to organizers, and EIG/course split the revenue from each qualifying sale. The event package is paid; “no upfront setup” does not mean every event receives all work free. No package price, split percentage or paid feature has been approved or enabled.
+Ryan's latest clarification supersedes the setup-fee proposals: no setup charge to the course/Hangar. EIG creates the reusable course asset, the course verifies it and sells the event-use package to organizers, and EIG/course split the revenue from each qualifying sale. The event organizer pays for the package through the course. Ryan clarified that the free setup applies to the Hangar, not to all customers or all event work. No package price, split percentage or paid feature has been approved or enabled.
 
 Define the included free setup deliverable and revision scope before launching a pilot. Track creation cost and actual course-attributed event sales to assess whether recurring revenue supports the initial work. The course retains its approved map with recorded reuse rights, while each paid event gets its own selected placement, sponsor-artwork and golfer-guide deliverables. Additional map updates or customization need a disclosed scope; do not silently charge an upfront fee after promising free setup.
 

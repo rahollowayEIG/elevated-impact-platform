@@ -34,3 +34,11 @@ Adobe's Firefly API credentials/access are a developer integration, separate fro
 ## Google Drive
 
 The existing EIG website connection already has server-side Google OAuth credentials and a stored refresh token. The resizer now uses that connection; no new Google credentials are required for this EIG-only rollout. This is not a personal-account connection. Its new folder is Hangars / Elevated Impact Group / InceptionApex / Resized Images underneath the existing configured Drive root. Single exports and batch ZIPs share the destination. See `ElevationPilot-Drive-Folder-Rules.md` for the wider organization audit and remaining legacy-folder work.
+
+## Optional connections after the core design providers
+
+- Runway: candidate for sponsor ads, pre-round briefings and Ella/Marshal/Maverick hole guides. Create an EIG-owned Runway API developer account, configure API billing and store the API key server-side (`RUNWAYML_API_SECRET`). Runway web subscriptions and credits are separate from API credits. Do not buy or enable generation before reviewing the actual API budget and workflow. Official setup: https://docs.dev.runwayml.com/guides/using-the-api/ and https://help.runwayml.com/hc/en-us/articles/50683115755155-Runway-API-FAQs.
+- ElevenLabs: optional consistent narration voices if the selected video workflow needs them. Official capabilities: https://elevenlabs.io/docs/overview/capabilities/text-to-speech. Select authorized character voices; live voice generation and synchronization still need implementation and review.
+- Printful: candidate for supplier catalog, selected-product mockups and fulfillment, routed through EIC's product/order authority. Official developer documentation: https://developers.printful.com/docs/. These product starters do not yet submit supplier orders.
+
+Connect core image/design providers first. The golfer-video scope and verified course/challenge requirements are in InceptionApex-Video-Challenges.md. Connecting a provider inside ChatGPT does not automatically authorize background jobs in the EIG website.

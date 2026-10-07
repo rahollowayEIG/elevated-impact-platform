@@ -55,3 +55,13 @@ Auto Resizer is initially an EIG team tool inside InceptionApex. Offer it only t
 Private project storage, immutable revision history and approval/packet handoff migrations are implemented and tested locally. The creative-only release uses additive migrations independently of the separate booking workflow. Provider connections are visibly pending. Background AI generation, selected-product mockups, multipage books, proof messaging and live EIC catalog/checkout remain to be connected and verified.
 
 See `InceptionApex-Implementation-Audit.md` for validation and release setup. Expand the shared workspace without presenting unconnected integrations as live features.
+
+## Custom product starters and golfer videos
+
+Create Custom Products opens Swag, Apparel, Gifts and Other products. Choose a starter or describe an idea and optionally supply the actual imprint size. Personal/event context and these production specifications follow the existing private project, preview, My Designs, saved approval and draft production-request flow. These are artwork starters, not catalog SKUs; EIC continues to own real catalog options, prices, checkout and orders. Supplier mockups remain pending.
+
+The owner also requested Ella, Marshal and Maverick phone videos explaining each hole and its hole-in-one prize challenge, plus pre-round announcements and sponsor ads. See InceptionApex-Video-Challenges.md for verified inputs, golfer access and approval requirements. Video generation is planned, not connected in this release.
+
+## Owner business direction — empower Hangars and share in generated business
+
+On October 7 Ryan identified the broader goal as avoiding charges to Hangars for joining/getting set up, giving them tools to grow, and letting EIG benefit from the business those tools generate. The current course-mapping proposal uses free Hangar setup and a share of qualifying event-package sales. Preserve this direction when designing future monetization; do not treat it as an implemented platform-wide billing change. Organizer/customer services may be paid, with clearly disclosed prices and any agreed Hangar share. Exact package prices, split percentages, eligible transactions and payout rules require separate decisions. Do not invent a fee on every app action or promise revenue on unpaid activity.

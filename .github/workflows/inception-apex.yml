@@ -6,6 +6,9 @@ on:
       - "api/event-builder.js"
       - "server/event-builder.cjs"
       - "src/components/Event*"
+      - "src/components/event-budget.css"
+      - "tests/event-budget*"
+      - "supabase/migrations/*eie_event_budgets*"
       - "src/components/FlyerEditor.jsx"
       - "src/components/CreativeLinkControls.jsx"
       - "src/components/creative-link.css"
@@ -58,6 +61,7 @@ jobs:
       - run: npm run test:inception-apex-browser
       - run: npm run test:auto-resizer-browser
       - run: npm run test:design-product-browser
+      - run: npm run test:event-budget-browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,5 +71,6 @@ jobs:
             test-results/inception-apex/
             test-results/auto-resizer/
             test-results/design-product-catalog/
+            test-results/event-budget/
           retention-days: 7
           if-no-files-found: ignore

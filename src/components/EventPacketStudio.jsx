@@ -525,6 +525,7 @@ function Itinerary({ value, onChange, event }) {
 
 export default function EventPacketStudio({
   event,
+  initialTab = "flyer",
   read = readAssets,
   save = saveAssets,
   quote = readQuote,
@@ -533,7 +534,7 @@ export default function EventPacketStudio({
 }) {
   const [data, setData] = useState(null),
     [version, setVersion] = useState(0),
-    [tab, setTab] = useState("flyer"),
+    [tab, setTab] = useState(initialTab === "sponsors" ? "sponsors" : "flyer"),
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(true),
     [error, setError] = useState(""),

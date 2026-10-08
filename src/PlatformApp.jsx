@@ -1,3 +1,4 @@
+import EventBudget from './components/EventBudget.jsx';
 import EventPacketStudio from './components/EventPacketStudio.jsx';
 import AccountSecurityHistory from './components/AccountSecurityHistory.jsx';
 import { accountDisplayName } from './lib/accountDisplayName.mjs';
@@ -1358,8 +1359,10 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
   const [setupEvent, setSetupEvent] = useState(null);
   const [setupStep, setSetupStep] = useState('details');
   const [creativeDirty,setCreativeDirty]=useState(false);
-  useEffect(() => { onCreativeDirtyChange?.(creativeDirty); return () => onCreativeDirtyChange?.(false); }, [creativeDirty, onCreativeDirtyChange]);
-  function leaveCreative(){return !creativeDirty||window.confirm('Leave without saving the event packet changes?');}
+  const [budgetDirty,setBudgetDirty]=useState(false);
+  const [creativeTab,setCreativeTab]=useState('flyer');
+  useEffect(() => { onCreativeDirtyChange?.(creativeDirty || budgetDirty); return () => onCreativeDirtyChange?.(false); }, [creativeDirty, budgetDirty, onCreativeDirtyChange]);
+  function leaveCreative(){return !(creativeDirty || budgetDirty)||window.confirm('Leave without saving your event packet or budget changes?');}
   function changeSetupStep(step){if(step===setupStep||leaveCreative())setSetupStep(step);}
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupNotice, setSetupNotice] = useState('');
@@ -2009,7 +2012,9 @@ function EieEventDirectory({ organization, events, loading, onReload, onBack, in
 
       {setupNotice && <div className={setupNotice.startsWith('Public Hub details saved') || setupNotice.startsWith('Upload complete') || setupNotice.startsWith('Roster') || setupNotice.startsWith('Event website') ? 'platform-success' : 'platform-error banner'}>{setupNotice}</div>}
 
-      {setupStep === 'creative' && <EventPacketStudio key={setupEvent.id} event={setupEvent} onDirtyChange={setCreativeDirty} onOpenDesign={onOpenInception} />}
+      {setupStep === 'budget' && <EventBudget key={setupEvent.id} event={setupEvent} onDirtyChange={setBudgetDirty} onOpenRoster={() => setSetupStep(setupEvent.field_settings?.participant_fields_status === 'configured' ? 'roster' : setupEvent.field_settings?.event_details_status === 'configured' ? 'registration' : 'details')} onOpenSponsors={() => { setCreativeTab('sponsors'); setSetupStep('creative'); }} />}
+
+      {setupStep === 'creative' && <EventPacketStudio initialTab={creativeTab} key={setupEvent.id} event={setupEvent} onDirtyChange={setCreativeDirty} onOpenDesign={onOpenInception} />}
 
       {setupStep === 'roster' && <EieRosterMaintenance
         event={setupEvent}
@@ -3329,7 +3334,7 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
-  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty) || window.confirm('Leave without saving your campaign, design or event packet changes?'); }
+  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty) || window.confirm('Leave without saving your campaign, design, event packet or budget changes?'); }
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
     if (portalView !== 'inception') inceptionReturn.current = portalView;

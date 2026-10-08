@@ -1,4 +1,6 @@
 import React, { useRef, useState } from "react";
+import CreativeLinkControls from "./CreativeLinkControls.jsx";
+import { creativeLinkSvg, creativeLinkProblem } from "../lib/creativeLink.mjs";
 import {
   FLYER_FIELDS,
   creativeBrief,
@@ -48,6 +50,11 @@ export default function FlyerEditor({
     drag = useRef(null);
   const box = design.boxes.find((b) => b.id === selected),
     overflow = flyerOverflow(design, facts);
+  const linkProblem = creativeLinkProblem(
+    design.link,
+    design.width,
+    design.height,
+  );
   function updateBox(change) {
     onChange({
       ...design,
@@ -221,7 +228,10 @@ export default function FlyerEditor({
                     "Apply this template and replace the current flyer layout?",
                   )
                 ) {
-                  onChange(createTemplate(e.target.value));
+                  onChange({
+                    ...createTemplate(e.target.value),
+                    link: design.link,
+                  });
                   setSelected(null);
                 }
               }}
@@ -427,6 +437,12 @@ export default function FlyerEditor({
               )}
             </g>
           ))}
+          <g
+            pointerEvents="none"
+            dangerouslySetInnerHTML={{
+              __html: creativeLinkSvg(design.link, design.width, design.height),
+            }}
+          />
         </svg>
         <p>
           Drag a box to place it. Drag its corner to resize it. Arrow keys move
@@ -434,6 +450,13 @@ export default function FlyerEditor({
         </p>
       </div>
       <aside className="creative-inspector">
+        <CreativeLinkControls
+          value={design.link}
+          width={design.width}
+          height={design.height}
+          suggestedLink={facts.registration}
+          onChange={(link) => onChange({ ...design, link })}
+        />
         <h3>Logos & photos</h3>
         <label>
           Add logo or photo
@@ -682,7 +705,7 @@ export default function FlyerEditor({
         <div className="creative-toolbar">
           <button
             type="button"
-            disabled={!!overflow.length}
+            disabled={!!overflow.length || !!linkProblem}
             onClick={() =>
               downloadCreative(
                 flyerSvg(design, facts, draftLabel),

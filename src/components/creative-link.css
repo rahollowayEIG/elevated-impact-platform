@@ -1,0 +1,73 @@
+.creative-link-controls {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #7183a2;
+  border-radius: 12px;
+  background: #0c192f;
+  color: #eef4ff;
+  margin: 16px 0;
+}
+.creative-link-controls legend {
+  font-weight: 700;
+  padding: 0 6px;
+}
+.creative-link-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.creative-link-controls input:not([type="checkbox"]),
+.creative-link-controls select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #0d1a2a;
+  color: #eef4ff;
+}
+.creative-link-controls .creative-link-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.creative-link-check input {
+  width: auto;
+  margin: 0;
+}
+.creative-link-controls button {
+  padding: 10px;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #223551;
+  color: #eef4ff;
+  cursor: pointer;
+}
+.creative-link-controls a {
+  color: #8bd2ff;
+  overflow-wrap: anywhere;
+}
+.creative-link-controls p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+.creative-link-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.creative-link-preview {
+  max-width: 200px;
+  line-height: 0;
+}
+.creative-link-preview svg {
+  width: 100%;
+  height: auto;
+}
+.creative-link-controls :focus-visible {
+  outline: 3px solid #67ccff;
+  outline-offset: 2px;
+}

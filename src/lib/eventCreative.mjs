@@ -1,4 +1,9 @@
 import { sanitizeSponsorPlan } from "./sponsorPlan.mjs";
+import {
+  cleanCreativeLink,
+  creativeLinkSvg,
+  packetLinkHtml,
+} from "./creativeLink.mjs";
 export const escapeMarkup = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -151,6 +156,7 @@ export function sanitizeFlyer(value) {
     background: color(value.background),
     backgroundImage: safeMapImage(value.backgroundImage),
     accent: color(value.accent),
+    link: cleanCreativeLink(value.link, width, height),
     images: (Array.isArray(value.images) ? value.images : [])
       .slice(0, 12)
       .map((image, i) => {
@@ -274,7 +280,7 @@ export function flyerSvg(
         `<image href="${image.src}" x="${image.x}" y="${image.y}" width="${image.width}" height="${image.height}" preserveAspectRatio="xMidYMid meet"/>`,
     )
     .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${d.width} ${d.height}" width="${d.width}" height="${d.height}"><rect width="100%" height="100%" fill="${d.background}"/>${d.backgroundImage ? `<image href="${d.backgroundImage}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"/>` : ""}<rect x="0" y="0" width="100%" height="24" fill="${d.accent}"/>${images}${boxes}${draftLabel ? '<text x="35" y="60" font-family="Arial" font-size="20" fill="#ffffff">' + escapeMarkup(draftLabel) + "</text>" : ""}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${d.width} ${d.height}" width="${d.width}" height="${d.height}"><rect width="100%" height="100%" fill="${d.background}"/>${d.backgroundImage ? `<image href="${d.backgroundImage}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"/>` : ""}<rect x="0" y="0" width="100%" height="24" fill="${d.accent}"/>${images}${boxes}${draftLabel ? '<text x="35" y="60" font-family="Arial" font-size="20" fill="#ffffff">' + escapeMarkup(draftLabel) + "</text>" : ""}${creativeLinkSvg(d.link, d.width, d.height)}</svg>`;
 }
 
 export function safeMapImage(value) {
@@ -385,6 +391,7 @@ export function sanitizeItinerary(rows) {
 
 export function sanitizePacket(data = {}) {
   return {
+    link: cleanCreativeLink(data.link, 240, 300),
     flyer: data.flyer ? sanitizeFlyer(data.flyer) : null,
     map: sanitizeMap(data.map),
     layouts: data.layouts ? sanitizeLayouts(data.layouts) : null,
@@ -505,7 +512,8 @@ export function packetHtml(event, data, origin = "") {
       (a.date + a.start).localeCompare(b.date + b.start),
     );
   const map = safe.map;
-  return `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeMarkup(facts.name)} · Event packet</title><style>body{font:14px Arial;color:#14213b;max-width:1000px;margin:30px auto;padding:20px}h1{font-size:32px}section{break-before:page;margin:35px 0}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #ccd5e0;text-align:left;vertical-align:top;white-space:pre-wrap}svg{max-width:100%;max-height:850px}li{margin:12px 0}.map{position:relative}.map img{width:100%}.pin{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:#e02f41;color:white;font-weight:bold;padding:7px} @media print{button{display:none}@page{margin:.5in}}</style></head><body><button onclick="window.print()">Print / Save PDF</button><h1>${escapeMarkup(facts.name)}</h1><p>${facts.status === "published" ? "Published event" : "DRAFT · Event not published"} · Packet generated ${escapeMarkup(new Date().toLocaleString())}</p><p>${escapeMarkup([facts.date, facts.time, facts.venue, facts.address].filter(Boolean).join(" · "))}</p><p>Saved event ID: ${escapeMarkup(facts.id)}</p>${safe.flyer ? `<section><h2>Event flyer</h2>${flyerSvg(safe.flyer, facts)}</section>` : ""}<section><h2>Course activities & vendor map</h2>${map.image ? `<div class="map"><img alt="Venue course map" src="${map.image}"/>${map.pins.map((p, i) => `<span class="pin" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join("")}</div>` : "<p>Course image has not been added.</p>"}<ol>${map.pins.map((p) => `<li><strong>${escapeMarkup(p.label || p.type)}</strong> · ${escapeMarkup(p.type)} ${p.hole ? "· Hole " + escapeMarkup(p.hole) : ""}<br>${escapeMarkup(p.notes)}</li>`).join("")}</ol></section>${safe.layouts ? safe.layouts.spaces.map((s) => `<section><h2>${escapeMarkup(s.name)} · ${s.width} × ${s.length} ft</h2><p>${escapeMarkup(s.notes)}</p>${layoutSvg(s)}<p>${s.items.reduce((sum, i) => sum + i.seats, 0)} seats · ${s.items.length} items</p><ul>${s.items.map((i) => `<li>${escapeMarkup(i.label)} · ${i.w} × ${i.d} ft · ${i.seats} seats</li>`).join("")}</ul></section>`).join("") : ""}<section><h2>Itinerary · Venue local time</h2><table><thead><tr><th>Date / time</th><th>Activity</th><th>Location</th><th>Responsible person</th><th>Notes</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${escapeMarkup(r.date)}<br>${escapeMarkup(r.start)}${r.end ? " – " + escapeMarkup(r.end) : ""}</td><td>${escapeMarkup(r.activity)}</td><td>${escapeMarkup(r.location)}</td><td>${escapeMarkup(r.owner)}</td><td>${escapeMarkup(r.notes)}</td></tr>`).join("")}</tbody></table></section></body></html>`;
+  const html = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeMarkup(facts.name)} · Event packet</title><style>body{font:14px Arial;color:#14213b;max-width:1000px;margin:30px auto;padding:20px}h1{font-size:32px}section{break-before:page;margin:35px 0}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #ccd5e0;text-align:left;vertical-align:top;white-space:pre-wrap}svg{max-width:100%;max-height:850px}li{margin:12px 0}.packet-link{break-inside:avoid;margin-top:20px}.map{position:relative}.map img{width:100%}.pin{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:#e02f41;color:white;font-weight:bold;padding:7px} @media print{button{display:none}@page{margin:.5in}}</style></head><body><button onclick="window.print()">Print / Save PDF</button><h1>${escapeMarkup(facts.name)}</h1><p>${facts.status === "published" ? "Published event" : "DRAFT · Event not published"} · Packet generated ${escapeMarkup(new Date().toLocaleString())}</p><p>${escapeMarkup([facts.date, facts.time, facts.venue, facts.address].filter(Boolean).join(" · "))}</p><p>Saved event ID: ${escapeMarkup(facts.id)}</p>${safe.flyer ? `<section><h2>Event flyer</h2>${flyerSvg(safe.flyer, facts)}</section>` : ""}<section><h2>Course activities & vendor map</h2>${map.image ? `<div class="map"><img alt="Venue course map" src="${map.image}"/>${map.pins.map((p, i) => `<span class="pin" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join("")}</div>` : "<p>Course image has not been added.</p>"}<ol>${map.pins.map((p) => `<li><strong>${escapeMarkup(p.label || p.type)}</strong> · ${escapeMarkup(p.type)} ${p.hole ? "· Hole " + escapeMarkup(p.hole) : ""}<br>${escapeMarkup(p.notes)}</li>`).join("")}</ol></section>${safe.layouts ? safe.layouts.spaces.map((s) => `<section><h2>${escapeMarkup(s.name)} · ${s.width} × ${s.length} ft</h2><p>${escapeMarkup(s.notes)}</p>${layoutSvg(s)}<p>${s.items.reduce((sum, i) => sum + i.seats, 0)} seats · ${s.items.length} items</p><ul>${s.items.map((i) => `<li>${escapeMarkup(i.label)} · ${i.w} × ${i.d} ft · ${i.seats} seats</li>`).join("")}</ul></section>`).join("") : ""}<section><h2>Itinerary · Venue local time</h2><table><thead><tr><th>Date / time</th><th>Activity</th><th>Location</th><th>Responsible person</th><th>Notes</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${escapeMarkup(r.date)}<br>${escapeMarkup(r.start)}${r.end ? " – " + escapeMarkup(r.end) : ""}</td><td>${escapeMarkup(r.activity)}</td><td>${escapeMarkup(r.location)}</td><td>${escapeMarkup(r.owner)}</td><td>${escapeMarkup(r.notes)}</td></tr>`).join("")}</tbody></table></section></body></html>`;
+  return html.replace(/<\/section>/g, packetLinkHtml(safe.link) + "</section>");
 }
 
 export function creativeBrief(facts) {

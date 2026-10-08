@@ -6,6 +6,7 @@ import {
   flyerSvg,
   flyerOverflow,
 } from "./eventCreative.mjs";
+import { creativeLinkProblem } from "./creativeLink.mjs";
 
 export const MATERIALS = [
   {
@@ -194,7 +195,7 @@ export function projectBrief(project) {
   return (
     "Create background artwork for a " +
     materialById(project.material).label.toLowerCase() +
-    ". Keep wording as separate editable text. Preserve supplied logos, brand identity, event facts and actual geography. Do not invent sponsors, measurements, prices or dates.\n\n" +
+    ". Keep wording as separate editable text. Preserve supplied logos, brand identity, event facts and actual geography. Keep QR codes and destination links as separate verified elements; never invent or draw a QR code into generated artwork. Do not invent sponsors, measurements, prices or dates.\n\n" +
     "Canvas: " +
     data.design.width +
     " × " +
@@ -216,6 +217,11 @@ export function projectHandoff(project) {
   if (
     project.status !== "approved" ||
     project.version < 1 ||
+    creativeLinkProblem(
+      project.data.design.link,
+      project.data.design.width,
+      project.data.design.height,
+    ) ||
     flyerOverflow(project.data.design, project.data.facts).length
   )
     throw new Error(
@@ -233,6 +239,7 @@ export function projectHandoff(project) {
     material: project.material,
     name: project.name,
     production: data.production,
+    link: data.design.link,
     facts: data.facts,
     artwork_svg: flyerSvg(data.design, data.facts, ""),
     routing: { artwork: "InceptionApex", orders: "EIC" },

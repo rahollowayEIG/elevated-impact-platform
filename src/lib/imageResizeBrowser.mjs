@@ -1,4 +1,5 @@
 import { Zip, ZipPassThrough, strToU8 } from "fflate";
+import { drawCreativeLink, cleanCreativeLink } from "./creativeLink.mjs";
 import {
   imagePlacement,
   resizeFilename,
@@ -57,6 +58,7 @@ export async function encodeResizeImage(bitmap, settings, item) {
     item.zoom,
   );
   ctx.drawImage(bitmap, p.x, p.y, p.drawWidth, p.drawHeight);
+  drawCreativeLink(ctx, settings.link, width, height);
   const blob = await new Promise((resolve) =>
     canvas.toBlob(resolve, IMAGE_MIME[settings.format], settings.quality),
   );
@@ -165,6 +167,11 @@ export async function buildResizeBatch(
             destination: settings.destination,
             framing: settings.mode,
             format: settings.format,
+            link: cleanCreativeLink(
+              settings.link,
+              settings.width,
+              settings.height,
+            ),
             images: manifest,
           },
           null,

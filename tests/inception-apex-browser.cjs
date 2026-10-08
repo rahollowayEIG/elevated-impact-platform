@@ -1,6 +1,8 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
+const { PNG } = require("pngjs");
+const jsQR = require("jsqr");
 (async () => {
   const { createServer } = await import("vite");
   const server = await createServer({
@@ -46,6 +48,28 @@ const fs = require("node:fs/promises");
       .getByLabel("Select text box", { exact: true })
       .selectOption({ label: "1. name" });
     await page.getByLabel("Font size", { exact: true }).fill("48");
+    const destination =
+      "https://example.com/offers?source=flyer&event=dinner#claim";
+    await page
+      .getByLabel("Destination link", { exact: true })
+      .fill(destination);
+    await page.getByLabel("Show QR code", { exact: true }).check();
+    await page.getByLabel("Show link text", { exact: true }).check();
+    await page
+      .getByLabel("Link text", { exact: true })
+      .fill("Claim the event offer");
+    await page.getByLabel("Link / QR size", { exact: true }).fill("220");
+    await page
+      .getByLabel("Link placement", { exact: true })
+      .selectOption("bottom-right");
+    const qrImage = PNG.sync.read(
+      await page.locator(".creative-link-preview").screenshot(),
+    );
+    assert.equal(
+      jsQR(new Uint8ClampedArray(qrImage.data), qrImage.width, qrImage.height)
+        ?.data,
+      destination,
+    );
     const logo = await page.evaluate(() => {
       const canvas = document.createElement("canvas");
       canvas.width = 120;
@@ -147,6 +171,10 @@ const fs = require("node:fs/promises");
       "Navy, red accents, relaxed outdoor event",
     );
     await page.getByRole("button", { name: "Design", exact: true }).click();
+    assert.equal(
+      await page.getByLabel("Destination link", { exact: true }).inputValue(),
+      destination,
+    );
     await page
       .getByLabel("Select image", { exact: true })
       .selectOption({ label: "sponsor-logo.png" });
@@ -184,6 +212,38 @@ const fs = require("node:fs/promises");
     assert.equal(request.order_status, "draft_request");
     assert.ok(!request.artwork_svg.includes("DRAFT DESIGN"));
     assert.ok(request.artwork_svg.includes("data:image/png"));
+    assert.equal(request.link.url, destination);
+    const pixels = await page.evaluate(
+      async ({ svg, link }) => {
+        const image = new Image(),
+          objectUrl = URL.createObjectURL(
+            new Blob([svg], { type: "image/svg+xml" }),
+          );
+        try {
+          await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = reject;
+            image.src = objectUrl;
+          });
+          const canvas = document.createElement("canvas");
+          canvas.width = 850;
+          canvas.height = 1100;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(image, 0, 0);
+          return Array.from(
+            ctx.getImageData(link.x, link.y, link.size, link.size).data,
+          );
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      },
+      { svg: request.artwork_svg, link: request.link },
+    );
+    assert.equal(
+      jsQR(new Uint8ClampedArray(pixels), request.link.size, request.link.size)
+        ?.data,
+      destination,
+    );
     await page.screenshot({
       path: "test-results/inception-apex/approved-proof-desktop.png",
       fullPage: true,

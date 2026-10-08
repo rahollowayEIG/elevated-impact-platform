@@ -4,8 +4,10 @@ on:
     branches: [main]
     paths:
       - 'src/components/SocialMediaApp.jsx'
+      - 'src/components/CampaignPlanning.jsx'
       - 'src/components/social-media.css'
       - 'src/lib/social*'
+      - 'src/lib/campaignSchedule.mjs'
       - 'src/PlatformApp.jsx'
       - 'supabase/migrations/*social_campaign*'
       - 'tests/social*'
@@ -27,6 +29,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:social-media-browser
+      - run: npm run test:social-schedule-browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:

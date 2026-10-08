@@ -161,6 +161,11 @@ test("catalog SQL restricts management, publication, immutable audit, fresh sess
       ),
     );
     await db.exec(await file(migration));
+    await db.exec(
+      await file(
+        "../supabase/migrations/20261008055348_eic_design_product_sorting.sql",
+      ),
+    );
     for (const [user, session] of [
       [owner, sid],
       [other, otherSid],
@@ -192,6 +197,40 @@ test("catalog SQL restricts management, publication, immutable audit, fresh sess
     const saved = await as(owner, sid, () => save(p));
     assert.equal(saved.created_by, owner);
     assert.equal(saved.version, 1);
+    await as(owner, sid, async () => {
+      const a = await save({
+        ...example(),
+        id: crypto.randomUUID(),
+        version: 0,
+        status: "draft",
+        name: "alpha",
+      });
+      const z = await save({
+        ...example(),
+        id: crypto.randomUUID(),
+        version: 0,
+        status: "draft",
+        name: "Zeta",
+      });
+      assert.deepEqual(
+        (
+          await db.query(
+            "select name from public.eic_design_products where id=any($1::uuid[]) order by sort_name,id",
+            [[a.id, z.id]],
+          )
+        ).rows.map((r) => r.name),
+        ["alpha", "Zeta"],
+      );
+      const keys = (
+        await db.query(
+          "select sort_material,sort_status from public.eic_design_products where name='Swag artwork'",
+        )
+      ).rows[0];
+      assert.deepEqual(keys, {
+        sort_material: "gifts & swag",
+        sort_status: "available",
+      });
+    });
     await as(other, otherSid, async () => {
       assert.equal(
         (await db.query("select id from public.eic_design_products")).rows

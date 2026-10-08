@@ -146,11 +146,14 @@ const { PNG } = require("pngjs");
               )[0],
               ascending = order.endsWith(".asc"),
               field = order.slice(0, -4);
-            const key = field.includes("canvas_width")
+            const sortField = field.startsWith("sort_")
+              ? field.slice(5)
+              : field;
+            const key = sortField.includes("canvas_width")
               ? "width"
-              : field.includes("canvas_height")
+              : sortField.includes("canvas_height")
                 ? "height"
-                : field;
+                : sortField;
             const value = (p) =>
               key === "width"
                 ? p.definition.canvas_width
@@ -161,8 +164,11 @@ const { PNG } = require("pngjs");
               (a, b) =>
                 (typeof value(a) === "number"
                   ? value(a) - value(b)
-                  : String(value(a)).localeCompare(String(value(b)))) *
-                (ascending ? 1 : -1),
+                  : String(value(a)).localeCompare(
+                      String(value(b)),
+                      undefined,
+                      { sensitivity: "base" },
+                    )) * (ascending ? 1 : -1),
             );
             const count = allowed.length,
               offset = Number(url.searchParams.get("offset") || 0),
@@ -407,7 +413,7 @@ const { PNG } = require("pngjs");
     await page
       .getByText("Saved Sponsor tee sign · Version 4.", { exact: true })
       .waitFor();
-    await page.getByText('1 matching product',{exact:true}).waitFor();
+    await page.getByText("1 matching product", { exact: true }).waitFor();
     await page.screenshot({
       path: "test-results/design-product-catalog/desktop.png",
       fullPage: true,

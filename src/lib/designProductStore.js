@@ -41,8 +41,10 @@ export const designProductStore = {
           : ["name", "category", "material", "status", "updated_at"].includes(
                 sort.field,
               )
-            ? sort.field
-            : "name";
+            ? sort.field === "updated_at"
+              ? sort.field
+              : `sort_${sort.field}`
+            : "sort_name";
     const { data, error, count } = await request
       .order(field, { ascending: sort.ascending })
       .order("id")

@@ -8,6 +8,7 @@ const STEP_ITEMS = [
   ['roster', '4', 'Roster / Event Ops'],
   ['hub', '5', 'Event Info / Hub'],
   ['creative', '6', 'Creative & Event Packet'],
+  ['budget', '7', 'Budget'],
 ];
 
 function blankDivision() {

@@ -4,7 +4,7 @@
     "test:recovery": "node --test tests/recovery-session.test.mjs",
     "test:account-security-handler": "node --test tests/account-security-handler.test.mjs",
     "test:session-validity": "node --test tests/session-validity.test.mjs",
-    "build": "npm run test:social-campaign && npm run test:inception-apex && npm run test:auto-resizer && npm run test:inception-drive && npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && vite build",
+    "build": "npm run test:event-budget && npm run test:social-campaign && npm run test:inception-apex && npm run test:auto-resizer && npm run test:inception-drive && npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && vite build",
     "preview": "vite preview",
     "test:account-states": "node --test tests/account-state.test.mjs",
     "test:password-visibility": "node --test tests/password-visibility-source.test.mjs",
@@ -17,7 +17,9 @@
     "test:inception-drive": "node --test tests/inception-drive-export.test.mjs",
     "test:social-campaign": "node --test tests/social-campaign.test.mjs",
     "test:social-media-browser": "node tests/social-media-browser.cjs",
-    "test:design-product-browser": "node tests/design-product-catalog-browser.cjs"
+    "test:design-product-browser": "node tests/design-product-catalog-browser.cjs",
+    "test:event-budget": "node --test tests/event-budget.test.mjs",
+    "test:event-budget-browser": "node tests/event-budget-browser.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

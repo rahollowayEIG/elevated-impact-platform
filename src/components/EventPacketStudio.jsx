@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import CreativeLinkControls from "./CreativeLinkControls.jsx";
+import { creativeLinkProblem } from "../lib/creativeLink.mjs";
 import { supabase } from "../lib/supabase";
 import FlyerEditor, { downloadCreative } from "./FlyerEditor.jsx";
 import {
@@ -608,6 +610,15 @@ export default function EventPacketStudio({
     const started = revision.current;
     try {
       const safe = sanitizePacket(data);
+      const linkProblem =
+        creativeLinkProblem(safe.link, 240, 300) ||
+        (safe.flyer &&
+          creativeLinkProblem(
+            safe.flyer.link,
+            safe.flyer.width,
+            safe.flyer.height,
+          ));
+      if (linkProblem) throw new Error(linkProblem);
       if (
         safe.itinerary.some(
           (r) =>
@@ -708,6 +719,17 @@ export default function EventPacketStudio({
               </button>
             ))}
           </nav>
+          {tab !== "flyer" && (
+            <CreativeLinkControls
+              value={data.link}
+              width={240}
+              height={300}
+              placement={false}
+              suggestedLink={facts.registration}
+              onChange={(link) => change("link", link)}
+              note="This link and QR appear beside course maps, venue layouts and itinerary sections in the printable event packet. Individual approved artwork keeps its own link."
+            />
+          )}
           {tab === "flyer" && (
             <FlyerEditor
               design={data.flyer || newFlyer()}
@@ -828,6 +850,15 @@ export default function EventPacketStudio({
                   disabled={
                     dirty ||
                     busy ||
+                    !!creativeLinkProblem(data.link, 240, 300) ||
+                    !!(
+                      data.flyer &&
+                      creativeLinkProblem(
+                        data.flyer.link,
+                        data.flyer.width,
+                        data.flyer.height,
+                      )
+                    ) ||
                     (data.flyer && flyerOverflow(data.flyer, facts).length > 0)
                   }
                   onClick={exportPacket}

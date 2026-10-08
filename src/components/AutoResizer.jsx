@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import CreativeLinkControls from "./CreativeLinkControls.jsx";
+import { creativeLinkProblem } from "../lib/creativeLink.mjs";
 import {
   RESIZE_PRESETS,
   resizeDimensions,
@@ -39,6 +41,7 @@ export default function AutoResizer({
   const [output, setOutput] = useState(null),
     [encoding, setEncoding] = useState(false),
     [error, setError] = useState("");
+  const [link, setLink] = useState({});
   const [batch, setBatch] = useState(null),
     [savingDrive, setSavingDrive] = useState(false),
     [driveResult, setDriveResult] = useState(null);
@@ -88,6 +91,7 @@ export default function AutoResizer({
     background,
     quality,
     destination: `${preset.group} / ${preset.label}`,
+    link,
   };
   const placement =
     image && dimensions
@@ -177,7 +181,13 @@ export default function AutoResizer({
   useEffect(() => {
     const epoch = ++outputEpoch.current;
     setOutput(null);
-    if (!allowed || !image || image.id !== selectedId || !dimensions) {
+    if (
+      !allowed ||
+      !image ||
+      image.id !== selectedId ||
+      !dimensions ||
+      creativeLinkProblem(link, Number(width), Number(height))
+    ) {
       setEncoding(false);
       return;
     }
@@ -212,6 +222,7 @@ export default function AutoResizer({
     background,
     quality,
     presetId,
+    link,
   ]);
 
   async function upload(event) {
@@ -670,6 +681,13 @@ export default function AutoResizer({
               />
             </label>
           )}
+          <CreativeLinkControls
+            value={link}
+            width={Number(width) || 1200}
+            height={Number(height) || 1200}
+            onChange={setLink}
+            note="The same link and QR are applied to each image in this batch, after resizing. Downloaded images carry the QR and visible text; attach the destination link when publishing online."
+          />
           <label>
             Describe the changes you want
             <textarea
@@ -726,7 +744,11 @@ export default function AutoResizer({
               <button
                 type="button"
                 className="platform-primary-button"
-                disabled={!dimensions || busy}
+                disabled={
+                  !dimensions ||
+                  busy ||
+                  !!creativeLinkProblem(link, Number(width), Number(height))
+                }
                 onClick={() => exportBatch()}
               >
                 Download batch ZIP ({images.length} images)
@@ -734,7 +756,11 @@ export default function AutoResizer({
               <button
                 type="button"
                 className="platform-secondary-button"
-                disabled={!dimensions || busy}
+                disabled={
+                  !dimensions ||
+                  busy ||
+                  !!creativeLinkProblem(link, Number(width), Number(height))
+                }
                 onClick={() => exportBatch(true)}
               >
                 Add batch to Google Drive

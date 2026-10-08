@@ -9,7 +9,7 @@
     "test:account-states": "node --test tests/account-state.test.mjs",
     "test:password-visibility": "node --test tests/password-visibility-source.test.mjs",
     "test:roster-list-controls": "node --test tests/roster-list-controls.test.mjs",
-    "test:inception-apex": "node --test tests/inception-apex.test.mjs",
+    "test:inception-apex": "node --test tests/inception-apex.test.mjs tests/creative-link.test.mjs",
     "test:inception-apex-browser": "node tests/inception-apex-browser.cjs",
     "test:auto-resizer": "node --test tests/auto-resizer.test.mjs",
     "test:auto-resizer-browser": "node tests/auto-resizer-browser.cjs",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
+    "jsqr": "1.4.0",
     "playwright": "1.62.1"
   }
 }

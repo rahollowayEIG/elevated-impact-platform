@@ -20,6 +20,7 @@ import {
   flyerOverflow,
 } from "../lib/eventCreative.mjs";
 import "./inception-apex.css";
+import { creativeLinkProblem } from "../lib/creativeLink.mjs";
 
 const AutoResizer = React.lazy(() => import("./AutoResizer.jsx"));
 
@@ -362,6 +363,12 @@ export default function InceptionApex({
       snapshot = { ...project, data: cleanProjectData(project.data) };
     try {
       if (!snapshot.name.trim()) throw new Error("Give your project a name.");
+      const linkProblem = creativeLinkProblem(
+        snapshot.data.design.link,
+        snapshot.data.design.width,
+        snapshot.data.design.height,
+      );
+      if (linkProblem) throw new Error(linkProblem);
       if (
         status === "approved" &&
         (!snapshot.data.design.boxes.length ||

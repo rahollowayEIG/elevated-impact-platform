@@ -1,6 +1,8 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
+const { PNG } = require("pngjs");
+const jsQR = require("jsqr");
 
 (async () => {
   const { createServer } = await import("vite");
@@ -420,6 +422,44 @@ const fs = require("node:fs/promises");
     await page
       .getByLabel("Image destination", { exact: true })
       .selectOption("eig-hero");
+    await waitOutput(1920, 1080);
+    const qrDestination = "https://example.com/deal?source=sign&campaign=fall";
+    await page
+      .getByLabel("Destination link", { exact: true })
+      .fill(qrDestination);
+    await page.getByLabel("Show QR code", { exact: true }).check();
+    await page.getByLabel("Show link text", { exact: true }).check();
+    await page.getByLabel("Link / QR size", { exact: true }).fill("220");
+    await page
+      .getByLabel("Export format", { exact: true })
+      .selectOption("jpeg");
+    await waitOutput(1920, 1080);
+    const previous = await page
+      .locator(".ia-resized-image")
+      .getAttribute("src");
+    await page.getByLabel("Export format", { exact: true }).selectOption("png");
+    await waitOutput(1920, 1080, previous);
+    const qrDownload = page.waitForEvent("download");
+    await downloadButton.click();
+    const qrImage = PNG.sync.read(
+      await fs.readFile(await (await qrDownload).path()),
+    );
+    assert.equal(
+      jsQR(new Uint8ClampedArray(qrImage.data), qrImage.width, qrImage.height)
+        ?.data,
+      qrDestination,
+    );
+    await page
+      .getByLabel("Destination link", { exact: true })
+      .fill("javascript:bad");
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "HTTPS destination" })
+      .waitFor();
+    assert.equal(await downloadButton.isDisabled(), true);
+    await page
+      .getByLabel("Destination link", { exact: true })
+      .fill(qrDestination);
     await waitOutput(1920, 1080);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({

@@ -56,7 +56,9 @@ test("private designs, active event authority, immutable approvals, packet prese
   }
   try {
     await db.exec(await file("./fixtures/event-builder-base.sql"));
-    const legacyPolicies = await db.query("select tablename,policyname,cmd,qual,with_check from pg_policies where schemaname='public' and tablename in ('events','event_requests','golf_registration_events') order by tablename,policyname");
+    const legacyPolicies = await db.query(
+      "select tablename,policyname,cmd,qual,with_check from pg_policies where schemaname='public' and tablename in ('events','event_requests','golf_registration_events') order by tablename,policyname",
+    );
     await db.exec(
       await file(
         "../supabase/migrations/20261007040350_inception_creative_foundation.sql",
@@ -67,8 +69,22 @@ test("private designs, active event authority, immutable approvals, packet prese
         "../supabase/migrations/20261007040355_inception_apex_projects.sql",
       ),
     );
-    assert.deepEqual((await db.query("select tablename,policyname,cmd,qual,with_check from pg_policies where schemaname='public' and tablename in ('events','event_requests','golf_registration_events') order by tablename,policyname")).rows, legacyPolicies.rows);
-    assert.equal((await db.query("select to_regclass('public.event_request_workflows') as booking")).rows[0].booking, null);
+    assert.deepEqual(
+      (
+        await db.query(
+          "select tablename,policyname,cmd,qual,with_check from pg_policies where schemaname='public' and tablename in ('events','event_requests','golf_registration_events') order by tablename,policyname",
+        )
+      ).rows,
+      legacyPolicies.rows,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "select to_regclass('public.event_request_workflows') as booking",
+        )
+      ).rows[0].booking,
+      null,
+    );
     for (const [id, sid] of [
       [owner, session],
       [other, otherSession],
@@ -146,6 +162,15 @@ test("private designs, active event authority, immutable approvals, packet prese
     );
     await db.exec("reset role");
     const ep = newProject("banner", { name: "Community event" });
+    ep.data.design.link = {
+      url: "https://example.com/sponsor",
+      showQr: true,
+      showLink: true,
+      size: 200,
+      x: 100,
+      y: 100,
+      label: "Visit sponsor",
+    };
     ep.event_id = event;
     const eventProject = await as(owner, session, () => save(ep));
     assert.equal(eventProject.organization_id, org);
@@ -196,6 +221,10 @@ test("private designs, active event authority, immutable approvals, packet prese
       assert.equal(packet.itinerary[0].activity, "Keep schedule");
       assert.equal(packet.designs[0].version, 2);
       assert.equal(packet.designs[0].design.width, 1800);
+      assert.equal(
+        packet.designs[0].design.link.url,
+        "https://example.com/sponsor",
+      );
       await assert.rejects(
         db.query("select public.save_event_builder_assets($1,1,$2)", [
           event,

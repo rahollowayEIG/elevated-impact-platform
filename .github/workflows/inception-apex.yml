@@ -10,6 +10,11 @@ on:
       - "src/components/CreativeLinkControls.jsx"
       - "src/components/creative-link.css"
       - "src/lib/creativeLink.mjs"
+      - "src/lib/designProduct*"
+      - "src/components/DesignProductCatalog.jsx"
+      - "src/components/design-product-catalog.css"
+      - "tests/design-product*"
+      - "supabase/migrations/*eic_design_product*"
       - "tests/creative-link.test.mjs"
       - "src/components/SponsorBuilder.jsx"
       - "src/lib/event*"
@@ -52,6 +57,7 @@ jobs:
       - run: npm run test:event-builder-browser
       - run: npm run test:inception-apex-browser
       - run: npm run test:auto-resizer-browser
+      - run: npm run test:design-product-browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -60,5 +66,6 @@ jobs:
             test-results/event-builder/
             test-results/inception-apex/
             test-results/auto-resizer/
+            test-results/design-product-catalog/
           retention-days: 7
           if-no-files-found: ignore

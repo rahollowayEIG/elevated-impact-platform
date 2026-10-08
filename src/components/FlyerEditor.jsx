@@ -28,6 +28,8 @@ export default function FlyerEditor({
   createTemplate = newFlyer,
   artifactLabel = "flyer",
   brief = "",
+  safeInset = 0,
+  designProblem = "",
   draftLabel = facts.status !== "published"
     ? "DRAFT · EVENT NOT PUBLISHED"
     : "",
@@ -437,6 +439,19 @@ export default function FlyerEditor({
               )}
             </g>
           ))}
+          {safeInset > 0 && (
+            <rect
+              x={safeInset}
+              y={safeInset}
+              width={design.width - safeInset * 2}
+              height={design.height - safeInset * 2}
+              fill="none"
+              stroke="#67ccff"
+              strokeWidth="2"
+              strokeDasharray="10 6"
+              pointerEvents="none"
+            />
+          )}
           <g
             pointerEvents="none"
             dangerouslySetInnerHTML={{
@@ -448,6 +463,13 @@ export default function FlyerEditor({
           Drag a box to place it. Drag its corner to resize it. Arrow keys move
           the selected box.
         </p>
+        {safeInset > 0 && (
+          <p>
+            The dashed line is your product’s safe-area guide. It will not
+            appear in downloaded artwork.
+          </p>
+        )}
+        {designProblem && <p role="alert">{designProblem}</p>}
       </div>
       <aside className="creative-inspector">
         <CreativeLinkControls
@@ -705,7 +727,7 @@ export default function FlyerEditor({
         <div className="creative-toolbar">
           <button
             type="button"
-            disabled={!!overflow.length || !!linkProblem}
+            disabled={!!overflow.length || !!linkProblem || !!designProblem}
             onClick={() =>
               downloadCreative(
                 flyerSvg(design, facts, draftLabel),

@@ -7,6 +7,12 @@ import {
   flyerOverflow,
 } from "./eventCreative.mjs";
 import { creativeLinkProblem } from "./creativeLink.mjs";
+import {
+  cleanProductSnapshot,
+  productSnapshot,
+  designForProduct,
+  catalogDesignProblem,
+} from "./designProducts.mjs";
 
 export const MATERIALS = [
   {
@@ -165,6 +171,7 @@ export function cleanProjectData(value) {
     facts: cleanFacts(value.facts),
     brief: text(value.brief, 4000),
     favorite: value.favorite === true,
+    catalog: cleanProductSnapshot(value.catalog),
     production: {
       product: text(value.production?.product, 160),
       size: text(value.production?.size, 160),
@@ -190,6 +197,27 @@ export function newProject(type, facts = {}) {
     }),
   };
 }
+export function newProductProject(product, facts = {}) {
+  if (product.status !== "active" || product.version < 1)
+    throw new Error("Choose an available catalog product.");
+  const p = newProject(product.material, facts);
+  p.name = (
+    (facts.name ? facts.name + " · " : "") +
+    product.name +
+    " artwork"
+  ).slice(0, 160);
+  p.data.catalog = productSnapshot(product);
+  p.data.design = designForProduct(
+    product.definition,
+    materialDesign(product.material, product.definition.theme),
+  );
+  p.data.production = {
+    product: product.name,
+    size: product.definition.finished_size,
+    notes: product.definition.notes,
+  };
+  return p;
+}
 export function projectBrief(project) {
   const data = cleanProjectData(project.data);
   return (
@@ -201,6 +229,9 @@ export function projectBrief(project) {
     " × " +
     data.design.height +
     " pixels.\n" +
+    (data.catalog
+      ? `Catalog product: ${data.catalog.name} · Version ${data.catalog.version}\nPrintable area: ${data.catalog.print_area}\nSafe inset: ${data.catalog.safe_inset} pixels\n`
+      : "") +
     "Creative direction: " +
     data.brief +
     "\nProduct / output: " +
@@ -217,6 +248,7 @@ export function projectHandoff(project) {
   if (
     project.status !== "approved" ||
     project.version < 1 ||
+    catalogDesignProblem(project.data) ||
     creativeLinkProblem(
       project.data.design.link,
       project.data.design.width,
@@ -239,6 +271,7 @@ export function projectHandoff(project) {
     material: project.material,
     name: project.name,
     production: data.production,
+    catalog_product: data.catalog,
     link: data.design.link,
     facts: data.facts,
     artwork_svg: flyerSvg(data.design, data.facts, ""),

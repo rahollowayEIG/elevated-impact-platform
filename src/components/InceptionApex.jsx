@@ -9,6 +9,7 @@ import {
   materialById,
   materialDesign,
   newProject,
+  newProductProject,
   cleanProjectData,
   projectBrief,
   projectHandoff,
@@ -21,8 +22,16 @@ import {
 } from "../lib/eventCreative.mjs";
 import "./inception-apex.css";
 import { creativeLinkProblem } from "../lib/creativeLink.mjs";
+import { designProductStore } from "../lib/designProductStore.js";
+import {
+  designForProduct,
+  catalogDesignProblem,
+} from "../lib/designProducts.mjs";
 
 const AutoResizer = React.lazy(() => import("./AutoResizer.jsx"));
+const DesignProductCatalog = React.lazy(
+  () => import("./DesignProductCatalog.jsx"),
+);
 
 const LABELS = {
   name: "Headline",
@@ -122,7 +131,11 @@ export default function InceptionApex({
   onDirtyChange,
   canUseResizer = false,
   resizerDrive,
+  catalogStore = designProductStore,
 }) {
+  const [catalogOpen, setCatalogOpen] = useState(false),
+    [catalogDirty, setCatalogDirty] = useState(false),
+    [catalogProduct, setCatalogProduct] = useState(null);
   const [resizerOpen, setResizerOpen] = useState(false);
   const [libraryOnly, setLibraryOnly] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -157,7 +170,7 @@ export default function InceptionApex({
   const inflight = useRef(false),
     revision = useRef(0),
     importInput = useRef(null);
-  const hasUnsaved = dirty || plannerDirty;
+  const hasUnsaved = dirty || plannerDirty || catalogDirty;
   useEffect(() => {
     onDirtyChange?.(hasUnsaved);
     return () => onDirtyChange?.(false);
@@ -267,6 +280,7 @@ export default function InceptionApex({
     }
   }
   function begin(type) {
+    setCatalogProduct(null);
     setProductsOpen(type === "swag");
     if (type === "swag") {
       setProductCategory("swag");
@@ -295,6 +309,9 @@ export default function InceptionApex({
     setPlannerDirty(false);
     setDirty(false);
     setResizerOpen(false);
+    setCatalogOpen(false);
+    setCatalogDirty(false);
+    setCatalogProduct(null);
     setLibraryOnly(false);
     setProductsOpen(true);
     setNewType("swag");
@@ -311,6 +328,30 @@ export default function InceptionApex({
         ?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }
+  function showCatalog() {
+    if (catalogOpen) return;
+    if (inflight.current || !leave()) return;
+    setProject(null);
+    setPlanner(null);
+    setPlannerDirty(false);
+    setDirty(false);
+    setResizerOpen(false);
+    setLibraryOnly(false);
+    setProductsOpen(false);
+    setNewType("");
+    setCatalogProduct(null);
+    setCatalogOpen(true);
+    setError("");
+    setNotice("");
+  }
+  function chooseCatalogProduct(product) {
+    setCatalogProduct(product);
+    setNewType(product.material);
+    setName("");
+    setCatalogOpen(false);
+    setCatalogDirty(false);
+    setError("");
+  }
   function create(e) {
     e.preventDefault();
     if (eventId && !contextEvent) {
@@ -324,11 +365,13 @@ export default function InceptionApex({
       setNewType("");
       return;
     }
-    const p = newProject(
-      newType,
-      contextEvent ? eventFlyerFacts(contextEvent, window.location.origin) : {},
-    );
-    if (newType === "swag") {
+    const facts = contextEvent
+      ? eventFlyerFacts(contextEvent, window.location.origin)
+      : {};
+    const p = catalogProduct
+      ? newProductProject(catalogProduct, facts)
+      : newProject(newType, facts);
+    if (newType === "swag" && !catalogProduct) {
       if (!productName) {
         setError("Tell us which product you want to customize.");
         return;
@@ -369,6 +412,8 @@ export default function InceptionApex({
         snapshot.data.design.height,
       );
       if (linkProblem) throw new Error(linkProblem);
+      const catalogProblem = catalogDesignProblem(snapshot.data);
+      if (catalogProblem) throw new Error(catalogProblem);
       if (
         status === "approved" &&
         (!snapshot.data.design.boxes.length ||
@@ -465,6 +510,9 @@ export default function InceptionApex({
     setProductsOpen(false);
     setProject(null);
     setResizerOpen(false);
+    setCatalogOpen(false);
+    setCatalogDirty(false);
+    setCatalogProduct(null);
     setDirty(false);
     setPlanner(null);
     setPlannerDirty(false);
@@ -486,6 +534,15 @@ export default function InceptionApex({
           </div>
         </div>
         <div className="ia-actions">
+          <button
+            type="button"
+            className="platform-secondary-button"
+            disabled={busy || loading}
+            onClick={showCatalog}
+            aria-pressed={catalogOpen}
+          >
+            Product Catalog
+          </button>
           {libraryOnly && !project && !planner && !resizerOpen && (
             <button
               type="button"
@@ -539,7 +596,17 @@ export default function InceptionApex({
       )}
       {loading && <p role="status">Opening your design workspace…</p>}
       {busy && !project && <p role="status">Opening design…</p>}
-      {resizerOpen && canUseResizer ? (
+      {catalogOpen ? (
+        <React.Suspense
+          fallback={<p role="status">Opening product catalog…</p>}
+        >
+          <DesignProductCatalog
+            store={catalogStore}
+            onCustomize={chooseCatalogProduct}
+            onDirtyChange={setCatalogDirty}
+          />
+        </React.Suspense>
+      ) : resizerOpen && canUseResizer ? (
         <React.Suspense fallback={<p role="status">Opening Auto Resizer…</p>}>
           <AutoResizer allowed={canUseResizer} drive={resizerDrive} />
         </React.Suspense>
@@ -589,6 +656,18 @@ export default function InceptionApex({
               Save to My Designs
             </button>
           </section>
+          {project.data.catalog && (
+            <p className="ia-product-context">
+              {project.data.catalog.name} · Product version{" "}
+              {project.data.catalog.version} ·{" "}
+              {project.data.catalog.canvas_width} ×{" "}
+              {project.data.catalog.canvas_height} px
+              {project.data.catalog.print_area
+                ? ` · ${project.data.catalog.print_area}`
+                : ""}
+              . This saved specification stays with your design.
+            </p>
+          )}
           {project.material === "swag" && (
             <p className="ia-product-context">
               Customize your {project.data.production.product || "product"}{" "}
@@ -620,8 +699,16 @@ export default function InceptionApex({
               facts={project.data.facts}
               onChange={(design) => changeData({ ...project.data, design })}
               createTemplate={(theme) =>
-                materialDesign(project.material, theme)
+                project.data.catalog
+                  ? designForProduct(
+                      project.data.catalog,
+                      materialDesign(project.material, theme),
+                      false,
+                    )
+                  : materialDesign(project.material, theme)
               }
+              safeInset={project.data.catalog?.safe_inset || 0}
+              designProblem={catalogDesignProblem(project.data)}
               artifactLabel={materialById(project.material).label.toLowerCase()}
               draftLabel={
                 project.status === "approved" && !dirty ? "" : "DRAFT DESIGN"
@@ -766,8 +853,7 @@ export default function InceptionApex({
                 {project.material === "swag" && (
                   <p>
                     This is your imprint artwork. Product photographs and
-                    supplier proofs will be available when the product catalog
-                    is connected.
+                    supplier proofs still need the supplier connection.
                   </p>
                 )}
                 <p>
@@ -995,7 +1081,22 @@ export default function InceptionApex({
                         />
                       </label>
                     )}
-                    {newType === "swag" && (
+                    {catalogProduct && (
+                      <p className="ia-product-context">
+                        {catalogProduct.name} ·{" "}
+                        {catalogProduct.definition.canvas_width} ×{" "}
+                        {catalogProduct.definition.canvas_height} pixels
+                        {catalogProduct.definition.finished_size
+                          ? ` · ${catalogProduct.definition.finished_size}`
+                          : ""}
+                        {catalogProduct.definition.print_area
+                          ? ` · ${catalogProduct.definition.print_area}`
+                          : ""}
+                        . Your artwork will use this product’s saved starter and
+                        QR defaults.
+                      </p>
+                    )}
+                    {newType === "swag" && !catalogProduct && (
                       <>
                         {category.products.length > 0 && (
                           <label>

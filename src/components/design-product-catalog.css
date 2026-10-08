@@ -1,0 +1,165 @@
+.dpc-app {
+  min-width: 0;
+  color: #eef4ff;
+}
+.dpc-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.dpc-heading h2 {
+  margin: 4px 0;
+  font-size: 30px;
+}
+.dpc-editor {
+  border: 1px solid #7183a2;
+  padding: 24px;
+  border-radius: 16px;
+  background: #101c36;
+  margin: 24px 0;
+}
+.dpc-editor fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.dpc-fields,
+.dpc-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.dpc-filters {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin: 24px 0;
+}
+.dpc-app label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.dpc-app input,
+.dpc-app select,
+.dpc-app textarea {
+  padding: 11px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  background: #0d192e;
+  color: #fff;
+}
+.dpc-app textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.dpc-wide {
+  grid-column: 1/-1;
+}
+.dpc-app p {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.dpc-previews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.dpc-previews img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.dpc-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #7183a2;
+  border-radius: 12px;
+}
+.dpc-app table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+.dpc-app th,
+.dpc-app td {
+  padding: 14px;
+  border-bottom: 1px solid #455375;
+  text-align: left;
+  vertical-align: top;
+}
+.dpc-app th {
+  background: #1d245d;
+}
+.dpc-app th button {
+  font-weight: 700;
+  color: #fff;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.dpc-product-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 180px;
+}
+.dpc-product-name p {
+  font-size: 13px;
+  margin: 6px 0;
+  max-width: 280px;
+}
+.dpc-product-name img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+}
+.dpc-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 140px;
+}
+.dpc-pagination {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.dpc-app button:not(.platform-primary-button):not(.platform-secondary-button) {
+  color: #eef4ff;
+  background: #223551;
+  border: 1px solid #7183a2;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+.dpc-app button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dpc-app :focus-visible {
+  outline: 3px solid #67ccff;
+  outline-offset: 2px;
+}
+@media (max-width: 650px) {
+  .dpc-fields,
+  .dpc-previews {
+    grid-template-columns: 1fr;
+  }
+  .dpc-editor {
+    padding: 16px;
+  }
+}

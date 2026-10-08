@@ -20,7 +20,7 @@ export const socialStore = {
     return data.map(checked);
   },
   async events() {
-    const { data, error } = await supabase.rpc("list_inception_events");
+    const { data, error } = await supabase.rpc("list_social_events");
     if (error) throw problem(error);
     return data || [];
   },

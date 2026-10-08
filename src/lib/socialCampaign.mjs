@@ -1,3 +1,4 @@
+import { scheduleProblem } from "./campaignSchedule.mjs";
 export const SOCIAL_DESTINATIONS = [
   {
     id: "facebook",
@@ -139,6 +140,17 @@ export function cleanCampaignData(value = {}) {
     time_zone: string(v.time_zone, 80),
     desired_at: string(v.desired_at, 40),
     ends_at: string(v.ends_at, 40),
+    template_id: string(v.template_id, 40),
+    template_anchor: string(v.template_anchor, 16),
+    template_offer: string(v.template_offer, 2000),
+    posts: Array.isArray(v.posts)
+      ? v.posts.map((p) => ({
+          id: string(p?.id, 36),
+          label: string(p?.label, 160),
+          body: string(p?.body, 2000),
+          local_at: string(p?.local_at, 16),
+        }))
+      : [],
     opportunity: REVENUE_OPPORTUNITIES.some((o) => o.id === v.opportunity)
       ? v.opportunity
       : "",
@@ -182,7 +194,7 @@ export function campaignProblem(campaign, review = false) {
     (!campaign.data.body.trim() || !campaign.data.destinations.length)
   )
     return "Add your message and at least one destination before marking it reviewed.";
-  return "";
+  return scheduleProblem(campaign.data, review);
 }
 const escape = (value) =>
   String(value).replace(

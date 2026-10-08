@@ -11,6 +11,12 @@ import {
   visibleCampaigns,
 } from "../lib/socialCampaign.mjs";
 import "./social-media.css";
+import {
+  CampaignTemplates,
+  CampaignPostPlan,
+  CampaignCalendar,
+} from "./CampaignPlanning.jsx";
+import { campaignCalendar } from "../lib/campaignSchedule.mjs";
 
 const controls = [
   {
@@ -61,7 +67,12 @@ export default function SocialMediaApp({
     [control, setControl] = useState("all");
   const inflight = useRef(false),
     editor = useRef(null),
+    alert = useRef(null),
     connections = useRef(null);
+  useEffect(() => {
+    if (error)
+      alert.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
   useEffect(() => {
     let active = true;
     Promise.all([store.list(), store.events()])
@@ -148,7 +159,9 @@ export default function SocialMediaApp({
       setCampaign(saved);
       setDirty(false);
       setNotice(
-        `${status === "reviewed" ? "Reviewed campaign saved" : "Draft saved"}. Version ${saved.version}. Nothing has been published.`,
+        status === "reviewed" && saved.data.posts.length
+          ? `Posting plan reviewed and saved. Version ${saved.version}. Ready for manual posting; automatic publishing pending.`
+          : `${status === "reviewed" ? "Reviewed campaign saved" : "Draft saved"}. Version ${saved.version}. Nothing has been published.`,
       );
       setRows(await store.list());
     } catch (e) {
@@ -170,6 +183,25 @@ export default function SocialMediaApp({
       download("campaign-ad.html", campaignAdHtml(campaign), "text/html");
       setNotice(
         "Website ad downloaded. Add it to a site you manage; update or remove the block when it changes or expires.",
+      );
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  function exportCalendar() {
+    try {
+      if (dirty)
+        throw new Error(
+          "Save a reviewed version before downloading its calendar.",
+        );
+      download(
+        "campaign-calendar.ics",
+        campaignCalendar(campaign),
+        "text/calendar;charset=utf-8",
+      );
+      setNotice(
+        "Calendar downloaded for manual posting reminders. No automatic publishing is enabled.",
       );
       setError("");
     } catch (e) {
@@ -229,7 +261,7 @@ export default function SocialMediaApp({
         </div>
       </header>
       {error && (
-        <p className="platform-error" role="alert">
+        <p className="platform-error" role="alert" ref={alert}>
           {error}
         </p>
       )}
@@ -248,11 +280,28 @@ export default function SocialMediaApp({
           <span>Reviewed campaigns</span>
         </div>
         <div>
-          <strong>Setup pending</strong>
-          <span>Direct publishing & scheduling</span>
+          <strong>
+            {rows.reduce((n, row) => n + (row.data.posts?.length || 0), 0)}
+          </strong>
+          <span>Saved planned posts · automatic publishing pending</span>
         </div>
       </div>
       {loading && <p role="status">Loading your campaigns…</p>}
+      <CampaignTemplates
+        disabled={loading || busy}
+        onChoose={(t) => {
+          const next = newCampaign();
+          open({
+            ...next,
+            name: t.name,
+            data: {
+              ...next.data,
+              template_id: t.id,
+              destinations: t.destinations,
+            },
+          });
+        }}
+      />
       {campaign && (
         <section
           className="sm-editor"
@@ -325,6 +374,12 @@ export default function SocialMediaApp({
                   onChange={(e) => change("headline", e.target.value)}
                 />
               </label>
+              {campaign.data.template_id && (
+                <small>
+                  Use the event or business name as the headline to build your
+                  template posts.
+                </small>
+              )}
               <label>
                 Message
                 <textarea
@@ -375,7 +430,9 @@ export default function SocialMediaApp({
               </label>
               <div className="sm-time-fields">
                 <label>
-                  Desired publish time
+                  {campaign.data.posts.length
+                    ? "Campaign start"
+                    : "Desired publish time"}
                   <input
                     type="datetime-local"
                     value={campaign.data.desired_at}
@@ -393,6 +450,31 @@ export default function SocialMediaApp({
                   />
                 </label>
               </div>
+              <label>
+                Campaign time zone
+                <input
+                  aria-label="Campaign time zone"
+                  maxLength={80}
+                  list="sm-time-zones"
+                  value={campaign.data.time_zone}
+                  disabled={busy}
+                  onChange={(e) => change("time_zone", e.target.value)}
+                  placeholder="America/New_York"
+                />
+              </label>
+              <datalist id="sm-time-zones">
+                {[
+                  "America/New_York",
+                  "America/Chicago",
+                  "America/Denver",
+                  "America/Los_Angeles",
+                  "America/Phoenix",
+                  "Europe/London",
+                  "UTC",
+                ].map((zone) => (
+                  <option value={zone} key={zone} />
+                ))}
+              </datalist>
               <small>
                 Planning dates in the campaign’s time zone (
                 {campaign.data.time_zone || "time zone not specified"}). These
@@ -469,70 +551,141 @@ export default function SocialMediaApp({
               )}
             </div>
           </div>
-          <div className="sm-actions">
-            <button
-              type="button"
-              className="platform-primary-button"
-              disabled={busy}
-              onClick={() => save("draft")}
+          <CampaignPostPlan
+            campaign={campaign}
+            busy={busy}
+            onChange={change}
+            onReplace={(data) => change("data", data, false)}
+            onError={setError}
+          />
+          <div className="sm-action-center">
+            <div
+              className="sm-action-group"
+              role="group"
+              aria-label="Save & review"
             >
-              {busy ? "Saving…" : "Save draft"}
-            </button>
-            <button
-              type="button"
-              className="platform-secondary-button"
-              disabled={busy}
-              onClick={() => save("reviewed")}
+              <strong>Save & review</strong>
+              <div className="sm-actions">
+                <button
+                  type="button"
+                  className="platform-primary-button"
+                  disabled={busy}
+                  onClick={() => save("draft")}
+                >
+                  {busy ? "Saving…" : "Save draft"}
+                </button>
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={busy}
+                  onClick={() => save("reviewed")}
+                >
+                  {campaign.data.posts.length
+                    ? "Review & save posting plan"
+                    : "Save as reviewed"}
+                </button>
+              </div>
+            </div>
+            <div
+              className="sm-action-group"
+              role="group"
+              aria-label="Downloads"
             >
-              Save as reviewed
-            </button>
-            <button
-              type="button"
-              className="platform-secondary-button"
-              disabled={busy}
-              onClick={() =>
-                download(
-                  "campaign-draft.json",
-                  JSON.stringify(
-                    { type: "elevationpilot-social-campaign", ...campaign },
-                    null,
-                    2,
-                  ),
-                  "application/json",
-                )
-              }
+              <strong>Downloads</strong>
+              <div className="sm-actions">
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={busy}
+                  onClick={() =>
+                    download(
+                      "campaign-draft.json",
+                      JSON.stringify(
+                        { type: "elevationpilot-social-campaign", ...campaign },
+                        null,
+                        2,
+                      ),
+                      "application/json",
+                    )
+                  }
+                >
+                  Download draft backup
+                </button>
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={busy || dirty || campaign.status !== "reviewed"}
+                  onClick={exportAd}
+                >
+                  Download website ad
+                </button>
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={
+                    busy ||
+                    dirty ||
+                    campaign.status !== "reviewed" ||
+                    !campaign.data.posts.length
+                  }
+                  onClick={exportCalendar}
+                >
+                  Download posting calendar
+                </button>
+              </div>
+            </div>
+            <div
+              className="sm-action-group"
+              role="group"
+              aria-label="Reuse & close"
             >
-              Download draft backup
-            </button>
-            <button
-              type="button"
-              className="platform-secondary-button"
-              disabled={busy || dirty || campaign.status !== "reviewed"}
-              onClick={exportAd}
-            >
-              Download website ad
-            </button>
-            <button
-              type="button"
-              className="platform-secondary-button"
-              disabled
-              title="Social account connections are required"
-            >
-              Publish · connection pending
-            </button>
-            <button
-              type="button"
-              className="platform-secondary-button"
-              disabled={busy}
-              onClick={() => {
-                if (canLeave()) {
-                  setCampaign(null);
-                  setDirty(false);
-                }
-              }}
-            >
-              Close campaign
-            </button>
+              <strong>Reuse & close</strong>
+              <div className="sm-actions">
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={busy}
+                  onClick={() => {
+                    const next = newCampaign();
+                    open({
+                      ...next,
+                      name: `${campaign.name} · copy`.slice(0, 160),
+                      event_id: campaign.event_id,
+                      data: {
+                        ...campaign.data,
+                        posts: campaign.data.posts.map((p) => ({
+                          ...p,
+                          id: crypto.randomUUID(),
+                        })),
+                      },
+                    });
+                  }}
+                >
+                  Use as new campaign
+                </button>
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled
+                  title="Social account connections are required"
+                >
+                  Publish · connection pending
+                </button>
+                <button
+                  type="button"
+                  className="platform-secondary-button"
+                  disabled={busy}
+                  onClick={() => {
+                    if (canLeave()) {
+                      setCampaign(null);
+                      setDirty(false);
+                    }
+                  }}
+                >
+                  Close campaign
+                </button>
+              </div>
+            </div>
           </div>
           <p className="sm-help">
             Review saves a version for preparation; it does not publish,
@@ -694,6 +847,7 @@ export default function SocialMediaApp({
           campaigns follow that event’s management access.
         </p>
       </section>
+      <CampaignCalendar rows={rows} disabled={busy || loading} onOpen={open} />
       <section
         className="sm-connections"
         ref={connections}

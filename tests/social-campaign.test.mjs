@@ -64,6 +64,11 @@ test("private and event campaign authorization, immutable context/revisions, CAS
         "../supabase/migrations/20261007064246_social_campaign_workspace.sql",
       ),
     );
+    await db.exec(
+      await file(
+        "../supabase/migrations/20261008204951_social_campaign_schedules.sql",
+      ),
+    );
     assert.deepEqual(
       (
         await db.query(

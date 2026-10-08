@@ -299,6 +299,139 @@
   background: #153f3b;
   color: #caffec !important;
 }
+.sm-templates,
+.sm-calendar {
+  margin-top: 32px;
+  padding: 24px;
+  background: #0e1c32;
+  border: 1px solid #ffffff26;
+  border-radius: 16px;
+}
+.sm-template-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.sm-template-grid article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
+  border: 1px solid #ffffff26;
+  border-radius: 14px;
+  background: #12213b;
+}
+.sm-template-grid article p {
+  flex: 1;
+  font-size: 14px;
+}
+.sm-post-plan {
+  margin: 24px 0;
+}
+.sm-post-card {
+  padding: 18px;
+  margin-bottom: 16px;
+  background: #12213b;
+  border: 1px solid #ffffff26;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+}
+.sm-calendar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+.sm-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.sm-calendar-weekday {
+  padding: 10px 4px;
+  text-align: center;
+}
+.sm-calendar-day {
+  min-height: 90px;
+  padding: 8px;
+  background: #12213b;
+  border: 1px solid #ffffff26;
+  border-radius: 8px;
+  min-width: 0;
+}
+.sm-day-number {
+  font-size: 13px;
+  color: #c7c8cc;
+}
+.sm-calendar-post {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  text-align: left;
+  color: #fff;
+  background: #1d245d;
+  border: 1px solid #8c9eb4;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.sm-calendar-post strong,
+.sm-calendar-post span,
+.sm-calendar-post small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sm-calendar-post.reviewed {
+  border-color: #8cdbbe;
+}
+.sm-zone-label {
+  display: block;
+}
+.sm-action-center {
+  display: grid;
+  gap: 16px;
+}
+.sm-action-group {
+  border-top: 1px solid #ffffff26;
+  padding-top: 12px;
+}
+.sm-action-group > strong {
+  display: block;
+  font-size: 12px;
+  color: #c7c8cc;
+  margin-bottom: 10px;
+}
+@media (max-width: 1000px) {
+  .sm-template-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .sm-templates,
+  .sm-calendar {
+    padding: 16px;
+  }
+  .sm-template-grid {
+    grid-template-columns: 1fr;
+  }
+  .sm-calendar-grid {
+    display: block;
+  }
+  .sm-calendar-weekday,
+  .sm-calendar-empty {
+    display: none;
+  }
+  .sm-calendar-day {
+    min-height: 0;
+    margin: 8px 0;
+  }
+  .sm-calendar-day:not(:has(button)) {
+    display: none;
+  }
+}
 .sm-app .platform-error {
   padding: 14px;
   border-radius: 10px;

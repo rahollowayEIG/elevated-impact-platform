@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
         headers: { "apikey": secret, "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "invite", team_id: team.id, registration_id: golfer.id,
-          app_origin: "https://golf.elevatedimpactgroup.net",
+          app_origin: "https://elevated-impact-platform.vercel.app",
         }),
       });
       const delivery = await sent.json().catch(() => ({}));
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
           const invite = await fetch(url + "/functions/v1/golf-team-member", {
             method: "POST",
             headers: { "Authorization": "Bearer " + secret, "apikey": secret, "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "invite", team_id: team.id, registration_id: r.id, app_origin: "https://golf.elevatedimpactgroup.net" }),
+            body: JSON.stringify({ action: "invite", team_id: team.id, registration_id: r.id, app_origin: "https://elevated-impact-platform.vercel.app" }),
           });
           const payload = await invite.json().catch(() => ({}));
           if (!invite.ok || !payload.success || !payload.email_sent) {

@@ -234,7 +234,7 @@ export default function GolfTeamInvitation({ token }) {
     <span style={{ fontWeight: 700, color: '#70727A' }}>{label}</span>
     <strong style={{ color: '#1D245D' }}>{value || 'Not provided'}</strong>
   </div>;
-  const isCaptain = preview && fullName(preview.captain) === fullName(preview.invitee);
+  const isCaptain = Boolean(preview?.is_captain);
   const roleLabel = isCaptain ? 'Captain' : 'Golfer';
 
   return <div className="platform-auth-screen" style={{ padding: '30px 14px' }}>

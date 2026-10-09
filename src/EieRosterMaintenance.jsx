@@ -74,6 +74,18 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const teamSize = teamMode ? Math.max(2, Number(settings.team_size || 4)) : 1;
   const [uploadOpen, setUploadOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [manualTeamOpen, setManualTeamOpen] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamPrice, setTeamPrice] = useState('');
+  const [teamPayment, setTeamPayment] = useState('pending');
+  const [teamReason, setTeamReason] = useState('');
+  const changeTeammate = (index, field, value) => setTeamMembers(current => {
+    const next = [...current];
+    next[index] = { ...(next[index] || {}), [field]: value };
+    return next;
+  });
+
   const [manualGolfer, setManualGolfer] = useState(emptyGolfer);
   const [manualReason, setManualReason] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState(null);
@@ -469,6 +481,42 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     }
   }
 
+  async function addManualTeam() {
+    if (working) return;
+    setWorking(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-admin-team-registration', {
+        body: {
+          event_id: event.id, event_key: event.event_key,
+          captain: { ...manualGolfer, membership_status: membersOnly ? 'Member' : manualGolfer.membership_status },
+          teammates: Array.from({ length: teamSize - 1 }, (_, i) => teamMembers[i] || {}),
+          team_name: teamName, team_price: teamPrice === '' ? null : Number(teamPrice),
+          payment_status: teamPayment, reason: teamReason.trim() || null
+        }
+      });
+      if (error) {
+        let details = null;
+        try { details = await error.context?.json(); } catch { /* response consumed */ }
+        throw new Error(details?.error || error.message || 'Unable to create team.');
+      }
+      if (!data?.success) throw new Error(data?.error || 'Unable to create team.');
+      setNotice(`Team / Entry #${data.team.entry_number} created. ${data.warning || ''}`);
+      setManualTeamOpen(false);
+      setManualGolfer(emptyGolfer());
+      setTeamMembers([]);
+      setTeamName('');
+      setTeamPrice('');
+      setTeamPayment('pending');
+      setTeamReason('');
+      await onRefresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Unable to create team.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
   function openManage(row) {
     setSelected(row);
     setAction('');
@@ -632,7 +680,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         </div>
 
         <div className="review-actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-start' }}>
-          <button className="platform-primary-button" type="button" onClick={() => { setManualOpen(true); setUploadOpen(false); setNotice(''); }}>+ Add Golfer Manually</button>
+          {teamMode && <button className="platform-primary-button" type="button" onClick={() => { setManualTeamOpen(true); setManualOpen(false); setUploadOpen(false); setNotice(''); }}>+ Register Team Manually</button>}
+          <button className="platform-secondary-button" type="button" onClick={() => { setManualOpen(true); setManualTeamOpen(false); setUploadOpen(false); setNotice(''); }}>+ Add Golfer Manually</button>
           <button className="platform-secondary-button" type="button" onClick={() => { setUploadOpen(true); setManualOpen(false); setNotice(''); }}>Upload Roster</button>
           <button className="platform-secondary-button" type="button" disabled={loading || syncWorking} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
           <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={pullGoogleChanges}>{syncWorking ? 'Working...' : 'Pull Google Changes'}</button>
@@ -644,6 +693,46 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}
+
+        {manualTeamOpen && teamMode && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.1)' }}>
+            <div className="platform-section-heading"><div>
+              <p className="platform-eyebrow">Cockpit · Roster Maintenance</p>
+              <h3>Register Team Manually</h3>
+              <p>One Team / Entry #, {teamSize} roster spots. Leave unknown teammate fields blank for TBA spots.</p>
+            </div></div>
+            <h4>Captain · Player 1</h4>
+            <div className="form-grid two">
+              <label>First name *<input value={manualGolfer.first_name} onChange={e => updateManual('first_name', e.target.value)} /></label>
+              <label>Last name *<input value={manualGolfer.last_name} onChange={e => updateManual('last_name', e.target.value)} /></label>
+              <label>Email *<input type="email" value={manualGolfer.email} onChange={e => updateManual('email', e.target.value)} /></label>
+              <label>Phone *<input type="tel" value={manualGolfer.phone} onChange={e => updateManual('phone', e.target.value)} /></label>
+              {!membersOnly && settings.membership !== 'hidden' && <label>Membership<select value={manualGolfer.membership_status} onChange={e => updateManual('membership_status',e.target.value)}><option>Member</option><option>Non-Member</option></select></label>}
+              {settings.division !== 'hidden' && <label>Division<select value={manualGolfer.division} onChange={e => updateManual('division',e.target.value)}><option value="">Not selected</option>{divisionOptions.map(d => <option key={d}>{d}</option>)}</select></label>}
+              {settings.dob !== 'hidden' && <label>Date of birth<input type="date" value={manualGolfer.date_of_birth} onChange={e => updateManual('date_of_birth',e.target.value)} /></label>}
+              {settings.gender !== 'hidden' && <label>Gender<select value={manualGolfer.gender} onChange={e => updateManual('gender',e.target.value)}><option value="">Not selected</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></label>}
+              {settings.ghin !== 'hidden' && <label>GHIN #<input value={manualGolfer.ghin_number} onChange={e => updateManual('ghin_number',e.target.value)} /></label>}
+            </div>
+            <h4>Additional Players</h4>
+            {Array.from({ length: teamSize - 1 }, (_, i) => <div className="form-grid three" key={i}>
+              <label>Player {i+2} first name<input value={teamMembers[i]?.first_name || ''} onChange={e => changeTeammate(i,'first_name',e.target.value)} /></label>
+              <label>Last name<input value={teamMembers[i]?.last_name || ''} onChange={e => changeTeammate(i,'last_name',e.target.value)} /></label>
+              <label>Email<input type="email" value={teamMembers[i]?.email || ''} onChange={e => changeTeammate(i,'email',e.target.value)} /></label>
+            </div>)}
+            <div className="form-grid two">
+              {settings.allow_team_name !== false && <label>Team name<input value={teamName} onChange={e => setTeamName(e.target.value)} /></label>}
+              <label>Team price override<input type="number" min="0" step="0.01" placeholder="Use event price" value={teamPrice} onChange={e => setTeamPrice(e.target.value)} /></label>
+              <label>Payment status<select value={teamPayment} onChange={e => setTeamPayment(e.target.value)}>
+                <option value="pending">Unpaid / pending</option><option value="paid">Paid at clubhouse</option><option value="comp">Comp team</option>
+              </select></label>
+              {teamPayment === 'comp' && <label>Comp reason *<input value={teamReason} onChange={e => setTeamReason(e.target.value)} /></label>}
+            </div>
+            <div className="review-actions" style={{ marginTop:16 }}>
+              <button type="button" className="platform-secondary-button" disabled={working} onClick={() => setManualTeamOpen(false)}>Cancel</button>
+              <button type="button" className="platform-primary-button" disabled={working || !manualGolfer.first_name.trim() || !manualGolfer.last_name.trim() || !manualGolfer.email.trim() || !manualGolfer.phone.trim() || (teamPayment === 'comp' && !teamReason.trim())} onClick={addManualTeam}>{working ? 'Saving...' : 'Create Team & Reserve Spots'}</button>
+            </div>
+          </div>
+        )}
 
         {manualOpen && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.1)' }}>

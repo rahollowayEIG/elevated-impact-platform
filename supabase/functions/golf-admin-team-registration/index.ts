@@ -123,7 +123,7 @@ Deno.serve(async(req:Request)=>{
     for(const member of createdRows.slice(1)){
       if(!member.email)continue;
       try{
-        const invitation=await fetch(url+"/functions/v1/golf-team-member",{method:"POST",headers:{"apikey":key,"Content-Type":"application/json"},body:JSON.stringify({action:"invite",team_id:team.id,registration_id:member.id,app_origin:"https://golf.elevatedimpactgroup.net"})});
+        const invitation=await fetch(url+"/functions/v1/golf-team-member",{method:"POST",headers:{"apikey":key,"Content-Type":"application/json"},body:JSON.stringify({action:"invite",team_id:team.id,registration_id:member.id,app_origin:"https://elevated-impact-platform.vercel.app"})});
         const result=await invitation.json().catch(()=>({}));
         if(!invitation.ok||!result.email_sent)warnings.push(member.email+": invitation not sent");
       }catch{warnings.push(member.email+": invitation failed");}
@@ -137,7 +137,7 @@ Deno.serve(async(req:Request)=>{
           headers:{"apikey":key,"Content-Type":"application/json"},
           body:JSON.stringify({
             action:"invite",team_id:team.id,registration_id:createdRows[0].id,
-            app_origin:"https://golf.elevatedimpactgroup.net"
+            app_origin:"https://elevated-impact-platform.vercel.app"
           })
         });
         const result=await invite.json().catch(()=>({}));

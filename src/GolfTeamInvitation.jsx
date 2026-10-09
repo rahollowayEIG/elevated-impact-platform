@@ -17,7 +17,7 @@ async function callFunction(name, body) {
     }
     throw new Error(message);
   }
-  if (!data || data.error || !data.success) {
+  if (!data || data.error || data.success === false) {
     throw new Error(data?.error || 'The request could not be completed.');
   }
   return data;
@@ -285,7 +285,7 @@ export default function GolfTeamInvitation({ token }) {
                       {busy ? 'Signing in...' : 'Sign In & Claim My Team Spot'}
                     </button>
                     <button type="button" className="platform-secondary-button" onClick={() => showMode('choose')} disabled={busy}>Back</button>
-                    <p className="platform-login-copy">Forgot your password? Use <a href="/?recovery=1">Elevat​ionPilot account recovery</a>, then reopen this invitation.</p>
+                    <p className="platform-login-copy">Forgot your password? Use <a href="/?recovery=1">ElevationPilot account recovery</a>, then reopen this invitation.</p>
                   </form>
                 : mode === 'create'
                   ? <form className="platform-login-form" onSubmit={requestCode}>

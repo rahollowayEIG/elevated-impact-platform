@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
+import EieTeamManagement from './EieTeamManagement';
 import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
 
 function emptyGolfer() {
@@ -75,6 +76,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [uploadOpen, setUploadOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualTeamOpen, setManualTeamOpen] = useState(false);
+  const [teamManageOpen, setTeamManageOpen] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamPrice, setTeamPrice] = useState('');
@@ -283,6 +285,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
   async function applyBulkAction() {
     if (!bulkSelectedIds.length || !bulkAction || bulkWorking) return;
+    if (teamMode && bulkAction === 'set_team') { setNotice('Use Manage Teams & Players to move golfers and keep entry numbers aligned.'); return; }
     if (bulkAction === 'comp' && !bulkReason.trim()) {
       setNotice('A reason is required when comping golfers.');
       return;
@@ -535,6 +538,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
   async function applyAction() {
     if (!selected?.id || !action || working) return;
+    if (teamMode && action === 'set_team') { setNotice('Use Manage Teams & Players to move golfers safely.'); return; }
     if (action === 'comp' && !reason.trim()) {
       setNotice('A reason is required when comping a golfer.');
       return;
@@ -680,7 +684,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         </div>
 
         <div className="review-actions" style={{ flexWrap: 'wrap', justifyContent: 'flex-start' }}>
-          {teamMode && <button className="platform-primary-button" type="button" onClick={() => { setManualTeamOpen(true); setManualOpen(false); setUploadOpen(false); setNotice(''); }}>+ Register Team Manually</button>}
+          {teamMode && <button className="platform-primary-button" type="button" onClick={() => { setTeamManageOpen(true); setManualTeamOpen(false); setManualOpen(false); setUploadOpen(false); setNotice(''); }}>Manage Teams & Players</button>}
+          {teamMode && <button className="platform-secondary-button" type="button" onClick={() => { setManualTeamOpen(true); setTeamManageOpen(false); setManualOpen(false); setUploadOpen(false); setNotice(''); }}>+ Register Team Manually</button>}
           <button className="platform-secondary-button" type="button" onClick={() => { setManualOpen(true); setManualTeamOpen(false); setUploadOpen(false); setNotice(''); }}>+ Add Golfer Manually</button>
           <button className="platform-secondary-button" type="button" onClick={() => { setUploadOpen(true); setManualOpen(false); setNotice(''); }}>Upload Roster</button>
           <button className="platform-secondary-button" type="button" disabled={loading || syncWorking} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
@@ -693,6 +698,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}
+
+        {teamManageOpen && teamMode && <EieTeamManagement event={event} onRefresh={onRefresh} onClose={() => setTeamManageOpen(false)} />}
 
         {manualTeamOpen && teamMode && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,.1)' }}>
@@ -891,7 +898,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                   <option value="">Choose an action</option>
                   <option value="paid_clubhouse">Mark Paid</option>
                   <option value="comp">Comp Players</option>
-                  {teamMode && <option value="set_team">Set / Move Team</option>}
+                  {!teamMode && <option value="set_team">Set Team</option>}
                   <option value="withdraw">Withdraw</option>
                   <option value="cancel">Cancel Registration</option>
                 </select>
@@ -967,7 +974,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                                     <option value="withdraw">Withdraw</option>
                                     <option value="cancel">Cancel Registration</option>
                                     {(selected.registration_status || 'active') !== 'active' && <option value="reactivate">Reactivate</option>}
-                                    {teamMode && <option value="set_team">Set / Move Team</option>}
+                                    {!teamMode && <option value="set_team">Set Team</option>}
                                   </select>
                                 </label>
                                 {action === 'set_team'

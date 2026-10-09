@@ -5,6 +5,7 @@ import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
+import GolfTeamInvitation from './GolfTeamInvitation.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import EieRosterMaintenance from './EieRosterMaintenance';
@@ -2781,6 +2782,10 @@ export default function App() {
   const recoverySearchParams = new URLSearchParams(window.location.search);
   const recoveryHashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const recoveryLinkHint = recoverySearchParams.get('recovery') === '1' || recoverySearchParams.get('type') === 'recovery' || recoveryHashParams.get('type') === 'recovery' || recoveryHashParams.get('access_token') && recoveryHashParams.get('refresh_token');
+  const golfTeamInvite = recoverySearchParams.get('team_invite');
+  // Manual team invites are Passenger onboarding, not platform-role invitations.
+  // Auth belongs to the matching golfer email and existing roster slot.
+  if (golfTeamInvite && !recoveryLinkHint && isSupabaseConfigured) return <GolfTeamInvitation token={golfTeamInvite} />;
   if (publicMatch && isSupabaseConfigured) return <PublicInquiryPage slug={decodeURIComponent(publicMatch[1])} />;
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 

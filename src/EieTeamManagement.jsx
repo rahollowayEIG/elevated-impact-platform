@@ -144,6 +144,24 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     setNotice('');
     setError('');
   }
+  async function resendInvite(row) {
+    if (working || !row?.id || !row.email || row.user_id || row.passenger_claim_status === 'claimed') return;
+    setWorking(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await invoke({ action: 'resend_invite', registration_id: row.id });
+      setNotice(response.email_sent ? 'Registration invitation sent to ' + row.email :
+        response.warnings?.join(' ') || 'Invitation saved but email delivery needs attention.');
+      await reload();
+      if (onRefresh) await onRefresh();
+    } catch (caught) {
+      setError(caught.message || 'Could not resend the account invitation.');
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function save() {
     if (!selectedTeam || !selectedPlayer || working) return;
     const normalizedAction = action === 'move_or_swap'
@@ -263,6 +281,8 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
           <div className="review-actions" style={{ gap: 6 }}>
             {isTba(r) ? <button className="platform-primary-button" type="button" onClick={() => begin('fill_tba',r)}>Fill TBA</button> : <>
               <button className="platform-secondary-button" type="button" onClick={() => begin('edit_player',r)}>Edit</button>
+              {!r.user_id && r.passenger_claim_status !== 'claimed' && !!r.email &&
+                <button className="platform-secondary-button" type="button" disabled={working} onClick={() => resendInvite(r)}>Resend Account Invite</button>}
               <button className="platform-secondary-button" type="button" onClick={() => begin('move_or_swap',r)}>Move / Swap</button>
               {r.id !== selectedTeam.captain_registration_id &&
                 <button className="platform-secondary-button" type="button" disabled={!r.user_id || r.passenger_claim_status !== 'claimed'}

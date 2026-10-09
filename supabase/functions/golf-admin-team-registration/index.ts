@@ -128,14 +128,46 @@ Deno.serve(async(req:Request)=>{
         if(!invitation.ok||!result.email_sent)warnings.push(member.email+": invitation not sent");
       }catch{warnings.push(member.email+": invitation failed");}
     }
-    // Captain receives the Passenger invite when the account is not yet claimed.
+    // Manual captains use the SAME six-digit email-code account flow as normal golfers.
+    // A team-spot invitation claims the existing roster row, without another registration.
     if(!captainUserId){
       try{
-        const invite=await fetch(url+"/functions/v1/platform-invite",{method:"POST",headers:{"apikey":key,"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({action:"send",email:captainEmail,invitee_name:first+" "+last,organization_id:event.organization_id,event_id:event.id,registration_id:createdRows[0].id,role:"passenger",access_mode:"indefinite",redirect_to:"https://elevated-impact-platform.vercel.app/?invite=1"})});
+        const invite=await fetch(url+"/functions/v1/golf-team-member",{
+          method:"POST",
+          headers:{"apikey":key,"Content-Type":"application/json"},
+          body:JSON.stringify({
+            action:"invite",team_id:team.id,registration_id:createdRows[0].id,
+            app_origin:"https://golf.elevatedimpactgroup.net"
+          })
+        });
         const result=await invite.json().catch(()=>({}));
-        if(result.email_sent)await admin.from("golf_registrations").update({passenger_claim_status:"invited",passenger_invited_at:now}).eq("id",createdRows[0].id);
-        else warnings.push("Captain Passenger invite not sent");
-      }catch{warnings.push("Captain Passenger invite failed");}
+        if(!invite.ok||!result.success||!result.email_sent){
+          warnings.push("Captain registration invitation not sent: "+trim(result.error||result.warning||"Please resend from the roster"));
+        }
+      }catch{
+        warnings.push("Captain registration invitation failed; use Resend Invite in the roster");
+      }
+    } else {
+      // Claimed Passengers only need their existing registration and Airport link.
+      try {
+        const apiKey=Deno.env.get("RESEND_API_KEY");
+        if(!apiKey){warnings.push("Captain confirmation email not configured");}
+        else {
+          const airportLink="https://elevated-impact-platform.vercel.app/?airport=1&event_id="+encodeURIComponent(event.id);
+          const escapeHtml=(value:string)=>value.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+          const html='<div style="font-family:Arial,sans-serif;line-height:1.55;color:#1D245D"><p>Hi '+escapeHtml(first)+',</p><p>You have been registered as captain for <strong>'+escapeHtml(event.name)+'</strong>, Team / Entry #'+escapeHtml(String(team.entry_number))+'.</p><p>Your existing ElevationPilot account is connected. No new password is needed.</p><p><a href="'+escapeHtml(airportLink)+'" style="background:#D81C22;color:white;padding:12px 18px;text-decoration:none">Open My Registration &amp; Team</a></p><p>ElevationPilot by Elevated Impact Group</p></div>';
+          const sent=await fetch("https://api.resend.com/emails",{
+            method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},
+            body:JSON.stringify({
+              from:Deno.env.get("SQUAWK_FROM_EMAIL")||"ElevationPilot <squawk@elevatedimpactgroup.net>",
+              to:[captainEmail],reply_to:Deno.env.get("SQUAWK_REPLY_TO_EMAIL")||"info@elevatedimpactgroup.net",
+              subject:event.name+": captain registration confirmed",html,
+              text:"Hi "+first+",\n\nYou have been registered as captain for "+event.name+", Team / Entry #"+team.entry_number+".\n\nSign in to your existing ElevationPilot account to manage your registration: "+airportLink+"\n\nElevationPilot by Elevated Impact Group"
+            })
+          });
+          if(!sent.ok)warnings.push("Captain confirmation email not sent");
+        }
+      }catch{warnings.push("Captain confirmation email needs attention");}
     }
     await admin.from("golf_registration_admin_actions").insert({registration_id:createdRows[0].id,organization_id:event.organization_id,event_id:event.id,action:"team_added_manually",reason:trim(body.reason)||null,acted_by:actor.id,new_payment_status:paymentStatus,new_registration_status:"active",metadata:{team_id:team.id,team_size:size}});
     try{

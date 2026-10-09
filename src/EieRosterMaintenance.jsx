@@ -560,6 +560,25 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     setNotice('');
     try {
       if (action === 'resend_account_invite') {
+        if (teamMode && selected.team_id) {
+          // Team members and captains use the same golf email-code account/claim flow.
+          const { data, error: inviteError } = await supabase.functions.invoke('golf-admin-team-management', {
+            body: { event_id: event.id, action: 'resend_invite', registration_id: selected.id },
+          });
+          if (inviteError) {
+            const details = await readFunctionError(inviteError, 'Team invitation could not be sent.');
+            throw new Error(details.error || 'Team invitation could not be sent.');
+          }
+          if (!data?.success) throw new Error(data?.error || 'Team invitation could not be sent.');
+          setSelected(null);
+          setAction('');
+          setReason('');
+          setTeamId('');
+          setNotice(data.email_sent ? 'Team registration invitation sent using the normal account setup.' :
+            (data.warnings?.join(' ') || 'Invite prepared, but email delivery needs attention.'));
+          await onRefresh();
+          return;
+        }
         if (!selected.email) throw new Error('Add an email address before sending an account invite.');
         if (!event?.organization_id) throw new Error('This event is not connected to a Hangar yet.');
 

@@ -76,6 +76,40 @@ Deno.serve(async (req: Request) => {
       return reply({ success: true, teams: teamsResult.data || [], registrations: playersResult.data || [] });
     }
 
+    if (action === "resend_invite") {
+      const id = clean(body.registration_id);
+      if (!uuid(id)) return reply({ success: false, error: "Choose a valid golfer" }, 400);
+      const { data: golfer, error: golferError } = await admin.from("golf_registrations")
+        .select("id,email,team_id,user_id,passenger_claim_status,registration_status")
+        .eq("id", id).eq("event_id", eventId).maybeSingle();
+      if (golferError || !golfer || golfer.registration_status !== "active") {
+        return reply({ success: false, error: "Active golfer not found" }, 404);
+      }
+      if (golfer.user_id || golfer.passenger_claim_status === "claimed") {
+        return reply({ success: false, error: "This golfer already has a claimed account. No invitation is needed." }, 409);
+      }
+      if (!clean(golfer.email)) return reply({ success: false, error: "Add a golfer email before resending" }, 400);
+      const { data: team, error: teamError } = await admin.from("golf_registration_teams")
+        .select("id").eq("event_id", eventId).eq("team_id", golfer.team_id).maybeSingle();
+      if (teamError || !team) return reply({ success: false, error: "Golfer's team not found" }, 404);
+      const sent = await fetch(url + "/functions/v1/golf-team-member", {
+        method: "POST",
+        headers: { "apikey": secret, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "invite", team_id: team.id, registration_id: golfer.id,
+          app_origin: "https://golf.elevatedimpactgroup.net",
+        }),
+      });
+      const delivery = await sent.json().catch(() => ({}));
+      if (!sent.ok || !delivery.success) {
+        return reply({ success: false, error: delivery.error || "Unable to prepare the account invitation" }, 400);
+      }
+      return reply({
+        success: true, email_sent: Boolean(delivery.email_sent),
+        warnings: delivery.email_sent ? [] : [delivery.warning || "Email could not be delivered"],
+      });
+    }
+
     if (!OPERATIONS.has(action)) return reply({ success: false, error: "Unsupported action" }, 400);
     const registrationId = clean(body.registration_id);
     const otherId = clean(body.other_registration_id);

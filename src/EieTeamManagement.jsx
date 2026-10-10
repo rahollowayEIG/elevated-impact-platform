@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
+import { announceActionComplete } from './lib/successNotice.mjs';
 
 function isTba(row) {
   return row?.custom_fields?.reserved_tba === true ||
@@ -268,7 +269,9 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       setPlayerId('');
       setTargetTeamId('');
       setTargetPlayerId('');
-      setNotice('Saved. ' + (response.warnings?.length ? response.warnings.join(' · ') : 'Team roster updated and invitations processed.'));
+      const confirmation = 'Saved. ' + (response.warnings?.length ? response.warnings.join(' · ') : 'Team roster updated and invitations processed.');
+      setNotice(confirmation);
+      if (!response.warnings?.length) announceActionComplete(confirmation);
       await reload();
       if (onRefresh) await onRefresh();
     } catch (caught) {

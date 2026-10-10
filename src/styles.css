@@ -1922,3 +1922,98 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .eie-captain-warning-dialog h3 { font-size: 20px; }
   .eie-captain-warning-candidates { flex-direction: column; }
 }
+
+/* Platform-wide, always-in-viewport confirmation for successful actions. */
+.eig-confirmation-layer {
+  position: fixed;
+  z-index: 3200;
+  top: calc(78px + env(safe-area-inset-top, 0px));
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+.eig-confirmation-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 40px;
+  align-items: start;
+  gap: 17px;
+  width: min(660px, 100%);
+  min-height: 120px;
+  padding: 23px 22px;
+  border: 2px solid #22945e;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #f0fff4 0%, #d9f8e5 100%);
+  color: #12452c;
+  box-shadow: 0 24px 65px rgba(3, 23, 17, .34), 0 0 0 5px rgba(40, 167, 96, .13);
+  pointer-events: auto;
+  animation: eigConfirmationAppear .22s ease-out;
+}
+.eig-confirmation-symbol {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #18864f;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 950;
+  line-height: 1;
+}
+.eig-confirmation-body { min-width: 0; }
+.eig-confirmation-heading {
+  display: block;
+  margin: 0 0 7px;
+  color: #0c4428;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+.eig-confirmation-body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #165637;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.eig-confirmation-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(20, 95, 52, .2);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .58);
+  color: #145b36;
+  font-size: 28px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.eig-confirmation-close:hover { background: #fff; }
+.eig-confirmation-close:focus-visible { outline: 3px solid #1D245D; outline-offset: 3px; }
+@keyframes eigConfirmationAppear {
+  from { opacity: 0; transform: translateY(-18px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 600px) {
+  .eig-confirmation-layer { top: calc(66px + env(safe-area-inset-top, 0px)); padding-inline: 10px; }
+  .eig-confirmation-card {
+    grid-template-columns: 42px minmax(0,1fr) 34px;
+    gap: 11px;
+    min-height: 104px;
+    padding: 16px 12px;
+    border-radius: 15px;
+  }
+  .eig-confirmation-symbol { width: 40px; height: 40px; font-size: 24px; }
+  .eig-confirmation-heading { font-size: 18px; }
+  .eig-confirmation-body p { font-size: 14px; }
+  .eig-confirmation-close { width: 34px; height: 34px; font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eig-confirmation-card { animation: none; }
+}
+

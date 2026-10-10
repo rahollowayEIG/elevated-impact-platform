@@ -374,7 +374,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
         captainContext = { teams: data.teams || [], registrations: liveRegistrations };
       }
 
-      // For Fall 8" Cup: Team ID, First Name, Last Name, with captain-name
+      // For Fall 8" Cup: Team ID, First Name, Last Name and Gender, with captain-name
       // suffixes 1/2/3 for TBA golfers. Never change their stored names.
       const { headers, records } = golfGeniusCsvFields(exported, event?.id, captainContext);
       const csvRows = records.map((record) => record.map(csvEscape).join(','));
@@ -386,7 +386,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       link.click();
       URL.revokeObjectURL(url);
       setNotice(event?.id === FALL_8IN_CUP_EVENT_ID
-        ? 'Golf Genius roster downloaded. ' + exported.length + ' golfers with TBA spots labeled using their current captain.'
+        ? 'Golf Genius roster downloaded. ' + exported.length + ' golfers with Team ID, First Name, Last Name and Gender. TBA spots use current captain labels.'
         : 'Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
     } catch (error) {
       const message = error?.message || 'Unable to prepare Golf Genius roster.';
@@ -680,7 +680,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <button className="platform-secondary-button" type="button" disabled={requiredRosterWorking} onClick={openRequiredRosterSheet}>{requiredRosterWorking ? 'Preparing...' : 'Open Required Roster Sheet'}</button>
           {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
           {googleSheetUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleSheetUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
-          {event?.id === FALL_8IN_CUP_EVENT_ID && <small style={{ alignSelf: 'center' }}>Fall 8" Cup Golf Genius import: Team ID · First Name · Last Name only.</small>}
+          {event?.id === FALL_8IN_CUP_EVENT_ID && <small style={{ alignSelf: 'center' }}>Fall 8" Cup Golf Genius import: Team ID · First Name · Last Name · Gender. Missing genders are blank.</small>}
           <button className="platform-secondary-button" type="button" disabled={exportWorking || !rows.some((row) => (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('all')}>{exportWorking ? 'Preparing Golf Genius CSV...' : 'Export Full Golf Genius CSV'}</button>
           <button className="platform-secondary-button" type="button" disabled={exportWorking || !rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('confirmed')}>Export Confirmed Golf Genius CSV</button>
         </div>

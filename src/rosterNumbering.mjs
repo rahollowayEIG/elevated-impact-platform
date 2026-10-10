@@ -93,7 +93,7 @@ export function golfGeniusRosterRows(rows, { teamSize = 4, teamMode = true, scop
 
 /**
  * Golf Genius can assign golfer entry numbers on import. For the Fall 8" Cup,
- * only Team ID and first/last name are needed. Keep the richer export for other
+ * only Team ID, first/last name and gender are needed. Keep the richer export for other
  * events and all internal roster numbering unchanged.
  */
 export const FALL_8IN_CUP_EVENT_ID = '56cfd38c-6b97-4c63-ad4a-fc72642ac2ab';
@@ -125,6 +125,7 @@ export function golfGeniusCsvFields(exportedRows, eventId, { teams = [], registr
     ];
     if (!isReservedTba(row)) return [
       row.__export_team_id, row.__export_first_name, row.__export_last_name,
+      String(row.gender ?? '').trim(),
     ];
     const teamKey = String(row.__export_team_id || '').trim();
     const captain = captainByTeam.get(teamKey);
@@ -137,12 +138,13 @@ export function golfGeniusCsvFields(exportedRows, eventId, { teams = [], registr
       teamKey,
       String(captain.first_name).trim(),
       String(captain.last_name).trim() + ' ' + placeholderNumber,
+      '', // TBA's gender is unknown; do not copy the captain's gender.
     ];
   });
 
   return {
     headers: simple
-      ? ['Team Id', 'First Name', 'Last Name']
+      ? ['Team Id', 'First Name', 'Last Name', 'Gender']
       : ['Team Id', 'Entry Number', 'First Name', 'Last Name',
         'Email', 'Phone', 'Payment Status', 'Registration ID'],
     records,

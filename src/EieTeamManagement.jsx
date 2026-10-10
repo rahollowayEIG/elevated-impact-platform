@@ -50,6 +50,15 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
   const [targetPlayerId, setTargetPlayerId] = useState('');
   const [fields, setFields] = useState(blank);
   const [reason, setReason] = useState('');
+  const [captainWarning, setCaptainWarning] = useState(null);
+  const captainWarningDialogRef = React.useRef(null);
+
+  useEffect(() => {
+    const dialog = captainWarningDialogRef.current;
+    if (!dialog) return;
+    if (captainWarning && !dialog.open) dialog.showModal();
+    if (!captainWarning && dialog.open) dialog.close();
+  }, [captainWarning]);
 
   async function invoke(body) {
     const { data, error: failed } = await supabase.functions.invoke('golf-admin-team-management', {
@@ -79,6 +88,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
   useEffect(() => {
     setTeamId('');
     setAction('');
+    setCaptainWarning(null);
     reload(false);
   }, [event.id]);
 
@@ -149,6 +159,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     setTeamId(id);
     setAction('');
     setPlayerId('');
+    setCaptainWarning(null);
     setNotice('');
     setError('');
   }
@@ -296,9 +307,16 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
               <button className={'platform-secondary-button eie-player-action' + (action === 'edit_player' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'edit_player' && playerId === r.id} disabled={working} onClick={() => begin('edit_player',r)}>Edit</button>
               {!r.user_id && r.passenger_claim_status !== 'claimed' && !!r.email &&
                 <button className="platform-secondary-button" type="button" disabled={working} onClick={() => resendInvite(r)}>Resend Account Invite</button>}
-              <button className={'platform-secondary-button eie-player-action' + (action === 'move_or_swap' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'move_or_swap' && playerId === r.id} disabled={working || !canMoveTeamGolfer(r, selectedTeam)}
-                  title={!canMoveTeamGolfer(r, selectedTeam) ? 'Captain or payment-related golfer moves require review' : 'Move this golfer to another team, retaining their registration and payment history'}
-                  onClick={() => begin('move_or_swap',r)}>Move / Swap</button>
+              <button className={'platform-secondary-button eie-player-action' + (action === 'move_or_swap' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'move_or_swap' && playerId === r.id}
+                  disabled={working || (r.id !== selectedTeam.captain_registration_id && !canMoveTeamGolfer(r, selectedTeam))}
+                  title={r.id === selectedTeam.captain_registration_id
+                    ? 'Captain must be reassigned first. Click for instructions.'
+                    : !canMoveTeamGolfer(r, selectedTeam)
+                      ? 'Payment-related golfer moves require staff review'
+                      : 'Move this golfer to another team, retaining their registration and payment history'}
+                  onClick={() => r.id === selectedTeam.captain_registration_id
+                    ? setCaptainWarning({ name: golferName(r), entryNumber: selectedTeam.entry_number })
+                    : begin('move_or_swap', r)}>Move / Swap</button>
               {r.id !== selectedTeam.captain_registration_id &&
                 <button className={'platform-secondary-button eie-player-action' + (action === 'transfer_captain' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'transfer_captain' && playerId === r.id} disabled={working || !r.user_id || r.passenger_claim_status !== 'claimed'}
                   title={!r.user_id ? 'Golfer must claim their Passenger account before becoming captain' : ''} onClick={() => begin('transfer_captain',r)}>Make Captain</button>}
@@ -350,5 +368,44 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
         </div>
       </div>}
     </div>}
+    <dialog
+      ref={captainWarningDialogRef}
+      className="eie-captain-warning-dialog"
+      aria-labelledby="eie-captain-warning-title"
+      aria-describedby="eie-captain-warning-explanation"
+      onClose={() => setCaptainWarning(null)}
+    >
+      {captainWarning && <>
+        <p className="platform-eyebrow">EIE · Captain Assignment</p>
+        <h3 id="eie-captain-warning-title">Transfer captaincy before moving this golfer</h3>
+        <p id="eie-captain-warning-explanation">
+          <strong>{captainWarning.name}</strong> is currently captain of <strong>Team / Entry #{captainWarning.entryNumber}</strong>.
+          A captain cannot be moved or swapped while they hold that position.
+        </p>
+        <p>First choose another teammate with a connected Passenger account and make them captain.
+          Confirm the captain transfer, then return to <strong>Move / Swap</strong> for the original captain.</p>
+        {selectedMembers.some((member) => member.id !== selectedTeam?.captain_registration_id &&
+          member.user_id && member.passenger_claim_status === 'claimed' && !isTba(member)) ? <>
+          <strong className="eie-captain-warning-subhead">Select the new captain to begin the transfer:</strong>
+          <div className="eie-captain-warning-candidates">
+            {selectedMembers.filter((member) => member.id !== selectedTeam?.captain_registration_id &&
+              member.user_id && member.passenger_claim_status === 'claimed' && !isTba(member))
+              .map((member) => <button className="platform-secondary-button" key={member.id} type="button"
+                onClick={() => { setCaptainWarning(null); begin('transfer_captain', member); }}>
+                {golferName(member)} · Make Captain
+              </button>)}
+          </div>
+        </> : <p className="eie-captain-warning-note" role="status">
+          No other teammate has a connected Passenger account yet. Have a teammate claim their account before transferring captaincy.
+        </p>}
+        <p className="eie-captain-warning-note">
+          <strong>Payment protection:</strong> If the outgoing captain holds a payment, Comp, or full-team fee record,
+          moving that registration may still require a separate financial review. Changing captains does not transfer payments.
+        </p>
+        <div className="review-actions eie-captain-warning-footer">
+          <button className="platform-primary-button" type="button" onClick={() => setCaptainWarning(null)}>Close</button>
+        </div>
+      </>}
+    </dialog>
   </section>;
 }

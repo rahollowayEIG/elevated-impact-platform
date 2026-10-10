@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import PasswordField from './components/PasswordField.jsx';
+import { ACCOUNT_GENDERS, validateAccountIdentity } from './lib/accountIdentity.mjs';
 
 const normalEmail = (value) => String(value || '').trim().toLowerCase();
 const fullName = (row) => [row?.first_name, row?.last_name].filter(Boolean).join(' ') || 'Golfer';
@@ -41,6 +42,8 @@ export default function GolfTeamInvitation({ token }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -171,6 +174,8 @@ export default function GolfTeamInvitation({ token }) {
     if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(handle)) {
       return setError('Username must be 3-30 characters, using letters, numbers, dots, dashes, or underscores.');
     }
+    const identityError = validateAccountIdentity({ date_of_birth: dateOfBirth, gender });
+    if (identityError) return setError(identityError);
     if (password.length < 8) return setError('Create a password with at least 8 characters.');
     if (password !== confirmPassword) return setError('The passwords do not match.');
     setBusy(true);
@@ -194,6 +199,8 @@ export default function GolfTeamInvitation({ token }) {
     if (!/^\d{6}$/.test(verificationCode.trim())) {
       return setError('Enter the six-digit verification code from your email.');
     }
+    const identityError = validateAccountIdentity({ date_of_birth: dateOfBirth, gender });
+    if (identityError) return setError(identityError);
     setBusy(true);
     setError('');
     try {
@@ -205,6 +212,8 @@ export default function GolfTeamInvitation({ token }) {
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
+        date_of_birth: dateOfBirth,
+        gender,
         signup_token: signupToken || crypto.randomUUID(),
       });
       if (!result.user_id) throw new Error('We could not confirm the new Passenger account.');
@@ -295,6 +304,10 @@ export default function GolfTeamInvitation({ token }) {
                         <label>Last name<input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" required disabled={busy} /></label>
                       </div>
                       <label>Invited email<input type="email" value={invitedEmail} disabled autoComplete="email" /></label>
+                      <div className="form-grid two">
+                        <label>Date of birth *<input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required disabled={busy} /></label>
+                        <label>Gender *<select value={gender} onChange={(e) => setGender(e.target.value)} required disabled={busy}><option value="">Choose</option>{ACCOUNT_GENDERS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                      </div>
                       <label>Choose @username<input value={username} onChange={(e) => setUsername(e.target.value.replace(/^@/, ''))}
                         autoComplete="username" required disabled={busy} /></label>
                       <div className="form-grid two">

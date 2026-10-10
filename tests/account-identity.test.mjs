@@ -41,3 +41,31 @@ test('account profile identity remains optional for previously registered users'
   assert.doesNotMatch(signIn,/validateAccountIdentity/);
   assert.match(source,/if \(requiresIdentityDetails\)/);
 });
+
+
+test('new role invites validate and persist DOB/Gender before activating access', async () => {
+  const source=await readFile(new URL('../supabase/functions/platform-invite/index.ts',import.meta.url),'utf8');
+  const start=source.indexOf('if (action === "accept")');
+  const end=source.indexOf('if (action === "revoke")',start);
+  const section=source.slice(start,end>start?end:undefined);
+  assert.match(section,/requiresIdentityDetails = invitation\.recipient_was_existing !== true/);
+  assert.match(section,/validAccountDob\(dateOfBirth\)/);
+  assert.match(section,/ACCOUNT_GENDERS\.has\(selectedGender\)/);
+  assert.match(section,/date_of_birth: dateOfBirth/);
+  assert.match(section,/gender: selectedGender/);
+  assert.ok(section.indexOf('validAccountDob(dateOfBirth)') < section.indexOf('if (["eig_admin", "organization_admin"'));
+  assert.match(section,/date_of_birth: registrationRow\.date_of_birth \|\| passenger\.date_of_birth \|\| null/);
+  assert.match(section,/gender: registrationRow\.gender \|\| passenger\.gender \|\| null/);
+});
+
+test('on login, validated identity metadata populates only missing Passenger fields', async () => {
+  const source=await readFile(new URL('../src/PlatformApp.jsx',import.meta.url),'utf8');
+  const start=source.indexOf('async function loadAirportData(userId)');
+  const end=source.indexOf('async function loadEventRequests(',start);
+  const section=source.slice(start,end);
+  assert.match(section,/validateAccountIdentity\(\{ date_of_birth: birth, gender: selectedGender \}\)/);
+  assert.match(section,/date_of_birth: resolvedPassenger\?\.date_of_birth \|\| birth/);
+  assert.match(section,/gender: resolvedPassenger\?\.gender \|\| selectedGender/);
+  assert.match(section,/auth_user_id: userId/);
+  assert.doesNotMatch(section,/\.from\('golf_registrations'\)\.update/);
+});

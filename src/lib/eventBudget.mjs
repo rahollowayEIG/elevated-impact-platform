@@ -339,6 +339,13 @@ export function budgetCsv(b, eventName, version = 0, sources = null) {
       ["Event net goal", b.goal_cents],
       ["Additional committed funding needed", t.gap],
     ].map(([label, v]) => [label, v / 100]),
+    ...(sources?.comps ? [
+      [],
+      ["Complimentary registrations (information only; not revenue or expense)"],
+      ["Complimentary registration face value (USD)", Number(sources.comps.value_cents || 0) / 100],
+      ["Active Comp golfer spots (count)", Number(sources.comps.spot_count || 0)],
+      ["Priced complimentary registration fees (count)", Number(sources.comps.fee_count || 0)],
+    ] : []),
     ["Notes", b.notes],
   );
   return (

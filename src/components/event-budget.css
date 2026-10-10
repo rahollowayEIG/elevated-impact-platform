@@ -183,3 +183,31 @@
 .event-budget label { display:grid; gap:8px; }
 @media(max-width:760px) { .event-budget .budget-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:480px) { .event-budget .budget-stats { grid-template-columns:1fr; } }
+
+/* Complimentary registrations are informational, not an income or cost line. */
+.event-budget .budget-comps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.event-budget .budget-comps .budget-muted { margin: 6px 0 0; max-width: 720px; }
+.event-budget .budget-comps-value {
+  display: grid;
+  gap: 5px;
+  flex: 0 0 auto;
+  text-align: right;
+}
+.event-budget .budget-comps-value strong {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.event-budget .budget-comps-value small {
+  font-size: 12px;
+  color: #aec7df;
+}
+@media (max-width: 760px) {
+  .event-budget .budget-comps { align-items: stretch; flex-direction: column; gap: 14px; }
+  .event-budget .budget-comps-value { text-align: left; }
+}

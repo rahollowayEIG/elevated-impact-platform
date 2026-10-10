@@ -218,7 +218,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     }
   }
 
-  return <section style={{ ...panelStyle, marginTop: 20, padding: 22 }} aria-label="Team and Player Manager">
+  return <section className="eie-team-manager" style={{ ...panelStyle, marginTop: 20, padding: 22 }} aria-label="Team and Player Manager">
     <div className="platform-section-heading" style={{ gap: 12 }}>
       <div>
         <p className="platform-eyebrow">EIE · Staff Operations</p>
@@ -236,7 +236,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       <label>Search teams, golfers or email
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Team #, captain, golfer..." />
       </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
+      <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20 }}>
         <input type="checkbox" style={{ width: 'auto' }} checked={incompleteOnly} onChange={(e) => setIncompleteOnly(e.target.checked)} />
         Show incomplete teams only ({teams.filter((t) => t.status === 'roster_incomplete').length})
       </label>

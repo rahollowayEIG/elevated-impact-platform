@@ -98,17 +98,53 @@ export function golfGeniusRosterRows(rows, { teamSize = 4, teamMode = true, scop
  */
 export const FALL_8IN_CUP_EVENT_ID = '56cfd38c-6b97-4c63-ad4a-fc72642ac2ab';
 
-export function golfGeniusCsvFields(exportedRows, eventId) {
+export function golfGeniusCsvFields(exportedRows, eventId, { teams = [], registrations = [] } = {}) {
   const simple = String(eventId || '') === FALL_8IN_CUP_EVENT_ID;
+  // Use the team's current captain pointer, NOT its original purchaser.
+  // The captain can change without moving the original team payment.
+  const captainByTeam = new Map();
+  if (simple) {
+    const activeById = new Map(registrations.filter(active).map(row => [String(row.id), row]));
+    for (const team of teams) {
+      const captain = activeById.get(String(team.captain_registration_id || ''));
+      if (!captain || String(captain.team_id) !== String(team.team_id) ||
+          isReservedTba(captain) || !String(captain.first_name || '').trim() ||
+          !String(captain.last_name || '').trim()) continue;
+      captainByTeam.set(String(team.team_id), captain);
+    }
+  }
+
+  // 1, 2, 3 restart for each team's TBA positions. Only the exported
+  // labels change; the real TBA roster entries remain untouched.
+  const nextPlaceholderByTeam = new Map();
+  const records = exportedRows.map(row => {
+    if (!simple) return [
+      row.__export_team_id, row.__export_entry_number,
+      row.__export_first_name, row.__export_last_name,
+      row.email ?? '', row.phone ?? '', row.payment_status || 'pending', row.id,
+    ];
+    if (!isReservedTba(row)) return [
+      row.__export_team_id, row.__export_first_name, row.__export_last_name,
+    ];
+    const teamKey = String(row.__export_team_id || '').trim();
+    const captain = captainByTeam.get(teamKey);
+    if (!captain) {
+      throw new Error('Team #' + teamKey + ' needs a named current captain before TBA golfers can be exported.');
+    }
+    const placeholderNumber = (nextPlaceholderByTeam.get(teamKey) || 0) + 1;
+    nextPlaceholderByTeam.set(teamKey, placeholderNumber);
+    return [
+      teamKey,
+      String(captain.first_name).trim(),
+      String(captain.last_name).trim() + ' ' + placeholderNumber,
+    ];
+  });
+
   return {
     headers: simple
       ? ['Team Id', 'First Name', 'Last Name']
       : ['Team Id', 'Entry Number', 'First Name', 'Last Name',
         'Email', 'Phone', 'Payment Status', 'Registration ID'],
-    records: exportedRows.map(row => simple
-      ? [row.__export_team_id, row.__export_first_name, row.__export_last_name]
-      : [row.__export_team_id, row.__export_entry_number,
-        row.__export_first_name, row.__export_last_name,
-        row.email ?? '', row.phone ?? '', row.payment_status || 'pending', row.id]),
+    records,
   };
 }

@@ -107,11 +107,13 @@ test('Fall 8in Cup exports exactly Team ID, First Name, Last Name; Golf Genius o
   const tba = player('tba','1','pending', { first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}});
   const complete = [...players.filter(p=>p.id!=='t1d'), tba];
   const full = golfGeniusRosterRows(complete, {teamMode:true,teamSize:4,scope:'all'});
-  const csv = golfGeniusCsvFields(full, FALL_8IN_CUP_EVENT_ID);
+  const csv = golfGeniusCsvFields(full, FALL_8IN_CUP_EVENT_ID, {
+    teams: [{ team_id: '1', captain_registration_id: 't1a' }], registrations: complete,
+  });
   assert.deepEqual(csv.headers, ['Team Id','First Name','Last Name']);
   assert.equal(csv.records.length, full.length);
   assert.equal(csv.records.every(record => record.length === 3), true);
-  assert.deepEqual(csv.records.find(record => record[1] === 'TBA'), ['1','TBA','TBA']);
+  assert.deepEqual(csv.records.find(record => record[2].endsWith(' 1')), ['1','Golfer','t1a 1']);
   assert.equal(csv.records[0][0], '1');
   assert.equal(csv.records.at(-1)[0], '31');
   assert.equal(csv.headers.includes('Entry Number'),false);
@@ -129,4 +131,96 @@ test('Fall 8in Cup confirmed export also has exactly three columns; other events
   assert.deepEqual(unrelated.headers,['Team Id','Entry Number','First Name','Last Name','Email','Phone','Payment Status','Registration ID']);
   assert.equal(unrelated.records[0].length,8);
   assert.equal(unrelated.records[0][1],5);
+});
+
+
+test('three TBA placeholders use current captain name with 1/2/3 suffix in last name', () => {
+  const captain = player('captain','10','paid',{first_name:'Ryan',last_name:'Holloway',price:480});
+  const tbas = [1,2,3].map(n => player('tba'+n,'10','paid',{
+    first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true},
+  }));
+  const source = [captain,...tbas];
+  const snapshot=JSON.stringify(source);
+  const exported=golfGeniusRosterRows(source,{teamSize:4,teamMode:true,scope:'all'});
+  const csv=golfGeniusCsvFields(exported,FALL_8IN_CUP_EVENT_ID,{
+    teams:[{team_id:'10',captain_registration_id:'captain'}],registrations:source,
+  });
+  assert.deepEqual(csv.headers,['Team Id','First Name','Last Name']);
+  assert.deepEqual(csv.records,[
+    ['10','Ryan','Holloway'],
+    ['10','Ryan','Holloway 1'],
+    ['10','Ryan','Holloway 2'],
+    ['10','Ryan','Holloway 3'],
+  ]);
+  assert.equal(JSON.stringify(source),snapshot,'Original placeholder records must not change');
+});
+
+test('suffix restarts for each team, even when captain names match', () => {
+  const source=[
+    player('c1','1','paid',{first_name:'Alex',last_name:'Smith'}),
+    player('x1','1','paid',{first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}}),
+    player('c2','2','paid',{first_name:'Alex',last_name:'Smith'}),
+    player('x2','2','paid',{first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}}),
+  ];
+  const exported=golfGeniusRosterRows(source,{scope:'all'});
+  const csv=golfGeniusCsvFields(exported,FALL_8IN_CUP_EVENT_ID,{
+    teams:[{team_id:'1',captain_registration_id:'c1'}, {team_id:'2',captain_registration_id:'c2'}],
+    registrations:source,
+  });
+  assert.deepEqual(csv.records,[
+    ['1','Alex','Smith'],['1','Alex','Smith 1'],
+    ['2','Alex','Smith'],['2','Alex','Smith 1'],
+  ]);
+});
+
+test('a transferred captain is used, not the original $480 payment purchaser', () => {
+  const oldPayer=player('original-payer','20','paid',{
+    first_name:'Megan',last_name:'Fidler',price:480,amount_paid:480,
+  });
+  const currentCaptain=player('new-captain','20','paid',{
+    first_name:'Don',last_name:'Taatjes',price:0,
+  });
+  const other=player('named','20','paid',{first_name:'Sam',last_name:'Schoener'});
+  const tba=player('tba','20','paid',{
+    first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true},
+  });
+  const source=[oldPayer,currentCaptain,other,tba];
+  const exported=golfGeniusRosterRows(source,{scope:'confirmed'});
+  const csv=golfGeniusCsvFields(exported,FALL_8IN_CUP_EVENT_ID,{
+    teams:[{team_id:'20',captain_registration_id:'new-captain'}],
+    registrations:source,
+  });
+  assert.deepEqual(csv.records.find(row=>row[1]==='Don'&&row[2].endsWith(' 1')),
+    ['20','Don','Taatjes 1']);
+  assert.equal(csv.records.some(row=>row[2]==='Fidler 1'),false);
+  assert.equal(oldPayer.amount_paid,480,'An export must never modify payment receipts');
+});
+
+test('do not silently use the payer or TBA/TBA when captain data is absent or stale', () => {
+  const source=[
+    player('pay','10','paid',{first_name:'Purchaser',last_name:'Name'}),
+    player('tba','10','paid',{first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}}),
+  ];
+  const exported=golfGeniusRosterRows(source,{scope:'all'});
+  assert.throws(()=>golfGeniusCsvFields(exported,FALL_8IN_CUP_EVENT_ID),
+    /Team #10 needs a named current captain/);
+  assert.throws(()=>golfGeniusCsvFields(exported,FALL_8IN_CUP_EVENT_ID,{
+    teams:[{team_id:'10',captain_registration_id:'not-on-team'}],registrations:source,
+  }),/Team #10 needs a named current captain/);
+  const legacy=golfGeniusCsvFields(exported,'different-event-id');
+  assert.deepEqual(legacy.records[1].slice(2,4),['TBA','TBA']);
+});
+
+test('full and confirmed Fall 8in Cup exports label only included TBA golfers', () => {
+  const captain=player('captain','3','paid',{first_name:'Jamie',last_name:'Cole'});
+  const paidTba=player('paidtba','3','paid',{first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}});
+  const pendingTba=player('pendingtba','3','pending',{first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}});
+  const named=player('named','3','paid',{first_name:'Teammate',last_name:'Person'});
+  const source=[captain,paidTba,pendingTba,named];
+  const context={teams:[{team_id:'3',captain_registration_id:'captain'}],registrations:source};
+  const full=golfGeniusCsvFields(golfGeniusRosterRows(source,{scope:'all'}),FALL_8IN_CUP_EVENT_ID,context);
+  const confirmed=golfGeniusCsvFields(golfGeniusRosterRows(source,{scope:'confirmed'}),FALL_8IN_CUP_EVENT_ID,context);
+  assert.deepEqual(full.records.filter(r=>r[1]==='Jamie'&&r[2].startsWith('Cole ')).map(r=>r[2]),['Cole 1','Cole 2']);
+  assert.deepEqual(confirmed.records.filter(r=>r[1]==='Jamie'&&r[2].startsWith('Cole ')).map(r=>r[2]),['Cole 1']);
+  assert.deepEqual(full.records.find(r=>r[1]==='Teammate'),['3','Teammate','Person']);
 });

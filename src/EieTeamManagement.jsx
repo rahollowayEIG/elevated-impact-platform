@@ -14,11 +14,26 @@ function numericTeam(value) {
   return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
 }
 function canMoveTeamGolfer(row, team) {
-  // Captain and individually paid/Comp rows need payment-aware handling.
-  // The backend also checks Stripe session and share-payment records.
-  return Boolean(row && team && row.id !== team.captain_registration_id &&
-    Number(row.price || 0) === 0 && Number(row.amount_paid || 0) === 0 &&
-    row.payment_status === 'pending');
+  if (!row || !team || row.id === team.captain_registration_id || row.refunded_at) return false;
+  const fee = Number(row.price || 0);
+  const paid = Number(row.amount_paid || 0);
+  // A former captain who paid for the entire team can swap with a fully-paid
+  // team. The original receipt continues to cover the purchaser's selections.
+  if (fee > 0) return team.payment_mode === 'captain_all' &&
+    row.payment_status === 'paid' && paid >= fee;
+  if (paid > 0) return false;
+  return row.payment_status === 'pending' ||
+    (['paid', 'comp'].includes(row.payment_status) && Boolean(row.payment_covered_by_registration_id));
+}
+function teamIsFullyPaid(team, registrations) {
+  if (!team || team.payment_mode !== 'captain_all') return false;
+  const payers = registrations.filter((r) =>
+    r.registration_status === 'active' &&
+    (r.payment_for_team_id || r.team_id) === team.team_id &&
+    Number(r.price || 0) > 0
+  );
+  return payers.length === 1 && payers[0].payment_status === 'paid' &&
+    !payers[0].refunded_at && Number(payers[0].amount_paid || 0) >= Number(payers[0].price);
 }
 async function messageFromError(error) {
   try {
@@ -109,8 +124,10 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
   }), [membersByTeam, selectedTeam]);
   const selectedPlayer = registrations.find((p) => p.id === playerId);
   const targetTeam = teams.find((t) => t.id === targetTeamId);
+  const sourceHasFeePayer = Number(selectedPlayer?.price || 0) > 0;
   const targetMembers = (membersByTeam.get(targetTeam?.team_id) || [])
-    .filter((p) => p.registration_status === 'active' && canMoveTeamGolfer(p, targetTeam));
+    .filter((p) => p.registration_status === 'active' && canMoveTeamGolfer(p, targetTeam) &&
+      (!sourceHasFeePayer || (!isTba(p) && teamIsFullyPaid(targetTeam, registrations))));
   const targetPlayer = targetMembers.find((p) => p.id === targetPlayerId);
   const captain = selectedMembers.find((p) => p.id === selectedTeam?.captain_registration_id);
 
@@ -183,8 +200,15 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
 
   async function save() {
     if (!selectedTeam || !selectedPlayer || working) return;
+    const feePayerInSwap = action === 'move_or_swap' &&
+      (Number(selectedPlayer.price || 0) > 0 || Number(targetPlayer?.price || 0) > 0);
+    const fullyPaidPair = teamIsFullyPaid(selectedTeam, registrations) &&
+      teamIsFullyPaid(targetTeam, registrations);
     const normalizedAction = action === 'move_or_swap'
-      ? (isTba(targetPlayer) ? 'move_to_tba' : 'swap') : action;
+      ? (feePayerInSwap && fullyPaidPair && !isTba(targetPlayer)
+        ? 'swap_paid_teams'
+        : isTba(targetPlayer) ? 'move_to_tba' : 'swap')
+      : action;
     let registrationId = selectedPlayer.id;
     let otherRegistrationId = targetPlayer?.id || null;
     if (action === 'transfer_captain') {
@@ -192,12 +216,21 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       otherRegistrationId = selectedPlayer.id;
     }
     if (action === 'move_or_swap' && (!targetPlayer || !targetTeam || targetTeam.id === selectedTeam.id)) {
-      setError('Choose an eligible non-captain golfer or unpaid TBA spot on another team.');
+      setError('Choose an eligible golfer or TBA spot on another team.');
       return;
     }
     if (action === 'move_or_swap' &&
         (!canMoveTeamGolfer(selectedPlayer, selectedTeam) || !canMoveTeamGolfer(targetPlayer, targetTeam))) {
-      setError('Captain, Paid, and Comp registrations require a separate payment review before moving.');
+      setError('Captain, independently Paid, or Comp registrations require a separate payment review.');
+      return;
+    }
+    if (action === 'move_or_swap' && feePayerInSwap &&
+        (!fullyPaidPair || isTba(targetPlayer))) {
+      setError('For this first release, a team-fee purchaser can swap with another named golfer only when both teams are fully Paid.');
+      return;
+    }
+    if (action === 'move_or_swap' && feePayerInSwap && !reason.trim()) {
+      setError('Enter a staff reason for moving a golfer who purchased a full team.');
       return;
     }
     if (['fill_tba','edit_player'].includes(action) && (!fields.first_name.trim() || !fields.last_name.trim() || !fields.email.trim())) {
@@ -208,11 +241,14 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     if (normalizedAction === 'transfer_captain') {
       confirmText = 'Make ' + golferName(selectedPlayer) + ' captain of Team #' +
         selectedTeam.entry_number + '? The existing team fee and payment history will not move.';
-    } else if (normalizedAction === 'swap' || normalizedAction === 'move_to_tba') {
-      confirmText = (normalizedAction === 'swap' ? 'Swap ' : 'Move ') +
+    } else if (['swap','move_to_tba','swap_paid_teams'].includes(normalizedAction)) {
+      confirmText = (normalizedAction === 'move_to_tba' ? 'Move ' : 'Swap ') +
         golferName(selectedPlayer) + ' (Team #' + selectedTeam.entry_number + ') ' +
-        (normalizedAction === 'swap' ? 'with ' + golferName(targetPlayer) : 'into an open spot') +
-        ' (Team #' + targetTeam.entry_number + ')?\n\nEach golfer gets the destination team number. Their entire registration, account link, and individual payment history move with them. Team captains and existing team-level payments remain unchanged.';
+        (normalizedAction === 'move_to_tba' ? 'into an open spot' : 'with ' + golferName(targetPlayer)) +
+        ' (Team #' + targetTeam.entry_number + ')?\n\n' +
+        (normalizedAction === 'swap_paid_teams'
+          ? 'Both teams are fully paid and will remain Paid in all four spots. The purchasers retain their original receipts and control of their payment allocations. No additional charge, refund, or payment transfer will occur.'
+          : 'The team number changes with each golfer. Individual receipts stay with the purchaser, while each team spot inherits its allocated Paid, Comp or Pending coverage.');
     } else {
       confirmText = (action === 'fill_tba' ? 'Fill' : 'Update') + ' ' +
         golferName(selectedPlayer) + ' on Team #' + selectedTeam.entry_number + '?';
@@ -293,14 +329,16 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     {selectedTeam && <div style={{ ...panelStyle, background: '#f8f9fc', marginTop: 16 }}>
       <div className="platform-section-heading">
         <div><p className="platform-eyebrow">Selected Team</p><h3>Team / Entry #{selectedTeam.entry_number}</h3>
-          <p style={muted}>Captain: {golferName(captain)} · {selectedMembers.filter(isTba).length} TBA · {selectedTeam.payment_mode === 'captain_all' ? 'Captain covers team fee' : 'Team payment arrangements'}</p></div>
+          <p style={muted}>Captain: {golferName(captain)} · {selectedMembers.filter(isTba).length} TBA · {selectedTeam.payment_mode === 'captain_all' ? 'Purchaser covers selected team spots' : 'Team payment arrangements'}</p></div>
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {selectedMembers.map((r) => <div key={r.id} className={action && playerId === r.id ? 'eie-player-row is-selected' : 'eie-player-row'} style={{ ...panelStyle, background: action && playerId === r.id ? '#fff5f5' : '#fff', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
           <div style={{ flex: '1 1 210px', minWidth: 180 }}>
             <strong>{golferName(r)}</strong>
             {r.id === selectedTeam.captain_registration_id && <span style={{ ...muted, marginLeft: 9 }}>Captain</span>}
-            <div style={muted}>{isTba(r) ? 'Reserved opening' : (r.email || 'No email')} · {r.user_id ? 'Passenger linked' : 'Unclaimed'} · {r.payment_status === 'paid' ? 'Team fee covered' : 'Payment pending'}</div>
+            <div style={muted}>{isTba(r) ? 'Reserved opening' : (r.email || 'No email')} · {r.user_id ? 'Passenger linked' : 'Unclaimed'} · {r.payment_status === 'paid'
+              ? Number(r.price || 0) > 0 ? 'Paid purchaser' : 'Paid spot'
+              : r.payment_status === 'comp' ? 'Comp spot' : 'Payment pending'}</div>
           </div>
           <div className="review-actions" style={{ gap: 6 }}>
             {isTba(r) ? <button className={'platform-primary-button eie-player-action' + (action === 'fill_tba' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'fill_tba' && playerId === r.id} disabled={working} onClick={() => begin('fill_tba',r)}>Fill TBA</button> : <>
@@ -313,7 +351,8 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
                     ? 'Captain must be reassigned first. Click for instructions.'
                     : !canMoveTeamGolfer(r, selectedTeam)
                       ? 'Payment-related golfer moves require staff review'
-                      : 'Move this golfer to another team, retaining their registration and payment history'}
+                      : Number(r.price || 0) > 0 ? 'Full-team purchaser: choose another fully paid team to swap'
+                        : 'Move this golfer to another team, retaining their registration and payment history'}
                   onClick={() => r.id === selectedTeam.captain_registration_id
                     ? setCaptainWarning({ name: golferName(r), entryNumber: selectedTeam.entry_number })
                     : begin('move_or_swap', r)}>Move / Swap</button>
@@ -342,7 +381,9 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
           <label>Destination team
             <select value={targetTeamId} onChange={(e) => { setTargetTeamId(e.target.value); setTargetPlayerId(''); }}>
               <option value="">Choose team...</option>
-              {teams.filter((t) => t.id !== teamId).sort((a,b) => numericTeam(a.entry_number) - numericTeam(b.entry_number)).map((t) =>
+              {teams.filter((t) => t.id !== teamId &&
+                (!sourceHasFeePayer || teamIsFullyPaid(t, registrations)))
+                .sort((a,b) => numericTeam(a.entry_number) - numericTeam(b.entry_number)).map((t) =>
                 <option key={t.id} value={t.id}>Team #{t.entry_number} · {(membersByTeam.get(t.team_id) || []).filter(isTba).length} TBA</option>)}
             </select>
           </label>
@@ -354,10 +395,14 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
               </option>)}
             </select>
           </label>
-          <p style={muted}>{targetPlayer ? (isTba(targetPlayer) ? 'Moves your golfer into this TBA spot and leaves a TBA behind.' : 'Exchanges the two golfers between teams.') : 'Choose only unpaid, non-captain golfers or TBA spots.'} The destination team number is assigned to each moving golfer. Their original registration, account link, and individual payment record follow them. Captains and team-level fees stay in their current teams.</p>
+          <p style={muted}>{sourceHasFeePayer
+            ? 'Full-team purchaser: select a named golfer from another fully paid team. Both teams stay Paid. The payment receipt and original team allocation remain owned by the purchaser, regardless of where they golf.'
+            : targetPlayer ? (isTba(targetPlayer) ? 'Moves the golfer into the reserved spot and leaves a TBA behind.' : 'Exchanges the two golfers between teams.')
+              : 'Choose another eligible non-captain golfer or open spot.'} Team / Entry numbers belong to teams; spots receive payment coverage without copying charges.</p>
         </div>}
         {action === 'transfer_captain' && <p style={muted}>Give {golferName(selectedPlayer)} permission to manage this team. The original captain stays registered as a teammate. Existing payment history is preserved.</p>}
-        <label>Reason / staff note (optional)
+        <label>{action === 'move_or_swap' && (Number(selectedPlayer?.price || 0) > 0 || Number(targetPlayer?.price || 0) > 0)
+          ? 'Reason / staff note *' : 'Reason / staff note (optional)'}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Roster correction" maxLength={1500} disabled={working}/>
         </label>
         <div className="review-actions" style={{ marginTop: 14 }}>

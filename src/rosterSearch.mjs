@@ -26,6 +26,7 @@ export function rosterMatchesSearch(row, query) {
     row?.phone,
     row?.team_id,
     row?.entry_number,
+    row?.__roster_number,
     row?.ghin_number,
     row?.division,
     row?.membership_status,
@@ -48,6 +49,8 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'bas
 
 function sortValue(row, field) {
   switch (field) {
+    case 'golfer_number':
+      return Number(row?.__roster_number ?? Number.MAX_SAFE_INTEGER);
     case 'golfer':
       return [row?.last_name, row?.first_name].filter(Boolean).join(', ');
     case 'team':

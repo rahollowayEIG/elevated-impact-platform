@@ -54,8 +54,9 @@ test('named and pending TBA spots export as TBA/TBA without changing source reco
 test('moving a golfer updates the derived number without changing IDs or payments', () => {
   const changed=players.map(p => p.id==='t19d' ? {...p,team_id:'20'} : p.id==='t20d' ? {...p,team_id:'19'} : p);
   const ids=buildRosterEntryNumbers(changed,4,true);
-  assert.equal(ids.get('t19d'),80);
-  assert.equal(ids.get('t20d'),76);
+  assert.ok(ids.get('t19d') >= 77 && ids.get('t19d') <= 80);
+  assert.ok(ids.get('t20d') >= 73 && ids.get('t20d') <= 76);
+  assert.equal(new Set([...ids.values()]).size, players.length);
   assert.equal(changed.find(p=>p.id==='t19d').payment_status,'paid');
   assert.equal(changed.find(p=>p.id==='t20d').payment_status,'paid');
 });

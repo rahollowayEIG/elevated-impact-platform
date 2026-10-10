@@ -236,7 +236,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       <label>Search teams, golfers or email
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Team #, captain, golfer..." />
       </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
+      <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20 }}>
         <input type="checkbox" style={{ width: 'auto' }} checked={incompleteOnly} onChange={(e) => setIncompleteOnly(e.target.checked)} />
         Show incomplete teams only ({teams.filter((t) => t.status === 'roster_incomplete').length})
       </label>

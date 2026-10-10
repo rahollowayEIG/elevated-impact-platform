@@ -285,22 +285,22 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
           <p style={muted}>Captain: {golferName(captain)} · {selectedMembers.filter(isTba).length} TBA · {selectedTeam.payment_mode === 'captain_all' ? 'Captain covers team fee' : 'Team payment arrangements'}</p></div>
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        {selectedMembers.map((r) => <div key={r.id} style={{ ...panelStyle, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
+        {selectedMembers.map((r) => <div key={r.id} className={action && playerId === r.id ? 'eie-player-row is-selected' : 'eie-player-row'} style={{ ...panelStyle, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
           <div style={{ flex: '1 1 210px', minWidth: 180 }}>
             <strong>{golferName(r)}</strong>
             {r.id === selectedTeam.captain_registration_id && <span style={{ ...muted, marginLeft: 9 }}>Captain</span>}
             <div style={muted}>{isTba(r) ? 'Reserved opening' : (r.email || 'No email')} · {r.user_id ? 'Passenger linked' : 'Unclaimed'} · {r.payment_status === 'paid' ? 'Team fee covered' : 'Payment pending'}</div>
           </div>
           <div className="review-actions" style={{ gap: 6 }}>
-            {isTba(r) ? <button className="platform-primary-button" type="button" onClick={() => begin('fill_tba',r)}>Fill TBA</button> : <>
-              <button className="platform-secondary-button" type="button" onClick={() => begin('edit_player',r)}>Edit</button>
+            {isTba(r) ? <button className={'platform-primary-button eie-player-action' + (action === 'fill_tba' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'fill_tba' && playerId === r.id} disabled={working} onClick={() => begin('fill_tba',r)}>Fill TBA</button> : <>
+              <button className={'platform-secondary-button eie-player-action' + (action === 'edit_player' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'edit_player' && playerId === r.id} disabled={working} onClick={() => begin('edit_player',r)}>Edit</button>
               {!r.user_id && r.passenger_claim_status !== 'claimed' && !!r.email &&
                 <button className="platform-secondary-button" type="button" disabled={working} onClick={() => resendInvite(r)}>Resend Account Invite</button>}
-              <button className="platform-secondary-button" type="button" disabled={!canMoveTeamGolfer(r, selectedTeam)}
+              <button className={'platform-secondary-button eie-player-action' + (action === 'move_or_swap' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'move_or_swap' && playerId === r.id} disabled={working || !canMoveTeamGolfer(r, selectedTeam)}
                   title={!canMoveTeamGolfer(r, selectedTeam) ? 'Captain or payment-related golfer moves require review' : 'Move this golfer to another team, retaining their registration and payment history'}
                   onClick={() => begin('move_or_swap',r)}>Move / Swap</button>
               {r.id !== selectedTeam.captain_registration_id &&
-                <button className="platform-secondary-button" type="button" disabled={!r.user_id || r.passenger_claim_status !== 'claimed'}
+                <button className={'platform-secondary-button eie-player-action' + (action === 'transfer_captain' && playerId === r.id ? ' is-selected' : '')} type="button" aria-pressed={action === 'transfer_captain' && playerId === r.id} disabled={working || !r.user_id || r.passenger_claim_status !== 'claimed'}
                   title={!r.user_id ? 'Golfer must claim their Passenger account before becoming captain' : ''} onClick={() => begin('transfer_captain',r)}>Make Captain</button>}
             </>}
           </div>
@@ -309,6 +309,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       {action && selectedPlayer && <div style={{ ...panelStyle, marginTop: 16, borderColor: '#b5c1df' }}>
         <div className="platform-section-heading"><div><p className="platform-eyebrow">Staff Change · Team #{selectedTeam.entry_number}</p>
           <h3>{action === 'fill_tba' ? 'Fill Reserved Spot' : action === 'edit_player' ? 'Edit Golfer' : action === 'transfer_captain' ? 'Transfer Captain' : 'Move / Swap Golfer'}</h3>
+          <p style={{ ...muted, marginTop: 6 }}>Selected golfer: <strong>{golferName(selectedPlayer)}</strong></p>
         </div></div>
         {['fill_tba','edit_player'].includes(action) && <div className="form-grid two">
           {[['first_name','First name'],['last_name','Last name'],['email','Email'],['phone','Phone'],['ghin_number','GHIN'],['division','Division']].map(([key,label]) =>
@@ -345,7 +346,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
           <button className="platform-primary-button" type="button" disabled={working || loading || (action === 'move_or_swap' && !targetPlayerId)} onClick={save}>
             {working ? 'Saving...' : 'Review & Confirm'}
           </button>
-          <button className="platform-secondary-button" type="button" disabled={working} onClick={() => setAction('')}>Cancel</button>
+          <button className="platform-secondary-button" type="button" disabled={working} onClick={() => { setAction(''); setPlayerId(''); setTargetTeamId(''); setTargetPlayerId(''); }}>Cancel</button>
         </div>
       </div>}
     </div>}

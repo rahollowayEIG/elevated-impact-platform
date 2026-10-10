@@ -285,7 +285,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
           <p style={muted}>Captain: {golferName(captain)} · {selectedMembers.filter(isTba).length} TBA · {selectedTeam.payment_mode === 'captain_all' ? 'Captain covers team fee' : 'Team payment arrangements'}</p></div>
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        {selectedMembers.map((r) => <div key={r.id} className={action && playerId === r.id ? 'eie-player-row is-selected' : 'eie-player-row'} style={{ ...panelStyle, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
+        {selectedMembers.map((r) => <div key={r.id} className={action && playerId === r.id ? 'eie-player-row is-selected' : 'eie-player-row'} style={{ ...panelStyle, background: action && playerId === r.id ? '#fff5f5' : '#fff', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
           <div style={{ flex: '1 1 210px', minWidth: 180 }}>
             <strong>{golferName(r)}</strong>
             {r.id === selectedTeam.captain_registration_id && <span style={{ ...muted, marginLeft: 9 }}>Captain</span>}

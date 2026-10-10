@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSquawk } from './SquawkCenter';
 import { supabase } from './lib/supabase';
+import TeamPaymentCart, { GLOW_GOLF_EVENT_ID } from './TeamPaymentCart';
 
 function formatDate(dateValue) {
   if (!dateValue) return 'Date TBD';
@@ -409,6 +410,7 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
     }
   }
   const paymentAmount = Number(registration.price || 0);
+  const isGlowCartPilot = flight.eventId === GLOW_GOLF_EVENT_ID;
 
   async function startCheckout() {
     if (!registration.id || paymentBusy) return;
@@ -506,7 +508,7 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
                 <div><small>Hangar</small><strong>{flight.organizationName || 'Event venue'}</strong></div>
                 <div><small>Team</small><strong>{teamLabel}</strong></div>
                 <div><small>Payment</small><strong>{paymentStatus}</strong></div>
-                {String(registration.payment_status || '').toLowerCase() === 'pending' && registration.id && (
+                {!isGlowCartPilot && String(registration.payment_status || '').toLowerCase() === 'pending' && registration.id && (
                   <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
                     <button className="platform-primary-button" type="button" disabled={paymentBusy} onClick={startCheckout}>
                       {paymentBusy ? 'Opening secure checkout...' : `Pay ${paymentAmount > 0 ? paymentAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : 'Balance'}`}
@@ -593,6 +595,8 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
               </div>
             ))}
           </div>
+
+          {isGlowCartPilot && <TeamPaymentCart group={teamGroup} />}
 
           {teamGroup.role === 'captain' && activeMembers().some(isReservedTba) && (
             <div className="main-cabin-add-golfer">

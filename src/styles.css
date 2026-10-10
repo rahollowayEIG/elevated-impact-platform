@@ -1859,3 +1859,66 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   border-color: #D81C22;
   opacity: .88;
 }
+
+
+/* Captain move protection: explain the required leadership handoff in the team manager. */
+.eie-team-manager .eie-captain-warning-dialog {
+  width: min(560px, calc(100vw - 28px));
+  max-width: 560px;
+  max-height: calc(100dvh - 30px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: 1px solid #c3cbe0;
+  border-radius: 18px;
+  background: #fff;
+  color: #1D245D;
+  padding: 26px;
+  box-shadow: 0 24px 70px rgba(7,17,29,.3);
+}
+.eie-team-manager .eie-captain-warning-dialog::backdrop {
+  background: rgba(7, 17, 29, .68);
+}
+.eie-captain-warning-dialog h3 {
+  margin: 6px 0 14px;
+  font-size: 23px;
+  line-height: 1.25;
+  color: #1D245D;
+}
+.eie-captain-warning-dialog p {
+  color: #34415a;
+  line-height: 1.65;
+  font-size: 14px;
+}
+.eie-captain-warning-dialog .platform-eyebrow { color: #D81C22; }
+.eie-captain-warning-subhead {
+  display: block;
+  font-size: 13px;
+  margin: 18px 0 10px;
+}
+.eie-captain-warning-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.eie-team-manager .eie-captain-warning-candidates .platform-secondary-button {
+  white-space: normal;
+  text-align: left;
+  color: #1D245D;
+  background: #fff;
+  border-color: #9caed0;
+}
+.eie-captain-warning-note {
+  background: #f8f9fc;
+  padding: 11px 13px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+}
+.eie-captain-warning-footer {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .eie-team-manager .eie-captain-warning-dialog { padding: 18px; }
+  .eie-captain-warning-dialog h3 { font-size: 20px; }
+  .eie-captain-warning-candidates { flex-direction: column; }
+}

@@ -2,7 +2,7 @@ const toCents = (value) => {
   const number = Number(value || 0);
   return Number.isFinite(number) ? Math.max(0, Math.round(number * 100)) : 0;
 };
-const dollars = (amountInCents) =>
+export const dollars = (amountInCents) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amountInCents / 100);
 
 const isTba = (member) =>

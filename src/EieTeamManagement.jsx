@@ -218,7 +218,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     }
   }
 
-  return <section style={{ ...panelStyle, marginTop: 20, padding: 22 }} aria-label="Team and Player Manager">
+  return <section className="eie-team-manager" style={{ ...panelStyle, marginTop: 20, padding: 22 }} aria-label="Team and Player Manager">
     <div className="platform-section-heading" style={{ gap: 12 }}>
       <div>
         <p className="platform-eyebrow">EIE · Staff Operations</p>

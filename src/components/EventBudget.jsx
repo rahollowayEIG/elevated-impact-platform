@@ -381,6 +381,29 @@ export default function EventBudget({
             </div>
           ))}
         </div>
+        {sources?.comps && (
+          <section className="platform-section-card budget-comps" aria-label="Complimentary registration value">
+            <div>
+              <p className="platform-eyebrow">Comp tracker · Non-revenue</p>
+              <h3>Complimentary registration value</h3>
+              <p className="budget-muted">
+                The regular registration value waived for active Comp golfers.
+                This is informational, not collected income or a cash expense.
+              </p>
+              <p className="budget-muted">
+                {Number(sources.comps.spot_count || 0)} active Comp golfer
+                {Number(sources.comps.spot_count || 0) === 1 ? "" : "s"} across
+                {" "}{Number(sources.comps.fee_count || 0)} priced complimentary
+                registration {Number(sources.comps.fee_count || 0) === 1 ? "fee" : "fees"}.
+                Full-team fees are counted once, not again for each $0 teammate.
+              </p>
+            </div>
+            <div className="budget-comps-value">
+              <strong>{dollars(Number(sources.comps.value_cents || 0))}</strong>
+              <small>Face value, excluded from budget income</small>
+            </div>
+          </section>
+        )}
         <div className="budget-overview">
           <section className="platform-section-card budget-funding">
             <p className="platform-eyebrow">Cover costs & reach your goal</p>

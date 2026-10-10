@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
 import EieTeamManagement from './EieTeamManagement';
 import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
-import { buildRosterEntryNumbers, golfGeniusRosterRows, golfGeniusCsvFields, FALL_8IN_CUP_EVENT_ID } from './rosterNumbering.mjs';
+import { buildRosterEntryNumbers, golfGeniusRosterRows, golfGeniusCsvFields, FALL_8IN_CUP_EVENT_ID, isReservedTba } from './rosterNumbering.mjs';
 
 function emptyGolfer() {
   return {
@@ -104,6 +104,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [bulkTeamId, setBulkTeamId] = useState('');
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncWorking, setSyncWorking] = useState(false);
+  const [exportWorking, setExportWorking] = useState(false);
   const [rosterView, setRosterView] = useState('all');
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterSort, setRosterSort] = useState({ field: 'golfer_number', direction: 'asc' });
@@ -330,7 +331,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     }
   }
 
-  function exportGolfGenius(scope = 'confirmed') {
+  async function exportGolfGenius(scope = 'confirmed') {
+    if (exportWorking) return;
     let exported;
     try {
       exported = golfGeniusRosterRows(rows, { teamSize, teamMode, scope });
@@ -344,21 +346,55 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       'They will be included in the file, but their EIE payment status will not change. Continue?'
     )) return;
 
-    // For the Fall 8" Cup send just Team ID and names. Golf Genius creates
-    // golfer entry numbers. Other events retain their current richer layout.
-    const { headers, records } = golfGeniusCsvFields(exported, event?.id);
-    const csvRows = records.map((record) => record.map(csvEscape).join(','));
+    setExportWorking(true);
+    setNotice('');
+    try {
+      let captainContext = {};
+      // Resolve the CURRENT team captain, not the original payer. This existing
+      // read-only staff endpoint verifies authorization for this event.
+      if (event?.id === FALL_8IN_CUP_EVENT_ID && exported.some(isReservedTba)) {
+        const { data, error } = await supabase.functions.invoke('golf-admin-team-management', {
+          body: { action: 'list', event_id: event.id },
+        });
+        if (error) {
+          const detail = await readFunctionError(error, 'Could not look up current team captains.');
+          throw new Error(detail.error || 'Could not look up current team captains.');
+        }
+        if (!data?.success) throw new Error(data?.error || 'Could not look up current team captains.');
+        const liveRegistrations = data.registrations || [];
+        const activeById = new Map(liveRegistrations.map((row) => [row.id, row]));
+        // Staff might fill or swap a golfer while the export is preparing.
+        // Refuse to use a stale placeholder instead of mislabeling that row.
+        for (const row of exported.filter(isReservedTba)) {
+          const live = activeById.get(row.id);
+          if (!live || String(live.team_id) !== String(row.team_id) || !isReservedTba(live)) {
+            throw new Error('The team roster changed. Refresh Roster and try the export again.');
+          }
+        }
+        captainContext = { teams: data.teams || [], registrations: liveRegistrations };
+      }
 
-    const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = scope === 'all' ? 'golf-genius-full-roster.csv' : 'golf-genius-confirmed-roster.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-    setNotice(event?.id === FALL_8IN_CUP_EVENT_ID
-      ? 'Golf Genius roster downloaded. ' + exported.length + ' golfers with Team ID, First Name, Last Name. Golf Genius assigns entry numbers.'
-      : 'Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
+      // For Fall 8" Cup: Team ID, First Name, Last Name, with captain-name
+      // suffixes 1/2/3 for TBA golfers. Never change their stored names.
+      const { headers, records } = golfGeniusCsvFields(exported, event?.id, captainContext);
+      const csvRows = records.map((record) => record.map(csvEscape).join(','));
+      const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = scope === 'all' ? 'golf-genius-full-roster.csv' : 'golf-genius-confirmed-roster.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice(event?.id === FALL_8IN_CUP_EVENT_ID
+        ? 'Golf Genius roster downloaded. ' + exported.length + ' golfers with TBA spots labeled using their current captain.'
+        : 'Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
+    } catch (error) {
+      const message = error?.message || 'Unable to prepare Golf Genius roster.';
+      setNotice('Unable to export Golf Genius roster. ' + message);
+      window.alert('Unable to export Golf Genius roster.\n\n' + message);
+    } finally {
+      setExportWorking(false);
+    }
   }
 
   function updateManual(field, value) {
@@ -645,8 +681,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
           {googleSheetUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleSheetUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
           {event?.id === FALL_8IN_CUP_EVENT_ID && <small style={{ alignSelf: 'center' }}>Fall 8" Cup Golf Genius import: Team ID · First Name · Last Name only.</small>}
-          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('all')}>Export Full Golf Genius CSV</button>
-          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('confirmed')}>Export Confirmed Golf Genius CSV</button>
+          <button className="platform-secondary-button" type="button" disabled={exportWorking || !rows.some((row) => (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('all')}>{exportWorking ? 'Preparing Golf Genius CSV...' : 'Export Full Golf Genius CSV'}</button>
+          <button className="platform-secondary-button" type="button" disabled={exportWorking || !rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('confirmed')}>Export Confirmed Golf Genius CSV</button>
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}

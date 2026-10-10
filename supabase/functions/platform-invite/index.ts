@@ -21,6 +21,15 @@ function normalizeEmail(value: unknown) {
 function cleanText(value: unknown, max = 120) {
   return String(value || "").trim().slice(0, max);
 }
+const ACCOUNT_GENDERS = new Set(["Male", "Female", "Prefer not to say"]);
+function validAccountDob(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + "T12:00:00Z");
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0,10) === value &&
+    Number(value.slice(0,4)) >= 1900 &&
+    value <= new Date().toISOString().slice(0,10);
+}
 
 function isAccessWindowActive(row: any, nowMs = Date.now()) {
   if (!row || row.status !== "active") return false;
@@ -578,6 +587,17 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (currentProfileError) return json({ success: false, error: "Unable to load your ElevationPilot profile." }, 500);
 
+    // Existing users accepting additional roles are not asked to re-enroll.
+    // Newly provisioned invitations require DOB and Gender before privileges
+    // are granted. Their auth account may have been created at invite send.
+    const requiresIdentityDetails = invitation.recipient_was_existing !== true;
+    const dateOfBirth = cleanText(body?.date_of_birth, 10);
+    const selectedGender = cleanText(body?.gender, 50);
+    if (requiresIdentityDetails) {
+      if (!validAccountDob(dateOfBirth)) return json({ success: false, error: "Enter a valid date of birth to finish account creation." }, 400);
+      if (!ACCOUNT_GENDERS.has(selectedGender)) return json({ success: false, error: "Select Gender (or Prefer not to say) to finish account creation." }, 400);
+    }
+
     const username = (cleanText(body?.username, 30) || cleanText(currentProfile?.username, 30)).toLowerCase();
     if (!username) return json({ success: false, error: "Choose an @username to continue." }, 400);
     const firstName = cleanText(body?.first_name, 80) || cleanText(currentProfile?.first_name, 80);
@@ -600,6 +620,30 @@ Deno.serve(async (req: Request) => {
         return json({ success: false, error: "That @username is reserved." }, 409);
       }
       return json({ success: false, error: message || "Unable to save your profile." }, 400);
+    }
+
+    if (requiresIdentityDetails) {
+      // Persist identity for any newly invited Pilot, ATC, or Passenger, not
+      // only roster participants. Never overwrite an existing person's DOB.
+      const { data: passenger, error: existingPassengerError } = await admin
+        .from("passengers").select("id,date_of_birth,gender").eq("auth_user_id", user.id).maybeSingle();
+      if (existingPassengerError) return json({ success: false, error: "Unable to retrieve your Passenger profile." }, 500);
+      if (passenger?.id) {
+        const { error: updateIdentityError } = await admin.from("passengers")
+          .update({
+            date_of_birth: passenger.date_of_birth || dateOfBirth,
+            gender: passenger.gender || selectedGender,
+          }).eq("id", passenger.id);
+        if (updateIdentityError) return json({ success: false, error: "Unable to save your DOB and Gender." }, 500);
+      } else {
+        const { error: insertIdentityError } = await admin.from("passengers")
+          .insert({
+            auth_user_id: user.id, first_name: firstName || null, last_name: lastName || null,
+            date_of_birth: dateOfBirth, gender: selectedGender,
+            status: "claimed", claimed_at: new Date().toISOString(),
+          });
+        if (insertIdentityError) return json({ success: false, error: "Unable to save your DOB and Gender." }, 500);
+      }
     }
 
     if (["eig_admin", "organization_admin", "organization_staff"].includes(invitation.role)) {
@@ -709,8 +753,8 @@ Deno.serve(async (req: Request) => {
             auth_user_id: user.id,
             first_name: registrationRow.first_name || firstName || null,
             last_name: registrationRow.last_name || lastName || null,
-            date_of_birth: registrationRow.date_of_birth || null,
-            gender: registrationRow.gender || null,
+            date_of_birth: registrationRow.date_of_birth || (requiresIdentityDetails ? dateOfBirth : null),
+            gender: registrationRow.gender || (requiresIdentityDetails ? selectedGender : null),
             ghin_number: registrationRow.ghin_number || null,
             status: "claimed",
             claimed_at: claimedAt,
@@ -725,8 +769,8 @@ Deno.serve(async (req: Request) => {
             auth_user_id: user.id,
             first_name: passenger.first_name || registrationRow.first_name || firstName || null,
             last_name: passenger.last_name || registrationRow.last_name || lastName || null,
-            date_of_birth: passenger.date_of_birth || registrationRow.date_of_birth || null,
-            gender: passenger.gender || registrationRow.gender || null,
+            date_of_birth: passenger.date_of_birth || registrationRow.date_of_birth || (requiresIdentityDetails ? dateOfBirth : null),
+            gender: passenger.gender || registrationRow.gender || (requiresIdentityDetails ? selectedGender : null),
             ghin_number: passenger.ghin_number || registrationRow.ghin_number || null,
             status: "claimed",
             claimed_at: passenger.claimed_at || claimedAt,
@@ -798,6 +842,8 @@ Deno.serve(async (req: Request) => {
           passenger_id: passenger.id,
           passenger_claim_status: "claimed",
           passenger_claimed_at: claimedAt,
+          date_of_birth: registrationRow.date_of_birth || passenger.date_of_birth || null,
+          gender: registrationRow.gender || passenger.gender || null,
         })
         .eq("id", registrationRow.id)
         .select("*")

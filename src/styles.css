@@ -1739,3 +1739,104 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
 .platform-confirm-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
 .platform-confirm-modal .risk-confirm{background:#c2410c}
 .platform-confirm-modal .risk-confirm:hover{filter:brightness(1.08)}
+
+
+/* Glow Golf payment allocation pilot: isolated Main Cabin read-only cart. */
+.main-cabin-payment-cart {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid rgba(147, 197, 253, .30);
+  border-radius: 18px;
+  background: linear-gradient(155deg, rgba(29,36,93,.28), rgba(7,17,29,.92));
+  color: #f8fafc;
+}
+.main-cabin-cart-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.main-cabin-cart-kicker {
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+.main-cabin-cart-heading h3 { margin: 7px 0 5px; font-size: 22px; }
+.main-cabin-cart-heading p { color: #b8c9db; font-size: 13px; line-height: 1.5; margin: 0; }
+.main-cabin-cart-preview-tag {
+  flex: 0 0 auto;
+  color: #fcd34d;
+  background: rgba(245,158,11,.12);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.main-cabin-cart-all {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid rgba(248,113,113,.3);
+  border-radius: 13px;
+  background: rgba(216,28,34,.08);
+  cursor: pointer;
+}
+.main-cabin-cart-all span { display: grid; gap: 4px; }
+.main-cabin-cart-all small { color: #c4ced9; }
+.main-cabin-payment-cart input[type="checkbox"] {
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: #D81C22;
+  cursor: pointer;
+}
+.main-cabin-payment-cart input[type="checkbox"]:disabled { cursor: not-allowed; }
+.main-cabin-payment-cart input:focus-visible { outline: 2px solid #fca5a5; outline-offset: 4px; }
+.main-cabin-cart-slots { display: grid; gap: 8px; margin-top: 12px; }
+.main-cabin-cart-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 13px;
+  background: rgba(255,255,255,.035);
+  cursor: pointer;
+}
+.main-cabin-cart-slot.covered { opacity: .8; cursor: default; }
+.main-cabin-cart-golfer { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.main-cabin-cart-golfer small { font-size: 12px; color: #b8c9db; }
+.main-cabin-cart-share { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.main-cabin-cart-totals {
+  display: grid;
+  gap: 11px;
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 13px;
+  background: rgba(0,0,0,.23);
+}
+.main-cabin-cart-totals>div { display: flex; justify-content: space-between; gap: 12px; }
+.main-cabin-cart-totals span { color: #b8c9db; }
+.main-cabin-cart-totals strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.main-cabin-cart-totals .main-cabin-cart-subtotal {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.14);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+}
+.main-cabin-cart-subtotal span { color: #fff; }
+.main-cabin-cart-footnote { color: #c7d4e1; font-size: 12px; line-height: 1.65; margin: 14px 0 0; }
+@media (max-width: 660px) {
+  .main-cabin-payment-cart { padding: 15px; }
+  .main-cabin-cart-heading { flex-direction: column; }
+  .main-cabin-cart-heading h3 { font-size: 20px; }
+  .main-cabin-cart-slot { padding: 12px; }
+  .main-cabin-cart-totals { padding: 14px; }
+  .main-cabin-cart-totals>div { font-size: 13px; }
+  .main-cabin-cart-totals .main-cabin-cart-subtotal { font-size: 16px; }
+}

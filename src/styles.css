@@ -1840,3 +1840,22 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .main-cabin-cart-totals>div { font-size: 13px; }
   .main-cabin-cart-totals .main-cabin-cart-subtotal { font-size: 16px; }
 }
+
+/* Keep the chosen golfer/action visibly selected until save or Cancel. */
+.eie-team-manager .eie-player-row.is-selected {
+  box-shadow: inset 4px 0 0 #D81C22, 0 0 0 1px rgba(216,28,34,.56);
+}
+.eie-team-manager .eie-player-action.is-selected,
+.eie-team-manager .eie-player-action.is-selected:hover:not(:disabled) {
+  color: #fff;
+  background: #D81C22;
+  border-color: #D81C22;
+  box-shadow: 0 0 0 3px rgba(216,28,34,.18);
+  opacity: 1;
+}
+.eie-team-manager .eie-player-action.is-selected:disabled {
+  color: #fff;
+  background: #D81C22;
+  border-color: #D81C22;
+  opacity: .88;
+}

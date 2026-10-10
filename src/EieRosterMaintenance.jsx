@@ -4,6 +4,8 @@ import RosterUpload from './RosterUpload';
 import EieTeamManagement from './EieTeamManagement';
 import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
 import { buildRosterEntryNumbers, golfGeniusRosterRows, golfGeniusCsvFields, FALL_8IN_CUP_EVENT_ID, isReservedTba } from './rosterNumbering.mjs';
+import { buildPrintableCheckInRoster } from './lib/checkInRoster.mjs';
+import { checkInPrintHtml } from './lib/checkInPrint.mjs';
 
 function emptyGolfer() {
   return {
@@ -105,6 +107,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncWorking, setSyncWorking] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
+  const [checkInWorking, setCheckInWorking] = useState(false);
   const [rosterView, setRosterView] = useState('all');
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterSort, setRosterSort] = useState({ field: 'golfer_number', direction: 'asc' });
@@ -328,6 +331,59 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
       setNotice(error instanceof Error ? error.message : 'Unable to update selected golfers.');
     } finally {
       setBulkWorking(false);
+    }
+  }
+
+  async function openPrintCheckInSheet() {
+    if (checkInWorking || !teamMode || !event?.id) return;
+    // Open synchronously from the click, then load the authorized live roster.
+    const printWindow = window.open('about:blank', '_blank');
+    if (!printWindow) {
+      setNotice('Allow popups for ElevationPilot, then try Print Check-In List again.');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write('<!doctype html><title>Preparing check-in list...</title><p style="font:18px Arial,sans-serif;padding:35px">Loading current EIE golfer and payment records...</p>');
+    printWindow.document.close();
+    setCheckInWorking(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('golf-admin-team-management', {
+        body: { action: 'list', event_id: event.id },
+      });
+      if (error) {
+        const details = await readFunctionError(error, 'Unable to load the live check-in roster.');
+        throw new Error(details.error || 'Unable to load the live check-in roster.');
+      }
+      if (!data?.success || !Array.isArray(data.registrations) || !Array.isArray(data.teams)) {
+        throw new Error(data?.error || 'Could not verify the staff check-in roster.');
+      }
+      const sheet = buildPrintableCheckInRoster({
+        event, registrations: data.registrations, teams: data.teams,
+      });
+      // This tee sheet was matched against 31 teams / 124 golfer spots.
+      // If the roster has changed since, print a warning rather than guess.
+      if (event.id === FALL_8IN_CUP_EVENT_ID &&
+          (sheet.summary.assigned_holes !== 31 || sheet.summary.golfers !== 124)) {
+        sheet.warnings.unshift('Current EIE roster differs from the original 31-team Golf Genius tee sheet. Review updates.');
+      }
+      if (printWindow.closed) throw new Error('The check-in print window was closed.');
+      printWindow.document.open();
+      printWindow.document.write(checkInPrintHtml(sheet));
+      printWindow.document.close();
+      printWindow.focus();
+      setNotice('Check-in sheet prepared for ' + sheet.summary.teams + ' teams and ' +
+        sheet.summary.golfers + ' golfers. Use Print / Save PDF in the new window.');
+    } catch (error) {
+      const message = error?.message || 'Unable to prepare check-in sheet.';
+      setNotice('Unable to prepare check-in sheet. ' + message);
+      if (!printWindow.closed) {
+        printWindow.document.open();
+        printWindow.document.write('<!doctype html><title>Check-in list unavailable</title><main style="padding:24px;font:16px Arial,sans-serif"><h2>Could not prepare check-in sheet</h2><p>Return to EIE Roster Maintenance and try again. No records were changed.</p></main>');
+        printWindow.document.close();
+      }
+    } finally {
+      setCheckInWorking(false);
     }
   }
 
@@ -674,6 +730,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           {teamMode && <button className="platform-secondary-button" type="button" onClick={() => { setManualTeamOpen(true); setTeamManageOpen(false); setManualOpen(false); setUploadOpen(false); setNotice(''); }}>+ Register Team Manually</button>}
           <button className="platform-secondary-button" type="button" onClick={() => { setManualOpen(true); setManualTeamOpen(false); setUploadOpen(false); setNotice(''); }}>+ Add Golfer Manually</button>
           <button className="platform-secondary-button" type="button" onClick={() => { setUploadOpen(true); setManualOpen(false); setNotice(''); }}>Upload Roster</button>
+          {teamMode && <button className="platform-secondary-button" type="button" disabled={checkInWorking || loading} onClick={openPrintCheckInSheet}>{checkInWorking ? 'Preparing Check-In...' : 'Print Check-In List'}</button>}
           <button className="platform-secondary-button" type="button" disabled={loading || syncWorking} onClick={onRefresh}>{loading ? 'Refreshing...' : 'Refresh Roster'}</button>
           <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={pullGoogleChanges}>{syncWorking ? 'Working...' : 'Pull Google Changes'}</button>
           <button className="platform-secondary-button" type="button" disabled={syncWorking} onClick={syncGoogleSheet}>{syncWorking ? 'Working...' : 'Sync Google Sheet'}</button>

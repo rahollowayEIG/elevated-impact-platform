@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { announceActionComplete } from './lib/successNotice.mjs';
+import { buildRosterEntryNumbers } from './rosterNumbering.mjs';
 
 function isTba(row) {
   return row?.custom_fields?.reserved_tba === true ||
@@ -116,13 +117,14 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     }
     return byTeam;
   }, [registrations]);
+  const entryNumbers = useMemo(() =>
+    buildRosterEntryNumbers(registrations, Math.max(2, Number(event?.field_settings?.team_size || 4)), true),
+    [registrations, event?.field_settings?.team_size]);
   const selectedTeam = teams.find((t) => t.id === teamId) || null;
-  const selectedMembers = useMemo(() => (membersByTeam.get(selectedTeam?.team_id) || []).slice().sort((a, b) => {
-    if (a.id === selectedTeam?.captain_registration_id) return -1;
-    if (b.id === selectedTeam?.captain_registration_id) return 1;
-    if (isTba(a) !== isTba(b)) return isTba(a) ? 1 : -1;
-    return golferName(a).localeCompare(golferName(b));
-  }), [membersByTeam, selectedTeam]);
+  const selectedMembers = useMemo(() => (membersByTeam.get(selectedTeam?.team_id) || []).slice().sort((a, b) =>
+    (entryNumbers.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+    (entryNumbers.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+  ), [membersByTeam, selectedTeam, entryNumbers]);
   const selectedPlayer = registrations.find((p) => p.id === playerId);
   const targetTeam = teams.find((t) => t.id === targetTeamId);
   const sourceHasFeePayer = Number(selectedPlayer?.price || 0) > 0;
@@ -337,7 +339,7 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
       <div style={{ display: 'grid', gap: 8 }}>
         {selectedMembers.map((r) => <div key={r.id} className={action && playerId === r.id ? 'eie-player-row is-selected' : 'eie-player-row'} style={{ ...panelStyle, background: action && playerId === r.id ? '#fff5f5' : '#fff', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 12 }}>
           <div style={{ flex: '1 1 210px', minWidth: 180 }}>
-            <strong>{golferName(r)}</strong>
+            <strong>{entryNumbers.has(r.id) ? `#${entryNumbers.get(r.id)} · ` : ''}{golferName(r)}</strong>
             {r.id === selectedTeam.captain_registration_id && <span style={{ ...muted, marginLeft: 9 }}>Captain</span>}
             <div style={muted}>{isTba(r) ? 'Reserved opening' : (r.email || 'No email')} · {r.user_id ? 'Passenger linked' : 'Unclaimed'} · {r.payment_status === 'paid'
               ? Number(r.price || 0) > 0 ? 'Paid purchaser' : 'Paid spot'

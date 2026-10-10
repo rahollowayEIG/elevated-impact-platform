@@ -44,6 +44,6 @@ test('does not turn validation, progress, failures or warnings into green succes
 });
 
 test('dispatch helper is safe during server-side rendering', () => {
-  assert.equal(announceActionComplete('Profile saved.'), true);
+  assert.equal(announceActionComplete('Profile saved.'), false);
   assert.equal(announceActionComplete('Payment pending'), false);
 });

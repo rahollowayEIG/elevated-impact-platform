@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
 import EieTeamManagement from './EieTeamManagement';
 import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
-import { buildRosterEntryNumbers, golfGeniusRosterRows } from './rosterNumbering.mjs';
+import { buildRosterEntryNumbers, golfGeniusRosterRows, golfGeniusCsvFields, FALL_8IN_CUP_EVENT_ID } from './rosterNumbering.mjs';
 
 function emptyGolfer() {
   return {
@@ -341,25 +341,13 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     const pendingCount = exported.filter((row) => row.payment_status === 'pending').length;
     if (scope === 'all' && pendingCount && !window.confirm(
       'This full roster includes ' + pendingCount + ' Pending golfer spots. ' +
-      'It will export them with their current payment status, not mark them Paid. Continue?'
+      'They will be included in the file, but their EIE payment status will not change. Continue?'
     )) return;
 
-    // Team IDs are the original EIE identifiers. Only golfer entry numbers
-    // are calculated for this CSV. No registration or payment record changes.
-    const headers = [
-      'Team Id', 'Entry Number', 'First Name', 'Last Name',
-      'Email', 'Phone', 'Payment Status', 'Registration ID',
-    ];
-    const csvRows = exported.map((row) => [
-      row.__export_team_id,
-      row.__export_entry_number,
-      row.__export_first_name,
-      row.__export_last_name,
-      row.email ?? '',
-      row.phone ?? '',
-      row.payment_status || 'pending',
-      row.id,
-    ].map(csvEscape).join(','));
+    // For the Fall 8" Cup send just Team ID and names. Golf Genius creates
+    // golfer entry numbers. Other events retain their current richer layout.
+    const { headers, records } = golfGeniusCsvFields(exported, event?.id);
+    const csvRows = records.map((record) => record.map(csvEscape).join(','));
 
     const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -368,7 +356,9 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     link.download = scope === 'all' ? 'golf-genius-full-roster.csv' : 'golf-genius-confirmed-roster.csv';
     link.click();
     URL.revokeObjectURL(url);
-    setNotice('Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
+    setNotice(event?.id === FALL_8IN_CUP_EVENT_ID
+      ? 'Golf Genius roster downloaded. ' + exported.length + ' golfers with Team ID, First Name, Last Name. Golf Genius assigns entry numbers.'
+      : 'Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
   }
 
   function updateManual(field, value) {
@@ -654,6 +644,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <button className="platform-secondary-button" type="button" disabled={requiredRosterWorking} onClick={openRequiredRosterSheet}>{requiredRosterWorking ? 'Preparing...' : 'Open Required Roster Sheet'}</button>
           {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
           {googleSheetUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleSheetUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
+          {event?.id === FALL_8IN_CUP_EVENT_ID && <small style={{ alignSelf: 'center' }}>Fall 8" Cup Golf Genius import: Team ID · First Name · Last Name only.</small>}
           <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('all')}>Export Full Golf Genius CSV</button>
           <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('confirmed')}>Export Confirmed Golf Genius CSV</button>
         </div>

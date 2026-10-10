@@ -85,3 +85,20 @@ test('Golf Genius export has no required handicap or GHIN column', async () => {
   const snippet=source.slice(start,end);
   assert.doesNotMatch(snippet,/'GHIN ID'|'Handicap'/);
 });
+
+test('all roster screens share the numbering helper; Sheets keep Team Id separate from Entry Number', async () => {
+  const [staff, team, airport, sheet, admin] = await Promise.all([
+    'src/EieRosterMaintenance.jsx',
+    'src/EieTeamManagement.jsx',
+    'src/ElevationAirport.jsx',
+    'supabase/functions/sync-google-roster/index.ts',
+    'supabase/functions/golf-admin-team-management/index.ts',
+  ].map(path => readFile(new URL('../'+path, import.meta.url), 'utf8')));
+  assert.match(staff,/buildRosterEntryNumbers\(rows, teamSize, teamMode\)/);
+  assert.match(team,/buildRosterEntryNumbers\(registrations,/);
+  assert.match(airport,/buildRosterEntryNumbers\(teamGroup\?\.members/);
+  assert.match(sheet,/entryNumbers\.get\(String\(golfer\.id\)\) \?\? golfer\.entry_number/);
+  assert.match(sheet,/golfer\.team_id \?\? ""/);
+  assert.match(admin,/payment_for_team_id,created_at/);
+  assert.match(admin,/swap_paid_teams/);
+});

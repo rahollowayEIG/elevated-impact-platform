@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 import RosterUpload from './RosterUpload';
 import EieTeamManagement from './EieTeamManagement';
 import { rosterMatchesSearch, sortRosterRows } from './rosterSearch.mjs';
+import { buildRosterEntryNumbers, golfGeniusRosterRows } from './rosterNumbering.mjs';
 
 function emptyGolfer() {
   return {
@@ -105,7 +106,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const [syncWorking, setSyncWorking] = useState(false);
   const [rosterView, setRosterView] = useState('all');
   const [rosterSearch, setRosterSearch] = useState('');
-  const [rosterSort, setRosterSort] = useState({ field: '', direction: 'asc' });
+  const [rosterSort, setRosterSort] = useState({ field: 'golfer_number', direction: 'asc' });
   const [requiredRosterWorking, setRequiredRosterWorking] = useState(false);
   const [requiredRosterUrl, setRequiredRosterUrl] = useState('');
   const [googleSheetUrl, setGoogleSheetUrl] = useState(event?.google_sheet_url || '');
@@ -329,109 +330,45 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
     }
   }
 
-  function exportGolfGenius() {
-    let confirmed = rows.filter((row) =>
-      ['paid', 'comp'].includes(row.payment_status) &&
-      (row.registration_status || 'active') === 'active'
-    );
-    if (!confirmed.length) {
-      window.alert('There are no confirmed golfers to export yet.');
+  function exportGolfGenius(scope = 'confirmed') {
+    let exported;
+    try {
+      exported = golfGeniusRosterRows(rows, { teamSize, teamMode, scope });
+    } catch (error) {
+      window.alert(error?.message || 'Unable to prepare Golf Genius roster.');
       return;
     }
+    const pendingCount = exported.filter((row) => row.payment_status === 'pending').length;
+    if (scope === 'all' && pendingCount && !window.confirm(
+      'This full roster includes ' + pendingCount + ' Pending golfer spots. ' +
+      'It will export them with their current payment status, not mark them Paid. Continue?'
+    )) return;
 
-    const registrationFormat = teamMode ? 'team' : 'individual';
-    const teamSize = registrationFormat === 'team'
-      ? Math.max(2, Math.min(12, Number(settings.team_size || 4)))
-      : 1;
-
-    if (registrationFormat === 'team') {
-      const missingTeam = confirmed.filter((row) => !String(row.team_id ?? '').trim());
-      if (missingTeam.length) {
-        window.alert(
-          `${missingTeam.length} confirmed golfer${missingTeam.length === 1 ? '' : 's'} still need a Team ID. Use Manage -> Set / Move Team before exporting.`
-        );
-        return;
-      }
-
-      const teamOrder = [];
-      const teamMap = new Map();
-      confirmed.forEach((row) => {
-        const raw = String(row.team_id ?? '').trim();
-        if (!teamMap.has(raw)) {
-          teamMap.set(raw, teamOrder.length + 1);
-          teamOrder.push(raw);
-        }
-      });
-
-      confirmed = [...confirmed].sort((a, b) => {
-        const aTeam = teamMap.get(String(a.team_id ?? '').trim()) || 0;
-        const bTeam = teamMap.get(String(b.team_id ?? '').trim()) || 0;
-        if (aTeam !== bTeam) return aTeam - bTeam;
-        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
-      });
-
-      const teamPositions = new Map();
-      confirmed = confirmed.map((row) => {
-        const exportTeamId = teamMap.get(String(row.team_id ?? '').trim()) || '';
-        const nextPosition = (teamPositions.get(exportTeamId) || 0) + 1;
-        teamPositions.set(exportTeamId, nextPosition);
-        return {
-          ...row,
-          __export_team_id: exportTeamId,
-          __export_entry_number: ((Number(exportTeamId) - 1) * teamSize) + nextPosition,
-        };
-      });
-    } else {
-      confirmed = confirmed.map((row, index) => ({
-        ...row,
-        __export_team_id: '',
-        __export_entry_number: index + 1,
-      }));
-    }
-
-    const customKeys = Array.from(new Set(confirmed.flatMap((row) => {
-      const custom = row.custom_fields && typeof row.custom_fields === 'object' ? row.custom_fields : {};
-      return Object.keys(custom);
-    })));
-    const pretty = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+    // Team IDs are the original EIE identifiers. Only golfer entry numbers
+    // are calculated for this CSV. No registration or payment record changes.
     const headers = [
-      'Team Id', 'Entry Number', 'Email', 'Phone', 'First Name', 'Last Name',
-      'DOB', 'Gender', 'Tee', 'Division', 'Member Type', 'GHIN ID',
-      ...customKeys.map(pretty),
-      'Age', 'Price', 'Payment Status', 'Registration Date', 'Registration ID',
+      'Team Id', 'Entry Number', 'First Name', 'Last Name',
+      'Email', 'Phone', 'Payment Status', 'Registration ID',
     ];
-
-    const csvRows = confirmed.map((row, index) => {
-      const custom = row.custom_fields && typeof row.custom_fields === 'object' ? row.custom_fields : {};
-      return [
-        row.__export_team_id ?? '',
-        row.__export_entry_number ?? index + 1,
-        row.email,
-        row.phone,
-        row.first_name,
-        row.last_name,
-        row.date_of_birth,
-        row.gender,
-        row.tee ?? '',
-        row.division,
-        row.membership_status,
-        row.ghin_number,
-        ...customKeys.map((key) => displayCustomValue(custom[key])),
-        row.age,
-        row.price,
-        row.payment_status,
-        row.created_at,
-        row.id,
-      ].map(csvEscape).join(',');
-    });
+    const csvRows = exported.map((row) => [
+      row.__export_team_id,
+      row.__export_entry_number,
+      row.__export_first_name,
+      row.__export_last_name,
+      row.email ?? '',
+      row.phone ?? '',
+      row.payment_status || 'pending',
+      row.id,
+    ].map(csvEscape).join(','));
 
     const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'golf-genius-confirmed-roster.csv';
+    link.download = scope === 'all' ? 'golf-genius-full-roster.csv' : 'golf-genius-confirmed-roster.csv';
     link.click();
     URL.revokeObjectURL(url);
+    setNotice('Golf Genius roster downloaded. ' + exported.length + ' active golfer spots, preserving EIE team IDs and entry numbers.');
   }
 
   function updateManual(field, value) {
@@ -642,11 +579,15 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
   const paidCount = rows.filter((row) => row.payment_status === 'paid').length;
   const compCount = rows.filter((row) => row.payment_status === 'comp').length;
   const pendingCount = rows.filter((row) => row.payment_status === 'pending').length;
-  const confirmedRows = rows.filter((row) =>
+  const numberedRows = useMemo(() => {
+    const numbers = buildRosterEntryNumbers(rows, teamSize, teamMode);
+    return rows.map((row) => ({ ...row, __roster_number: numbers.get(row.id) ?? null }));
+  }, [rows, teamSize, teamMode]);
+  const confirmedRows = numberedRows.filter((row) =>
     ['paid', 'comp'].includes(row.payment_status) &&
     (row.registration_status || 'active') === 'active'
   );
-  const viewRows = rosterView === 'confirmed' ? confirmedRows : rows;
+  const viewRows = rosterView === 'confirmed' ? confirmedRows : numberedRows;
   const visibleRows = useMemo(
     () => sortRosterRows(
       viewRows.filter((row) => rosterMatchesSearch(row, rosterSearch)),
@@ -713,7 +654,8 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
           <button className="platform-secondary-button" type="button" disabled={requiredRosterWorking} onClick={openRequiredRosterSheet}>{requiredRosterWorking ? 'Preparing...' : 'Open Required Roster Sheet'}</button>
           {requiredRosterUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(requiredRosterUrl, '_blank', 'noopener,noreferrer')}>Reopen Required Roster Sheet</button>}
           {googleSheetUrl && <button className="platform-secondary-button" type="button" onClick={() => window.open(googleSheetUrl, '_blank', 'noopener,noreferrer')}>Open Roster Workbook</button>}
-          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={exportGolfGenius}>Export Confirmed Golf Genius CSV</button>
+          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('all')}>Export Full Golf Genius CSV</button>
+          <button className="platform-secondary-button" type="button" disabled={!rows.some((row) => ['paid','comp'].includes(row.payment_status) && (row.registration_status || 'active') === 'active')} onClick={() => exportGolfGenius('confirmed')}>Export Confirmed Golf Genius CSV</button>
         </div>
 
         {notice && <div className="message" style={{ marginTop: 16 }}>{notice}</div>}
@@ -953,7 +895,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
               <thead><tr><th><input aria-label="Select all visible golfers" type="checkbox" style={{ width: 'auto' }} checked={visibleRows.length > 0 && visibleRows.every((row) => bulkSelectedIds.includes(row.id))} onChange={(e) => {
                 if (e.target.checked) setBulkSelectedIds((current) => Array.from(new Set([...current, ...visibleRows.map((row) => row.id)])));
                 else setBulkSelectedIds((current) => current.filter((id) => !visibleRows.some((row) => row.id === id)));
-              }} /></th><RosterSortHeader field="golfer" label="Golfer" sort={rosterSort} onSort={toggleRosterSort} />{teamMode && <RosterSortHeader field="team" label="Team" sort={rosterSort} onSort={toggleRosterSort} />}<RosterSortHeader field="contact" label="Contact" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="price" label="Price" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="payment" label="Payment" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="status" label="Status" sort={rosterSort} onSort={toggleRosterSort} /><th></th></tr></thead>
+              }} /></th><RosterSortHeader field="golfer_number" label="Golfer #" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="golfer" label="Golfer" sort={rosterSort} onSort={toggleRosterSort} />{teamMode && <RosterSortHeader field="team" label="Team" sort={rosterSort} onSort={toggleRosterSort} />}<RosterSortHeader field="contact" label="Contact" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="price" label="Price" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="payment" label="Payment" sort={rosterSort} onSort={toggleRosterSort} /><RosterSortHeader field="status" label="Status" sort={rosterSort} onSort={toggleRosterSort} /><th></th></tr></thead>
               <tbody>
                 {visibleRows.map((row) => {
                   const isSelected = selected?.id === row.id;
@@ -964,6 +906,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
                         className={isSelected ? 'eie-roster-row-selected' : ''}
                       >
                         <td><input aria-label={`Select ${row.first_name} ${row.last_name}`} type="checkbox" style={{ width: 'auto' }} checked={bulkSelectedIds.includes(row.id)} onChange={(e) => toggleBulkSelection(row.id, e.target.checked)} /></td>
+                        <td><strong>{row.__roster_number ? `#${row.__roster_number}` : '—'}</strong></td>
                         <td><strong>{row.first_name} {row.last_name}</strong><small style={{ display: 'block', opacity: .7 }}>{row.membership_status || 'Member'}{row.division ? ` · ${row.division}` : ''}</small></td>
                         {teamMode && <td>{row.team_id || 'Unassigned'}</td>}
                         <td>{row.email || 'No email'}<small style={{ display: 'block', opacity: .7 }}>{row.phone || 'No phone'}</small></td>
@@ -975,7 +918,7 @@ export default function EieRosterMaintenance({ event, rows, loading, onRefresh }
 
                       {isSelected && (
                         <tr className="eie-roster-manage-row">
-                          <td colSpan={teamMode ? 8 : 7}>
+                          <td colSpan={teamMode ? 9 : 8}>
                             <div className="eie-roster-manage-panel">
                               <div>
                                 <p className="platform-eyebrow">Manage Golfer</p>

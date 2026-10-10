@@ -18,7 +18,7 @@ function inWindow(row: any) {
     (!row.access_ends_at || new Date(row.access_ends_at).getTime() >= now);
 }
 function uuid(value: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value); }
-const OPERATIONS = new Set(["fill_tba", "edit_player", "swap", "move_to_tba", "transfer_captain"]);
+const OPERATIONS = new Set(["fill_tba", "edit_player", "swap", "move_to_tba", "transfer_captain", "swap_paid_teams"]);
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
           "id,event_id,team_id,entry_number,team_name,team_size,status,captain_registration_id,captain_user_id,payment_mode"
         ).eq("event_id", eventId),
         admin.from("golf_registrations").select(
-          "id,event_id,team_id,entry_number,first_name,last_name,email,phone,ghin_number,division,custom_fields,user_id,passenger_claim_status,registration_status,payment_status,price,amount_paid"
+          "id,event_id,team_id,entry_number,first_name,last_name,email,phone,ghin_number,division,custom_fields,user_id,passenger_claim_status,registration_status,payment_status,price,amount_paid,paid_at,refunded_at,payment_covered_by_registration_id,payment_for_team_id,created_at"
         ).eq("event_id", eventId).eq("registration_status", "active"),
       ]);
       if (teamsResult.error || playersResult.error) throw new Error("Unable to load event teams");
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
     if (!OPERATIONS.has(action)) return reply({ success: false, error: "Unsupported action" }, 400);
     const registrationId = clean(body.registration_id);
     const otherId = clean(body.other_registration_id);
-    if (!uuid(registrationId) || (["swap","move_to_tba","transfer_captain"].includes(action) && !uuid(otherId))) {
+    if (!uuid(registrationId) || (["swap","swap_paid_teams","move_to_tba","transfer_captain"].includes(action) && !uuid(otherId))) {
       return reply({ success: false, error: "Select the affected golfers" }, 400);
     }
     const fields = body.fields && typeof body.fields === "object" && !Array.isArray(body.fields) ? body.fields : {};
@@ -132,21 +132,26 @@ Deno.serve(async (req: Request) => {
       }
     }
     const reason = clean(body.reason).slice(0, 1500);
-    const { data: result, error: updateError } = await admin.rpc("eie_staff_team_roster_update", {
-      p_event_id: eventId,
-      p_action: action,
-      p_registration_id: registrationId,
-      p_other_registration_id: otherId || null,
-      p_fields: fields,
-      p_actor_user_id: actor.id,
-      p_reason: reason || null,
-    });
+    const { data: result, error: updateError } = action === "swap_paid_teams"
+      ? await admin.rpc("eie_staff_fully_paid_team_swap", {
+          p_event_id: eventId, p_a: registrationId, p_b: otherId,
+          p_actor: actor.id, p_reason: reason || null,
+        })
+      : await admin.rpc("eie_staff_team_roster_update", {
+          p_event_id: eventId,
+          p_action: action,
+          p_registration_id: registrationId,
+          p_other_registration_id: otherId || null,
+          p_fields: fields,
+          p_actor_user_id: actor.id,
+          p_reason: reason || null,
+        });
     if (updateError) return reply({ success: false, error: updateError.message || "Team update failed" }, 400);
 
     const warnings: string[] = [];
     // Existing team-member invite path: staff update does not invent another invitation/payment flow.
     // Resend only for new/unclaimed teammates. Claimed users retain the original Passenger link.
-    if (["fill_tba","edit_player","swap","move_to_tba"].includes(action)) {
+    if (["fill_tba","edit_player","swap","swap_paid_teams","move_to_tba"].includes(action)) {
       const affected = [registrationId, otherId].filter(Boolean);
       const { data: updatedPlayers, error: playerError } = await admin.from("golf_registrations")
         .select("id,team_id,email,first_name,custom_fields,user_id,passenger_claim_status")

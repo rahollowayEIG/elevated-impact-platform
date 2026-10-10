@@ -50,3 +50,14 @@ test('sorting does not mutate the source list', () => {
   sortRosterRows(rows, { field: 'price', direction: 'desc' });
   assert.deepEqual(rows, source);
 });
+
+test('roster numbers remain searchable and sortable as actual quantities', () => {
+  const numbered = [
+    { id: 'a', first_name: 'Brian', __roster_number: 12 },
+    { id: 'b', first_name: 'Amy', __roster_number: 2 },
+    { id: 'c', first_name: 'Ben', __roster_number: 5 },
+  ];
+  assert.deepEqual(sortRosterRows(numbered, { field: 'golfer_number', direction: 'asc' }).map(r => r.id), ['b','c','a']);
+  assert.deepEqual(sortRosterRows(numbered, { field: 'golfer_number', direction: 'desc' }).map(r => r.id), ['a','c','b']);
+  assert.deepEqual(numbered.filter(r => rosterMatchesSearch(r, '12')).map(r => r.id), ['a']);
+});

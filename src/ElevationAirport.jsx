@@ -2,6 +2,7 @@ import React from 'react';
 import { useSquawk } from './SquawkCenter';
 import { supabase } from './lib/supabase';
 import TeamPaymentCart, { GLOW_GOLF_EVENT_ID } from './TeamPaymentCart';
+import { buildRosterEntryNumbers } from './rosterNumbering.mjs';
 
 function formatDate(dateValue) {
   if (!dateValue) return 'Date TBD';
@@ -313,6 +314,7 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
   const paymentStatus = String(registration.payment_status || 'Pending').replaceAll('_', ' ');
   const teamLabel = teamGroup?.team?.entry_number || registration.entry_number || (registration.team_id ? 'Assigned' : 'Not assigned');
   const boardingCode = String(flight.eventId || flight.key || 'EIG').replaceAll('-', '').slice(0, 8).toUpperCase();
+  const teamEntryNumbers = buildRosterEntryNumbers(teamGroup?.members || [], Number(teamGroup?.team?.team_size || 4), true);
 
   function activeMembers() {
     return (teamGroup?.members || []).filter((member) => member.registration_status === 'active');
@@ -580,10 +582,10 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
 
         {!teamLoading && teamGroup ? <>
           <div className="main-cabin-team-roster">
-            {activeMembers().map((member) => (
+            {activeMembers().slice().sort((a, b) => (teamEntryNumbers.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (teamEntryNumbers.get(b.id) ?? Number.MAX_SAFE_INTEGER)).map((member) => (
               <div className="main-cabin-team-member" key={member.id}>
                 <div>
-                  <strong>{isReservedTba(member) ? 'TBA · Reserved' : [member.first_name, member.last_name].filter(Boolean).join(' ')}</strong>
+                  <strong>{teamEntryNumbers.has(member.id) ? `#${teamEntryNumbers.get(member.id)} · ` : ''}{isReservedTba(member) ? 'TBA · Reserved' : [member.first_name, member.last_name].filter(Boolean).join(' ')}</strong>
                   <span>{member.id === teamGroup.team?.captain_registration_id ? 'Captain' : isReservedTba(member) ? 'Open reserved spot' : member.passenger_claim_status === 'claimed' ? 'Account connected' : 'Invite pending'}</span>
                 </div>
                 {teamGroup.role === 'captain' && member.id !== teamGroup.team?.captain_registration_id && !isReservedTba(member) && (

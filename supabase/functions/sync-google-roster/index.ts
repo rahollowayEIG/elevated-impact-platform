@@ -218,15 +218,15 @@ Deno.serve(async (req) => {
 
     function sortRoster(source: any[]) {
       return [...source].sort((a: any, b: any) => {
-        const aEntry = Number.parseInt(String(a.entry_number || a.team_id || ""), 10);
-        const bEntry = Number.parseInt(String(b.entry_number || b.team_id || ""), 10);
+        const aEntry = Number.parseInt(String(a.team_id || a.entry_number || ""), 10);
+        const bEntry = Number.parseInt(String(b.team_id || b.entry_number || ""), 10);
         const aHasEntry = Number.isFinite(aEntry);
         const bHasEntry = Number.isFinite(bEntry);
         if (aHasEntry && bHasEntry && aEntry !== bEntry) return aEntry - bEntry;
         if (aHasEntry !== bHasEntry) return aHasEntry ? -1 : 1;
 
-        const aKey = String(a.entry_number || a.team_id || "");
-        const bKey = String(b.entry_number || b.team_id || "");
+        const aKey = String(a.team_id || a.entry_number || "");
+        const bKey = String(b.team_id || b.entry_number || "");
         if (aKey !== bKey) return aKey.localeCompare(bKey, undefined, { numeric: true });
 
         return String(a.created_at || "").localeCompare(String(b.created_at || ""));
@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
       let blockIndex = 0;
 
       source.forEach((golfer: any, index: number) => {
-        const explicitTeamKey = String(golfer.entry_number || golfer.team_id || "").trim();
+        const explicitTeamKey = String(golfer.team_id || golfer.entry_number || "").trim();
         const key = explicitTeamKey || `size-block-${Math.floor(index / configuredTeamSize)}`;
 
         if (index === 0) {

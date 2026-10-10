@@ -5,6 +5,7 @@ import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
+import { ACCOUNT_GENDERS, validateAccountIdentity } from './lib/accountIdentity.mjs';
 import GolfTeamInvitation from './GolfTeamInvitation.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -87,6 +88,8 @@ function LoginScreen({ initialForgotMode = false }) {
   const [joinLastName, setJoinLastName] = useState('');
   const [joinEmail, setJoinEmail] = useState('');
   const [joinUsername, setJoinUsername] = useState('');
+  const [joinDateOfBirth, setJoinDateOfBirth] = useState('');
+  const [joinGender, setJoinGender] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
   const [joinConfirmPassword, setJoinConfirmPassword] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -133,6 +136,8 @@ function LoginScreen({ initialForgotMode = false }) {
       setError('Username must be 3-30 characters and use letters, numbers, dots, dashes, or underscores.');
       return;
     }
+    const identityError = validateAccountIdentity({ date_of_birth: joinDateOfBirth, gender: joinGender });
+    if (identityError) { setError(identityError); return; }
     if (joinPassword.length < 8) {
       setError('Create a password with at least 8 characters.');
       return;
@@ -160,6 +165,8 @@ function LoginScreen({ initialForgotMode = false }) {
             last_name: lastName,
             display_name: [firstName, lastName].filter(Boolean).join(' '),
             username,
+            date_of_birth: joinDateOfBirth,
+            gender: joinGender,
             account_type: 'passenger',
           },
         },
@@ -235,6 +242,10 @@ function LoginScreen({ initialForgotMode = false }) {
             <div className="form-grid two">
               <label>First name<input value={joinFirstName} onChange={(e) => setJoinFirstName(e.target.value)} autoComplete="given-name" required /></label>
               <label>Last name<input value={joinLastName} onChange={(e) => setJoinLastName(e.target.value)} autoComplete="family-name" required /></label>
+            </div>
+            <div className="form-grid two">
+              <label>Date of birth *<input type="date" value={joinDateOfBirth} onChange={(e) => setJoinDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required /></label>
+              <label>Gender *<select value={joinGender} onChange={(e) => setJoinGender(e.target.value)} required><option value="">Choose</option>{ACCOUNT_GENDERS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
             </div>
             <label>Email<input value={joinEmail} onChange={(e) => setJoinEmail(e.target.value)} type="email" autoComplete="email" required /></label>
             <label>Choose @username<input value={joinUsername} onChange={(e) => setJoinUsername(e.target.value.replace(/^@/, ''))} autoComplete="username" required /></label>
@@ -324,10 +335,13 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [usernameStatus, setUsernameStatus] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const hasExistingIdentity = Boolean(invitation?.recipient_was_existing && profile?.username);
   const requiresPassword = !hasExistingIdentity;
+  const requiresIdentityDetails = !Boolean(invitation?.recipient_was_existing);
   const existingAccount = hasExistingIdentity;
   const needsProfileDetails = !hasExistingIdentity || !profile?.display_name;
   const organizationName = invitation?.organization?.name || 'ElevationPilot';
@@ -368,6 +382,10 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
     if (requiresPassword && password.length < 8) { setError('Create a password with at least 8 characters.'); return; }
     if (password && password.length < 8) { setError('Use at least 8 characters for your password.'); return; }
     if (password && password !== confirmPassword) { setError('The passwords do not match.'); return; }
+    if (requiresIdentityDetails) {
+      const issue = validateAccountIdentity({ date_of_birth: dateOfBirth, gender });
+      if (issue) { setError(issue); return; }
+    }
 
     setBusy(true);
     try {
@@ -384,6 +402,8 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
           first_name: firstName,
           last_name: lastName,
           display_name: displayName,
+          date_of_birth: requiresIdentityDetails ? dateOfBirth : undefined,
+          gender: requiresIdentityDetails ? gender : undefined,
         },
       });
       if (acceptError || data?.error || !data?.success) {
@@ -433,6 +453,10 @@ function AccountSetupScreen({ user, invitation, profile, onComplete }) {
             {usernameStatus && !['checking','available','current'].includes(usernameStatus) && <small className="invite-warning">{usernameStatus === 'unavailable' ? 'That username is already taken.' : usernameStatus}</small>}
           </label>
         </>}
+        {requiresIdentityDetails && <div className="form-grid two">
+          <label>Date of birth *<input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required /></label>
+          <label>Gender *<select value={gender} onChange={(e) => setGender(e.target.value)} required><option value="">Choose</option>{ACCOUNT_GENDERS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+        </div>}
         {requiresPassword && <div className="form-grid two">
           <PasswordField label="Create password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
           <PasswordField label="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
@@ -2932,12 +2956,40 @@ export default function App() {
         .eq('auth_user_id', userId)
         .maybeSingle();
       if (passengerError) throw passengerError;
-      setPassenger(passengerRow || null);
+      let resolvedPassenger = passengerRow || null;
+      if (!resolvedPassenger?.date_of_birth || !resolvedPassenger?.gender) {
+        // Only new account metadata carries these fields. Existing accounts
+        // with incomplete profiles continue normally without a sign-in gate.
+        const { data: myAuth } = await supabase.auth.getUser();
+        const identityUser = myAuth?.user;
+        if (identityUser?.id === userId) {
+          const birth = identityUser.user_metadata?.date_of_birth;
+          const selectedGender = identityUser.user_metadata?.gender;
+          if (!validateAccountIdentity({ date_of_birth: birth, gender: selectedGender })) {
+            const payload = {
+              date_of_birth: resolvedPassenger?.date_of_birth || birth,
+              gender: resolvedPassenger?.gender || selectedGender,
+            };
+            const result = resolvedPassenger?.id
+              ? await supabase.from('passengers').update(payload).eq('id', resolvedPassenger.id).select('*').single()
+              : await supabase.from('passengers').insert({
+                auth_user_id: userId,
+                first_name: profileResult.data?.first_name || identityUser.user_metadata?.first_name || null,
+                last_name: profileResult.data?.last_name || identityUser.user_metadata?.last_name || null,
+                status: 'claimed',
+                claimed_at: new Date().toISOString(),
+                ...payload,
+              }).select('*').single();
+            if (!result.error && result.data) resolvedPassenger = result.data;
+          }
+        }
+      }
+      setPassenger(resolvedPassenger);
 
-      if (passengerRow?.id) {
+      if (resolvedPassenger?.id) {
         const [{ data: reusableProfile, error: reusableProfileError }, { data: paymentMethods, error: paymentMethodsError }] = await Promise.all([
-          supabase.from('passenger_profiles').select('*').eq('passenger_id', passengerRow.id).maybeSingle(),
-          supabase.from('passenger_payment_methods').select('id').eq('passenger_id', passengerRow.id).eq('status', 'active'),
+          supabase.from('passenger_profiles').select('*').eq('passenger_id', resolvedPassenger.id).maybeSingle(),
+          supabase.from('passenger_payment_methods').select('id').eq('passenger_id', resolvedPassenger.id).eq('status', 'active'),
         ]);
         if (reusableProfileError) throw reusableProfileError;
         if (paymentMethodsError) throw paymentMethodsError;

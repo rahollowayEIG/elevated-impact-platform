@@ -65,7 +65,7 @@ export function buildPrintableCheckInRoster({ event, registrations = [], teams =
   const rows = [...teamKeys].map(team_id => {
     const members = (byTeam.get(team_id) || []).slice().sort((a, b) =>
       String(a.created_at || '').localeCompare(String(b.created_at || '')) ||
-      String(a.id || '').localeCompare(String(b.id || '')
+      String(a.id || '').localeCompare(String(b.id || ''))
     );
     if (members.length > teamSize) throw new Error(
       'Team #' + team_id + ' has ' + members.length + ' active golfers; correct the roster before printing.'

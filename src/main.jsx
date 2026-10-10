@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
+import ActionConfirmation from './components/ActionConfirmation.jsx';
 
 const EIG_ICON = 'https://raw.githubusercontent.com/rahollowayEIG/elevated-impact-group-site/main/assets/eig-header-icon.png';
 
@@ -30,5 +31,6 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <EIGAppHeader />
     <ElevatedImpactPhaseOneFrontend />
+    <ActionConfirmation />
   </React.StrictMode>
 );

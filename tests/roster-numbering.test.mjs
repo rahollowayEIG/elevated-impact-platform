@@ -244,8 +244,8 @@ test('Golf Genius gender column uses only explicitly stored gender, not a captai
   assert.deepEqual(csv.records,[
     ['8','Jordan','Taylor','Female'],
     ['8','Morgan','Lee','Male'],
-    ['8','Casey','Reed',''],
     ['8','Jordan','Taylor 1',''],
+    ['8','Casey','Reed',''],
   ]);
   assert.equal(JSON.stringify(source),before,'Gender and stored names must remain untouched');
 });

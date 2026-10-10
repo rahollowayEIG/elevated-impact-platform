@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildRosterEntryNumbers, golfGeniusRosterRows, isReservedTba } from '../src/rosterNumbering.mjs';
+import { buildRosterEntryNumbers, golfGeniusRosterRows, golfGeniusCsvFields, FALL_8IN_CUP_EVENT_ID, isReservedTba } from '../src/rosterNumbering.mjs';
 
 const player = (id, team_id, payment_status = 'paid', extra = {}) => ({
   id, team_id, payment_status, created_at: '2026-10-04T12:00:00Z', registration_status: 'active',
@@ -101,4 +101,32 @@ test('all roster screens share the numbering helper; Sheets keep Team Id separat
   assert.match(sheet,/golfer\.team_id \?\? ""/);
   assert.match(admin,/payment_for_team_id,created_at/);
   assert.match(admin,/swap_paid_teams/);
+});
+
+test('Fall 8in Cup exports exactly Team ID, First Name, Last Name; Golf Genius owns entry numbering', () => {
+  const tba = player('tba','1','pending', { first_name:'TBA',last_name:'Reserved',custom_fields:{reserved_tba:true}});
+  const complete = [...players.filter(p=>p.id!=='t1d'), tba];
+  const full = golfGeniusRosterRows(complete, {teamMode:true,teamSize:4,scope:'all'});
+  const csv = golfGeniusCsvFields(full, FALL_8IN_CUP_EVENT_ID);
+  assert.deepEqual(csv.headers, ['Team Id','First Name','Last Name']);
+  assert.equal(csv.records.length, full.length);
+  assert.equal(csv.records.every(record => record.length === 3), true);
+  assert.deepEqual(csv.records.find(record => record[1] === 'TBA'), ['1','TBA','TBA']);
+  assert.equal(csv.records[0][0], '1');
+  assert.equal(csv.records.at(-1)[0], '31');
+  assert.equal(csv.headers.includes('Entry Number'),false);
+  assert.equal(csv.headers.includes('GHIN ID'),false);
+  assert.equal(csv.headers.includes('Payment Status'),false);
+});
+
+test('Fall 8in Cup confirmed export also has exactly three columns; other events retain their format', () => {
+  const confirmed = golfGeniusRosterRows(players, { teamMode:true, teamSize:4, scope:'confirmed' });
+  const selected = golfGeniusCsvFields(confirmed,FALL_8IN_CUP_EVENT_ID);
+  assert.deepEqual(selected.headers, ['Team Id','First Name','Last Name']);
+  assert.equal(selected.records.length,16);
+  assert.deepEqual(selected.records[0].slice(0,1),['2']);
+  const unrelated=golfGeniusCsvFields(confirmed,'unrelated-event');
+  assert.deepEqual(unrelated.headers,['Team Id','Entry Number','First Name','Last Name','Email','Phone','Payment Status','Registration ID']);
+  assert.equal(unrelated.records[0].length,8);
+  assert.equal(unrelated.records[0][1],5);
 });

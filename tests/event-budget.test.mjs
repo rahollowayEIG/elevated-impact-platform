@@ -101,6 +101,17 @@ test("search, stable text and numeric sorting, export includes provenance and pr
   assert.ok(csv.includes("'\t=cmd"));
   assert.ok(csv.includes("System totals refreshed"));
   assert.ok(csv.includes("Additional committed funding needed"));
+  const compCsv = budgetCsv(b, "Demo", 3, {
+    refreshed_at: "2026-10-08T18:00:00Z",
+    income: [],
+    comps: { value_cents: 48000, spot_count: 4, fee_count: 1 },
+  });
+  assert.ok(compCsv.includes("Complimentary registration face value (USD)"));
+  assert.ok(compCsv.includes('"480"'));
+  assert.ok(compCsv.includes("Active Comp golfer spots (count)"));
+  assert.equal(budgetTotals(b, { income: [], comps: { value_cents: 48000, spot_count: 4, fee_count: 1 } }).received,
+    budgetTotals(b, { income: [] }).received);
+
   const rows = [
     { ...b.costs[0], name: "zebra", notes: "signs" },
     { ...b.costs[1], name: "Alpha" },
@@ -165,6 +176,9 @@ test("real budget SQL aggregates sources once, preserves income after withdrawal
     );
     await db.exec(
       await file("../supabase/migrations/20261008182645_eie_event_budgets.sql"),
+    );
+    await db.exec(
+      await file("../supabase/migrations/20261010052030_eie_budget_comp_value_metric.sql"),
     );
     for (const [user, session] of [
       [u, sid],
@@ -232,6 +246,12 @@ test("real budget SQL aggregates sources once, preserves income after withdrawal
     let live = first.sources.income;
     assert.equal(live[0].committed_cents, 60000);
     assert.equal(live[0].received_cents, 55000);
+    assert.deepEqual(first.sources.comps, {
+      value_cents: 10000,
+      spot_count: 1,
+      fee_count: 1,
+    });
+
     assert.equal(live[1].target_cents, 125000);
     assert.equal(live[1].committed_cents, 25000);
     assert.equal(live[1].received_cents, 25000);

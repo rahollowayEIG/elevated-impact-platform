@@ -68,3 +68,32 @@ test("Fit preserves proportions; crop respects the selected subject and covers t
     "EIG-logo_eig-logo_512x512.jpg",
   );
 });
+
+
+test("Hometown Magazine provides seven exact print-size presets without changing other sizes", () => {
+  const formats = [
+    ["hometown-front", 7.875, 8.75],
+    ["hometown-back", 7.875, 8],
+    ["hometown-full", 7.875, 9.3125],
+    ["hometown-half", 7.875, 4.8125],
+    ["hometown-third", 7.875, 3.125],
+    ["hometown-quarter-extended", 7.875, 2.3125],
+    ["hometown-quarter-box", 3.3125, 4.3125],
+  ];
+  for (const [id, inchesWide, inchesHigh] of formats) {
+    const preset = RESIZE_PRESETS.find((x) => x.id === id);
+    assert.ok(preset, id);
+    assert.equal(preset.group, "Hometown Magazine (EIG)");
+    assert.equal(preset.dpi, 300);
+    assert.deepEqual(preset.inches, { width: inchesWide, height: inchesHigh });
+    assert.equal(preset.width, Math.round(inchesWide * 300));
+    assert.equal(preset.height, Math.round(inchesHigh * 300));
+    assert.equal(preset.mode, "fit");
+    assert.deepEqual(resizeDimensions(preset.width, preset.height), {
+      width: preset.width,
+      height: preset.height,
+    });
+  }
+  assert.equal(RESIZE_PRESETS.find((p) => p.id === "eig-share").width, 1200);
+  assert.equal(RESIZE_PRESETS.find((p) => p.id === "custom").height, 1200);
+});

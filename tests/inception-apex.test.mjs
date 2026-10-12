@@ -376,7 +376,7 @@ test("material templates, safe imagery, draft labels, sponsor handoffs and priva
 test("EIG-only Hometown Magazine tile opens dedicated print presets", async () => {
   const home = await file("../src/components/InceptionApex.jsx");
   const resizer = await file("../src/components/AutoResizer.jsx");
-  assert.match(home, /canUseResizer && \(\s*<button/);
+  assert.match(home, /\{canUseResizer && \(\s*<button[\s\S]*?ia-material-hometown/);
   assert.match(home, /Hometown Magazine/);
   assert.match(home, /setResizerInitialPreset\("hometown-front"\)/);
   assert.match(home, /initialPresetId=\{resizerInitialPreset\}/);

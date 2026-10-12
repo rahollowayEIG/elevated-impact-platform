@@ -1277,7 +1277,7 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
       setCreatedHanger(null);
       setName(''); setOrganizationType('business'); setPrimaryContactName(''); setPrimaryContactEmail(''); setIsTest(false);
     } catch (error) {
-      setCreateError(`If the Hangar was created, it has been preserved. Retry below to send the Pilot invitation.  The Hangar was created. Retry sending the invitation below; do not create another Hangar. ${error.message || ''}` : (error.message || 'Unable to create the Hangar or invite its Pilot.'));
+      setCreateError(`${createdHanger ? 'The Hangar was created. Retry the Pilot invitation below without creating another Hangar. ' : ''}${error.message || 'Unable to create the Hangar or invite its Pilot.'}`);
     } finally { setCreating(false); }
   }
 

@@ -382,3 +382,16 @@ test("EIG-only Hometown Magazine tile opens dedicated print presets", async () =
   assert.match(home, /initialPresetId=\{resizerInitialPreset\}/);
   assert.match(resizer, /initialPresetId = "shopify-product"/);
 });
+
+
+test("font families are saved and rendered consistently in IA designs", async () => {
+  const { newFlyer, sanitizeFlyer, flyerSvg, FLYER_FONTS } = await import("../src/lib/eventCreative.mjs");
+  const flyer = newFlyer();
+  flyer.boxes[0].fontFamily = "Georgia";
+  const safe = sanitizeFlyer(flyer);
+  assert.equal(safe.boxes[0].fontFamily, "Georgia");
+  assert.ok(flyerSvg(safe, { name: "Example" }, "").includes('font-family="Georgia,sans-serif"'));
+  flyer.boxes[0].fontFamily = 'Arial" onload="alert(1)';
+  assert.equal(sanitizeFlyer(flyer).boxes[0].fontFamily, "Arial");
+  assert.ok(FLYER_FONTS.includes("Verdana"));
+});

@@ -576,7 +576,7 @@ function AccessDurationFields({ mode, setMode, startDate, setStartDate, endDate,
 
 function EigPeopleAccessSection({ organizations, onInvite }) {
   const eigOrganization = organizations.find((org) => org.slug === EIG_SLUG);
-  const clients = organizations.filter((org) => org.slug !== EIG_SLUG && org.status === 'active');
+  const clients = organizations.filter((org) => org.slug !== EIG_SLUG && !['inactive', 'archived', 'deleted'].includes(org.status));
   const [inviteRole, setInviteRole] = useState('eig_admin');
   const [organizationId, setOrganizationId] = useState(eigOrganization?.id || '');
   const [inviteeName, setInviteeName] = useState('');
@@ -593,7 +593,7 @@ function EigPeopleAccessSection({ organizations, onInvite }) {
       setOrganizationId(eigOrganization?.id || '');
       setAccessMode('indefinite');
     } else if (!clients.some((org) => org.id === organizationId)) setOrganizationId(clients[0]?.id || '');
-  }, [inviteRole, eigOrganization?.id, clients.length]);
+  }, [inviteRole, eigOrganization?.id, organizationId, organizations]);
 
   async function submit(event) {
     event.preventDefault();

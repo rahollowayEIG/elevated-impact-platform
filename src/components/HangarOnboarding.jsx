@@ -160,7 +160,7 @@ export default function HangarOnboarding({
         <input type="checkbox" style={{ width: "auto" }} checked={reviewedSimilar} onChange={e => setReviewedSimilar(e.target.checked)} />
         I reviewed the similar names and confirmed this is a different business.
       </label>}
-      <p className="platform-login-copy">The new Hanger gets its business profile and Cockpit without activating paid apps. AI-suggested details, artwork rights and customer approvals will be added in the discovery phase.</p>
+      <p className="platform-login-copy">The new Hanger gets its business profile and Cockpit with no paid apps. Its public directory listing stays private until approved. AI-suggested details, artwork rights and customer approvals are planned for a later discovery phase.</p>
       {error && <div className="platform-error" role="alert">{error}</div>}
       <button type="submit" className="platform-primary-button"
         disabled={busy || (!createdHanger && (definiteMatch || (possibleMatch && !reviewedSimilar)))}>

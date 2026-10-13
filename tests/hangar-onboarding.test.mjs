@@ -68,6 +68,13 @@ test("Hanger onboarding database function checks admin, exact duplicates, audit 
       create or replace function public.is_eig_admin() returns boolean
         language sql stable as $$select auth.uid() = '10000000-0000-0000-0000-000000000001'::uuid$$;
       insert into auth.users(id) values ('10000000-0000-0000-0000-000000000001'), ('10000000-0000-0000-0000-000000000002');
+      insert into public.organizations (name, slug, status, organization_type)
+        values ('Existing Venue', 'existing-venue', 'active', 'venue');
+      alter table public.organizations enable row level security;
+      grant select on public.organizations to anon;
+      create policy "Public can read active venue organizations"
+        on public.organizations for select to anon
+        using (status = 'active' and organization_type in ('business','golf_course','venue'));
     `);
     await db.exec(await file("../supabase/migrations/20261013090000_hangar_onboarding_foundation.sql"));
 
@@ -80,6 +87,8 @@ test("Hanger onboarding database function checks admin, exact duplicates, audit 
     assert.equal(first.outcome, "created");
     assert.ok(first.organization.id);
     assert.equal(first.organization.onboarding_status, "profile_incomplete");
+    assert.equal(first.organization.public_directory_enabled, false,
+      "An unclaimed business must not be exposed as a public directory listing");
 
     const duplicate = await as(admin, () => start({ name: "Hometown-Bakery" }));
     assert.equal(duplicate.outcome, "matches");
@@ -98,7 +107,18 @@ test("Hanger onboarding database function checks admin, exact duplicates, audit 
     );
     await db.exec("reset role");
     const count = await db.query("select count(*)::int as count from public.organizations");
-    assert.equal(count.rows[0].count, 2);
+    assert.equal(count.rows[0].count, 3);
+    const legacy = await db.query("select public_directory_enabled from public.organizations where slug='existing-venue'");
+    assert.equal(legacy.rows[0].public_directory_enabled, true,
+      "Existing public venues must remain visible after migration");
+    await db.exec("set role anon");
+    try {
+      const visible = await db.query("select name from public.organizations order by name");
+      assert.deepEqual(visible.rows.map(row => row.name), ["Existing Venue"],
+        "Unapproved active Hangers must not be visible to anonymous users");
+    } finally {
+      await db.exec("reset role");
+    }
     const profile = await db.query("select website_url from public.organization_profiles where organization_id=$1", [first.organization.id]);
     assert.equal(profile.rows[0].website_url, "https://www.bakery.example.com/");
     const membershipCount = await db.query("select count(*)::int as count from public.organization_memberships where organization_id=$1", [first.organization.id]);

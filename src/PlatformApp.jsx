@@ -14,6 +14,8 @@ import EieEventSetupSteps from './EieEventSetupSteps';
 import { SquawkProvider, useSquawk } from './SquawkCenter';
 import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAirport';
 import QRCode from 'qrcode';
+import HangarOnboarding from './components/HangarOnboarding.jsx';
+import CoreCockpitServices from './components/CoreCockpitServices.jsx';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 
@@ -1246,42 +1248,26 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
 }
 
 function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, onOpenUserManagement, loading }) {
-  const [showCreate, setShowCreate] = useState(false);
-  const [name, setName] = useState('EIG Test Organization');
-  const [organizationType, setOrganizationType] = useState('business');
-  const [primaryContactName, setPrimaryContactName] = useState('');
-  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
-  const [isTest, setIsTest] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
-  const [createdHanger, setCreatedHanger] = useState(null);
-  const [pilotInviteResult, setPilotInviteResult] = useState(null);
   const clients = organizations.filter((org) => org.slug !== EIG_SLUG);
   const activeProducts = products.filter((product) => product.status === 'active').length;
-
-  async function submitOrganization(event) {
-    event.preventDefault(); setCreateError(''); setCreating(true); setPilotInviteResult(null);
-    try {
-      // A retry after an invitation failure must not create a second Hangar.
-      const hanger = createdHanger || await onCreateOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest });
-      setCreatedHanger(hanger);
-      const invite = await onInviteUser({
-        email: primaryContactEmail.trim().toLowerCase(),
-        invitee_name: primaryContactName.trim(),
-        organization_id: hanger.id,
-        role: 'organization_admin',
-        access_mode: 'indefinite',
-      });
-      setPilotInviteResult(invite);
-      setShowCreate(false);
-      setCreatedHanger(null);
-      setName(''); setOrganizationType('business'); setPrimaryContactName(''); setPrimaryContactEmail(''); setIsTest(false);
-    } catch (error) {
-      setCreateError(`${createdHanger ? 'The Hangar was created. Retry the Pilot invitation below without creating another Hangar. ' : ''}${error.message || 'Unable to create the Hangar or invite its Pilot.'}`);
-    } finally { setCreating(false); }
-  }
-
-  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-hero-actions"><button className="platform-primary-button" type="button" onClick={onOpenUserManagement}>User Management →</button><div className="platform-role-pill">EIG</div></div></section><section className="platform-stats-grid"><StatCard label="Hangars" value={clients.length} detail="Businesses and organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Hangars</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Pilot full name" required /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="pilot@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>Creates the Hangar, then immediately prepares and sends the named Pilot a secure account-creation invitation. If email delivery is unavailable, use the copyable invite link shown below.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactName.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating Hangar and inviting Pilot...' : createdHanger ? 'Retry Pilot Invitation' : 'Create Hangar & Invite Pilot'}</button></form>}{pilotInviteResult && <InviteResult result={pilotInviteResult} />}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
+  return <div className="platform-page">
+    <section className="platform-hero">
+      <div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1>
+        <p>Manage Hangers, shared business identities, their Cockpits, and optional EIG app access from one place.</p>
+      </div>
+      <div className="platform-hero-actions"><button className="platform-primary-button" type="button" onClick={onOpenUserManagement}>User Management →</button><div className="platform-role-pill">EIG</div></div>
+    </section>
+    <section className="platform-stats-grid">
+      <StatCard label="Hangars" value={clients.length} detail="Businesses, advertisers and partners" />
+      <StatCard label="Products in Catalog" value={products.length} detail={activeProducts + " currently active"} />
+      <StatCard label="Platform Status" value="Live" detail="Shared account and app entitlements" />
+    </section>
+    <HangarOnboarding organizations={clients} loading={loading}
+      onCreateOrganization={onCreateOrganization} onInviteUser={onInviteUser}
+      onOpenOrganization={onOpenOrganization}
+      renderInviteResult={(result) => <InviteResult result={result} />} />
+    <EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} />
+  </div>;
 }
 
 function ProductCard({ product, enabled, onLaunch }) {
@@ -2360,6 +2346,7 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
   const { unreadCount, openInbox, openComposer } = useSquawk();
   const enabledIds = useMemo(() => new Set(entitlements.filter((e) => ['active', 'trial'].includes(e.status)).map((e) => e.product_id)), [entitlements]);
   const enabledCount = enabledIds.size;
+  const hasEieApp = products.some((p) => p.product_key === 'golf_event_registration' && enabledIds.has(p.id));
   const activeInquiries = eventRequests.filter((request) => !['declined', 'cancelled', 'hold_expired'].includes(request.status)).length;
   const publishedEvents = eieEvents.filter((event) => event.status === 'published').length;
   const draftEvents = eieEvents.filter((event) => event.status !== 'published' && event.status !== 'closed').length;
@@ -2371,7 +2358,33 @@ function OrganizationDashboard({ organization, profile, role, products, entitlem
     .sort((a, b) => String(a.event_dates?.[0] || '9999').localeCompare(String(b.event_dates?.[0] || '9999')))
     .slice(0, 5);
 
+  if (!hasEieApp) return <div className="platform-page cockpit-page">
+    <section className="cockpit-flightdeck" style={{ padding: 24 }}>
+      <div className="cockpit-canopy">
+        <div className="cockpit-canopy-grid" aria-hidden="true" />
+        <div><p className="platform-eyebrow">{organization?.is_test ? 'Test Hanger' : 'ElevationPilot · Business Hanger'}</p>
+          <h1>{organization?.name || 'Business'} Cockpit</h1>
+          <p>Your core business workspace is available with no paid apps activated. Your brand, contracts, financials and advertising history stay tied to this Hanger as connected workflows come online.</p>
+        </div>
+        <div className="cockpit-role-badge"><span>Operating As</span><strong>{roleLabel}</strong></div>
+      </div>
+    </section>
+    <CoreCockpitServices organization={organization} />
+    <section className="platform-section-card">
+      <div className="platform-section-heading"><div><p className="platform-eyebrow">Optional apps</p>
+        <h2>Apps & Services</h2><p>Only authorized subscriptions activate app features. Business profile and core Cockpit access remain available.</p></div>
+        <span className="platform-role-pill">{enabledCount} enabled</span>
+      </div>
+      <div className="platform-product-grid">{products.map((product) =>
+        <ProductCard key={product.id} product={product} enabled={enabledIds.has(product.id)} onLaunch={onLaunchGolfRegistration} />
+      )}</div>
+    </section>
+    <HangarPeopleAccessSection organization={organization} currentRole={role} events={[]} onInvite={onInviteUser} />
+    <OrganizationProfileSection organization={organization} profile={profile} role={role} onSave={onSaveProfile} />
+  </div>;
+
   return <div className="platform-page cockpit-page">
+    <CoreCockpitServices organization={organization} />
     <section className="cockpit-flightdeck">
       <div className="cockpit-canopy">
         <div className="cockpit-canopy-grid" aria-hidden="true" />
@@ -3129,9 +3142,10 @@ export default function App() {
     setProducts(productRows || []); setEntitlements(entitlementRows || []); setOrganizationProfile(profileRow || null);
 
     if (hasEigCommandAccess) {
-      const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*').order('name');
+      const { data: orgRows, error: orgError } = await supabase.from('organizations').select('*, organization_profiles(website_url)').order('name');
       if (orgError) setDataError(orgError.message);
-      setOrganizations(orgRows || []);
+      setOrganizations((orgRows || []).map((org) => ({ ...org, website_url: org.organization_profiles?.website_url || '' })));
+
     } else {
       setOrganizations([]);
     }
@@ -3148,10 +3162,23 @@ export default function App() {
     setLoadingData(false);
   }
 
-  async function createOrganization({ name, organizationType, primaryContactName, primaryContactEmail, isTest }) {
+  async function createOrganization({ name, organizationType, websiteUrl, primaryContactName, primaryContactEmail, isTest, source }) {
     setDataError('');
-    const { data, error } = await supabase.rpc('create_organization_workspace', { p_name: name.trim(), p_organization_type: organizationType, p_is_test: isTest, p_primary_contact_name: primaryContactName.trim() || null, p_primary_contact_email: primaryContactEmail.trim() });
-    if (error) throw error; if (!data?.id) throw new Error('Organization was created but no workspace was returned.'); await loadMemberships(session.user.id, data.id); return data;
+    const { data, error } = await supabase.rpc('begin_hangar_onboarding', {
+      p_name: name.trim(), p_organization_type: organizationType,
+      p_website_url: websiteUrl?.trim() || null,
+      p_primary_contact_name: primaryContactName?.trim() || null,
+      p_primary_contact_email: primaryContactEmail?.trim().toLowerCase() || null,
+      p_is_test: Boolean(isTest), p_source: source || 'eig_manual',
+    });
+    if (error) throw error;
+    if (data?.outcome === 'matches') return data;
+    if (data?.outcome !== 'created' || !data?.organization?.id)
+      throw new Error('No Hanger was returned by the onboarding service.');
+    // EIG uses its existing platform role. The new business receives no fake
+    // memberships or paid entitlements; Pilot access is granted only by invite.
+    await loadWorkspaceData(activeOrganizationId);
+    return data;
   }
 
   async function saveOrganizationProfile(form) {

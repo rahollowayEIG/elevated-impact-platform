@@ -137,6 +137,7 @@ export default function InceptionApex({
     [catalogDirty, setCatalogDirty] = useState(false),
     [catalogProduct, setCatalogProduct] = useState(null);
   const [resizerOpen, setResizerOpen] = useState(false);
+  const [resizerInitialPreset, setResizerInitialPreset] = useState("shopify-product");
   const [libraryOnly, setLibraryOnly] = useState(false);
   const [preview, setPreview] = useState(null);
   const [productsOpen, setProductsOpen] = useState(false),
@@ -608,7 +609,7 @@ export default function InceptionApex({
         </React.Suspense>
       ) : resizerOpen && canUseResizer ? (
         <React.Suspense fallback={<p role="status">Opening Auto Resizer…</p>}>
-          <AutoResizer allowed={canUseResizer} drive={resizerDrive} />
+          <AutoResizer key={resizerInitialPreset} allowed={canUseResizer} drive={resizerDrive} initialPresetId={resizerInitialPreset} />
         </React.Suspense>
       ) : planner ? (
         <EventPacketStudio event={planner} onDirtyChange={setPlannerDirty} />
@@ -985,6 +986,24 @@ export default function InceptionApex({
                   onChange={importBackup}
                 />
                 <section className="ia-materials" aria-label="Start a design">
+                  {canUseResizer && (
+                    <button
+                      type="button"
+                      className="ia-material ia-material-hometown"
+                      onClick={() => {
+                        setResizerInitialPreset("hometown-front");
+                        setResizerOpen(true);
+                        setError("");
+                        setNotice("");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      <span className="ia-material-code" aria-hidden="true">HM</span>
+                      <strong>Hometown Magazine</strong>
+                      <span>Seven print advertisement sizes · EIG only</span>
+                      <b>Open magazine ads</b>
+                    </button>
+                  )}
                   {MATERIALS.map((m) => (
                     <button
                       key={m.id}
@@ -1193,6 +1212,7 @@ export default function InceptionApex({
                       type="button"
                       className="platform-primary-button"
                       onClick={() => {
+                        setResizerInitialPreset("shopify-product");
                         setResizerOpen(true);
                         setNotice("");
                         setError("");

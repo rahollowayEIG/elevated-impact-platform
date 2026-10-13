@@ -3,6 +3,7 @@ import CreativeLinkControls from "./CreativeLinkControls.jsx";
 import { creativeLinkSvg, creativeLinkProblem } from "../lib/creativeLink.mjs";
 import {
   FLYER_FIELDS,
+  FLYER_FONTS,
   creativeBrief,
   flyerOverflow,
   flyerTemplate,
@@ -399,7 +400,7 @@ export default function FlyerEditor({
               />
               <text
                 fill={b.color}
-                fontFamily="Arial,sans-serif"
+                fontFamily={b.fontFamily || "Arial"}
                 fontSize={b.fontSize}
                 fontWeight={b.bold ? "700" : "400"}
                 textAnchor={
@@ -613,6 +614,12 @@ export default function FlyerEditor({
                   "Add this information in Event Details or the Hub."}
               </p>
             )}
+            <label>
+              Font family
+              <select aria-label="Font family" value={box.fontFamily || "Arial"} onChange={(e) => updateBox({ fontFamily: e.target.value })}>
+                {FLYER_FONTS.map((font) => <option key={font} value={font}>{font}</option>)}
+              </select>
+            </label>
             <div className="form-grid two">
               {[
                 ["X", "x", 0, design.width - box.width],

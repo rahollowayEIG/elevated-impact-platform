@@ -1,0 +1,25 @@
+name: Universal Scan Foundation
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/universalScan.mjs"
+      - "tests/universal-scan.test.mjs"
+      - "docs/Universal-Scan-Engine-Architecture.md"
+      - ".github/workflows/universal-scan.yml"
+  push:
+    paths:
+      - "src/lib/universalScan.mjs"
+      - "tests/universal-scan.test.mjs"
+      - "docs/Universal-Scan-Engine-Architecture.md"
+      - ".github/workflows/universal-scan.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/universal-scan.test.mjs

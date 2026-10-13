@@ -6,20 +6,20 @@ on:
       - "src/lib/universalScan.mjs"
       - "supabase/functions/_shared/universalScan.mjs"
       - "supabase/functions/ai-scan-preview/**"
-      - "tests/openai-scan-preview.test.mjs"
-      - "docs/Universal-Scan-OpenAI-Preview.md"
-      - "supabase/functions/_shared/universalScan.mjs"
-      - "supabase/functions/ai-scan-preview/**"
-      - "tests/openai-scan-preview.test.mjs"
-      - "docs/Universal-Scan-OpenAI-Preview.md"
       - "tests/universal-scan.test.mjs"
+      - "tests/openai-scan-preview.test.mjs"
       - "docs/Universal-Scan-Engine-Architecture.md"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
       - ".github/workflows/universal-scan.yml"
   push:
     paths:
       - "src/lib/universalScan.mjs"
+      - "supabase/functions/_shared/universalScan.mjs"
+      - "supabase/functions/ai-scan-preview/**"
       - "tests/universal-scan.test.mjs"
+      - "tests/openai-scan-preview.test.mjs"
       - "docs/Universal-Scan-Engine-Architecture.md"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
       - ".github/workflows/universal-scan.yml"
 
 jobs:

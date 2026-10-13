@@ -11,6 +11,7 @@ A company may enter through EIG Command Center, Hometown Magazine, sponsorships,
 ## First slice (PR #52)
 - EIG admins can create a **real, app-free Hanger** without inventing a customer user identity or being forced to invite a Pilot immediately.
 - The server, not only the browser, checks normalized company name and matching website under an advisory lock and refuses to create a duplicate on a hard match.
+- Newly created Hangers are **private by default in anonymous directory lookups**, even though EIG staff can work with their active workspace. The migration preserves the previous public visibility of existing active venues/businesses, and changes the default for future Hangers. A later explicit, authorized publish action can enable public discovery after approval.
 - It records the authenticated EIG actor, onboarding source and timestamp in a protected audit. The staff-supplied website is not described as AI-verified.
 - Optional Pilot invitation reuses the current `platform-invite` identity/verification path. The record survives an email failure so a retry does not provision another Hanger.
 - EIG can open the organization's Cockpit; an authenticated Pilot can access it after an authorized invite is accepted. No paid app entitlement is created by onboarding.

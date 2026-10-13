@@ -1,5 +1,24 @@
 -- Reuse public.organizations / public.organization_profiles. Do not create a second advertiser table.
 -- Database-side duplicate checks are mandatory even when the EIG UI preflights matches.
+
+-- Existing active public venue/business listings keep their old visibility.
+-- Newly provisioned Hangers start private until an authorized publishing action.
+-- Adding with DEFAULT true is a one-time backwards-compatible data migration;
+-- changing the default to false preserves existing records on subsequent runs.
+alter table public.organizations
+  add column if not exists public_directory_enabled boolean not null default true;
+alter table public.organizations
+  alter column public_directory_enabled set default false;
+
+drop policy if exists "Public can read active venue organizations" on public.organizations;
+create policy "Public can read active venue organizations" on public.organizations
+  for select to anon
+  using (
+    status = 'active' and
+    organization_type in ('business', 'golf_course', 'venue') and
+    public_directory_enabled = true
+  );
+
 create table if not exists public.hangar_onboarding_events (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -110,8 +129,8 @@ begin
     v_slug := v_base_slug || '-' || v_suffix::text;
   end loop;
 
-  insert into public.organizations (name, slug, organization_type, status, is_test, onboarding_status)
-  values (v_name, v_slug, v_type, 'active', coalesce(p_is_test, false), 'profile_incomplete')
+  insert into public.organizations (name, slug, organization_type, status, is_test, onboarding_status, public_directory_enabled)
+  values (v_name, v_slug, v_type, 'active', coalesce(p_is_test, false), 'profile_incomplete', false)
   returning * into v_org;
 
   insert into public.organization_profiles

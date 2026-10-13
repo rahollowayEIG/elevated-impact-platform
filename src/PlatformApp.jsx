@@ -16,6 +16,7 @@ import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAir
 import QRCode from 'qrcode';
 import HangarOnboarding from './components/HangarOnboarding.jsx';
 import CoreCockpitServices from './components/CoreCockpitServices.jsx';
+import { cleanHangarWebsite } from './lib/hangarOnboarding.mjs';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 
@@ -3166,7 +3167,7 @@ export default function App() {
     setDataError('');
     const { data, error } = await supabase.rpc('begin_hangar_onboarding', {
       p_name: name.trim(), p_organization_type: organizationType,
-      p_website_url: websiteUrl?.trim() || null,
+      p_website_url: websiteUrl ? cleanHangarWebsite(websiteUrl) : null,
       p_primary_contact_name: primaryContactName?.trim() || null,
       p_primary_contact_email: primaryContactEmail?.trim().toLowerCase() || null,
       p_is_test: Boolean(isTest), p_source: source || 'eig_manual',

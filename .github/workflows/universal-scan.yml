@@ -4,6 +4,14 @@ on:
   pull_request:
     paths:
       - "src/lib/universalScan.mjs"
+      - "supabase/functions/_shared/universalScan.mjs"
+      - "supabase/functions/ai-scan-preview/**"
+      - "tests/openai-scan-preview.test.mjs"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
+      - "supabase/functions/_shared/universalScan.mjs"
+      - "supabase/functions/ai-scan-preview/**"
+      - "tests/openai-scan-preview.test.mjs"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
       - "tests/universal-scan.test.mjs"
       - "docs/Universal-Scan-Engine-Architecture.md"
       - ".github/workflows/universal-scan.yml"
@@ -22,4 +30,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/universal-scan.test.mjs
+      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs

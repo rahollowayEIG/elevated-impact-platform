@@ -985,7 +985,25 @@ export default function InceptionApex({
                   aria-label="Import project backup file"
                   onChange={importBackup}
                 />
-                <section className="ia-materials" aria-label="Start a design">\n                  {canUseResizer && (\n                    <button\n                      type="button"\n                      className="ia-material ia-material-hometown"\n                      onClick={() => {\n                        setResizerInitialPreset("hometown-front");\n                        setResizerOpen(true);\n                        setError("");\n                        setNotice("");\n                        window.scrollTo({ top: 0, behavior: "smooth" });\n                      }}\n                    >\n                      <span className="ia-material-code" aria-hidden="true">HM</span>\n                      <strong>Hometown Magazine</strong>\n                      <span>Seven print advertisement sizes · EIG only</span>\n                      <b>Open magazine ads</b>\n                    </button>\n                  )}
+                <section className="ia-materials" aria-label="Start a design">
+                  {canUseResizer && (
+                    <button
+                      type="button"
+                      className="ia-material ia-material-hometown"
+                      onClick={() => {
+                        setResizerInitialPreset("hometown-front");
+                        setResizerOpen(true);
+                        setError("");
+                        setNotice("");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      <span className="ia-material-code" aria-hidden="true">HM</span>
+                      <strong>Hometown Magazine</strong>
+                      <span>Seven print advertisement sizes · EIG only</span>
+                      <b>Open magazine ads</b>
+                    </button>
+                  )}
                   {MATERIALS.map((m) => (
                     <button
                       key={m.id}

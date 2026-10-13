@@ -54,6 +54,7 @@ test("Hanger onboarding database function checks admin, exact duplicates, audit 
   try {
     await db.exec(await file("./fixtures/event-builder-base.sql"));
     await db.exec(`
+      alter table public.organizations alter column id set default gen_random_uuid();
       alter table public.organizations add column organization_type text not null default 'business';
       alter table public.organizations add column is_test boolean not null default false;
       alter table public.organizations add column onboarding_status text not null default 'profile_incomplete';

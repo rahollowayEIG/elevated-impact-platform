@@ -26,7 +26,7 @@ function make({enabled=true,authorized=true,fresh=true}={}){
      const rows=table==="inception_canva_oauth_states"?state.rows:table==="inception_canva_connections"?state.connections:table==="organization_memberships"?state.membership?[{organization_id:org,role:"eig_admin",status:"active",organization:{slug:"elevated-impact-group"}}]:[]:[];
      const filtered=rows.filter(r=>filters.every(f=>f(r)));
      if(op==="delete")filtered.forEach(r=>rows.splice(rows.indexOf(r),1));
-     if(op==="insert")rows.push(value);
+     if(op==="insert")rows.push({...value,consumed_at:null});
      if(op==="update")filtered.forEach(r=>Object.assign(r,value));
      if(op==="upsert"){const prev=rows.find(r=>r.actor_user_id===value.actor_user_id);if(prev)Object.assign(prev,value);else rows.push(value);}
      return {data:op==="update"&&usedSelect?filtered:rows,error:null};

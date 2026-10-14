@@ -77,3 +77,38 @@ No new Canva, Adobe Firefly, ElevenLabs, Runway, MapTiler, Cesium, camera or dro
 ### Later
 
 If Phase 2 passes, set budgets, decide included AI allowances for Creator/Creator Plus, and create explicit provider-by-provider usage limits. Connect ElevenLabs/Runway for optional narrated maps/social videos only when workflows and billing gates are implemented.
+
+## Proposed expansion: product photography and business-card intake (October 14, 2026)
+
+**Status: owner-proposed design only. Not implemented or deployed.** These workflows share the same Universal Scan source provenance, review, ownership, audit, and scoped authorization. They do not introduce separate scanner services or bypass the domain-owned transaction.
+
+### Product scan -> InceptionApex -> EIC -> authorized Shopify store
+
+**Goal:** Photograph/scan physical products, packaging or manufacturer/supplier material, prepare attractive store-ready artwork, then create or update a **draft** Shopify listing after merchant review.
+
+1. An EIG operator or authorized merchant uploads multiple angles, label/UPC photos, and/or a permissioned supplier catalog. Record source rights, merchant/Hangar/store and uploader; reject unauthorized catalogs.
+2. Extract only observed, evidence-backed facts (brand/product name, legible label text, GTIN/UPC, variant identifiers, known dimensions and materials). Match an existing EIC product/Shopify SKU or product before proposing a new one. A barcode isn't proof of inventory, price, ownership, or authenticity.
+3. Use InceptionApex to prepare non-destructive crops, lighting/background cleanup, storefront sizes, optional AI-generated lifestyle scenes, mockups and product image variants. Preserve original source images and label generated illustrations as such when needed. Do **not** invent labels, packaging, hardware specifications, colors, variants, endorsements or claims; preserve product fidelity. The merchant reviews each rendered image.
+4. EIC owns canonical products, verified SKUs/variants, stock, prices and commerce authority. InceptionApex owns generated creative and version approvals. Only a merchant-authorized Shopify Admin API connection can stage products/media. Verify live API scope, catalog mapping, current format requirements and image rights before implementation.
+5. On explicit approval, send only authorized media and independently verified fields to the connected store as a **draft** or as reviewed changes to a matched item. Do not publish, change stock or prices, submit orders or message customers automatically. Record approver, version and Shopify object IDs; retries must not duplicate listings or assets.
+
+Candidate future scanner destination: \`product_media_intake\`. Reuse existing \`product_catalog\` for catalog facts where valid, but do not expand the committed schema until EIC/Shopify adapter validation and merchant approval UI exist.
+
+### Business-card scan -> organization/contact CRM intake
+
+**Goal:** Scan the front/back of a physical card (one or many) and propose new or updated **business contacts**. Possible uses: EIG leads, Hangar relationships, sponsors, vendors, event partners and EIG/organization-managed contact directories.
+
+1. OCR evidence-backed card fields: person name, job title, organization, work phone, email, website, postal address and printed socials, with an image reference and confidence/ambiguity flags. Missing data stays missing. Never infer sensitive data or a verified email from a card.
+2. Perform **search before create** for the canonical organization and existing contact/person. A card may be a contact record, not an ElevationPilot login. Follow \`ElevationPilot-User-Identity-Rules.md\`: one canonical person identity where verified, \`person_id\` remains immutable; weak name-only matches are reviewed, never merged automatically.
+3. Review proposed organization match (existing Hangar, external prospect company or unclaimed business), proposed person/contact match, selected Hangar/EIG contact-list ownership and relationship (sales lead, vendor, sponsor, collaborator, etc.). A card belonging to a company must not silently provision a Hangar or grant a Pilot/Co-Pilot role.
+4. Only after authorized human approval, add or update a **scoped CRM/contact** record with provenance and contact relationships; keep canonical login/account identity separate. Never create user credentials, send account invitations, issue Squawk messages or start marketing outreach merely because a business card was scanned.
+5. Store card images and contact details privately, with fine-grained permissions, retention/deletion policy and auditable changes. Add opt-in or other appropriate permission checks for outreach and comply with applicable marketing/privacy requirements. Business-card possession alone is not blanket consent for automated marketing.
+
+Candidate future scanner destination: \`business_card_contact\`. Before implementing, confirm whether users want the destination to be **EIG-only contacts**, **Hangar-shared contacts**, or both with explicit ownership and sharing controls. Reuse platform user management and canonical organizations; do not create a parallel identity table or globally visible contact book.
+
+### Common guardrails and staging
+
+- Single "Scan & Create" entry point chooses a target, resolves **who owns the resulting records**, and shows a common review step. Support batch intake later with per-item duplicate flags and independent approvals.
+- Restrict pilot testing to consented/EIG-owned product photographs and synthetic business cards; no real contact data in prompts or test fixtures until access, retention, provider processing and staging are reviewed.
+- Existing failed preview branch was deleted October 13. Resolve production migration-history bootstrap before provisioning another billable staging branch. No production DB changes for this proposal.
+- Release order: text extraction and authorized review -> product photo intake/creative variants -> Shopify draft adapter -> contact-card extraction and scoped contact directory -> batch capture. The two workflows may be piloted in either order once their domain validators are ready.

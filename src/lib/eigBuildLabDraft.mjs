@@ -3,10 +3,11 @@
 // boundary or multi-device/cloud persistence. Owner authorization stays on
 // the server. Each preview origin has separate browser storage.
 import { BUILD_LAB_MODES, BUILD_LAB_REUSE, restoreBuildBlueprint } from "./eigBuildArchitect.mjs";
+import { validateInceptionSourceReport } from "./eigBuildLabScanClient.mjs";
 
 const OWNER_UID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DRAFT_VERSION = 1;
-const MAX_BYTES = 70000;
+const MAX_BYTES = 110000;
 const LIMITS = Object.freeze({
   name: 100,
   goal: 2000,
@@ -55,7 +56,38 @@ function cleanEditor(blueprint, editing, editValue) {
   };
 }
 
-export function saveBuildLabDraft(storage, ownerUserId, { brief, blueprint, editing = "", editValue = "" }) {
+function cleanScanState(scanReport, scanReviews = {}, scanEditing = "", scanEditValue = "") {
+  let report = null;
+  try {
+    if (scanReport && JSON.stringify(scanReport).length <= 30000)
+      report = validateInceptionSourceReport(scanReport);
+  } catch { /* Discard stale or tampered local scan data; never invent evidence. */ }
+  const allowed = new Set(report?.findings.map((item) => item.id) || []);
+  const reviews = {};
+  if (scanReviews && typeof scanReviews === "object" && !Array.isArray(scanReviews)) {
+    for (const [id, decision] of Object.entries(scanReviews)) {
+      if (!allowed.has(id) || !["accept", "edit", "reject"].includes(decision?.review)) continue;
+      if (decision.review === "edit" &&
+          (typeof decision.editedDetail !== "string" ||
+           !decision.editedDetail.trim() || decision.editedDetail.length > 1500)) continue;
+      reviews[id] = {
+        review: decision.review,
+        editedDetail: decision.review === "edit" ? decision.editedDetail : null,
+      };
+    }
+  }
+  return {
+    scanReport: report, scanReviews: reviews,
+    scanEditing: allowed.has(scanEditing) ? scanEditing : "",
+    scanEditValue: allowed.has(scanEditing) && typeof scanEditValue === "string" &&
+      scanEditValue.length <= 1500 ? scanEditValue : "",
+  };
+}
+
+export function saveBuildLabDraft(storage, ownerUserId, {
+  brief, blueprint, editing = "", editValue = "",
+  scanReport = null, scanReviews = {}, scanEditing = "", scanEditValue = "",
+}) {
   const key = buildLabDraftStorageKey(ownerUserId);
   if (!storage || typeof storage.setItem !== "function")
     throw new Error("Browser storage is unavailable.");
@@ -65,9 +97,10 @@ export function saveBuildLabDraft(storage, ownerUserId, { brief, blueprint, edit
   const safeBlueprint = blueprint
     ? restoreBuildBlueprint(JSON.stringify(blueprint)) : null;
   const clean = cleanEditor(safeBlueprint, editing, editValue);
+  const scan = cleanScanState(scanReport, scanReviews, scanEditing, scanEditValue);
   const serialized = JSON.stringify({
     kind: "eig_build_lab_browser_draft", version: DRAFT_VERSION,
-    brief: safeBrief, blueprint: safeBlueprint, ...clean,
+    brief: safeBrief, blueprint: safeBlueprint, ...clean, ...scan,
   });
   if (serialized.length > MAX_BYTES)
     throw new Error("Draft is too large for browser autosave. Export the JSON instead.");
@@ -91,7 +124,10 @@ export function loadBuildLabDraft(storage, ownerUserId) {
       try { blueprint = restoreBuildBlueprint(JSON.stringify(saved.blueprint)); }
       catch { /* Recover the valid partial form even if the blueprint is stale. */ }
     }
-    return { brief, blueprint, ...cleanEditor(blueprint, saved.editing, saved.editValue) };
+    return {
+      brief, blueprint, ...cleanEditor(blueprint, saved.editing, saved.editValue),
+      ...cleanScanState(saved.scanReport, saved.scanReviews, saved.scanEditing, saved.scanEditValue),
+    };
   } catch {
     // Corrupt or incompatible drafts should never crash the owner-only app.
     return null;

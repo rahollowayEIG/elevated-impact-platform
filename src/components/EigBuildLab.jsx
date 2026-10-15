@@ -86,7 +86,7 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
   }
   function decide(id, action, value = "") {
     try {
-      setBlueprint((current) => reviewBuildSuggestion(current, id, action, value));
+      setBlueprint(reviewBuildSuggestion(blueprint, id, action, value));
       setChangeCount((n) => n + 1);
       setEditing(""); setError(""); setNotice("");
     } catch (e) { setError(e.message); }
@@ -98,8 +98,10 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
       ? JSON.stringify(blueprint, null, 2)
       : renderBuildBlueprintMarkdown(blueprint);
     saveLocalText(content, name + (format === "json" ? ".json" : ".md"), format === "json" ? "application/json" : "text/markdown");
-    setExportedCount(changeCount);
-    setNotice("Exported to your computer. This pilot does not save projects to the server.");
+    if (format === "json") setExportedCount(changeCount);
+    setNotice(format === "json"
+      ? "Reusable JSON blueprint exported to your computer. This pilot does not save to a server."
+      : "Readable blueprint exported. Download reusable JSON too if you want to reopen and edit this version later.");
   }
   async function importFile(event) {
     const file = event.target.files?.[0];

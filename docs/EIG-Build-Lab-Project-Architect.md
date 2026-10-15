@@ -86,3 +86,8 @@ The goal is measurable time saved, fewer duplicate implementations, less frictio
 
 **Important limitation:** React client bundles are delivered to the browser, so a determined person inspecting public build assets may find non-sensitive UI code even when its entry is hidden. The server-side owner check protects the privileged access and every future server data/AI/build action must enforce it separately. This first pilot has no sensitive backend operations.
 
+
+
+## Continuous Improvement Agent and weekly scans
+
+Owner priority: evolve Build Lab from a manual Project Architect into a proactive, **owner-only continuous-improvement agent**. It will eventually examine permissioned EIG code, tests, UI, workflows and changes in the background, then present a deduplicated, evidence-linked **weekly improvement scan** for the owner to review. It may suggest reusable engines, cosmetic/UX refinements and functional fixes; it must never silently merge, deploy, access unapproved customer data or incur uncapped AI costs. See [EIG-Build-Lab-Continuous-Improvement-Agent.md](./EIG-Build-Lab-Continuous-Improvement-Agent.md) for staged implementation and safety gates. **Design only:** no scheduler, monitoring job or AI usage is active yet. The first MVP is a no-AI read-only repo/CI scanner and an InceptionApex UI pilot; the weekly schedule comes after owner selection and implementation.

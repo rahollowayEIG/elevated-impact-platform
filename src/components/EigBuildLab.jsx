@@ -97,8 +97,12 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
     setBrief((current) => ({ ...current, [field]: value }));
     setNotice(""); setError("");
   }
+  function hasWorkToReplace() {
+    return Boolean(blueprint) || Object.entries(brief).some(([key, value]) =>
+      key !== "mode" && key !== "reuse" && typeof value === "string" && value.trim().length > 0);
+  }
   function startExample() {
-    if ((blueprint || brief.name.trim()) &&
+    if (hasWorkToReplace() &&
         !window.confirm("Replace your current browser-saved draft with the InceptionApex example? Download reusable JSON first if you want to keep the current project.")) return;
     setBrief(EIG_PILOT);
     setBlueprint(null);
@@ -107,7 +111,7 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
     setError("");
   }
   function startFresh() {
-    if ((blueprint || brief.name.trim()) &&
+    if (hasWorkToReplace() &&
         !window.confirm("Start a new Build Lab project? This replaces your current locally saved draft. Download reusable JSON first if you want to keep it.")) return;
     setBrief({ ...BL_EMPTY_BRIEF });
     setBlueprint(null); setEditing(""); setEditValue("");

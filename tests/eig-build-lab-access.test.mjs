@@ -166,14 +166,18 @@ test("client navigation requires the exact current session and successful server
   ]) assert.equal(ownerPreviewVisible({ ...standard, ...changes }), false);
 });
 
-test("client treats absent/failing/forged backend responses as denied", async () => {
+test("client treats absent/failing/forged preview responses as denied", async () => {
+  const client = { auth: { getSession: async () => ({ data: { session: { access_token: "verified-test-token" } } }) } };
   assert.equal(await requestOwnerBuildLabAccess(null), false);
-  assert.equal(await requestOwnerBuildLabAccess({ functions: { invoke: async () => ({ error: new Error("error"), data: { allowed: true } }) } }), false);
-  assert.equal(await requestOwnerBuildLabAccess({ functions: { invoke: async () => ({ data: { allowed: true } }) } }), false);
-  assert.equal(await requestOwnerBuildLabAccess({ functions: { invoke: async () => { throw new Error("down"); } } }), false);
-  assert.equal(await requestOwnerBuildLabAccess({ functions: { invoke: async (name, opts) => {
-    assert.equal(name, "eig-build-lab-access");
-    assert.deepEqual(opts.body, { action: "check" });
-    return { data: { allowed: true, access: "build_lab_owner_only" } };
-  } } }), true);
+  assert.equal(await requestOwnerBuildLabAccess({ auth: { getSession: async () => ({ data: { session: null } }) } }), false);
+  assert.equal(await requestOwnerBuildLabAccess(client, async () => ({ ok: false, json: async () => ({ allowed: true }) })), false);
+  assert.equal(await requestOwnerBuildLabAccess(client, async () => ({ ok: true, json: async () => ({ allowed: true }) })), false);
+  assert.equal(await requestOwnerBuildLabAccess(client, async () => { throw new Error("network down"); }), false);
+  assert.equal(await requestOwnerBuildLabAccess(client, async (path, options) => {
+    assert.equal(path, "/api/eig-build-lab-access");
+    assert.equal(options.method, "POST");
+    assert.equal(options.headers.Authorization, "Bearer verified-test-token");
+    assert.equal(options.cache, "no-store");
+    return { ok: true, json: async () => ({ allowed: true, access: "build_lab_owner_only" }) };
+  }), true);
 });

@@ -3540,7 +3540,7 @@ export default function App() {
             : isEigAdminWorkspace
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} />
                 : adminView === 'build_lab' && buildLabAllowed
-                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} /></React.Suspense>
+                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} /></React.Suspense>
                   : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : null} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />

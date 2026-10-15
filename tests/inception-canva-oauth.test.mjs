@@ -37,7 +37,7 @@ function make({enabled=true,authorized=true,fresh=true}={}){
  const env=name=>({INCEPTION_CANVA_OAUTH_ENABLED:enabled?"true":"false",INCEPTION_CANVA_APP_ORIGIN:origin,INCEPTION_CANVA_REDIRECT_URI:callback,CANVA_CLIENT_ID:"client-fixture",CANVA_CLIENT_SECRET:"secret-fixture",CANVA_OAUTH_ENCRYPTION_KEY:Buffer.alloc(32,7).toString("base64url")})[name];
  const http=async(url,options={})=>{state.calls.push({url,options});if(url.includes("/oauth/token"))return state.tokenOK?Response.json({access_token:"private-access",refresh_token:"private-refresh",expires_in:3600,token_type:"Bearer",scope:state.scopes}):new Response(null,{status:401});if(url.includes("/users/me"))return Response.json({team_user:{user_id:"canva-fixture",team_id:"team-fixture"}});return new Response(null,{status:500});};
  const handle=createCanvaOAuthHandler({admin,env,crypt:webcrypto,http,now:()=>state.now});
- const post=(withOrigin=origin,withAuth=bearer)=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth",{method:"POST",headers:{"Origin":withOrigin,...(withAuth?{"Authorization":"Bearer "+withAuth}:{})}}));
+ const post=(withOrigin=origin,withAuth=bearer,action="connect")=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth",{method:"POST",headers:{"Origin":withOrigin,"Content-Type":"application/json",...(withAuth?{"Authorization":"Bearer "+withAuth}:{})},body:JSON.stringify({action})}));
  const cb=(stateParam,code="fixture-code")=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth?state="+encodeURIComponent(stateParam)+"&code="+encodeURIComponent(code)));
  return {state,post,cb,handle};
 }
@@ -74,4 +74,24 @@ test("expired, canceled, denied scopes and revoked sessions fail without saving 
  revoked.state.guard=false;assert.equal((await revoked.cb(z)).status,403);assert.equal(revoked.state.calls.length,0);
  const canceled=make();const y=await (await canceled.post()).json(),c=new URL(y.authorization_url).searchParams.get("state");
  assert.equal((await canceled.cb(c,"")).status,400);assert.equal(canceled.state.calls.length,0);
+});
+
+test("connection status checks existing identity and never exposes credentials",async()=>{
+ const f=make();
+ const before=await f.post(origin,bearer,"status");
+ assert.equal(before.status,200);
+ assert.deepEqual(await before.json(),{connected:false,connected_at:null});
+ assert.equal(f.state.rows.length,0);
+ assert.equal(f.state.calls.length,0);
+ const begin=await (await f.post()).json();
+ const oauthState=new URL(begin.authorization_url).searchParams.get("state");
+ assert.equal((await f.cb(oauthState)).status,200);
+ const after=await f.post(origin,bearer,"status");
+ assert.equal(after.status,200);
+ const data=await after.json();
+ assert.equal(data.connected,true);
+ assert.doesNotMatch(JSON.stringify(data),/refresh|private|canva-fixture/);
+ assert.equal((await f.post(origin,null,"status")).status,401);
+ assert.equal((await f.post("https://evil.test",bearer,"status")).status,403);
+ assert.equal((await f.post(origin,bearer,"unexpected")).status,400);
 });

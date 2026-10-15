@@ -71,7 +71,7 @@ test("expired, canceled, denied scopes and revoked sessions fail without saving 
  const denied=make();const d=await (await denied.post()).json(),v=new URL(d.authorization_url).searchParams.get("state");
  denied.state.scopes="profile:read";assert.equal((await denied.cb(v)).status,403);assert.equal(denied.state.connections.length,0);
  const revoked=make();const k=await (await revoked.post()).json(),z=new URL(k.authorization_url).searchParams.get("state");
- revoked.state.guard=false;assert.equal((await revoked.cb(z)).status,500);assert.equal(revoked.state.calls.length,0);
+ revoked.state.guard=false;assert.equal((await revoked.cb(z)).status,403);assert.equal(revoked.state.calls.length,0);
  const canceled=make();const y=await (await canceled.post()).json(),c=new URL(y.authorization_url).searchParams.get("state");
  assert.equal((await canceled.cb(c,"")).status,400);assert.equal(canceled.state.calls.length,0);
 });

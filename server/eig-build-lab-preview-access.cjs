@@ -31,32 +31,37 @@ function response(res, status, body) {
   res.status(status).json(body);
 }
 
-function createBuildLabPreviewAccessHandler({ verifyUser, membershipsForUser, env, now = Date.now }) {
+// Reused by *every* protected Build Lab server operation. A positive result
+// from the browser's panel gate is never authorization for a scanner read.
+async function authorizeBuildLabPreviewOwner(req, { verifyUser, membershipsForUser, env, now = Date.now }) {
+  const origin = req?.headers?.origin;
+  const host = req?.headers?.host;
+  if (!origin || !host || origin !== "https://" + host) return { allowed: false, status: 403 };
+  if (req.method !== "POST") return { allowed: false, status: 405 };
+  if (!serverReady(env)) return { allowed: false, status: 403 };
+  const auth = req.headers.authorization || "";
+  const match = typeof auth === "string" && /^Bearer\s+(.+)$/i.exec(auth);
+  if (!match || match[1].length > 4096) return { allowed: false, status: 401 };
+  try {
+    const user = await verifyUser(match[1]);
+    const owner = (env("EIG_BUILD_LAB_OWNER_USER_ID") || "").trim().toLowerCase();
+    if (!user?.id || String(user.id).toLowerCase() !== owner)
+      return { allowed: false, status: 403 };
+    const result = await membershipsForUser(user.id, match[1]);
+    if (result?.error || !(result?.data || []).some((m) => currentEIGAdmin(m, now())))
+      return { allowed: false, status: 403 };
+    return { allowed: true, status: 200 };
+  } catch {
+    return { allowed: false, status: 403 };
+  }
+}
+
+function createBuildLabPreviewAccessHandler(deps) {
   return async (req, res) => {
-    // A sibling Vercel API route should only accept same-origin browser calls.
-    // No wildcard CORS; host is controlled by Vercel's deployment routing.
-    const origin = req.headers.origin;
-    const host = req.headers.host;
-    if (!origin || !host || origin !== "https://" + host)
-      return response(res, 403, { allowed: false });
-    if (req.method !== "POST") return response(res, 405, { allowed: false });
-    if (!serverReady(env)) return response(res, 403, { allowed: false });
-    const auth = req.headers.authorization || "";
-    const match = typeof auth === "string" && /^Bearer\s+(.+)$/i.exec(auth);
-    if (!match || match[1].length > 4096) return response(res, 401, { allowed: false });
-    try {
-      const user = await verifyUser(match[1]);
-      const owner = (env("EIG_BUILD_LAB_OWNER_USER_ID") || "").trim().toLowerCase();
-      if (!user?.id || String(user.id).toLowerCase() !== owner)
-        return response(res, 403, { allowed: false });
-      const result = await membershipsForUser(user.id, match[1]);
-      if (result?.error || !(result?.data || []).some((m) => currentEIGAdmin(m, now())))
-        return response(res, 403, { allowed: false });
-      return response(res, 200, { allowed: true, access: "build_lab_owner_only" });
-    } catch {
-      return response(res, 403, { allowed: false });
-    }
+    const grant = await authorizeBuildLabPreviewOwner(req, deps);
+    return response(res, grant.status,
+      grant.allowed ? { allowed: true, access: "build_lab_owner_only" } : { allowed: false });
   };
 }
 
-module.exports = { createBuildLabPreviewAccessHandler };
+module.exports = { createBuildLabPreviewAccessHandler, authorizeBuildLabPreviewOwner, response };

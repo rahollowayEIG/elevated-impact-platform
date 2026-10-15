@@ -100,6 +100,19 @@ const fs = require("node:fs/promises");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: "test-results/eig-build-lab/review-mobile.png", fullPage: true });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+    // Also preserve a partially typed mission before Generate is clicked.
+    const partial = await browser.newPage({ viewport: { width: 950, height: 850 } });
+    await partial.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
+    await partial.getByLabel("Project name").fill("Draft without a blueprint");
+    await partial.getByLabel("Goal and definition of success").fill("Save this unfinished idea too.");
+    await partial.getByRole("button", { name: /EIG Command Center/ }).click();
+    await partial.getByRole("button", { name: "Return to Build Lab" }).click();
+    assert.equal(await partial.getByLabel("Project name").inputValue(), "Draft without a blueprint");
+    assert.equal(await partial.getByLabel("Goal and definition of success").inputValue(), "Save this unfinished idea too.");
+    await partial.reload();
+    assert.equal(await partial.getByLabel("Project name").inputValue(), "Draft without a blueprint");
+    assert.equal(await partial.getByRole("button", { name: "Download reusable JSON" }).count(), 0);
+    await partial.close();
     assert.deepEqual(errors, []);
     console.log("Build Lab browser pilot passed.");
   } finally {

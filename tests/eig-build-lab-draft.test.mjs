@@ -1,4 +1,7 @@
 import test from "node:test";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const { readAllowlistedInceptionSource, scanInceptionSource } = require("../server/eig-inception-source-scan.cjs");
 import assert from "node:assert/strict";
 import { createBuildBlueprint, reviewBuildSuggestion } from "../src/lib/eigBuildArchitect.mjs";
 import {
@@ -122,4 +125,44 @@ test("different Vercel preview origins require JSON export for transfer", () => 
   saveBuildLabDraft(one, OWNER, { brief: brief(), blueprint: createBuildBlueprint(brief()) });
   assert.equal(loadBuildLabDraft(two, OWNER), null);
   assert.ok(loadBuildLabDraft(one, OWNER).blueprint);
+});
+
+
+test("autosave retains evidence-backed scanner report and accepted/revised findings across return", () => {
+  const storage = fakeStorage();
+  const report = scanInceptionSource(readAllowlistedInceptionSource());
+  const reviews = {
+    "ia-native-confirm": { review: "accept", editedDetail: null },
+    "ia-form-focus": { review: "edit", editedDetail: "Test visible focus on inputs and selects." },
+    "not-allowed": { review: "accept", editedDetail: null },
+  };
+  saveBuildLabDraft(storage, OWNER, {
+    brief: brief(), blueprint: null,
+    scanReport: report, scanReviews: reviews,
+    scanEditing: "ia-design-tabs",
+    scanEditValue: "Half-written accessibility note",
+  });
+  const restored = loadBuildLabDraft(storage, OWNER);
+  assert.equal(restored.scanReport.sourceFingerprint, report.sourceFingerprint);
+  assert.equal(restored.scanReport.findings.length, report.findings.length);
+  assert.equal(restored.scanReviews["ia-native-confirm"].review, "accept");
+  assert.equal(restored.scanReviews["ia-form-focus"].editedDetail, "Test visible focus on inputs and selects.");
+  assert.equal(restored.scanReviews["not-allowed"], undefined);
+  assert.equal(restored.scanEditing, "ia-design-tabs");
+  assert.equal(restored.scanEditValue, "Half-written accessibility note");
+  assert.equal(loadBuildLabDraft(storage, OTHER), null);
+});
+
+test("corrupted scanner local data is not promoted to observations on restore", () => {
+  const storage = fakeStorage();
+  const report = scanInceptionSource(readAllowlistedInceptionSource());
+  const altered = { ...report, sourceFingerprint: "not-real" };
+  saveBuildLabDraft(storage, OWNER, {
+    brief: brief(), blueprint: null,
+    scanReport: altered, scanReviews: { "ia-native-confirm": { review: "accept" } },
+  });
+  const restored = loadBuildLabDraft(storage, OWNER);
+  assert.equal(restored.scanReport, null);
+  assert.deepEqual(restored.scanReviews, {});
+  assert.equal(restored.brief.name, "InceptionApex UI review");
 });

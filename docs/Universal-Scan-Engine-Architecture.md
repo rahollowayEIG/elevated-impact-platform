@@ -112,3 +112,50 @@ Candidate future scanner destination: \`business_card_contact\`. Before implemen
 - Restrict pilot testing to consented/EIG-owned product photographs and synthetic business cards; no real contact data in prompts or test fixtures until access, retention, provider processing and staging are reviewed.
 - Existing failed preview branch was deleted October 13. Resolve production migration-history bootstrap before provisioning another billable staging branch. No production DB changes for this proposal.
 - Release order: text extraction and authorized review -> product photo intake/creative variants -> Shopify draft adapter -> contact-card extraction and scoped contact directory -> batch capture. The two workflows may be piloted in either order once their domain validators are ready.
+
+
+## EIG Build Lab: scan apps, functionality and ideas (October 15, 2026)
+
+**Owner direction:** Build the ultimate EIG scanner early as a reusable tool that helps plan, critique and improve each new ElevationPilot app and extension, alongside the existing document/product-scanning use cases. This is a **Phase 0 draft contract and planning direction**, not a live app crawler, AI agent, workflow recorder, or code-deployment engine.
+
+### Four connected tools
+
+| Mode | Authorized inputs | Useful output | Verification boundary |
+| --- | --- | --- | --- |
+| **Scan an app** | User-supplied screens, reachable public pages, documented UI and authorized code | Screen inventory, navigation diagram, field map, apparent features and omissions | Screen appearances alone cannot prove hidden business rules |
+| **Scan functionality** | Consent-based walkthrough recordings, tested actions/results, test logs, official API docs, authorized repo code | Workflow traces, state transitions, test cases, likely implementation requirements | Guesses are inferred until verified in a real interaction or code/test review |
+| **Scan an idea** | Sketches, transcripts, briefs, drawings, photos, notes and example concepts | Creative options, features, user stories, open questions and reusable patterns | AI suggestions remain proposed until EIG explicitly reviews them |
+| **Build assistant** | Reviewed findings plus authorized EIG project knowledge and component/app registry | Draft functional blueprint, feature comparison, reused components, risks, implementation phases, acceptance tests | No automatic PRs, database writes, purchases, or live deployments |
+
+### Repeatable workflow
+
+1. Select the owning ElevationPilot app or extension, its software version and scope. Record the source's date/version and permissions.
+2. Bring authorized evidence. A user can upload screenshots, sketches, consented recordings and docs. A website/code adapter can be added later with explicit consent and controlled access, never by bypassing security.
+3. Separate **observed** visible screens and interactions from **inferred** functionality and **proposed** enhancements. Link each candidate to a bounded source locator; note uncertain and unverified behavior.
+4. Ask what works, what feels cumbersome, how the interface could improve, which features help other event types, and what can be generalized into a reusable shared extension.
+5. Search the EIG Platform Registry and owning app before proposing duplicates. Reuse permanent person identity, organization/Hangar provisioning, role/entitlements, Event Builder, InceptionApex, EIC, and Scan Engine adapters.
+6. Prepare a draft design and build blueprint: workflows/screens, observed vs proposed functionality, data/ownership, APIs, tests, edge cases, privacy/permissions, failure handling, dependencies, cost and staged plan.
+7. EIG reviews, edits, accepts or rejects each finding and selects a build approach. The owning domain validates it separately. Only separately approved developer tools can later create draft development issues/PRs, with isolated CI/review before production.
+8. Preserve evidence, decisions, findings and approved patterns by version so the next feature benefits from previous work without copying private third-party data or proprietary implementation.
+
+### Phase 0 shared contract
+
+A new **app_blueprint** scan destination belongs to EIG Build Lab. Its permitted record categories are observed_screen, observed_interaction, behavior_hypothesis, workflow_gap, proposed_feature, build_task, and open_question. Every field must have evidence, a defined classification (observed, inferred or proposed) and a human accept/edit/reject decision.
+
+Observed interaction claims require a recording source reference. A server must still authenticate actors, confirm provenance and source authorization, and validate any observed behavior before trusting it. A screen-only scan must never turn a guessed server action into a verified outcome.
+
+The current Phase 0 contract remains pure: no upload processing, recording implementation, OCR, AI extraction, browsing, PR generation, storage, automatic learning, or production execution. The approved output is a reviewable **requires_domain_validation** blueprint handoff, not runnable code.
+
+### Initial EIG pilot recommendation
+
+Start with our own **InceptionApex flyer and Event Builder workflows** because EIG controls the code, screenshots and test environment. Generate a verified feature map and enhancement proposal, then repeat with a permissioned **Golf Genius** UI reference, preserving exactly which behavior was actually observed. Other targets: supplier product onboarding, scorecards, business cards, ticketing and event operations.
+
+Build the **ultimate EIG Studio** first and learn from each internal pilot. Later Creator and Creator Plus editions come from versioned capabilities and centrally resolved onboarding entitlements, not separately duplicated scanners. Share patterns and approved templates, not another customer's underlying records or access.
+
+### Safety and release gates
+
+- Only public/permissioned app content, authorized accounts and consented recordings; never bypass paywalls, login restrictions or anti-bot defenses, or copy competitor code/assets.
+- Keep credentials, access tokens, private customer data and unauthorized documents out of scans/prompts. Maintain source provenance, privacy, access and retention controls.
+- Treat copied patterns as inspiration, not an assertion about the external app's complete functionality. Report uncertainties and test gaps honestly.
+- Respect the existing incomplete Supabase migration baseline; do not create a billable branch or modify production until staged migration history and permissions are reviewed.
+- Next implementation is an **EIG-only review panel and controlled source intake** in an isolated environment, followed by permissioned extraction and ideation, not autonomous deployment.

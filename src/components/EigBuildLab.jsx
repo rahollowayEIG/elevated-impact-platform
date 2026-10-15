@@ -3,12 +3,9 @@ import {
   BUILD_LAB_MODES, BUILD_LAB_REUSE, createBuildBlueprint,
   renderBuildBlueprintMarkdown, restoreBuildBlueprint, reviewBuildSuggestion, suggestBuildRevision,
 } from "../lib/eigBuildArchitect.mjs";
+import { BL_EMPTY_BRIEF, loadBuildLabDraft, saveBuildLabDraft } from "../lib/eigBuildLabDraft.mjs";
 import "./eig-build-lab.css";
 
-const EMPTY_BRIEF = {
-  name: "", goal: "", audience: "", currentProcess: "",
-  referenceNotes: "", mode: "new_feature", reuse: "several",
-};
 const EIG_PILOT = {
   name: "InceptionApex UI & Workflow Improvement",
   goal: "Make the flyer studio easier for an EIG administrator to understand, customize, save, approve and reopen on desktop and phone.",
@@ -36,58 +33,98 @@ function SectionHeading({ number, title, description }) {
   return <div className="bl-heading"><span className="bl-number">{number}</span><div><h2>{title}</h2><p>{description}</p></div></div>;
 }
 
-export default function EigBuildLab({ onBack, onDirtyChange }) {
-  const [brief, setBrief] = useState(EMPTY_BRIEF);
-  const [blueprint, setBlueprint] = useState(null);
+export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
+  const [restoredDraft] = useState(() => {
+    try { return loadBuildLabDraft(window.localStorage, ownerUserId); }
+    catch { return null; }
+  });
+  const [brief, setBrief] = useState(() => restoredDraft?.brief || { ...BL_EMPTY_BRIEF });
+  const [blueprint, setBlueprint] = useState(() => restoredDraft?.blueprint || null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [editing, setEditing] = useState("");
-  const [editValue, setEditValue] = useState("");
-  const [changeCount, setChangeCount] = useState(0);
-  const [exportedCount, setExportedCount] = useState(0);
+  const [notice, setNotice] = useState(() =>
+    restoredDraft ? "Restored your browser-saved draft, including earlier review decisions." : "");
+  const [editing, setEditing] = useState(() => restoredDraft?.editing || "");
+  const [editValue, setEditValue] = useState(() => restoredDraft?.editValue || "");
+  const [saveStatus, setSaveStatus] = useState("pending");
   const uploadRef = useRef(null);
-  const dirty = changeCount !== exportedCount;
+  const needsBackup = saveStatus === "error";
+
+  function saveSnapshot() {
+    try {
+      saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue });
+      setSaveStatus("saved");
+      return true;
+    } catch {
+      setSaveStatus("error");
+      return false;
+    }
+  }
+
+  // Persist every change in browser storage under the current owner's login.
+  // This is independent of JSON export and survives leaving the React page,
+  // refreshing, or opening this *same preview origin* in a new tab.
+  useEffect(() => {
+    saveSnapshot();
+  }, [brief, blueprint, editing, editValue, ownerUserId]);
 
   useEffect(() => {
-    onDirtyChange?.(dirty);
+    onDirtyChange?.(needsBackup);
     return () => onDirtyChange?.(false);
-  }, [dirty, onDirtyChange]);
+  }, [needsBackup, onDirtyChange]);
+
   useEffect(() => {
     const beforeUnload = (event) => {
-      if (!dirty) return;
-      event.preventDefault();
-      event.returnValue = "";
+      try {
+        saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue });
+      } catch {
+        event.preventDefault();
+        event.returnValue = "";
+      }
     };
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [dirty]);
+  }, [brief, blueprint, editing, editValue, ownerUserId]);
+
+  function handleBack() {
+    if (!saveSnapshot()) {
+      setNotice("Browser autosave is unavailable. Download reusable JSON before leaving.");
+      return;
+    }
+    onBack?.();
+  }
 
   function update(field, value) {
     setBrief((current) => ({ ...current, [field]: value }));
-    setChangeCount((n) => n + 1);
     setNotice(""); setError("");
   }
   function startExample() {
+    if ((blueprint || brief.name.trim()) &&
+        !window.confirm("Replace your current browser-saved draft with the InceptionApex example? Download reusable JSON first if you want to keep the current project.")) return;
     setBrief(EIG_PILOT);
     setBlueprint(null);
-    setEditing("");
-    setChangeCount((n) => n + 1);
-    setNotice("EIG-owned pilot example loaded. Generate a blueprint to begin.");
+    setEditing(""); setEditValue("");
+    setNotice("EIG-owned pilot example loaded and will be saved in this browser.");
+    setError("");
+  }
+  function startFresh() {
+    if ((blueprint || brief.name.trim()) &&
+        !window.confirm("Start a new Build Lab project? This replaces your current locally saved draft. Download reusable JSON first if you want to keep it.")) return;
+    setBrief({ ...BL_EMPTY_BRIEF });
+    setBlueprint(null); setEditing(""); setEditValue("");
+    setNotice("New empty project created. Your changes will save in this browser.");
     setError("");
   }
   function generate(event) {
     event.preventDefault();
     try {
       const next = createBuildBlueprint(brief, { revision: (blueprint?.version || 0) + 1 });
-      setBlueprint(next); setEditing("");
-      setChangeCount((n) => n + 1);
+      setBlueprint(next); setEditing(""); setEditValue("");
       setError(""); setNotice("Draft blueprint created. Review every proposed improvement before using it.");
     } catch (e) { setError(e.message); setNotice(""); }
   }
   function decide(id, action, value = "") {
     try {
       setBlueprint(reviewBuildSuggestion(blueprint, id, action, value));
-      setChangeCount((n) => n + 1);
       setEditing(""); setError(""); setNotice("");
     } catch (e) { setError(e.message); }
   }
@@ -98,10 +135,9 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
       ? JSON.stringify(blueprint, null, 2)
       : renderBuildBlueprintMarkdown(blueprint);
     saveLocalText(content, name + (format === "json" ? ".json" : ".md"), format === "json" ? "application/json" : "text/markdown");
-    if (format === "json") setExportedCount(changeCount);
     setNotice(format === "json"
-      ? "Reusable JSON blueprint exported to your computer. This pilot does not save to a server."
-      : "Readable blueprint exported. Download reusable JSON too if you want to reopen and edit this version later.");
+      ? "JSON backup downloaded. Your working draft is also saved in this browser."
+      : "Readable blueprint downloaded. Use reusable JSON as a backup for another browser, device or preview link.");
   }
   async function importFile(event) {
     const file = event.target.files?.[0];
@@ -111,8 +147,8 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
       if (file.size > 60000) throw new Error("Choose a Build Lab JSON file smaller than 60 KB.");
       const restored = restoreBuildBlueprint(await file.text());
       setBrief(restored.brief); setBlueprint(restored);
-      setEditing(""); setChangeCount(0); setExportedCount(0);
-      setError(""); setNotice("Blueprint reopened from your local file. Review and regenerate if you change the goal.");
+      setEditing(""); setEditValue("");
+      setError(""); setNotice("Blueprint reopened. It will now be saved automatically in this browser.");
     } catch (e) { setError(e.message || "Unable to reopen this file."); setNotice(""); }
   }
   const acceptedCount = blueprint?.suggestions.filter((x) => ["accept", "edit"].includes(x.review)).length || 0;
@@ -125,15 +161,22 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
         <p>Define the goal. Find reusable tools. Review a blueprint before building.</p>
       </div>
       <div className="bl-hero-actions">
-        <span className="bl-draft-tag">Local-only draft</span>
-        <button type="button" className="platform-secondary-button" onClick={onBack}>← EIG Command Center</button>
+        <span className="bl-draft-tag">{saveStatus === "saved" ? "Browser autosave on" : needsBackup ? "Backup required" : "Preparing local draft"}</span>
+        <button type="button" className="platform-secondary-button" onClick={handleBack}>← EIG Command Center</button>
       </div>
     </header>
 
     <p className="bl-disclosure" role="note">
       <strong>What this pilot does:</strong> Turns your description into a deterministic planning checklist and editable review.
       It does not scan websites, inspect code automatically, run AI, create issues, save to Supabase or change live apps.
+      Drafts autosave only in this browser on this preview address, not across devices or deployment links.
       Do not enter passwords, private customer information or API secrets.
+    </p>
+
+    <p className={"bl-save-note" + (needsBackup ? " bl-save-error" : "")} role="status">
+      {needsBackup
+        ? "Browser autosave is unavailable. Download reusable JSON to keep your work."
+        : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
 
     <div className="bl-two-column">
@@ -179,6 +222,7 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
         <div className="bl-form-actions">
           <button className="platform-primary-button" type="submit">{blueprint ? "Regenerate as next draft version" : "Create draft blueprint →"}</button>
           <button className="platform-secondary-button" type="button" onClick={startExample}>Load InceptionApex pilot</button>
+          <button className="platform-secondary-button" type="button" onClick={startFresh}>New project</button>
         </div>
         <div className="bl-upload-row">
           <span>Already have a Build Lab export?</span>
@@ -240,7 +284,9 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
               <button type="button" className="platform-primary-button" onClick={() => exportFile("md")}>Download readable blueprint</button>
               <button type="button" className="platform-secondary-button" onClick={() => exportFile("json")}>Download reusable JSON</button>
             </div>
-            <p className="bl-quiet">{dirty ? "Unsaved changes in this browser. Download a new copy before leaving." : "Your current version has been exported or reopened from your computer."}</p>
+            <p className="bl-quiet">{needsBackup
+              ? "Autosave failed. Download a reusable JSON backup before leaving."
+              : "Your current working draft is stored only in this browser. Download reusable JSON for portable backup."}</p>
           </section>
         </>}
       </div>

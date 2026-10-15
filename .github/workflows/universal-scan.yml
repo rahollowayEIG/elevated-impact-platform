@@ -8,6 +8,15 @@ on:
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
+      - "src/lib/eigBuildLabScanClient.mjs"
+      - "server/eig-build-lab-auth-client.cjs"
+      - "server/eig-build-lab-scan-handler.cjs"
+      - "server/eig-inception-source-scan.cjs"
+      - "api/eig-build-lab-scan.js"
+      - "tests/eig-build-lab-scan-client.test.mjs"
+      - "tests/eig-build-lab-scan-access.test.cjs"
+      - "tests/eig-inception-source-scan.test.cjs"
+      - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
       - "tests/eig-build-lab-preview-access.test.cjs"
@@ -34,6 +43,15 @@ on:
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
+      - "src/lib/eigBuildLabScanClient.mjs"
+      - "server/eig-build-lab-auth-client.cjs"
+      - "server/eig-build-lab-scan-handler.cjs"
+      - "server/eig-inception-source-scan.cjs"
+      - "api/eig-build-lab-scan.js"
+      - "tests/eig-build-lab-scan-client.test.mjs"
+      - "tests/eig-build-lab-scan-access.test.cjs"
+      - "tests/eig-inception-source-scan.test.cjs"
+      - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
       - "src/components/EigBuildLab.jsx"
@@ -59,7 +77,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
+      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
       - run: npm ci
       - run: npx vite build
       - run: npx playwright install --with-deps chromium

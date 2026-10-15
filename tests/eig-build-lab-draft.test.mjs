@@ -166,3 +166,20 @@ test("corrupted scanner local data is not promoted to observations on restore", 
   assert.deepEqual(restored.scanReviews, {});
   assert.equal(restored.brief.name, "InceptionApex UI review");
 });
+
+test("accepted or rejected scanner findings retain revised wording after browser restore", () => {
+  const storage = fakeStorage();
+  const report = scanInceptionSource(readAllowlistedInceptionSource());
+  const revised = "Verify keyboard accessibility with Playwright and manual review.";
+  const reviews = {
+    "ia-form-focus": { review: "accept", editedDetail: revised },
+    "ia-native-confirm": { review: "reject", editedDetail: "Keep native confirmations." },
+  };
+  saveBuildLabDraft(storage, OWNER, {
+    brief: brief(), blueprint: null, scanReport: report, scanReviews: reviews,
+  });
+  const restored = loadBuildLabDraft(storage, OWNER);
+  assert.deepEqual(restored.scanReviews["ia-form-focus"], reviews["ia-form-focus"]);
+  assert.deepEqual(restored.scanReviews["ia-native-confirm"], reviews["ia-native-confirm"]);
+  assert.equal(restored.scanReport.sourceFingerprint, report.sourceFingerprint);
+});

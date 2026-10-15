@@ -159,3 +159,44 @@ Build the **ultimate EIG Studio** first and learn from each internal pilot. Late
 - Treat copied patterns as inspiration, not an assertion about the external app's complete functionality. Report uncertainties and test gaps honestly.
 - Respect the existing incomplete Supabase migration baseline; do not create a billable branch or modify production until staged migration history and permissions are reviewed.
 - Next implementation is an **EIG-only review panel and controlled source intake** in an isolated environment, followed by permissioned extraction and ideation, not autonomous deployment.
+
+
+## UI & Experience Inspector: visual polish and functional UX (owner direction, October 15, 2026)
+
+Build the UI & Experience Inspector as a **first-class capability of EIG Project Architect / Scan & Build**, not an unrelated design app. It should help EIG make every platform feature both aesthetically consistent and genuinely easy to operate. **This is an approved direction for a future design module, not an implementation claim.** The live application does not yet perform automated UI audits, click-through testing or generated redesigns.
+
+### Inputs and observation levels
+
+- Screenshots, page mockups, uploaded photos, approved brand styles, design-system tokens, accessible page markup, and captured desktop/tablet/mobile variants for **visual review**.
+- Recorded walkthroughs, test scripts and replayable EIG-owned UI automation for **observed navigation and interaction**. Input must be scoped and permissioned, with sample/test data when possible.
+- Authorized first-party React components, route definitions, current platform registry records, accessibility/test results and version metadata for **implementation analysis**.
+- User descriptions, pain points and business goals for **proposed experience improvements**.
+- Treat screenshots as visual evidence only. Do not assert a hidden button action, server behavior, persistence, integration or completed workflow without an authorized interaction, code or test proving it.
+
+### Audit dimensions
+
+1. **Cosmetics/brand:** visual hierarchy, contrast, EIG palette and type scale, whitespace, alignment, typography, icon consistency, icon meaning, imagery, button emphasis, desktop/mobile layout.
+2. **Functionality:** buttons and form states, navigation routes, field validation, loading/empty/error/success feedback, saving and reopening, approval/version behavior, reset and rollback, interaction consistency across apps.
+3. **Efficiency:** unnecessary clicks, repeated data entry, hidden actions, overloaded screens, discoverability, keyboard workflows, frequent tasks and role-tailored shortcuts.
+4. **Accessibility and responsive design:** meaningful labels, keyboard focus, color contrast, scalable text, semantic behavior, hit areas, reduced motion, phone/tablet/desktop testing and assistive technology checks where available. Automated checks assist but do not replace human review.
+5. **Platform reuse:** compare proposed controls to the shared UI/design system, canonical identity and scoped permissions, search/sort platform rules, InceptionApex design assets, reusable patterns and known integrations. Prefer one approved change to a shared component over duplicating app-specific fixes.
+6. **Release safety:** no misleading mockup claims about deployed behavior. Check account access, forms, permissions, payment safety and app-owned data flow before any cosmetic or UX change is applied. Require regression coverage for altered interactions.
+
+### Suggested repeatable output
+
+- **Current-state review:** screenshot/walkthrough reference, build/version, viewport, observed vs inferred behaviors, usability findings ranked by impact and confidence.
+- **Improvement proposals:** side-by-side before/after mockups or annotated overlays, rationale, safe design tokens, component reuse opportunities, alternative design approaches.
+- **Clickable prototype** where supported, explicitly labeled prototype, with accessible states and planned transitions. Never describe a static image as functioning software.
+- **Build handoff:** exact components/screens, proposed CSS/tokens, action-state chart, new dependencies, accessibility acceptance criteria, mobile breakpoints, security boundaries, cost/effort bands and specific tests.
+- **Approval history:** reviewers select accept/edit/reject; preserve prior approved baseline and versioned redesign options, never silently restyle or overwrite a live customer app.
+- **Verification:** visual snapshots at multiple viewports, interaction tests on authorized EIG pages, performance/usability measurements where instrumented and manual sign-off.
+
+### First pilot: InceptionApex
+
+Use the EIG-owned flyer studio and My Designs workflow as the controlled sample. Audit desktop/mobile presentation, save/approve/revision buttons, discoverability, copy, status changes, feedback, keyboard accessibility, reusable branding and consistency with Event Builder. Produce a prioritized fix list and optional mockups; separately confirm any proposed behavior via code and browser tests. Only after approval move to an isolated draft implementation, then reuse stable UI components across other EIG apps.
+
+### Priority in the Build Lab plan
+
+**Goal -> Scan & understand -> Improve design/functionality -> Select reusable tool -> Prototype -> Review -> Build/test -> Save approved pattern**. Always evaluate whether a scanner/generator/system accelerates multiple future builds, but do not demand building infrastructure where a small direct improvement would be faster and safer.
+
+The EIG-only ultimate toolset comes first. Creator/Creator Plus customer exposure remains a later entitlement/onboarding decision. Do not change live production, open customer sessions, or private provider credentials in the design audit.

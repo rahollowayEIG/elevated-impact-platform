@@ -8,6 +8,9 @@ on:
       - "src/lib/eigBuildLabGate.mjs"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
+      - "tests/eig-build-lab-preview-access.test.cjs"
+      - "api/eig-build-lab-access.js"
+      - "server/eig-build-lab-preview-access.cjs"
       - "src/components/EigBuildLab.jsx"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
@@ -52,7 +55,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-access.test.mjs
+      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
       - run: npm ci
       - run: npx vite build
       - run: npx playwright install --with-deps chromium

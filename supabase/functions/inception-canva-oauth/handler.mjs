@@ -55,6 +55,21 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
         const membership=db(await admin.from("organization_memberships").select("organization_id,role,status,access_starts_at,access_ends_at,organization:organizations(id,slug)").eq("user_id",user.id).eq("role","eig_admin").eq("status","active"));
         const row=membership.find(x=>x.organization?.slug==="elevated-impact-group" && (!x.access_starts_at||Date.parse(x.access_starts_at)<=now())&&(!x.access_ends_at||Date.parse(x.access_ends_at)>now()));
         if(!row)throw new PublicError("Only authorized EIG administrators can connect Canva during the pilot.",403);
+        // Status reads and connection starts use the same verified existing EIG identity.
+        // Ignore client-supplied account or organization IDs.
+        let action;
+        try {
+          const input=await req.text();
+          if(input.length>256)throw new Error("Oversize");
+          action=JSON.parse(input).action;
+        }catch {throw new PublicError("Choose a valid Canva connection action.");}
+        if(action==="status"){
+          const rows=db(await admin.from("inception_canva_connections")
+            .select("actor_user_id,organization_id,connected_at")
+            .eq("actor_user_id",user.id).eq("organization_id",row.organization_id));
+          return json({connected:rows.length===1,connected_at:rows[0]?.connected_at||null},200,origin);
+        }
+        if(action!=="connect")throw new PublicError("Unsupported Canva connection action.");
         const state=b64(crypt.getRandomValues(new Uint8Array(32)));
         const verifier=b64(crypt.getRandomValues(new Uint8Array(32)));
         const challenge=b64(await digest(verifier,crypt));

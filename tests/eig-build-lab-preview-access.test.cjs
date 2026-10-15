@@ -12,12 +12,14 @@ function sample(options = {}) {
     since: null, until: null, memberError: false,
     enabled: true, vercelEnv: "preview",
     branch: "feature/universal-scan-foundation-20261013",
+    configuredBranch: "feature/universal-scan-foundation-20261013",
     ownerConfig: OWNER, authCalls: 0, memberCalls: 0, failAuth: false,
     ...options,
   };
   const env = (key) => ({
     VERCEL_ENV: state.vercelEnv,
     VERCEL_GIT_COMMIT_REF: state.branch,
+    EIG_BUILD_LAB_PREVIEW_BRANCH: state.configuredBranch,
     EIG_BUILD_LAB_ACCESS_ENABLED: state.enabled ? "true" : "false",
     EIG_BUILD_LAB_OWNER_USER_ID: state.ownerConfig,
   })[key];
@@ -78,7 +80,8 @@ test("production, wrong branch, unconfigured or disabled owner grants fail close
     { vercelEnv: "production" },
     { vercelEnv: "development" },
     { branch: "main" },
-    { branch: undefined },
+    { configuredBranch: "main" },
+    { branch: undefined, configuredBranch: "" },
     { enabled: false },
     { ownerConfig: "" },
     { ownerConfig: "not-a-uuid" },
@@ -111,4 +114,8 @@ test("cross-origin, missing bearer token and unsupported verbs never enter", asy
     { token: "" }, { token: "Bearer " },
     { method: "GET" }, { method: "OPTIONS" },
   ]) assert.notEqual((await f.call(input)).status, 200);
+});
+
+test("Vercel preview branch binding still works if runtime Git ref is hidden", async () => {
+  assert.equal((await sample({ branch: undefined }).call()).status, 200);
 });

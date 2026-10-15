@@ -13,8 +13,13 @@ function currentEIGAdmin(row, now) {
   return !Number.isNaN(start) && !Number.isNaN(end) && start <= now && end > now;
 }
 function serverReady(env) {
+  const detectedRef = env("VERCEL_GIT_COMMIT_REF");
   return env("VERCEL_ENV") === "preview" &&
-    env("VERCEL_GIT_COMMIT_REF") === EXPECTED_PREVIEW_BRANCH &&
+    // The branch-specific server setting is required. If Vercel exposes the
+    // Git ref at runtime, it must agree; otherwise stay branch-bound by the
+    // Vercel environment-variable gitBranch selector.
+    env("EIG_BUILD_LAB_PREVIEW_BRANCH") === EXPECTED_PREVIEW_BRANCH &&
+    (!detectedRef || detectedRef === EXPECTED_PREVIEW_BRANCH) &&
     env("EIG_BUILD_LAB_ACCESS_ENABLED") === "true" &&
     UUID.test((env("EIG_BUILD_LAB_OWNER_USER_ID") || "").trim());
 }

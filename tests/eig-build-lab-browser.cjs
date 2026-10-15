@@ -98,9 +98,9 @@ const fs = require("node:fs/promises");
     await page.getByRole("button", { name: /EIG Command Center/ }).click();
     await page.getByRole("button", { name: "Return to Build Lab" }).click();
     await page.getByText("Draft blueprint · version 1").waitFor();
-    assert.equal(await page.locator(".state-accept").count(), 1);
-    assert.equal(await page.locator(".state-edit").count(), 1);
-    assert.equal(await page.locator(".state-reject").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-accept").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-edit").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-reject").count(), 1);
     // Editing a revision without saving must also survive exit/reentry.
     await ui.getByRole("button", { name: "Revise" }).click();
     await ui.getByLabel("Revised requirement").fill("Halfway through revising this proposal.");
@@ -112,9 +112,9 @@ const fs = require("node:fs/promises");
     // A browser reload should restore the current owner draft as well.
     await page.reload();
     await page.getByText("Draft blueprint · version 1").waitFor();
-    assert.equal(await page.locator(".state-accept").count(), 1);
-    assert.equal(await page.locator(".state-edit").count(), 1);
-    assert.equal(await page.locator(".state-reject").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-accept").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-edit").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-reject").count(), 1);
     await page.screenshot({ path: "test-results/eig-build-lab/review-desktop.png", fullPage: true });
 
     const mdWait = page.waitForEvent("download");
@@ -141,15 +141,15 @@ const fs = require("node:fs/promises");
     });
     await page.getByText(/Blueprint reopened\. It will now be saved automatically/).waitFor();
     await page.getByText("Draft blueprint · version 1").waitFor();
-    assert.equal(await page.locator(".state-edit").count(), 1);
-    assert.equal(await page.locator(".state-reject").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-edit").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-reject").count(), 1);
     // The same browser cannot restore a different owner's saved work.
     await page.evaluate(() => window.buildLabHarness.setOwner("22222222-2222-4222-8222-222222222222"));
     await page.getByText("Your blueprint appears here").waitFor();
     assert.equal(await page.getByLabel("Project name").inputValue(), "");
     await page.evaluate(() => window.buildLabHarness.setOwner("11111111-1111-4111-8111-111111111111"));
     await page.getByText("Draft blueprint · version 1").waitFor();
-    assert.equal(await page.locator(".state-edit").count(), 1);
+    assert.equal(await page.locator(".bl-suggestions .state-edit").count(), 1);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: "test-results/eig-build-lab/review-mobile.png", fullPage: true });

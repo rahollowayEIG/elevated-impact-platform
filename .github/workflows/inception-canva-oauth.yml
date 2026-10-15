@@ -1,0 +1,21 @@
+name: Canva OAuth draft security checks
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/functions/inception-canva-oauth/**"
+      - "supabase/migrations/*inception_canva_oauth*"
+      - "tests/inception-canva-oauth.test.mjs"
+      - ".github/workflows/inception-canva-oauth.yml"
+permissions:
+  contents: read
+jobs:
+  oauth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/inception-canva-oauth.test.mjs

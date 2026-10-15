@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   BUILD_LAB_MODES, BUILD_LAB_REUSE, createBuildBlueprint,
-  renderBuildBlueprintMarkdown, restoreBuildBlueprint, reviewBuildSuggestion,
+  renderBuildBlueprintMarkdown, restoreBuildBlueprint, reviewBuildSuggestion, suggestBuildRevision,
 } from "../lib/eigBuildArchitect.mjs";
 import "./eig-build-lab.css";
 
@@ -215,11 +215,12 @@ export default function EigBuildLab({ onBack, onDirtyChange }) {
                 <p>{item.review === "edit" ? item.editedDetail : item.detail}</p>
                 <div className="bl-review-actions">
                   <button type="button" className="platform-secondary-button" onClick={() => decide(item.id, "accept")} aria-label={"Accept " + item.title}>Accept</button>
-                  <button type="button" className="platform-secondary-button" onClick={() => { setEditing(item.id); setEditValue(item.editedDetail || item.detail); }}>Revise</button>
+                  <button type="button" className="platform-secondary-button" onClick={() => { setEditing(item.id); setEditValue(item.editedDetail || suggestBuildRevision(blueprint, item.id)); }}>Revise</button>
                   <button type="button" className="platform-secondary-button" onClick={() => decide(item.id, "reject")} aria-label={"Reject " + item.title}>Reject</button>
                 </div>
                 {editing === item.id && <div className="bl-revise">
                   <label htmlFor={"bl-edit-" + item.id}>Revised requirement</label>
+                  <p className="bl-autofill-hint">Auto-filled from your project goal. Edit the description before saving.</p>
                   <textarea id={"bl-edit-" + item.id} rows="3" maxLength={2000} value={editValue} onChange={(e) => setEditValue(e.target.value)}/>
                   <div className="bl-review-actions">
                     <button type="button" className="platform-primary-button" onClick={() => decide(item.id, "edit", editValue)}>Save revision</button>

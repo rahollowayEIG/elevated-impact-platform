@@ -18,7 +18,7 @@ function fixture(overrides = {}) {
       organization: { slug: "elevated-impact-group" },
     }],
     membershipError: false, featureEnabled: true, ownerConfigured: OWNER,
-    allowedOrigins: ORIGIN, authCalls: 0, rpcCalls: 0, membershipCalls: 0, envCalls: [],
+    allowedOrigins: ORIGIN, authCalls: 0, rpcCalls: 0, membershipCalls: 0,
     ...overrides,
   };
   const admin = {
@@ -52,15 +52,11 @@ function fixture(overrides = {}) {
       return q;
     },
   };
-  const env = (name) => {
-    const values = {
-      EIG_BUILD_LAB_ACCESS_ENABLED: state.featureEnabled ? "true" : "false",
-      EIG_BUILD_LAB_OWNER_USER_ID: state.ownerConfigured,
-      EIG_BUILD_LAB_ALLOWED_ORIGINS: state.allowedOrigins,
-    };
-    state.envCalls.push({ name, present: Boolean(values[name]), enabled: name === "EIG_BUILD_LAB_ACCESS_ENABLED" ? values[name] : undefined });
-    return values[name];
-  };
+  const env = (name) => ({
+    EIG_BUILD_LAB_ACCESS_ENABLED: state.featureEnabled ? "true" : "false",
+    EIG_BUILD_LAB_OWNER_USER_ID: state.ownerConfigured,
+    EIG_BUILD_LAB_ALLOWED_ORIGINS: state.allowedOrigins,
+  })[name];
   const handle = createEigBuildLabAccessHandler({ admin, env, now: () => NOW });
   const send = async ({ origin = ORIGIN, token = TOKEN, method = "POST" } = {}) => {
     const headers = new Headers();
@@ -76,7 +72,7 @@ function fixture(overrides = {}) {
 test("only the configured owner with a live EIG admin membership can enter Build Lab", async () => {
   const f = fixture();
   const { status, body, headers } = await f.send();
-  assert.equal(status, 200, JSON.stringify({ body, authCalls: f.state.authCalls, rpcCalls: f.state.rpcCalls, membershipCalls: f.state.membershipCalls, envCalls: f.state.envCalls }));
+  assert.equal(status, 200, JSON.stringify({ body, authCalls: f.state.authCalls, rpcCalls: f.state.rpcCalls, membershipCalls: f.state.membershipCalls }));
   assert.deepEqual(body, { allowed: true, access: "build_lab_owner_only" });
   assert.equal(headers.get("Cache-Control"), "no-store, private");
   assert.equal(f.state.authCalls, 1);

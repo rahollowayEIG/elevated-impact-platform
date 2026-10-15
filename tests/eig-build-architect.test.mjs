@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   BUILD_LAB_MODES, createBuildBlueprint, validateBuildBrief,
-  reviewBuildSuggestion, restoreBuildBlueprint, renderBuildBlueprintMarkdown,
+  reviewBuildSuggestion, restoreBuildBlueprint, renderBuildBlueprintMarkdown, suggestBuildRevision,
 } from "../src/lib/eigBuildArchitect.mjs";
 
 const brief = (changes = {}) => ({
@@ -93,4 +93,48 @@ test("exports useful Markdown with review states and source limits", () => {
   assert.match(markdown, /REJECT/);
   assert.match(markdown, /Draft, requires review/);
   assert.doesNotMatch(markdown, /<script>/);
+});
+
+
+test("auto-populates tailored descriptions from a project goal without marking them verified", () => {
+  const proposal = createBuildBlueprint(brief({
+    name: "InceptionApex design polish",
+    mode: "ui_review",
+    goal: "Make flyer layout and approval buttons clearer on mobile for small businesses",
+    audience: "EIG designers and future business owners",
+  }));
+  assert.ok(proposal.suggestions.every((item) => item.detail.includes("InceptionApex design polish")));
+  assert.ok(proposal.suggestions.some((item) => item.detail.includes("Make flyer layout")));
+  const ui = proposal.suggestions.find((item) => item.id === "ui");
+  assert.match(ui.detail, /form-label contrast/);
+  assert.match(ui.detail, /real click-through/);
+  assert.equal(ui.review, "pending");
+  assert.equal(ui.claimKind, "proposed");
+  const revised = suggestBuildRevision(proposal, "ui");
+  assert.match(revised, /InceptionApex design polish/);
+  assert.match(revised, /mobile readability/);
+  assert.match(revised, /authorized tests/);
+  assert.notEqual(revised, ui.detail);
+  const accepted = reviewBuildSuggestion(proposal, "ui", "edit", revised);
+  assert.equal(accepted.suggestions.find((item) => item.id === "ui").editedDetail, revised);
+  assert.equal(proposal.suggestions.find((item) => item.id === "ui").review, "pending");
+  assert.equal(restoreBuildBlueprint(JSON.stringify(accepted)).suggestions.find((item) => item.id === "ui").editedDetail, revised);
+  assert.throws(() => suggestBuildRevision(proposal, "unknown"), /Unknown proposal/);
+});
+
+test("auto-filled descriptions are bounded even with maximum-length brief inputs", () => {
+  const proposal = createBuildBlueprint(brief({
+    name: "N".repeat(100),
+    goal: "G".repeat(2000),
+    audience: "A".repeat(300),
+    currentProcess: "C".repeat(1500),
+    mode: "ui_review",
+  }));
+  for (const item of proposal.suggestions) {
+    assert.ok(item.detail.length < 2000);
+    assert.ok(suggestBuildRevision(proposal, item.id).length < 2000);
+  }
+  const markdown = renderBuildBlueprintMarkdown(proposal);
+  assert.match(markdown, /GGGGG/);
+  assert.doesNotMatch(markdown, /verified feature confirmed/);
 });

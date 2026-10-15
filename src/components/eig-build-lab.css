@@ -5,6 +5,8 @@
 .bl-hero-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .65rem; }
 .bl-draft-tag { border: 1px solid currentColor; border-radius: 99px; font-size: .8rem; padding: .32rem .7rem; white-space: nowrap; opacity: .9; }
 .bl-disclosure { background: #f4f5fa; border: 1px solid #d5d7e4; border-left: 4px solid var(--bl-navy); border-radius: 12px; color: #2a315e; padding: .9rem 1.1rem; line-height: 1.55; margin: 1.1rem 0; }
+.bl-save-note { margin: -.4rem 0 1rem; font-size: .87rem; line-height: 1.5; color: #dce6ff; }
+.bl-save-note.bl-save-error { color: #ffd2d4; font-weight: 700; }
 .bl-two-column { display: grid; grid-template-columns: minmax(340px, .93fr) minmax(390px, 1.07fr); gap: 1rem; align-items: start; }
 .bl-brief, .bl-results > section { margin: 0 0 1rem; }
 .bl-results { min-width: 0; }

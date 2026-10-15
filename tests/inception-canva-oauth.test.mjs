@@ -5,7 +5,7 @@ import {createCanvaOAuthHandler} from "../supabase/functions/inception-canva-oau
 
 const actor="11111111-1111-4111-8111-111111111111",session="33333333-3333-4333-8333-333333333333",org="22222222-2222-4222-8222-222222222222";
 const bearer="head."+Buffer.from(JSON.stringify({session_id:session})).toString("base64url")+".signature";
-const origin="https://app.example.org", callback="https://example.supabase.co/functions/v1/inception-canva-oauth/callback";
+const origin="https://app.example.org", callback="https://example.supabase.co/functions/v1/inception-canva-oauth";
 function make({enabled=true,authorized=true,fresh=true}={}){
  const state={rows:[],connections:[],calls:[],guard:fresh,auth:authorized,now:Date.parse("2026-10-14T12:00:00Z"),membership:true,tokenOK:true,scopes:"asset:read asset:write brandtemplate:content:read brandtemplate:meta:read design:content:read design:content:write design:meta:read profile:read"};
  const admin={
@@ -37,8 +37,8 @@ function make({enabled=true,authorized=true,fresh=true}={}){
  const env=name=>({INCEPTION_CANVA_OAUTH_ENABLED:enabled?"true":"false",INCEPTION_CANVA_APP_ORIGIN:origin,INCEPTION_CANVA_REDIRECT_URI:callback,CANVA_CLIENT_ID:"client-fixture",CANVA_CLIENT_SECRET:"secret-fixture",CANVA_OAUTH_ENCRYPTION_KEY:Buffer.alloc(32,7).toString("base64url")})[name];
  const http=async(url,options={})=>{state.calls.push({url,options});if(url.includes("/oauth/token"))return state.tokenOK?Response.json({access_token:"private-access",refresh_token:"private-refresh",expires_in:3600,token_type:"Bearer",scope:state.scopes}):new Response(null,{status:401});if(url.includes("/users/me"))return Response.json({team_user:{user_id:"canva-fixture",team_id:"team-fixture"}});return new Response(null,{status:500});};
  const handle=createCanvaOAuthHandler({admin,env,crypt:webcrypto,http,now:()=>state.now});
- const post=(withOrigin=origin,withAuth=bearer)=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth/start",{method:"POST",headers:{"Origin":withOrigin,...(withAuth?{"Authorization":"Bearer "+withAuth}:{})}}));
- const cb=(stateParam,code="fixture-code")=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth/callback?state="+encodeURIComponent(stateParam)+"&code="+encodeURIComponent(code)));
+ const post=(withOrigin=origin,withAuth=bearer)=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth",{method:"POST",headers:{"Origin":withOrigin,...(withAuth?{"Authorization":"Bearer "+withAuth}:{})}}));
+ const cb=(stateParam,code="fixture-code")=>handle(new Request("https://fixture/functions/v1/inception-canva-oauth?state="+encodeURIComponent(stateParam)+"&code="+encodeURIComponent(code)));
  return {state,post,cb,handle};
 }
 test("disabled by default, rejects missing bearer, foreign origin, revoked EIG access",async()=>{

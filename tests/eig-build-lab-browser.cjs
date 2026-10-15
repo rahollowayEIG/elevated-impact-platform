@@ -85,7 +85,7 @@ const fs = require("node:fs/promises");
     await page.getByLabel("Import Build Lab JSON").setInputFiles({
       name: "original-eig-blueprint.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(jsonData)),
     });
-    await page.getByText(/Blueprint reopened from your local file/).waitFor();
+    await page.getByText(/Blueprint reopened\. It will now be saved automatically/).waitFor();
     await page.getByText("Draft blueprint · version 1").waitFor();
     assert.equal(await page.locator(".state-edit").count(), 1);
     assert.equal(await page.locator(".state-reject").count(), 1);

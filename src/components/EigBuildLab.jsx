@@ -193,7 +193,12 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       return;
     }
     setScanReviews((current) => ({
-      ...current, [id]: { review: action, editedDetail: action === "edit" ? text : null },
+      ...current,
+      [id]: {
+        review: action,
+        // Approval/rejection is independent of the owner's revised wording.
+        editedDetail: action === "edit" ? text : (current[id]?.editedDetail || null),
+      },
     }));
     setScanEditing(""); setScanEditValue(""); setScanError("");
   }
@@ -302,7 +307,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
               </div>
               <h3>{finding.title}</h3>
               <p><strong>Observed in source:</strong> {finding.observation}</p>
-              <p><strong>Suggested check:</strong> {review?.review === "edit" ? review.editedDetail : finding.recommendation}</p>
+              <p><strong>Suggested check:</strong> {review?.editedDetail || finding.recommendation}</p>
               <details className="bl-evidence">
                 <summary>View code evidence ({finding.evidence.length})</summary>
                 <ul>{finding.evidence.map((evidence, index) =>

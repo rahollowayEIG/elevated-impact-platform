@@ -54,3 +54,16 @@ InceptionApex is the shared creative app. Event Builder tools are an entry point
 ## Google Drive organization
 
 Before adding Drive folder creation, exports or sync writers, read `docs/ElevationPilot-Drive-Folder-Rules.md`. Resolve the authorized Hangar first and use stable folder mappings. Event files belong under their owning Hangar and event. Do not claim existing Drive organization is complete until legacy writers and folder parents have been verified.
+
+
+## EIG Build Lab owner-only pilot
+
+Before changing Project Architect, app/functionality scanners, UI inspector, build assistants or Build Lab endpoints, read docs/EIG-Build-Lab-Project-Architect.md and the shared identity rules.
+
+**Owner decision (October 15, 2026):** Build Lab is exclusive to the single explicitly configured EIG owner account, **not** all EIG admins, Pilots, Co-Pilots, or customers. Do not broaden this simply because another feature is customer-facing.
+
+- Every new server endpoint, background job, storage rule, AI/provider request, document scan, project-save action, implementation assistant or export of private Build Lab data must enforce an exact configured owner Auth UID, verified active session, current EIG admin membership and appropriate source permissions. Never rely on a frontend flag, hidden button, mutable email/display name, user-supplied UUID or local role boolean.
+- Keep the server and browser Build Lab flags disabled by default; a missing owner-ID configuration must **fail closed** rather than permitting all administrators.
+- The current draft access function is supabase/functions/eig-build-lab-access; its return value only authorizes showing a private pilot panel. Do not mistake a prior allowed status as sufficient for privileged actions later.
+- Reuse permanent person identity and canonical Hangar boundaries elsewhere; owner-login changes must undergo deliberate re-verification. Future customer editions or staff access require a separate explicit owner policy decision and server-side access redesign.
+- Do not deploy the draft, configure production secrets, or run migrations without an approved, isolated rollout and the owner's launch authorization.

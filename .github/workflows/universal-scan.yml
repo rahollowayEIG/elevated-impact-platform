@@ -1,0 +1,91 @@
+name: Universal Scan Foundation
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/universalScan.mjs"
+      - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/eigBuildLabDraft.mjs"
+      - "tests/eig-build-lab-draft.test.mjs"
+      - "src/lib/eigBuildLabGate.mjs"
+      - "src/lib/eigBuildLabScanClient.mjs"
+      - "server/eig-build-lab-auth-client.cjs"
+      - "server/eig-build-lab-scan-handler.cjs"
+      - "server/eig-inception-source-scan.cjs"
+      - "api/eig-build-lab-scan.js"
+      - "tests/eig-build-lab-scan-client.test.mjs"
+      - "tests/eig-build-lab-scan-access.test.cjs"
+      - "tests/eig-inception-source-scan.test.cjs"
+      - "vercel.json"
+      - "supabase/functions/eig-build-lab-access/**"
+      - "tests/eig-build-lab-access.test.mjs"
+      - "tests/eig-build-lab-preview-access.test.cjs"
+      - "api/eig-build-lab-access.js"
+      - "server/eig-build-lab-preview-access.cjs"
+      - "src/components/EigBuildLab.jsx"
+      - "src/components/eig-build-lab.css"
+      - "src/PlatformApp.jsx"
+      - "tests/eig-build-architect.test.mjs"
+      - "tests/eig-build-lab.html"
+      - "tests/eig-build-lab-harness.jsx"
+      - "tests/eig-build-lab-browser.cjs"
+      - "supabase/functions/_shared/universalScan.mjs"
+      - "supabase/functions/ai-scan-preview/**"
+      - "tests/universal-scan.test.mjs"
+      - "tests/openai-scan-preview.test.mjs"
+      - "docs/Universal-Scan-Engine-Architecture.md"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
+      - ".github/workflows/universal-scan.yml"
+  push:
+    paths:
+      - "src/lib/universalScan.mjs"
+      - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/eigBuildLabDraft.mjs"
+      - "tests/eig-build-lab-draft.test.mjs"
+      - "src/lib/eigBuildLabGate.mjs"
+      - "src/lib/eigBuildLabScanClient.mjs"
+      - "server/eig-build-lab-auth-client.cjs"
+      - "server/eig-build-lab-scan-handler.cjs"
+      - "server/eig-inception-source-scan.cjs"
+      - "api/eig-build-lab-scan.js"
+      - "tests/eig-build-lab-scan-client.test.mjs"
+      - "tests/eig-build-lab-scan-access.test.cjs"
+      - "tests/eig-inception-source-scan.test.cjs"
+      - "vercel.json"
+      - "supabase/functions/eig-build-lab-access/**"
+      - "tests/eig-build-lab-access.test.mjs"
+      - "src/components/EigBuildLab.jsx"
+      - "src/components/eig-build-lab.css"
+      - "src/PlatformApp.jsx"
+      - "tests/eig-build-architect.test.mjs"
+      - "tests/eig-build-lab.html"
+      - "tests/eig-build-lab-harness.jsx"
+      - "tests/eig-build-lab-browser.cjs"
+      - "supabase/functions/_shared/universalScan.mjs"
+      - "supabase/functions/ai-scan-preview/**"
+      - "tests/universal-scan.test.mjs"
+      - "tests/openai-scan-preview.test.mjs"
+      - "docs/Universal-Scan-Engine-Architecture.md"
+      - "docs/Universal-Scan-OpenAI-Preview.md"
+      - ".github/workflows/universal-scan.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
+      - run: npm ci
+      - run: npx vite build
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/eig-build-lab-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eig-build-lab-browser-evidence
+          path: test-results/eig-build-lab/
+          retention-days: 7
+          if-no-files-found: ignore

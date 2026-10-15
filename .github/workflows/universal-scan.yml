@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - "src/lib/universalScan.mjs"
+      - "src/lib/eigBuildArchitect.mjs"
+      - "src/components/EigBuildLab.jsx"
+      - "src/components/eig-build-lab.css"
+      - "src/PlatformApp.jsx"
+      - "tests/eig-build-architect.test.mjs"
       - "supabase/functions/_shared/universalScan.mjs"
       - "supabase/functions/ai-scan-preview/**"
       - "tests/universal-scan.test.mjs"
@@ -14,6 +19,11 @@ on:
   push:
     paths:
       - "src/lib/universalScan.mjs"
+      - "src/lib/eigBuildArchitect.mjs"
+      - "src/components/EigBuildLab.jsx"
+      - "src/components/eig-build-lab.css"
+      - "src/PlatformApp.jsx"
+      - "tests/eig-build-architect.test.mjs"
       - "supabase/functions/_shared/universalScan.mjs"
       - "supabase/functions/ai-scan-preview/**"
       - "tests/universal-scan.test.mjs"
@@ -30,4 +40,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs
+      - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs
+      - run: npm ci
+      - run: npx vite build

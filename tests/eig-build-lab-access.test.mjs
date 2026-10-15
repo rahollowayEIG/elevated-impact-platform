@@ -72,7 +72,7 @@ function fixture(overrides = {}) {
 test("only the configured owner with a live EIG admin membership can enter Build Lab", async () => {
   const f = fixture();
   const { status, body, headers } = await f.send();
-  assert.equal(status, 200);
+  assert.equal(status, 200, JSON.stringify({ body, authCalls: f.state.authCalls, rpcCalls: f.state.rpcCalls, membershipCalls: f.state.membershipCalls }));
   assert.deepEqual(body, { allowed: true, access: "build_lab_owner_only" });
   assert.equal(headers.get("Cache-Control"), "no-store, private");
   assert.equal(f.state.authCalls, 1);

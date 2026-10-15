@@ -9,6 +9,9 @@ on:
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
       - "tests/eig-build-architect.test.mjs"
+      - "tests/eig-build-lab.html"
+      - "tests/eig-build-lab-harness.jsx"
+      - "tests/eig-build-lab-browser.cjs"
       - "supabase/functions/_shared/universalScan.mjs"
       - "supabase/functions/ai-scan-preview/**"
       - "tests/universal-scan.test.mjs"
@@ -24,6 +27,9 @@ on:
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
       - "tests/eig-build-architect.test.mjs"
+      - "tests/eig-build-lab.html"
+      - "tests/eig-build-lab-harness.jsx"
+      - "tests/eig-build-lab-browser.cjs"
       - "supabase/functions/_shared/universalScan.mjs"
       - "supabase/functions/ai-scan-preview/**"
       - "tests/universal-scan.test.mjs"
@@ -43,3 +49,12 @@ jobs:
       - run: node --test tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs
       - run: npm ci
       - run: npx vite build
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/eig-build-lab-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eig-build-lab-browser-evidence
+          path: test-results/eig-build-lab/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -2,6 +2,7 @@
 // This is deterministic pattern analysis, NOT a full UI/functional scan, AI
 // model, dynamic crawler or proof of live behavior. No network calls or writes.
 const fs = require("node:fs");
+const { createHash } = require("node:crypto");
 const path = require("node:path");
 
 const FILE_PATHS = Object.freeze([
@@ -111,6 +112,13 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
       throw new Error("Required InceptionApex file missing or exceeds limit: " + file);
     return { path: file, lines: content.split("\n").length };
   });
+  // Stable fingerprint lets future scans identify actual source changes even
+  // when Vercel's runtime does not expose the Git commit SHA.
+  const sourceFingerprint = createHash("sha256");
+  for (const file of FILE_PATHS) {
+    sourceFingerprint.update(file + "\0");
+    sourceFingerprint.update(sourceMap[file] + "\0");
+  }
   const findings = [];
   for (const rule of RULES) {
     const evidence = rule.checks.map((check) =>
@@ -127,7 +135,7 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
   return {
     schemaVersion: 1, kind: "eig_build_lab_code_scan",
     target: "inception_apex", targetLabel: "InceptionApex",
-    sourceVersion, inspectedAt,
+    sourceVersion, sourceFingerprint: sourceFingerprint.digest("hex"), inspectedAt,
     scannerVersion: "inception-code-v1",
     files,
     findings,

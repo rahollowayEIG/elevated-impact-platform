@@ -18,6 +18,8 @@ import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
+const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
+const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -1245,7 +1247,7 @@ function EigUserManagement({ onBack, onInviteUser, currentUserId }) {
   </div>;
 }
 
-function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, onOpenUserManagement, loading }) {
+function EigAdminDashboard({ organizations, products, onOpenOrganization, onCreateOrganization, onInviteUser, onOpenUserManagement, onOpenBuildLab, loading }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('EIG Test Organization');
   const [organizationType, setOrganizationType] = useState('business');
@@ -1281,7 +1283,7 @@ function EigAdminDashboard({ organizations, products, onOpenOrganization, onCrea
     } finally { setCreating(false); }
   }
 
-  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-hero-actions"><button className="platform-primary-button" type="button" onClick={onOpenUserManagement}>User Management →</button><div className="platform-role-pill">EIG</div></div></section><section className="platform-stats-grid"><StatCard label="Hangars" value={clients.length} detail="Businesses and organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Hangars</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Pilot full name" required /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="pilot@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>Creates the Hangar, then immediately prepares and sends the named Pilot a secure account-creation invitation. If email delivery is unavailable, use the copyable invite link shown below.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactName.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating Hangar and inviting Pilot...' : createdHanger ? 'Retry Pilot Invitation' : 'Create Hangar & Invite Pilot'}</button></form>}{pilotInviteResult && <InviteResult result={pilotInviteResult} />}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
+  return <div className="platform-page"><section className="platform-hero"><div><p className="platform-eyebrow">EIG Command Center</p><h1>EIG Command Center</h1><p>Manage client organizations, product access, and the growing EIG ecosystem from one place.</p></div><div className="platform-hero-actions">{onOpenBuildLab && <button className="platform-secondary-button" type="button" onClick={onOpenBuildLab}>Build Lab · Pilot →</button>}<button className="platform-primary-button" type="button" onClick={onOpenUserManagement}>User Management →</button><div className="platform-role-pill">EIG</div></div></section><section className="platform-stats-grid"><StatCard label="Hangars" value={clients.length} detail="Businesses and organizations managed by EIG" /><StatCard label="Products in Catalog" value={products.length} detail={`${activeProducts} currently active`} /><StatCard label="Platform Status" value="Live" detail="Shared authentication + entitlements" /></section><section className="platform-section-card"><div className="platform-section-heading"><div><p className="platform-eyebrow">Clients</p><h2>Hangars</h2></div><button className="platform-secondary-button" onClick={() => setShowCreate((current) => !current)}>{showCreate ? 'Cancel' : '+ Add Organization'}</button></div>{showCreate && <form className="platform-login-form" onSubmit={submitOrganization}><label>Organization name<input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Organization name" /></label><label>Organization type<select className="platform-workspace-select" value={organizationType} onChange={(e) => setOrganizationType(e.target.value)}><option value="business">Business</option><option value="golf_course">Golf Course</option><option value="venue">Venue</option><option value="nonprofit">Nonprofit</option></select></label><label>Primary company contact<input value={primaryContactName} onChange={(e) => setPrimaryContactName(e.target.value)} placeholder="Pilot full name" required /></label><label>Primary contact email<input value={primaryContactEmail} onChange={(e) => setPrimaryContactEmail(e.target.value)} type="email" required placeholder="pilot@company.com" /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} style={{ width: 'auto' }} />Mark as test/demo organization</label><p className="platform-login-copy" style={{ margin: 0 }}>Creates the Hangar, then immediately prepares and sends the named Pilot a secure account-creation invitation. If email delivery is unavailable, use the copyable invite link shown below.</p>{createError && <div className="platform-error">{createError}</div>}<button className="platform-primary-button" disabled={creating || !name.trim() || !primaryContactName.trim() || !primaryContactEmail.trim()} type="submit">{creating ? 'Creating Hangar and inviting Pilot...' : createdHanger ? 'Retry Pilot Invitation' : 'Create Hangar & Invite Pilot'}</button></form>}{pilotInviteResult && <InviteResult result={pilotInviteResult} />}{loading ? <p>Loading organizations...</p> : <div className="platform-org-grid">{clients.map((org) => <button key={org.id} className="platform-org-card" onClick={() => onOpenOrganization(org.id)}><div className="platform-org-icon">{org.name?.slice(0, 2).toUpperCase()}</div><div><strong>{org.name}{org.is_test ? ' · TEST' : ''}</strong><span>{org.organization_type?.replaceAll('_', ' ') || 'Organization'}</span></div><b>Open →</b></button>)}{!clients.length && <p>No client organizations found yet.</p>}</div>}</section><EigPeopleAccessSection organizations={organizations} onInvite={onInviteUser} /></div>;
 }
 
 function ProductCard({ product, enabled, onLaunch }) {
@@ -2813,6 +2815,7 @@ function AtcAssignmentChooser({ flights, onBack, onSelect }) {
 export default function App() {
   const [inceptionEventId, setInceptionEventId] = useState('');
   const [inceptionDirty, setInceptionDirty] = useState(false);
+  const [buildLabDirty, setBuildLabDirty] = useState(false);
   const [socialDirty, setSocialDirty] = useState(false);
   const socialReturn = useRef('chooser');
   const [eventStudioDirty, setEventStudioDirty] = useState(false);
@@ -3408,7 +3411,19 @@ export default function App() {
     await loadEieEvents(activeOrganizationId);
   }
 
-  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty) || window.confirm('Leave without saving your campaign, design, event packet or budget changes?'); }
+  function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty || buildLabDirty) || window.confirm('Leave without exporting your Build Lab blueprint or saving your campaign, design, event packet or budget changes?'); }
+  function openBuildLab() {
+    if (!EIG_BUILD_LAB_PREVIEW_ENABLED || !canUseAutoResizer(memberships) || !canLeaveInception()) return;
+    const eigOrg = organizations.find((org) => org.slug === EIG_SLUG);
+    if (!eigOrg?.id) return;
+    setBuildLabDirty(false);
+    setActiveOrganizationId(eigOrg.id);
+    setPortalView('workspace');
+    setCockpitApp('');
+    setEieInitialEventId('');
+    setAdminView('build_lab');
+  }
+  function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
     if (portalView !== 'inception') inceptionReturn.current = portalView;
@@ -3446,6 +3461,7 @@ export default function App() {
   const activeOrganization = activeMembership?.organization || organizations.find((org) => org.id === activeOrganizationId) || null;
   const effectiveActiveRole = directActiveMembership?.role || (eigMembership ? 'eig_admin' : activeMembership?.role || 'passenger');
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && effectiveActiveRole === 'eig_admin';
+  const buildLabAllowed = EIG_BUILD_LAB_PREVIEW_ENABLED && isEigAdminWorkspace && canUseAutoResizer(memberships);
   const isAirport = portalView === 'airport';
   const isProfile = portalView === 'profile';
   const isMainCabin = portalView === 'main_cabin';
@@ -3483,7 +3499,10 @@ export default function App() {
           : !activeOrganization
             ? <AirportPage profile={profile} user={session.user} flights={airportFlights} memberships={memberships} loading={airportLoading} onBoard={boardEvent} onOpenWorkspace={openWorkspace} onOpenProfile={openPassengerProfile} />
             : isEigAdminWorkspace
-              ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} /> : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} />
+              ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} />
+                : adminView === 'build_lab' && buildLabAllowed
+                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} /></React.Suspense>
+                  : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : null} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
                 : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => Promise.all([loadEventRequests(activeOrganizationId), loadEieEvents(activeOrganizationId)])} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} onOpenInception={openInception} />}

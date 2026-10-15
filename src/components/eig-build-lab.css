@@ -60,3 +60,31 @@
   .bl-upload-row button { width: 100%; }
   .bl-app .platform-section-card { padding: 1rem; }
 }
+
+/* Evidence-backed, owner-only read-only source inspection. */
+.bl-source-scanner { margin: 1rem 0 1.4rem; }
+.bl-scan-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
+.bl-scan-heading h2 { margin: 0 0 .25rem; font-size: 1.3rem; }
+.bl-scan-heading p { margin: 0; line-height: 1.5; color: #d3deef; }
+.bl-scan-meta { display: flex; flex-wrap: wrap; gap: .7rem 1.25rem; margin: 1rem 0; }
+.bl-scan-meta span { background: #1a2d4a; color: #eaf2ff; border: 1px solid #536985; padding: .5rem .65rem; border-radius: .65rem; font-size: .85rem; }
+.bl-scan-meta code { color: #eef4ff; }
+.bl-scan-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .85rem; margin-bottom: .65rem; }
+.bl-scan-controls label { display: flex; flex-direction: column; gap: .35rem; font-size: .88rem; font-weight: 700; color: #eaf0ff; min-width: 11rem; flex: 1 1 11rem; }
+.bl-scan-controls input, .bl-scan-controls select { padding: .65rem; border: 1px solid #93a5c5; border-radius: .5rem; font: inherit; color: #1e2635; background: #fff; max-width: 100%; }
+.bl-scan-controls .platform-secondary-button { flex: 0 1 auto; }
+.bl-scan-finding { border-top: 1px solid #53617a; padding: 1rem 0; }
+.bl-scan-finding h3 { margin: .6rem 0; font-size: 1.05rem; }
+.bl-scan-finding p { margin: .5rem 0; line-height: 1.5; }
+.bl-scan-finding strong { color: #f2f5ff; }
+.bl-scan-finding .bl-phase { color: #cbd7ff; }
+.bl-evidence { padding: .7rem .8rem; border: 1px solid #617391; border-radius: .6rem; background: #0a172a; margin: .85rem 0; }
+.bl-evidence summary { cursor: pointer; color: #e9f2ff; font-weight: 700; }
+.bl-evidence ul { margin: .7rem 0 0; padding-left: 1rem; }
+.bl-evidence li { overflow-wrap: anywhere; margin-bottom: .65rem; }
+.bl-evidence code { color: #e3edff; }
+.bl-source-excerpt { display: block; margin-top: .2rem; color: #c3e0cf !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .83rem; }
+.bl-scan-finding .bl-revise { background: #f4f6fb; color: #1d245d; }
+@media (max-width: 540px) {
+  .bl-scan-heading > button, .bl-scan-controls > button { flex-basis: 100%; }
+}

@@ -56,6 +56,77 @@ function suggestion(id, phase, title, detail) {
   return { id, phase, title, detail, claimKind: "proposed", review: "pending", editedDetail: null };
 }
 
+// Build Lab's Phase 1 suggestions are deterministic drafts, not an AI scan.
+// Ground each suggested description in the user's mission without claiming
+// we observed code, audited the app, or verified a customer workflow.
+function shortText(value, max = 170) {
+  const compact = String(value).replace(/\s+/g, " ").trim();
+  if (compact.length <= max) return compact;
+  const clipped = compact.slice(0, max).replace(/\s+\S*$/, "");
+  return (clipped || compact.slice(0, max)) + "…";
+}
+
+function buildDescription(brief, item) {
+  const name = brief.name;
+  const goal = shortText(brief.goal, 180);
+  const audience = shortText(brief.audience, 90);
+  switch (item.id) {
+    case "observe":
+      return "For " + name + ", map the existing workflow for " + audience +
+        " against the stated goal: " + goal +
+        ". Review authorized screenshots, walkthroughs or code and distinguish verified behavior from assumptions.";
+    case "ui":
+      return "For " + name + ", audit form-label contrast, button visibility, spacing, responsive/mobile readability, keyboard use, status feedback and real click-through behavior. " +
+        "Propose reusable EIG UI improvements, with functional claims verified separately.";
+    case "workflow":
+      return "Map the steps needed to accomplish the goal in " + name + ": " + goal +
+        ". Record users, visible actions, state changes, unnecessary clicks and handoffs. Mark untested behaviors as hypotheses.";
+    case "scanner":
+      return "For " + name + ", identify authorized screenshots, recordings, documents or ideas to inspect. " +
+        "Specify evidence limits, human review, safe outputs and how the proposed scanner helps achieve: " + goal + ".";
+    case "reuse":
+      return "Compare the proposed " + name + " workflow to our shared identity, app registry and relevant EIG modules. " +
+        "Verify ownership, permissions and reusable design patterns before proposing new code or a duplicate app.";
+    case "tool":
+      return brief.reuse === "single"
+        ? "For " + name + ", compare a focused feature with a reusable engine or automation. Build the smallest safe solution unless other verified use cases justify a shared tool."
+        : "For " + name + ", evaluate a reusable component, scanner or automation versus a one-off feature. " +
+          "Consider the stated goal (" + goal + "), future apps, maintenance cost and approval boundaries.";
+    case "prototype":
+      return "Prepare a narrow " + name + " prototype that helps " + audience +
+        " achieve: " + goal + ". Define user input, visible states, data owner, approval steps and reversible testing.";
+    case "verify":
+      return "Test " + name + " against its stated goal: " + goal +
+        ". Verify role access, successful and failed actions, mobile layout, accessibility, saved/reopened state and regressions before any rollout.";
+    default:
+      return item.detail;
+  }
+}
+
+// Clicking Revise should fill a practical first revision, not make the user
+// paste a description from ChatGPT. The owner can freely edit before saving.
+export function suggestBuildRevision(blueprint, id) {
+  if (!blueprint || blueprint.kind !== "eig_build_lab_blueprint" || !Array.isArray(blueprint.suggestions))
+    throw new Error("Create a valid blueprint first.");
+  const item = blueprint.suggestions.find((candidate) => candidate.id === id);
+  if (!item) throw new Error("Unknown proposal.");
+  const brief = blueprint.brief;
+  const name = shortText(brief.name, 100);
+  const goal = shortText(brief.goal, 130);
+  const audience = shortText(brief.audience, 75);
+  const descriptions = {
+    observe: "Document how " + audience + " currently use " + name + " with an authorized walkthrough and first-party code. List screens, actions and observed results. Separate tested functionality from assumptions and record unresolved gaps.",
+    ui: "Audit form-label contrast, button visibility, spacing, mobile readability, keyboard navigation and clear status feedback across " + name + " and shared EIG UI patterns. Recommend reusable UI improvements, then verify the relevant interactions through authorized tests.",
+    workflow: "Trace the current " + name + " process from first action through completion. Identify repeated steps, missing feedback and data handoffs; propose a shorter workflow with an acceptance test for each changed action.",
+    scanner: "Define which permissioned source material can be scanned for " + name + ", which claims must be supported by evidence, and how proposed findings are reviewed before creating any records or tasks.",
+    reuse: "Review existing EIG components and owners before implementing " + name + ". Document what can be reused safely, what must be adapted and which permissions and integrations need verification.",
+    tool: "Compare a reusable scanner, generator or automation against a direct " + name + " fix. Estimate ongoing maintenance, cross-app benefit, complexity and the simplest verifiable first milestone.",
+    prototype: "Create one testable " + name + " example for " + audience + ". Include primary actions, mobile and error states, approval/version controls and the result that would demonstrate success.",
+    verify: "Validate " + name + " on desktop and mobile with authorized test data. Check primary actions, accessibility, permission boundaries, errors, save/reopen behavior and regression coverage before approval.",
+  };
+  return descriptions[item.id] || "For " + name + ", propose an action that supports the goal: " + goal + ". Include a measurable success check.";
+}
+
 export function createBuildBlueprint(raw, options = {}) {
   const brief = validateBuildBrief(raw);
   const revision = options.revision ?? 1;
@@ -104,10 +175,13 @@ export function createBuildBlueprint(raw, options = {}) {
     "Which inputs and behaviors can we verify, versus what is only an idea?",
     "Should this live in EIG Studio only, or eventually become a versioned customer entitlement?",
   ];
+  const personalizedProposals = proposals.map((item) => ({
+    ...item, detail: buildDescription(brief, item),
+  }));
   return {
     schemaVersion: 1, kind: "eig_build_lab_blueprint", version: revision,
     status: "draft_requires_review", origin: "user_supplied_brief_not_scanned",
-    brief, strategy, registryCandidates: candidates, suggestions: proposals, questions,
+    brief, strategy, registryCandidates: candidates, suggestions: personalizedProposals, questions,
     safety: { liveChanges: false, codeChanges: false, autoApproval: false, independentVerificationRequired: true },
   };
 }

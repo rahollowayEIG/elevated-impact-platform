@@ -2,7 +2,7 @@
 // This function provides no data or storage access. Every future Build Lab API
 // MUST independently repeat this server-side authorization; the browser UI
 // flag is only a visibility control and is not a permission boundary.
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_ORIGIN = "https://elevated-impact-platform.vercel.app";
 
 function currentEIGAdmin(row, now) {

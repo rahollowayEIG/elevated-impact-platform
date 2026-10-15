@@ -1,6 +1,6 @@
 # Canva Connect for InceptionApex: draft OAuth gateway
 
-**Status October 14, 2026:** Draft code and migration on an isolated GitHub branch only. **Not deployed, not tested with a real Canva account, and not connected to the UI.** The current Canva app remains Draft.
+**Status October 15, 2026:** Draft code, migration, and feature-gated EIG-only Connect Canva UI on an isolated GitHub branch. **Not deployed, not tested with a real Canva account, and not enabled in the live UI.** The current Canva app remains Draft. The owner's test design is named `InceptionApex-Flyer`.
 
 ## Owner-facing next step
 
@@ -23,6 +23,7 @@ No action in Canva yet. Leave Redirect URL blank; do not generate or paste a sec
 - `INCEPTION_CANVA_APP_ORIGIN`: verified full production origin, no slash/path (e.g. https://actual-company-host).
 - `INCEPTION_CANVA_REDIRECT_URI`: **exact deployed HTTPS Edge function root** (not a guessed sample URL).
 - `INCEPTION_CANVA_OAUTH_ENABLED=true` only after tests, real deployed callback, and owner sign-off.
+- Browser flag `VITE_INCEPTION_CANVA_CONNECT_ENABLED=true` is non-secret, intentionally unset by default. It only displays an EIG-admin pilot panel; backend authorization still validates the user and scope. Do not set in the live production deployment yet.
 
 ## Rollout gates / known blockers
 
@@ -31,7 +32,7 @@ No action in Canva yet. Leave Redirect URL blank; do not generate or paste a sec
 3. Validate Canva token request encoding, exact scopes, token response fields and `GET /users/me` response against current Canva docs with a real developer test account. Verify denied consent, expiration, concurrent requests, revoked EIG membership, replay and failures without secret leakage.
 4. Review database privileges and encryption code, run Node and Supabase DB tests and then CI. Test state expiry, atomic uniqueness, upsert idempotency and append-only audit.
 5. Deploy the callback only after environment review. Obtain and confirm its exact HTTPS URL; then owner adds **that exact URL** to Canva Redirect URLs. Only then generate and store the client secret.
-6. Add a minimal EIG-admin InceptionApex "Connect Canva" control, test authorization and reconnect/disconnect plus revocation, and then design handoff. No customer enablement or public Canva app submission until security/review requirements are met.
+6. The feature-gated EIG-admin InceptionApex "Connect Canva" and "Refresh status" controls are drafted. Confirm them in an isolated preview, test actual OAuth/reconnect/revocation, implement disconnect and then design handoff. No customer enablement or public Canva app submission until security/review requirements are met.
 
 ## Selected Canva scopes
 
@@ -40,3 +41,9 @@ No action in Canva yet. Leave Redirect URL blank; do not generate or paste a sec
 Brand-template functionality may require specific Canva subscriptions. Keep optional features separate from the minimum required connection scopes during review. No MCP, permissions management, folder management, or comments yet.
 
 Official docs: https://www.canva.dev/docs/connect/authentication/ ; https://www.canva.dev/docs/connect/api-requests/ ; https://www.canva.dev/docs/connect/endpoints/users/get-user-profile/.
+
+## UI flow prepared
+
+The InceptionApex footer offers Connect Canva and a non-secret connection-status check only if (a) the existing membership-based `canUseResizer` EIG admin eligibility is true and (b) `VITE_INCEPTION_CANVA_CONNECT_ENABLED=true`. The server independently rechecks the account, interactive session and current EIG admin membership for both requests. The backend POST operation is either `connect` or `status`; Canva calls back to the same Edge function root with GET. UI redirects to Canva's verified authorization URL and, on return to ElevationPilot, checks status again.
+
+**No user action currently needed.** The `InceptionApex-Flyer` is saved in Canva as an owner-selected pilot design, but this draft does not read or edit it. Real Canva design exchange, disconnect, environment validation and test-run sign-off remain blockers.

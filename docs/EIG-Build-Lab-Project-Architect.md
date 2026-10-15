@@ -28,7 +28,7 @@ Build the fullest **EIG Studio** capability set first. Decide which subsets beco
 - Input: project name, goal/success, intended audience, existing process, reference notes, project mode and estimated reuse scope.
 - Output: declared *proposals* for problem verification, shared registry checks, reusable-vs-scoped strategy, prototype and release testing. Relevant existing app mentions are only candidate matches to verify, not claims that code was analyzed. Optional modes offer specific UI/UX, workflow or scan-evidence checks.
 - Review controls: accept, reject or revise suggestions independently. Working drafts autosave in the owner's current browser storage on this preview origin. Export as readable Markdown or strict-schema JSON; JSON can be reopened locally and transferred between devices or preview URLs. **There is no cloud save, cross-device sync or shared project history yet.**
-- Explicit warnings: no AI, app scanning, source crawling, repository analysis, changes to business records, automated PRs, provider API calls, secret handling, backend saves, or production actions.
+- Explicit warnings: no AI, external site crawling, interactive UI browser scanning, live customer-data scanning, automated PRs, secret handling, backend saves or production actions. The InceptionApex Source Inspector separately permits a small read-only inspection of allowlisted first-party source and existing test-script patterns.
 - Navigation guard: autosaves the brief, blueprint, approval decisions and partially edited revision; warns about blocked browser storage and asks for a JSON backup if autosave cannot succeed. Leaving and reentering the same preview origin no longer resets the draft.
 - Tests: tests/eig-build-architect.test.mjs, tests/eig-build-lab-access.test.mjs, owner authorization service, targeted Universal Scan workflow and Vite/browser tests (including responsive mobile). This has not been deployed or tested with a live owner login yet.
 
@@ -102,3 +102,20 @@ Owner priority: evolve Build Lab from a manual Project Architect into a proactiv
 - If the owner chooses **New project** or **Load InceptionApex pilot** while the current draft contains content, require confirmation before overwriting the single saved local working copy. Download JSON if keeping multiple projects. A full versioned multi-project library with cross-device access requires approved owner-only backend storage, data policy, backups, RLS and a safe staging rollout.
 - Autosave is local-only and should not alter draft review status, create a verified scan finding, trigger an agent or approve/modify production changes. Continue manual export as a portability and backup mechanism.
 - Tests: \`tests/eig-build-lab-draft.test.mjs\` validates incomplete briefs, account-specific keys, review restoration, tamper resistance, corrupt state and blocked browser storage. The browser test exercises route exit/reentry, reload, half-written revisions, JSON import and cross-account isolation.
+
+
+## First actual scanner: InceptionApex Source Inspector (owner preview)
+
+**Scope:** Deterministic read-only inspection of four allowlisted first-party source/test files. It is not an AI model, a live functional browser audit, competitor scan, screenshot analysis, customer record scan or proof that a code-declared test passed.
+
+**Inputs:** src/components/InceptionApex.jsx, src/components/FlyerEditor.jsx, src/components/inception-apex.css, tests/inception-apex-browser.cjs. The server reads only these fixed source paths from the deployed branch. Do not accept arbitrary URLs or source paths.
+
+**Access:** POST /api/eig-build-lab-scan with target inception_apex. The server independently repeats the same-origin HTTPS, exact owner Auth UUID, current authenticated session, caller-RLS active EIG admin membership, preview environment and expected Git branch checks before touching files. Missing configuration, nonowner requests, other branches, wrong methods, unapproved paths and source errors fail closed. There is no service-role key or token in source reports.
+
+**Evidence:** Each reported observation contains stable rule ID, priority, source file path, original 1-based line number, matched excerpt, and a proposed check. All required source patterns must match or that observation is omitted. Reports include a stable SHA-256 source fingerprint and Git commit when available. Source observations never automatically prove a runtime defect. Existing browser-test code does not prove a CI pass.
+
+**Owner UI:** Click Inspect InceptionApex source under Build Lab. Browse evidence, search and sort findings, and independently accept, revise or reject suggested follow-ups. Reviews and the latest source report autosave only in the verified owner's local browser profile on the same preview origin. Export scan report JSON for backup. New source fingerprint resets prior reviews. Accepting a scan recommendation NEVER changes code, opens an issue, publishes an app, or modifies a production database.
+
+**Modules:** server/eig-inception-source-scan.cjs, server/eig-build-lab-scan-handler.cjs, server/eig-build-lab-preview-access.cjs, server/eig-build-lab-auth-client.cjs, api/eig-build-lab-scan.js, src/lib/eigBuildLabScanClient.mjs, src/components/EigBuildLab.jsx. Tests inspect the actual files, enforce read-before-auth denial, validate report schemas and exercise browser review autosave.
+
+**Deployment:** Draft PR #53 only; read-only private Vercel branch preview. No merge, production migration, paid branch, AI request, cron task, customer data operation or live release. Next phase: permissioned synthetic browser walkthroughs to test actual rendered UI, plus separately authorized CI artifact ingestion. Weekly monitoring requires explicit owner approval and budgets.

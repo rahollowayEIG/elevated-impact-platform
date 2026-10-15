@@ -4,6 +4,7 @@ import {
   renderBuildBlueprintMarkdown, restoreBuildBlueprint, reviewBuildSuggestion, suggestBuildRevision,
 } from "../lib/eigBuildArchitect.mjs";
 import { BL_EMPTY_BRIEF, loadBuildLabDraft, saveBuildLabDraft } from "../lib/eigBuildLabDraft.mjs";
+import { requestInceptionSourceScan } from "../lib/eigBuildLabScanClient.mjs";
 import "./eig-build-lab.css";
 
 const EIG_PILOT = {
@@ -33,7 +34,7 @@ function SectionHeading({ number, title, description }) {
   return <div className="bl-heading"><span className="bl-number">{number}</span><div><h2>{title}</h2><p>{description}</p></div></div>;
 }
 
-export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
+export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDirtyChange }) {
   const [restoredDraft] = useState(() => {
     try { return loadBuildLabDraft(window.localStorage, ownerUserId); }
     catch { return null; }
@@ -45,13 +46,22 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
     restoredDraft ? "Restored your browser-saved draft, including earlier review decisions." : "");
   const [editing, setEditing] = useState(() => restoredDraft?.editing || "");
   const [editValue, setEditValue] = useState(() => restoredDraft?.editValue || "");
+  const [scanReport, setScanReport] = useState(() => restoredDraft?.scanReport || null);
+  const [scanReviews, setScanReviews] = useState(() => restoredDraft?.scanReviews || {});
+  const [scanEditing, setScanEditing] = useState(() => restoredDraft?.scanEditing || "");
+  const [scanEditValue, setScanEditValue] = useState(() => restoredDraft?.scanEditValue || "");
+  const [scanRunning, setScanRunning] = useState(false);
+  const [scanError, setScanError] = useState("");
+  const [scanNotice, setScanNotice] = useState("");
+  const [scanQuery, setScanQuery] = useState("");
+  const [scanSort, setScanSort] = useState("priority");
   const [saveStatus, setSaveStatus] = useState("pending");
   const uploadRef = useRef(null);
   const needsBackup = saveStatus === "error";
 
   function saveSnapshot() {
     try {
-      saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue });
+      saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue, scanReport, scanReviews, scanEditing, scanEditValue });
       setSaveStatus("saved");
       return true;
     } catch {
@@ -65,7 +75,7 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
   // refreshing, or opening this *same preview origin* in a new tab.
   useEffect(() => {
     saveSnapshot();
-  }, [brief, blueprint, editing, editValue, ownerUserId]);
+  }, [brief, blueprint, editing, editValue, scanReport, scanReviews, scanEditing, scanEditValue, ownerUserId]);
 
   useEffect(() => {
     onDirtyChange?.(needsBackup);
@@ -75,7 +85,7 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
   useEffect(() => {
     const beforeUnload = (event) => {
       try {
-        saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue });
+        saveBuildLabDraft(window.localStorage, ownerUserId, { brief, blueprint, editing, editValue, scanReport, scanReviews, scanEditing, scanEditValue });
       } catch {
         event.preventDefault();
         event.returnValue = "";
@@ -83,7 +93,7 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
     };
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [brief, blueprint, editing, editValue, ownerUserId]);
+  }, [brief, blueprint, editing, editValue, scanReport, scanReviews, scanEditing, scanEditValue, ownerUserId]);
 
   function handleBack() {
     if (!saveSnapshot()) {
@@ -155,6 +165,65 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
       setError(""); setNotice("Blueprint reopened. It will now be saved automatically in this browser.");
     } catch (e) { setError(e.message || "Unable to reopen this file."); setNotice(""); }
   }
+  async function runSourceScan() {
+    if (scanRunning) return;
+    setScanRunning(true); setScanError(""); setScanNotice("");
+    try {
+      const report = await requestInceptionSourceScan(supabaseClient);
+      const changed = scanReport?.sourceFingerprint !== report.sourceFingerprint;
+      setScanReport(report);
+      if (changed) {
+        setScanReviews({}); setScanEditing(""); setScanEditValue("");
+      }
+      setScanNotice(changed
+        ? "Read-only source scan completed. New source version detected; review findings before accepting."
+        : "Read-only source scan completed. Existing decisions for unchanged source were preserved.");
+    } catch (problem) {
+      setScanError(problem?.message || "Unable to inspect InceptionApex source.");
+    } finally {
+      setScanRunning(false);
+    }
+  }
+  function decideScan(id, action, editedDetail = "") {
+    if (!scanReport?.findings.some((finding) => finding.id === id) ||
+        !["accept", "edit", "reject"].includes(action)) return;
+    const text = editedDetail.trim();
+    if (action === "edit" && (!text || text.length > 1500)) {
+      setScanError("Enter a revised recommendation of up to 1500 characters.");
+      return;
+    }
+    setScanReviews((current) => ({
+      ...current, [id]: { review: action, editedDetail: action === "edit" ? text : null },
+    }));
+    setScanEditing(""); setScanEditValue(""); setScanError("");
+  }
+  function exportScanReport() {
+    if (!scanReport) return;
+    const payload = {
+      ...scanReport,
+      findings: scanReport.findings.map((finding) => ({
+        ...finding, ...scanReviews[finding.id],
+      })),
+    };
+    saveLocalText(JSON.stringify(payload, null, 2),
+      "InceptionApex-source-scan-" + scanReport.sourceFingerprint.slice(0, 12) + ".json", "application/json");
+    setScanNotice("Source findings downloaded. This does not create tasks or modify any app.");
+  }
+  const visibleFindings = (scanReport?.findings || [])
+    .filter((finding) => {
+      const term = scanQuery.trim().toLowerCase();
+      return !term || [
+        finding.title, finding.category, finding.observation,
+        finding.recommendation, ...finding.evidence.map((item) => item.path),
+      ].join(" ").toLowerCase().includes(term);
+    })
+    .sort((left, right) => {
+      if (scanSort === "title") return left.title.localeCompare(right.title);
+      if (scanSort === "category") return left.category.localeCompare(right.category) || left.title.localeCompare(right.title);
+      return ({ high: 0, medium: 1, low: 2 }[left.priority] ?? 3) -
+        ({ high: 0, medium: 1, low: 2 }[right.priority] ?? 3) || left.title.localeCompare(right.title);
+    });
+
   const acceptedCount = blueprint?.suggestions.filter((x) => ["accept", "edit"].includes(x.review)).length || 0;
   const pendingCount = blueprint?.suggestions.filter((x) => x.review === "pending").length || 0;
 
@@ -172,8 +241,9 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
 
     <p className="bl-disclosure" role="note">
       <strong>What this pilot does:</strong> Turns your description into a deterministic planning checklist and editable review.
-      It does not scan websites, inspect code automatically, run AI, create issues, save to Supabase or change live apps.
-      Drafts autosave only in this browser on this preview address, not across devices or deployment links.
+      The new InceptionApex Source Inspector reads a small approved set of first-party code and existing test scripts.
+      It does not browse external websites, execute app actions, run AI, create tasks, save to Supabase or change live apps.
+      Source observations are not proof of bugs or live behavior. Drafts autosave in this browser only.
       Do not enter passwords, private customer information or API secrets.
     </p>
 
@@ -182,6 +252,95 @@ export default function EigBuildLab({ ownerUserId, onBack, onDirtyChange }) {
         ? "Browser autosave is unavailable. Download reusable JSON to keep your work."
         : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
+
+    <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
+      <div className="bl-scan-heading">
+        <div>
+          <h2 id="bl-source-title">Source Inspector · InceptionApex</h2>
+          <p>First actual read-only scan: source files, existing browser-test code, and linked evidence.</p>
+        </div>
+        <button type="button" className="platform-primary-button" disabled={scanRunning}
+          onClick={runSourceScan}>
+          {scanRunning ? "Inspecting source…" : scanReport ? "Scan this source version again" : "Inspect InceptionApex source →"}
+        </button>
+      </div>
+      <p className="bl-quiet">The scanner examines code from this deployed preview. It does not visit your live app, scan customer designs, or run an AI model.</p>
+      {scanError && <p className="platform-error" role="alert">{scanError}</p>}
+      {scanNotice && <p className="bl-notice" role="status">{scanNotice}</p>}
+      {scanReport && <>
+        <div className="bl-scan-meta">
+          <span><strong>{scanReport.files.length}</strong> source files</span>
+          <span><strong>{scanReport.findings.length}</strong> source-backed findings</span>
+          <span>Source fingerprint: <code>{scanReport.sourceFingerprint.slice(0, 12)}</code></span>
+          <span>Inspected: {new Date(scanReport.inspectedAt).toLocaleString()}</span>
+        </div>
+        <div className="bl-scan-controls">
+          <label>Search findings
+            <input type="search" value={scanQuery} onChange={(e) => setScanQuery(e.target.value)}
+              placeholder="Search issues, source files, categories…" />
+          </label>
+          <label>Sort findings
+            <select value={scanSort} onChange={(e) => setScanSort(e.target.value)}>
+              <option value="priority">Priority</option>
+              <option value="category">Category</option>
+              <option value="title">Title</option>
+            </select>
+          </label>
+          <button type="button" className="platform-secondary-button" onClick={exportScanReport}>Download source report JSON</button>
+        </div>
+        <p className="bl-quiet">Showing {visibleFindings.length} of {scanReport.findings.length} findings. Evidence means the pattern was found in code, not that the suggested improvement is verified as necessary.</p>
+        <div className="bl-scan-results">
+          {visibleFindings.map((finding) => {
+            const review = scanReviews[finding.id];
+            return <article className="bl-scan-finding" key={finding.id}>
+              <div className="bl-suggestion-top">
+                <span className="bl-phase">{finding.category} · {finding.priority} priority</span>
+                <span className={"bl-review-state state-" + (review?.review || "pending")}>
+                  {review?.review === "accept" ? "Accepted" : review?.review === "edit" ? "Edited" :
+                    review?.review === "reject" ? "Rejected" : "Not reviewed"}
+                </span>
+              </div>
+              <h3>{finding.title}</h3>
+              <p><strong>Observed in source:</strong> {finding.observation}</p>
+              <p><strong>Suggested check:</strong> {review?.review === "edit" ? review.editedDetail : finding.recommendation}</p>
+              <details className="bl-evidence">
+                <summary>View code evidence ({finding.evidence.length})</summary>
+                <ul>{finding.evidence.map((evidence, index) =>
+                  <li key={finding.id + "-" + index}>
+                    <code>{evidence.path}:{evidence.line}</code>
+                    <code className="bl-source-excerpt">{evidence.excerpt}</code>
+                  </li>)}</ul>
+              </details>
+              <div className="bl-review-actions">
+                <button type="button" className="platform-secondary-button"
+                  onClick={() => decideScan(finding.id, "accept")}>Accept</button>
+                <button type="button" className="platform-secondary-button"
+                  onClick={() => {
+                    setScanEditing(finding.id);
+                    setScanEditValue(review?.editedDetail || finding.recommendation);
+                  }}>Revise</button>
+                <button type="button" className="platform-secondary-button"
+                  onClick={() => decideScan(finding.id, "reject")}>Reject</button>
+              </div>
+              {scanEditing === finding.id && <div className="bl-revise">
+                <label htmlFor={"bl-scan-edit-" + finding.id}>Revised scan recommendation</label>
+                <textarea id={"bl-scan-edit-" + finding.id} rows="3" maxLength={1500}
+                  value={scanEditValue} onChange={(e) => setScanEditValue(e.target.value)} />
+                <div className="bl-review-actions">
+                  <button type="button" className="platform-primary-button"
+                    onClick={() => decideScan(finding.id, "edit", scanEditValue)}>Save revision</button>
+                  <button type="button" className="platform-secondary-button"
+                    onClick={() => setScanEditing("")}>Cancel</button>
+                </div>
+              </div>}
+            </article>;
+          })}
+          {visibleFindings.length === 0 && <p className="bl-quiet">No findings match this search.</p>}
+        </div>
+        <p className="bl-quiet">{scanReport.limitations}</p>
+        <p className="bl-quiet">Accept, revise, and reject only record your local review. No code, customer information, GitHub issue or production software changes.</p>
+      </>}
+    </section>
 
     <div className="bl-two-column">
       <form className="platform-section-card bl-brief" onSubmit={generate}>

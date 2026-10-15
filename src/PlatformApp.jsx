@@ -16,6 +16,7 @@ import { AirportPage, MainCabinPage, PassengerProfilePage } from './ElevationAir
 import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
+import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
@@ -2816,6 +2817,7 @@ export default function App() {
   const [inceptionEventId, setInceptionEventId] = useState('');
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [buildLabDirty, setBuildLabDirty] = useState(false);
+  const [buildLabOwnerGrant, setBuildLabOwnerGrant] = useState(null);
   const [socialDirty, setSocialDirty] = useState(false);
   const socialReturn = useRef('chooser');
   const [eventStudioDirty, setEventStudioDirty] = useState(false);
@@ -2834,6 +2836,28 @@ export default function App() {
   if (publicEventMatch && isSupabaseConfigured) return <EieEventSite publicSlug={decodeURIComponent(publicEventMatch[1])} publicMode />;
 
   const [session, setSession] = useState(null); const [authReady, setAuthReady] = useState(false); const [adminView, setAdminView] = useState('command'); const [recoveryMode, setRecoveryMode] = useState(recoveryLinkHint); const [pendingInvitations, setPendingInvitations] = useState([]); const [inviteProfile, setInviteProfile] = useState(null); const [inviteCheckUserId, setInviteCheckUserId] = useState(''); const [memberships, setMemberships] = useState([]); const [activeOrganizationId, setActiveOrganizationId] = useState(''); const [products, setProducts] = useState([]); const [entitlements, setEntitlements] = useState([]); const [organizations, setOrganizations] = useState([]); const [organizationProfile, setOrganizationProfile] = useState(null); const [eventRequests, setEventRequests] = useState([]); const [eieEvents, setEieEvents] = useState([]); const [loadingEieEvents, setLoadingEieEvents] = useState(false); const [cockpitApp, setCockpitApp] = useState(''); const [eieInitialEventId, setEieInitialEventId] = useState(''); const [loadingData, setLoadingData] = useState(false); const [loadingRequests, setLoadingRequests] = useState(false); const [dataError, setDataError] = useState(''); const [profile, setProfile] = useState(null); const [passenger, setPassenger] = useState(null); const [passengerProfile, setPassengerProfile] = useState(null); const [savedPaymentCount, setSavedPaymentCount] = useState(0); const [airportFlights, setAirportFlights] = useState([]); const [airportLoading, setAirportLoading] = useState(false); const [portalView, setPortalView] = useState(window.location.hash === '#social-media' ? 'social' : window.location.hash === '#inception-apex' ? 'inception' : 'chooser'); const [activeFlight, setActiveFlight] = useState(null); const [atcEvent, setAtcEvent] = useState(null); const [atcOrganization, setAtcOrganization] = useState(null); const [atcLoading, setAtcLoading] = useState(false);
+
+  // Only the configured owner receives a server grant; an EIG admin role
+  // alone cannot enable this pilot. Hide the entry if the server is unavailable.
+  useEffect(() => {
+    const accountId = session?.user?.id || '';
+    let canceled = false;
+    setBuildLabOwnerGrant(null);
+    if (!EIG_BUILD_LAB_PREVIEW_ENABLED || !accountId || !canUseAutoResizer(memberships)) {
+      return () => { canceled = true; };
+    }
+    const verify = async () => {
+      const allowed = await requestOwnerBuildLabAccess(supabase);
+      if (!canceled) setBuildLabOwnerGrant({ userId: accountId, allowed });
+    };
+    void verify();
+    const recheck = () => {
+      setBuildLabOwnerGrant(null);
+      void verify();
+    };
+    window.addEventListener('focus', recheck);
+    return () => { canceled = true; window.removeEventListener('focus', recheck); };
+  }, [session?.user?.id, memberships]);
 
   const currentAuthSession = useRef(null);
   function acceptAuthSession(nextSession) {
@@ -3412,8 +3436,17 @@ export default function App() {
   }
 
   function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty || buildLabDirty) || window.confirm('Leave without exporting your Build Lab blueprint or saving your campaign, design, event packet or budget changes?'); }
-  function openBuildLab() {
-    if (!EIG_BUILD_LAB_PREVIEW_ENABLED || !canUseAutoResizer(memberships) || !canLeaveInception()) return;
+  async function openBuildLab() {
+    if (!buildLabAllowed || !canLeaveInception()) return;
+    const accountId = session?.user?.id || '';
+    // Require a fresh server decision for each entry, including after
+    // a role/session change. A frontend flag or fabricated response is not
+    // permission to use future protected Build Lab endpoints.
+    const allowed = await requestOwnerBuildLabAccess(supabase);
+    if (!allowed || currentAuthSession.current?.user?.id !== accountId) {
+      setBuildLabOwnerGrant(null);
+      return;
+    }
     const eigOrg = organizations.find((org) => org.slug === EIG_SLUG);
     if (!eigOrg?.id) return;
     setBuildLabDirty(false);
@@ -3461,7 +3494,13 @@ export default function App() {
   const activeOrganization = activeMembership?.organization || organizations.find((org) => org.id === activeOrganizationId) || null;
   const effectiveActiveRole = directActiveMembership?.role || (eigMembership ? 'eig_admin' : activeMembership?.role || 'passenger');
   const isEigAdminWorkspace = activeOrganization?.slug === EIG_SLUG && effectiveActiveRole === 'eig_admin';
-  const buildLabAllowed = EIG_BUILD_LAB_PREVIEW_ENABLED && isEigAdminWorkspace && canUseAutoResizer(memberships);
+  const buildLabAllowed = ownerPreviewVisible({
+    previewEnabled: EIG_BUILD_LAB_PREVIEW_ENABLED,
+    eigWorkspace: isEigAdminWorkspace,
+    activeEIGAdmin: canUseAutoResizer(memberships),
+    userId: session.user.id,
+    serverGrant: buildLabOwnerGrant,
+  });
   const isAirport = portalView === 'airport';
   const isProfile = portalView === 'profile';
   const isMainCabin = portalView === 'main_cabin';

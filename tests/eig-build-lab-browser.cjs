@@ -15,6 +15,60 @@ const fs = require("node:fs/promises");
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
     await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
+    // The scanner is mocked here to exercise authenticated UI and local
+    // review persistence; separate server tests read actual first-party files.
+    const scanFixture = {
+      schemaVersion: 1, kind: "eig_build_lab_code_scan",
+      target: "inception_apex", targetLabel: "InceptionApex",
+      sourceVersion: "a".repeat(40), sourceFingerprint: "b".repeat(64),
+      inspectedAt: "2026-10-15T14:00:00.000Z", scannerVersion: "inception-code-v1",
+      files: [
+        { path: "src/components/InceptionApex.jsx", lines: 1361 },
+        { path: "src/components/inception-apex.css", lines: 623 },
+      ],
+      findings: [
+        {
+          id: "ia-native-confirm", category: "Workflow", priority: "medium",
+          title: "Review native confirmation dialogs",
+          observation: "First-party source calls window.confirm during navigation.",
+          recommendation: "Consider a reusable confirmation component.",
+          provenance: "observed_in_first_party_source", review: "pending",
+          evidence: [{ path: "src/components/InceptionApex.jsx", line: 232, excerpt: "window.confirm(" }],
+        },
+        {
+          id: "ia-form-focus", category: "Accessibility", priority: "low",
+          title: "Check field focus indicators",
+          observation: "Stylesheet defines focus-visible on buttons.",
+          recommendation: "Inspect field focus on mobile and keyboard.",
+          provenance: "observed_in_first_party_source", review: "pending",
+          evidence: [{ path: "src/components/inception-apex.css", line: 393, excerpt: ".ia-app button:focus-visible {" }],
+        },
+      ],
+      limitations: "Static source inspection only, not a runtime UI test.",
+      safety: { readOnly: true, liveChanges: false, autoApproved: false },
+    };
+    await page.route("**/api/eig-build-lab-scan", async (route) => {
+      assert.equal(route.request().method(), "POST");
+      assert.equal(route.request().postDataJSON().target, "inception_apex");
+      assert.match(route.request().headers().authorization || "", /Bearer synthetic-browser-test-token/);
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, report: scanFixture }) });
+    });
+    await page.getByRole("button", { name: /Inspect InceptionApex source/ }).click();
+    await page.getByText("Review native confirmation dialogs").waitFor();
+    await page.getByRole("button", { name: "Download source report JSON" }).waitFor();
+    const firstScanFinding = page.locator(".bl-scan-finding").filter({ hasText: "Review native confirmation dialogs" });
+    await firstScanFinding.locator("summary").click();
+    await firstScanFinding.getByText(/src\/components\/InceptionApex.jsx:232/).waitFor();
+    await firstScanFinding.getByRole("button", { name: "Accept" }).click();
+    assert.equal(await firstScanFinding.locator(".state-accept").count(), 1);
+    await page.getByRole("button", { name: /EIG Command Center/ }).click();
+    await page.getByRole("button", { name: "Return to Build Lab" }).click();
+    await page.getByText("Review native confirmation dialogs").waitFor();
+    assert.equal(await page.locator(".bl-scan-finding .state-accept").count(), 1);
+    await page.reload();
+    await page.getByText("Review native confirmation dialogs").waitFor();
+    assert.equal(await page.locator(".bl-scan-finding .state-accept").count(), 1);
     assert.equal(await page.getByRole("button", { name: "Download reusable JSON" }).count(), 0);
     await page.getByRole("button", { name: "Load InceptionApex pilot" }).click();
     assert.equal(await page.getByLabel("What are we doing?").inputValue(), "ui_review");

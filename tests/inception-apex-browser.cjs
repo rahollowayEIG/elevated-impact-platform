@@ -110,10 +110,15 @@ const jsQR = require("jsqr");
       .getByRole("dialog", { name: "Dinner flyer", exact: true })
       .waitFor();
     assert.ok(await page.getByText(/Unsaved preview/).isVisible());
+    // The preview dialog may open before the browser finishes decoding its
+    // data-URL SVG. Await image readiness instead of sampling a race.
     assert.equal(
       await page
         .locator(".ia-preview-dialog img")
-        .evaluate((img) => img.complete && img.naturalWidth > 0),
+        .evaluate(async (img) => {
+          await img.decode();
+          return img.complete && img.naturalWidth > 0;
+        }),
       true,
     );
     await page.screenshot({

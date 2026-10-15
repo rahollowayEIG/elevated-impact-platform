@@ -1,5 +1,5 @@
 // Draft-only Canva Connect OAuth handler. Not deployed.
-// POST /start requires a current EIG-admin session; GET /callback uses opaque one-use state.
+// POST to the function root requires EIG-admin session; GET to the same root uses one-use state.
 // Each connection belongs to an existing platform account, never to the browser-supplied user.
 const SCOPES = ["asset:read","asset:write","brandtemplate:content:read","brandtemplate:meta:read","design:content:read","design:content:write","design:meta:read","profile:read"].join(" ");
 const CANVA_AUTH = "https://www.canva.com/api/oauth/authorize";
@@ -33,7 +33,7 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
     const url=new URL(req.url),origin=env("INCEPTION_CANVA_APP_ORIGIN");
     const callback=env("INCEPTION_CANVA_REDIRECT_URI");
     const enabled=env("INCEPTION_CANVA_OAUTH_ENABLED")==="true";
-    const headers={"Cache-Control":"no-store"};
+    const isFunctionRoot=url.pathname.replace(/\/+$/,"").endsWith("/inception-canva-oauth");
     if(req.method==="OPTIONS"){
       if(req.headers.get("Origin")!==origin) return new Response(null,{status:403});
       return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":origin,"Access-Control-Allow-Headers":"authorization, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"}});
@@ -41,7 +41,7 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
     if(!enabled) return json({error:"Canva connection is not available yet."},503);
     if(!origin || !/^https:\/\/[^/]+$/.test(origin) || !callback || !/^https:\/\//.test(callback) || !env("CANVA_CLIENT_ID") || !env("CANVA_CLIENT_SECRET") || !env("CANVA_OAUTH_ENCRYPTION_KEY"))return json({error:"Canva connection needs configuration."},503);
     try {
-      if(url.pathname.endsWith("/start") && req.method==="POST"){
+      if(isFunctionRoot && req.method==="POST"){
         if(req.headers.get("Origin")!==origin)throw new PublicError("This action must start in InceptionApex.",403);
         const access=req.headers.get("Authorization")?.match(/^Bearer (.+)$/i)?.[1];
         if(!access)throw new PublicError("Sign in to ElevationPilot.",401);
@@ -71,7 +71,7 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
         authorization.searchParams.set("code_challenge_method","S256");
         return json({authorization_url:authorization.toString()},200,origin);
       }
-      if(url.pathname.endsWith("/callback") && req.method==="GET"){
+      if(isFunctionRoot && req.method==="GET"){
         const state=url.searchParams.get("state")||"";
         const code=url.searchParams.get("code")||"";
         if(!/^[A-Za-z0-9_-]{43}$/.test(state))return html("Authorization link expired or invalid. Return to InceptionApex and try again.",400);
@@ -83,8 +83,8 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
         if(url.searchParams.has("error")||!code||code.length>2048)return html("Canva authorization was canceled or unsuccessful. You can try again from InceptionApex.",400);
         // Browser session may have ended while authorizing. Check that the original
         // identity/session remains eligible before persisting any third-party token.
-        const session=db(await admin.rpc("platform_assert_active_admin",{p_actor_id:row.actor_user_id,p_actor_session_id:row.actor_session_id}));
-        void session;
+        const activeSession=await admin.rpc("platform_assert_active_admin",{p_actor_id:row.actor_user_id,p_actor_session_id:row.actor_session_id});
+        if(activeSession.error)return html("Your EIG session is no longer active. Return to InceptionApex and try again.",403);
         const membership=db(await admin.from("organization_memberships").select("organization_id,role,status,access_starts_at,access_ends_at,organization:organizations(id,slug)").eq("user_id",row.actor_user_id).eq("role","eig_admin").eq("status","active"));
         if(!membership.some(x=>x.organization_id===row.organization_id&&x.organization?.slug==="elevated-impact-group"&&(!x.access_starts_at||Date.parse(x.access_starts_at)<=now())&&(!x.access_ends_at||Date.parse(x.access_ends_at)>now())))return html("Your EIG access changed. Return to InceptionApex.",403);
         const credential=btoa(env("CANVA_CLIENT_ID")+":"+env("CANVA_CLIENT_SECRET"));
@@ -107,7 +107,7 @@ export function createCanvaOAuthHandler({admin,env,crypt=crypto,http=fetch,now=(
       }
       return json({error:"Not found"},404);
     } catch (error) {
-      if(url.pathname.endsWith("/callback"))return html("Canva authorization could not be completed. Return to InceptionApex and try again.",error.status&&error.status<500?error.status:500);
+      if(isFunctionRoot && req.method==="GET")return html("Canva authorization could not be completed. Return to InceptionApex and try again.",error.status&&error.status<500?error.status:500);
       return json({error:error instanceof PublicError?error.message:"Canva connection is temporarily unavailable."},error instanceof PublicError?error.status:500,origin);
     }
   };

@@ -42,7 +42,7 @@ test("change detection uses actual source fingerprint, never a fabricated scan",
   assert.equal(original.sourceFingerprint, repeated.sourceFingerprint);
   const changed = scanInceptionSource({
     ...source, "src/components/InceptionApex.jsx":
-      source["src/components/InceptionApex.jsx"].replace("window.confirm(", "window.modalCandidate("),
+      source["src/components/InceptionApex.jsx"].replaceAll("window.confirm(", "window.modalCandidate("),
   });
   assert.notEqual(changed.sourceFingerprint, original.sourceFingerprint);
   assert.ok(!changed.findings.some((item) => item.id === "ia-native-confirm"));

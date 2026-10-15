@@ -67,12 +67,17 @@ function cleanScanState(scanReport, scanReviews = {}, scanEditing = "", scanEdit
   if (scanReviews && typeof scanReviews === "object" && !Array.isArray(scanReviews)) {
     for (const [id, decision] of Object.entries(scanReviews)) {
       if (!allowed.has(id) || !["accept", "edit", "reject"].includes(decision?.review)) continue;
+      const editedDetail = decision.editedDetail;
       if (decision.review === "edit" &&
-          (typeof decision.editedDetail !== "string" ||
-           !decision.editedDetail.trim() || decision.editedDetail.length > 1500)) continue;
+          (typeof editedDetail !== "string" || !editedDetail.trim() ||
+           editedDetail.length > 1500)) continue;
+      // An approved or rejected finding can still retain its edited wording.
+      if (editedDetail != null &&
+          (typeof editedDetail !== "string" || !editedDetail.trim() ||
+           editedDetail.length > 1500)) continue;
       reviews[id] = {
         review: decision.review,
-        editedDetail: decision.review === "edit" ? decision.editedDetail : null,
+        editedDetail: editedDetail || null,
       };
     }
   }

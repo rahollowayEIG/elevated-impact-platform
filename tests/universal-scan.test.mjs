@@ -106,3 +106,78 @@ test("review refuses unknown suggestions and bad confidence", () => {
     "hidden-admin-field": { action: "accept" },
   }), /unknown suggestion/);
 });
+
+const buildRequest = (sourceKind = "image") => createScanRequest({
+  requestId: "build-001",
+  target: "app_blueprint",
+  sourceKind,
+  sourceRef: "sample-001",
+  sourceLabel: "Authorized example app walkthrough",
+});
+const buildSuggestion = (overrides = {}) => ({
+  id: "screen-control-001",
+  recordKey: "screen-dashboard",
+  recordType: "observed_screen",
+  field: "visible_controls",
+  value: "Create Event button",
+  claimKind: "observed",
+  evidence: { locator: "Dashboard screenshot 1", excerpt: "Create Event" },
+  ...overrides,
+});
+
+test("Scan & Build is an EIG-owned draft blueprint, not a deployment tool", () => {
+  assert.equal(SCAN_TARGETS.app_blueprint.owner, "eig_build_lab");
+  const batch = normalizeScanSuggestions(buildRequest(), [buildSuggestion()]);
+  assert.equal(batch.candidates[0].claimKind, "observed");
+  assert.throws(() => prepareScanHandoff(batch), /Explicit review/);
+  const reviewed = reviewScanSuggestions(batch, {
+    "screen-control-001": { action: "accept" },
+  });
+  const handoff = prepareScanHandoff(reviewed);
+  assert.equal(handoff.stage, "requires_domain_validation");
+  assert.equal(handoff.ownerDomain, "eig_build_lab");
+  assert.equal(handoff.records[0].fields.visible_controls, "Create Event button");
+  assert.equal(handoff.records[0].provenance.visible_controls.claimKind, "observed");
+  assert.equal(Object.hasOwn(handoff, "executed"), false);
+  assert.equal(Object.hasOwn(handoff, "pullRequest"), false);
+});
+
+test("screenshots and ideas cannot pretend an untested app function was observed", () => {
+  const screenshot = buildRequest("image");
+  assert.throws(() => normalizeScanSuggestions(screenshot, [
+    buildSuggestion({recordType: "observed_interaction",field:"observed_result"}),
+  ]), /unverified functionality/);
+  assert.throws(() => normalizeScanSuggestions(screenshot, [
+    buildSuggestion({recordType: "behavior_hypothesis",field:"possible_behavior",claimKind:"observed"}),
+  ]), /unverified functionality/);
+  assert.throws(() => normalizeScanSuggestions(screenshot, [
+    buildSuggestion({recordType: "proposed_feature",field:"description",claimKind:"observed"}),
+  ]), /unverified functionality/);
+  assert.throws(() => normalizeScanSuggestions(screenshot, [
+    buildSuggestion({recordType: "observed_screen",field:"secret_access_token"}),
+  ]), /not allowed/);
+});
+
+test("recorded functionality, hypotheses and new ideas remain separate with evidence and review", () => {
+  const observed = normalizeScanSuggestions(buildRequest("recording"), [
+    buildSuggestion({recordType:"observed_interaction",field:"observed_result",value:"A new event form opened",evidence:{locator:"Recording 1 at 00:42",excerpt:"Click Create Event and form appears"}}),
+  ]);
+  const reviewed = reviewScanSuggestions(observed, {
+    "screen-control-001": {action:"accept"},
+  });
+  assert.equal(prepareScanHandoff(reviewed).records[0].provenance.observed_result.claimKind,"observed");
+
+  const ideas = normalizeScanSuggestions(buildRequest("text"), [
+    buildSuggestion({recordType:"proposed_feature",field:"description",claimKind:"proposed",value:"Use one searchable Event Builder for every event type",evidence:{locator:"Owner design brief",excerpt:"Make the event workflow reusable"}}),
+    buildSuggestion({id:"question-1",recordKey:"questions",recordType:"open_question",field:"question",claimKind:"proposed",value:"Which organization owns the created event?",evidence:{locator:"Owner design brief",excerpt:"Build a reusable event workflow"}}),
+  ]);
+  assert.throws(() => prepareScanHandoff(ideas), /Explicit review/);
+  const output=prepareScanHandoff(reviewScanSuggestions(ideas,{
+    "screen-control-001":{action:"edit",value:"One event builder reusable across event types"},
+    "question-1":{action:"reject"},
+  }));
+  assert.equal(output.records.length,1);
+  assert.equal(output.records[0].provenance.description.claimKind,"proposed");
+  assert.equal(output.records[0].provenance.description.wasEdited,true);
+  assert.equal(output.records[0].fields.description,"One event builder reusable across event types");
+});

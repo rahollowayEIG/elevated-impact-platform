@@ -47,3 +47,35 @@ Official docs: https://www.canva.dev/docs/connect/authentication/ ; https://www.
 The InceptionApex footer offers Connect Canva and a non-secret connection-status check only if (a) the existing membership-based `canUseResizer` EIG admin eligibility is true and (b) `VITE_INCEPTION_CANVA_CONNECT_ENABLED=true`. The server independently rechecks the account, interactive session and current EIG admin membership for both requests. The backend POST operation is either `connect` or `status`; Canva calls back to the same Edge function root with GET. UI redirects to Canva's verified authorization URL and, on return to ElevationPilot, checks status again.
 
 **No user action currently needed.** The `InceptionApex-Flyer` is saved in Canva as an owner-selected pilot design, but this draft does not read or edit it. Real Canva design exchange, disconnect, environment validation and test-run sign-off remain blockers.
+
+## Repeatable onboarding and version-entitlement architecture (required before customer rollout)
+
+**Owner requirement, October 15, 2026:** This Canva connection must become a reusable step in ElevationPilot's shared provisioning/onboarding flow based on the edition or service package chosen. The EIG-only pilot is NOT the final entitlement system. Do not simply remove the admin-only guard to make Canva customer-facing.
+
+### Single provisioning flow
+
+1. **Organization / Hangar** is the provisioning master, not an isolated Canva account.
+2. Identify organization type and selected services; select an **approved offering/edition** and its **published version/revision**, not an unversioned free-text plan name.
+3. Resolve **entitlements** (which apps/extensions, actions, provider connectors, quotas/limits and specific eligible features), then contextual **permissions** (Pilot/Co-Pilot/ATC/Passenger or another approved role) from the canonical identity model.
+4. Provision shared apps, organization resources (approved brand assets/templates, workspace and mapped Drive/Store resources where selected), and display only the setup steps relevant to the user's actual selections.
+5. Offer **Connect Canva** only when the resolved entitlement, scoped role and current platform account permit it; grant no provider authority solely because a frontend button exists. Show capability limits and a safe alternative when the selected Canva account's independent subscription/API entitlements lack a requested feature.
+6. Connect an external account only after the person explicitly authorizes it. Use the canonical permanent \`person_id\` plus provider account and organization/context mapping. A Supabase login ID alone is not sufficient as the long-term global identity key. Keep each person's/organization's tokens and designs isolated.
+7. Preserve user choice of **link only / import selected data / ongoing sync**, where supported. Request progressive minimum scopes. Do not automatically sync every design, do not silently upload sensitive assets, and do not promise provider features unsupported by the linked account.
+8. Store the onboarding outcome, source edition/version, effective entitlements, connection ownership, consent scope and audit/provisioning status. An interrupted onboarding attempt should be safely resumable/idempotent, with no duplicate Hangar, users, Drive folders, accounts or records.
+
+### Distinguish three different "versions"
+
+- **ElevationPilot selected package/edition revision**: Determines what we offer, who may use it, usage/seat limits and what upgrade paths are shown. Exact commercial tiers/prices are open owner decisions; **do not invent tiers, charge Hangar signup fees, or wire speculative billing**.
+- **Canva subscription and actual API capabilities**: Independent of ElevationPilot's offering. Verify the connected account's available operations at use time and provide appropriate fallbacks rather than inferring availability from a UI label. Higher-level provider features must not automatically appear for everyone.
+- **InceptionApex software release + artwork version**: Release compatibility and design revision/approval history are separate from both commercial entitlements. A later package change must not rewrite or silently re-approve prior artwork.
+
+### Lifecycle and minimum tests
+
+- New signup, existing Pilot adding InceptionApex, existing user in multiple Hangars, EIG internal pilot, and invited user with no entitlement.
+- Connect, deny, expired callback, resume onboarding, revoked platform session, reconnect, explicit disconnect/revoke and opt-in selective import.
+- Upgrade, downgrade or suspend a selected edition without sharing tokens or deleting legitimate approved artwork; server must recompute access rather than trusting stale browser controls.
+- Canva account unable to use an advanced feature: show honest limits and supported alternatives, avoid forced upgrade/purchase.
+- Separate sandbox vs production, secret storage, role/organization boundaries, audit, and no cross-tenant data leakage.
+- Automated configuration/provisioning tests for each published offering version before exposing it to users.
+
+**Required engineering changes before extending beyond EIG:** Replace the hard-coded \`eig_admin\` rollout gate with centrally resolved, server-enforced app/feature entitlements plus scoped role checks. Migrate pilot-only OAuth connection ownership from \`actor_user_id\` toward the canonical \`person_id\` and explicit provider/account/organization context with a reviewed migration and access policy. Do not expose EIG pilot credential mappings to other organizations. Align with [ElevationPilot User & Identity Rules](ElevationPilot-User-Identity-Rules.md) §§1, 9, 12, 13 and [InceptionApex App Architecture](InceptionApex-App-Architecture.md). This is a **design requirement**, not code already implemented.

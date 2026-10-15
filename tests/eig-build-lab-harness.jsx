@@ -17,6 +17,10 @@ function TestHarness() {
     ? <EigBuildLab
         key={ownerUserId}
         ownerUserId={ownerUserId}
+        supabaseClient={{ auth: { getSession: async () => ({
+          data: { session: { access_token: "synthetic-browser-test-token" } },
+          error: null,
+        }) } }}
         onBack={() => {
           window.buildLabHarness.navigations++;
           setOpen(false);

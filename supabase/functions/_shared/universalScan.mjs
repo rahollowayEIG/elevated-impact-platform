@@ -3,7 +3,7 @@
 // A trusted server must resolve session, scope, source ownership and target adapter.
 
 export const SCAN_SOURCE_KINDS = Object.freeze([
-  "website", "document", "image", "spreadsheet", "gis", "text",
+  "website", "document", "image", "spreadsheet", "gis", "text", "recording",
 ]);
 
 const schemas = {
@@ -40,6 +40,20 @@ const schemas = {
       feature: ["name", "type", "hole_number", "latitude", "longitude", "notes"],
     },
   },
+  // The Build Lab only drafts a reviewed blueprint. It never creates code,
+  // tests, repositories, PRs, deployment access, or customer records.
+  app_blueprint: {
+    owner: "eig_build_lab",
+    records: {
+      observed_screen: ["name", "purpose", "visible_controls", "navigation", "layout_notes"],
+      observed_interaction: ["name", "user_action", "observed_result", "test_context"],
+      behavior_hypothesis: ["name", "possible_behavior", "how_to_verify"],
+      workflow_gap: ["name", "problem", "user_impact"],
+      proposed_feature: ["name", "description", "user_value", "reuse_candidate"],
+      build_task: ["title", "requirement", "acceptance_criteria", "dependencies", "test_plan"],
+      open_question: ["question", "why_it_matters"],
+    },
+  },
 };
 
 export const SCAN_TARGETS = Object.freeze(
@@ -56,6 +70,20 @@ export const SCAN_TARGETS = Object.freeze(
 
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/;
 const MAX_CANDIDATES = 150;
+
+// A screenshot can demonstrate visible UI; it cannot prove hidden app logic.
+// A proposed improvement or guessed behavior must never be presented as observed.
+// The future trusted server must verify that a recording is an authorized
+// interaction trace before accepting an observed_interaction candidate.
+const BUILD_CLAIM_KINDS = Object.freeze({
+  observed_screen: "observed",
+  observed_interaction: "observed",
+  behavior_hypothesis: "inferred",
+  workflow_gap: "inferred",
+  proposed_feature: "proposed",
+  build_task: "proposed",
+  open_question: "proposed",
+});
 
 function requiredText(value, label, max = 500) {
   if (typeof value !== "string" || !value.trim() || value.trim().length > max)
@@ -117,6 +145,10 @@ export function normalizeScanSuggestions(request, suggestions) {
     const field = requiredText(item.field, "field", 50);
     if (!Object.hasOwn(records, recordType) || !records[recordType].includes(field))
       throw new Error("Suggestion is not allowed in this destination.");
+    if (request.target === "app_blueprint" &&
+        (item.claimKind !== BUILD_CLAIM_KINDS[recordType] ||
+        (recordType === "observed_interaction" && request.source.kind !== "recording")))
+      throw new Error("Build Lab evidence cannot claim unverified functionality as observed.");
     if (seenIds.has(suggestionId) || seenFields.has(`${recordKey}:${recordType}:${field}`))
       throw new Error("Duplicate scan suggestion.");
     seenIds.add(suggestionId);
@@ -132,6 +164,7 @@ export function normalizeScanSuggestions(request, suggestions) {
       throw new Error("Invalid extraction confidence.");
     return {
       id: suggestionId, recordKey, recordType, field, value,
+      ...(request.target === "app_blueprint" ? { claimKind: item.claimKind } : {}),
       evidence: { locator, excerpt }, confidence,
     };
   });
@@ -205,6 +238,7 @@ export function prepareScanHandoff(review) {
       evidence: { ...item.evidence },
       suggestedValue: item.originalValue,
       wasEdited: item.action === "edit",
+      ...(review.target === "app_blueprint" ? { claimKind: item.claimKind } : {}),
     };
   }
   if (!grouped.size) throw new Error("Nothing approved for handoff.");

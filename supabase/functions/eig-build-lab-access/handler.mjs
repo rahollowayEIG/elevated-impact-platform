@@ -67,7 +67,8 @@ export function createEigBuildLabAccessHandler({ admin, env, now = () => Date.no
       const guard = await admin.rpc("platform_assert_active_admin", {
         p_actor_id: user.id, p_actor_session_id: sessionId,
       });
-      if (guard.error || !guard.data) return reply({ allowed: false }, 403);
+      // This RPC returns void on success and raises on invalid/revoked sessions.
+      if (guard.error) return reply({ allowed: false }, 403);
 
       const membership = await admin.from("organization_memberships")
         .select("role,status,access_starts_at,access_ends_at,organization:organizations(slug)")

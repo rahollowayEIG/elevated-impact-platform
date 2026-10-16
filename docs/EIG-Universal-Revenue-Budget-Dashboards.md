@@ -1,0 +1,41 @@
+# EIG Universal Revenue & Budget Dashboards
+Owner direction, October 16, 2026. Architecture blueprint only, not implemented or released.
+
+## Golden rule
+Every app and every individual revenue-generating function must offer a reusable budget/profitability panel, with rollups to its App Dashboard and its Organization/Hangar Dashboard. EIG Command Center may see authorized EIG-wide rollups. Do not create a new budget table/calculator for each app; implement one financial metric and reporting service.
+
+## Hierarchy
+Revenue Activity (e.g. one Chapel Hill scorecard print batch, one ad placement, a flyover sale, an event, sponsorship package, merchandise order, ticket sale, printing job)
+ -> App Dashboard (InceptionApex, Event Builder/EIE, EIC, TV Ad Network, etc.)
+ -> Hangar Dashboard (one business/organization, multiple apps)
+ -> EIG Command Center (EIG-controlled permissions and cross-business aggregates).
+
+Vertical Financials is the person/business financial home, and should DISPLAY authorized budget and earning summaries, not serve as a second ledger. Distinguish rewards (AirCash/Altitude Loot), sales, cash, deposits, accrued revenue, payable commissions and actual partner-held money. No double counting on rollup.
+
+## Reusable input contract for each activity
+- organization_id, app_id, activity_id, project/event/item, lifecycle (draft/approved/live/closed), time period, currency, units.
+- Budget version, scenario (conservative/base/optimistic), input provenance (estimate/quote/invoice/payment system) and last updated.
+- Forecast income by stream: unit sales, sponsor slots, paid upgrades, discounts, subscriptions, commissions; capacity/inventory and sell-through assumptions.
+- Forecast costs by stream: COGS, suppliers/printers, marketing, commissions, platform/payment fees, taxes where applicable, shipping, returns, labor and contingency.
+- Actual booked sales, collections, refunds, fees and realized costs from canonical domain records, with source IDs and date.
+- Break-even quantity/sponsors, expected gross margin, contribution margin and net operating result. Mark estimates separately from actuals; never call forecasted sponsorships cash received.
+- Revenue allocation: record who receives each transaction and how EIG, the Hangar, sponsors and partners divide proceeds; permissions/contract controls determine share.
+- Attribution and deduplication: transaction line IDs + allocations; roll up once even if visible in Event Builder, InceptionApex and Commerce.
+- Manual adjustment permissions, audit history and export.
+
+## Views
+Activity panel: input sliders for assumptions + presets + comparison chart + cost-to-revenue break-even + actionable warnings, modeled after the 20,000-scorecard sponsorship example.
+App dashboard: activity portfolio, income/cost by product/project, budget versus actual, unpaid invoices, forecast, funnel conversion, sponsor-slot utilization and drilldown.
+Hangar dashboard: consolidated eligible apps, period selection, by-app contribution, overall cashflow indicators and outstanding obligations; permissioned personal vs business separation.
+EIG command: portfolio operating metrics, platform/service fees and permissioned aggregate cohort insights; no leakage of independent Hangar private financial details.
+
+## Chapel Hill first acceptance test
+20,000 cards/year as initial owner estimate; quantity presets 5k/10k/20k, variable print price, sponsor count/rate, placement capacity, artwork, shipping and other expenses. Compute forecast sponsorship - total estimated cost, and sponsor break-even. Allow photos/QR/flyover costs and ad upsell as scenarios. Explicitly distinguish proposed pricing and unreceived revenue from invoices and verified amounts. Quote choice requires course printer approval.
+Target lifecycle: Build Lab inspects opportunity -> InceptionApex designs scorecard -> printing quote -> ad inventory sells sponsor slots -> transaction source of truth produces actuals -> app dashboard -> Hangar dashboard -> Vertical Financials summary.
+
+## Engineering and audit gates
+- Canonical organization scoped models with RLS, role-level finance permissions and event/project associations; numbers are server-derived for trusted actuals.
+- Shared design-system component, not duplicate app-specific business logic. Searchable/sortable tables.
+- Supabase migrations additive, staging only, tests for cross-tenant isolation, multi-currency if adopted, discounts/refunds, allocation balancing and duplicate links, cross-app revenue double count.
+- No banking accounts or processing assumed, no autonomous transaction/charges. Implement read-only plan/forecast MVP with manual inputs first, then connect actuals to Stripe/EIC/Event Builder and approved accounting connectors.
+- Owner approval required before branch merge, production deployment or partner payout implementation.

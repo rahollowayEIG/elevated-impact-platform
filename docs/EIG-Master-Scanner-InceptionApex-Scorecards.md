@@ -38,3 +38,18 @@ Deliver printable Chapel Hill scorecards with accurate course facts, approved sp
 
 ## Next required input
 Current Chapel Hill scorecard (PDF, image or original design file) plus any course tee/yardage changes and preferred printer finished/folded format. These inputs are needed to make an accurate physical scorecard.
+
+
+## Optional sponsor placement system (owner request, October 16)
+Scorecard templates should expose configurable inventory slots: back/front cover, inside non-scoring panels, hole sponsor captions, QR landing page, mobile round view, yardage book pages, flyover intro/outro, and optional in-world clubhouse displays. Each slot needs stable ID, owner, format and print dimensions, safe zone, price/package eligibility, availability window, creative approval and sponsored label. User can turn slots on/off independently. Unsold slots collapse or revert to useful course artwork, never blank print holes. No overlay may obscure scoring grids, yardages, navigation, or GPS safety controls. Optional ad-free personal reprints need separate treatment from contractually sponsored official editions. EIG Ad Network is the inventory owner; InceptionApex is the creative owner.
+
+## Flyover builder evaluation (owner request, October 16)
+Build as a reusable course-map extension, not a separate login or manually rendered one-off video tool. Start with one verified Chapel Hill hole.
+Inputs: permissioned satellite/terrain imagery; surveyed tee, landing-zone, hazard and green coordinates; optional course-owned aerial photos; approved routing. Source provenance and image use licenses mandatory.
+1. 2D/2.5D first: animate camera along tee-to-green path with hole labels, distances, hazard markers and course branding. Mapbox GL JS camera flyTo is a candidate for smooth animation.
+2. 3D option: evaluate CesiumJS camera flyTo with licensed terrain/3D imagery. Validate realistic geometry, camera clearance, accuracy and mobile performance.
+3. InceptionApex: timeline/camera waypoints, labels, music and narration where licensed, sponsor intro/outro, interactive hotspot links, 9:16/16:9 formats, approved versions and exports.
+4. Reuse output for mobile scorecards, QR landing pages, yardage-book QR links, event hubs and screen ads.
+5. GPS yardage calculations are independent from camera visuals and require measured coordinate validation; never infer accurate distances from cinematic imagery alone.
+6. Exported video requires applicable map/imagery vendor capture and redistribution rights. If rights are unavailable, support live interactive licensed map viewing rather than promising unrestricted video exports.
+Acceptance criteria: one hole mapped by an EIG approver, a controllable flyover in preview, correct labels and safe camera route, tested on mobile, video export only with verified rights, and ad slot separately switchable.

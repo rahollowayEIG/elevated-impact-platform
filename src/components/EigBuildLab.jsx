@@ -6,6 +6,8 @@ import {
 import { BL_EMPTY_BRIEF, loadBuildLabDraft, saveBuildLabDraft } from "../lib/eigBuildLabDraft.mjs";
 import { requestInceptionSourceScan } from "../lib/eigBuildLabScanClient.mjs";
 import "./eig-build-lab.css";
+import BuildImpactReview from "./BuildImpactReview.jsx";
+import BuildLabAiConnection from "./BuildLabAiConnection.jsx";
 
 const EIG_PILOT = {
   name: "InceptionApex UI & Workflow Improvement",
@@ -346,6 +348,9 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         <p className="bl-quiet">Accept, revise, and reject only record your local review. No code, customer information, GitHub issue or production software changes.</p>
       </>}
     </section>
+
+    <BuildLabAiConnection supabaseClient={supabaseClient} />
+    <BuildImpactReview ownerUserId={ownerUserId} />
 
     <div className="bl-two-column">
       <form className="platform-section-card bl-brief" onSubmit={generate}>

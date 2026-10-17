@@ -5,7 +5,7 @@ const { readAllowlistedInceptionSource, scanInceptionSource } = require("../serv
 
 const OWNER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
-const BRANCH = "feature/universal-scan-foundation-20261013";
+const BRANCH = "feature/build-intelligence-impact-20261017";
 function fixture(overrides = {}) {
   const state = {
     userId: OWNER, memberRole: "eig_admin", org: "elevated-impact-group", memberStatus: "active",

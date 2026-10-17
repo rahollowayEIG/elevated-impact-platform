@@ -3,7 +3,7 @@
 // On deployment, this handler is restricted to the preview environment and
 // exact owner account; production and other accounts must fail closed.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const EXPECTED_PREVIEW_BRANCH = "feature/universal-scan-foundation-20261013";
+const EXPECTED_PREVIEW_BRANCH = "feature/build-intelligence-impact-20261017";
 
 function currentEIGAdmin(row, now) {
   if (row?.role !== "eig_admin" || row?.status !== "active" ||

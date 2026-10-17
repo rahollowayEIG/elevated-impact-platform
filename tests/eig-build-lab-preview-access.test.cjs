@@ -11,8 +11,8 @@ function sample(options = {}) {
     organization: "elevated-impact-group",
     since: null, until: null, memberError: false,
     enabled: true, vercelEnv: "preview",
-    branch: "feature/universal-scan-foundation-20261013",
-    configuredBranch: "feature/universal-scan-foundation-20261013",
+    branch: "feature/build-intelligence-impact-20261017",
+    configuredBranch: "feature/build-intelligence-impact-20261017",
     ownerConfig: OWNER, authCalls: 0, memberCalls: 0, failAuth: false,
     ...options,
   };

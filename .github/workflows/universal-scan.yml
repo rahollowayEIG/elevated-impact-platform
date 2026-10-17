@@ -5,6 +5,9 @@ on:
     paths:
       - "api/eig-build-lab-ai-probe.js"
       - "tests/eig-build-lab-ai-probe.test.cjs"
+      - "src/lib/researchTargetDraft.mjs"
+      - "src/components/ResearchTargetPlanner.jsx"
+      - "tests/research-target-draft.test.mjs"
       - "src/lib/buildChangeImpact.mjs"
       - "tests/build-change-impact.test.mjs"
       - "src/lib/universalScan.mjs"
@@ -82,7 +85,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
+      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

@@ -89,7 +89,9 @@ export default function EieTeamManagement({ event, onRefresh, onClose }) {
     setLoading(true);
     try {
       const data = await invoke({ action: 'list' });
-      const nextTeams = data.teams || [];
+      // Cancelled teams remain in the database for audit history, but must
+      // never appear in active staff management or remain selected.
+      const nextTeams = (data.teams || []).filter((team) => team.status !== 'cancelled');
       const nextPlayers = data.registrations || [];
       setTeams(nextTeams);
       setRegistrations(nextPlayers);

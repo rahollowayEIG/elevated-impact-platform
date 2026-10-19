@@ -81,6 +81,8 @@ test('the existing server-controlled role switcher is moved into the Sandbox hea
   assert.match(roleSwitch, /return createPortal\(/);
   assert.match(roleSwitch, /'Switch role ▼'/);
   assert.match(roleSwitch, /aria-expanded=\{opened\}/);
+  assert.match(roleSwitch, /aria-controls="sandbox-practice-role-panel"/);
+  assert.match(roleSwitch, /event\.key === 'Escape'/);
   assert.match(roleSwitch, /sandbox_switch_practice_role/);
   assert.match(roleSwitch, /window\.location\.assign\(window\.location\.origin \+ '\/'\)/);
   assert.doesNotMatch(roleSwitch, /position:\s*'fixed'|bottom:\s*14/);

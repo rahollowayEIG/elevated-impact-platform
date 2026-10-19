@@ -1,6 +1,6 @@
 # Activate the first ElevationPilot Sandbox tester
 
-**Status:** Configuration checklist, not a completed activation. Live Supabase and Live Vercel remain untouched. The protected gate is in draft PR #68, and deployment must be confirmed before inviting anyone.
+**Current status, October 19, 2026:** The first Sandbox tester **is activated** and has successfully tested six-digit Sandbox login and server-backed practice role switching. Sandbox Vercel is deployed and visually approved. Two **read-only** Edge Functions now run only in the Sandbox: `public-event-squawks` and `golf-my-registrations`; their actual HTTP/browser behavior is still NOT TESTED. All other regular workflows remain locked. The steps and blockers below document the original pre-activation procedure, not the current environment.
 
 ## Intended first tester
 
@@ -18,7 +18,7 @@ Use the EIG owner's **approved existing email address**, provided in the convers
 8. Confirm `VITE_SUPABASE_URL` in the **Sandbox Vercel project only** points to the Sandbox. Enable `VITE_SANDBOX_EMAIL_CODE_ENABLED=true` in the isolated Sandbox preview environment only after steps 1-7. Leave `VITE_SANDBOX_WORKSPACE_ENABLED=false`: full application integrations have not yet been safety approved.
 9. Deploy the preview branch, verify the protected pink entry page, then request a six-digit code with the one approved email. On successful verification, user reaches the safe practice-role staging area, not Live. Test each role via real RPC, denial of unauthenticated users, sign-out and no Live effects.
 
-## Known blockers as of October 19
+## Historical blockers before October 19 activation (now superseded)
 
 - The last check showed **0 Sandbox Auth users and 0 enrolled testers**, so signing in cannot work yet.
 - No Edge Functions are deployed to the Sandbox. The ordinary Live login depends on `golf-account-auth` and must remain unavailable within the Sandbox.

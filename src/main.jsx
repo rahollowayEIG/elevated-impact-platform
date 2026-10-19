@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
+import './sandbox/sandboxTheme.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
@@ -13,6 +14,7 @@ const sandboxBranding = getSandboxBranding(IS_SANDBOX);
 
 assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: IS_SANDBOX, key: import.meta.env.VITE_SUPABASE_ANON_KEY });
 installSandboxNavigationGuard({ enabled: IS_SANDBOX });
+if (IS_SANDBOX) document.documentElement.classList.add('elevationpilot-sandbox');
 if (sandboxBranding) document.title = sandboxBranding.pageTitle;
 
 const EIG_ICON = 'https://raw.githubusercontent.com/rahollowayEIG/elevated-impact-group-site/main/assets/eig-header-icon.png';

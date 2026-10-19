@@ -20,8 +20,8 @@ import { canUseAutoResizer } from './lib/imageResize.mjs';
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
-const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
-const ELEVATIONPILOT_PUBLIC_URL = 'https://elevated-impact-platform.vercel.app';
+const GOLF_REGISTRATION_URL = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' ? '/sandbox/unavailable' : 'https://golf-event-registrations-eig.vercel.app';
+const ELEVATIONPILOT_PUBLIC_URL = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' ? window.location.origin : 'https://elevated-impact-platform.vercel.app';
 
 function LoadingScreen({ message = 'Loading EIG Platform...' }) {
   return (
@@ -2701,7 +2701,7 @@ function EieEventSite({ eventId = '', publicSlug = '', publicMode = false }) {
             <p style={{ color: '#70727A', minHeight: 44 }}>{offer.description || 'Event registration'}</p>
             <strong style={{ color: '#1D245D', fontSize: 30 }}>{'$' + Number(offer.price || 0).toFixed(2)}</strong>
             <a
-              href={`https://golf.elevatedimpactgroup.net/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(event.public_slug ? eventHubUrl(event.public_slug, ELEVATIONPILOT_PUBLIC_URL) : window.location.href)}`}
+              href={`${GOLF_REGISTRATION_URL}/register?event_key=${encodeURIComponent(event.event_key)}&hub=${encodeURIComponent(event.public_slug ? eventHubUrl(event.public_slug, ELEVATIONPILOT_PUBLIC_URL) : window.location.href)}`}
               style={{ display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 18, background: '#D81C22', color: '#fff', border: 0, borderRadius: 10, padding: '12px 14px', fontWeight: 900, textAlign: 'center', textDecoration: 'none' }}
             >
               {publicMode

@@ -11,7 +11,7 @@ export function isAllowedSandboxFetchTarget(input, { appOrigin, sandboxSupabaseU
     const app = new URL(appOrigin);
     const api = new URL(sandboxSupabaseUrl);
     if (app.protocol !== 'https:' ||
-        !/^elevationpilot-sandbox(?:-[a-z0-9-]+)?\\.vercel\\.app$/.test(app.hostname) ||
+        !/^elevationpilot-sandbox(?:-[a-z0-9-]+)?\.vercel\.app$/.test(app.hostname) ||
         app.username || app.password || app.port ||
         api.protocol !== 'https:' || api.hostname !== EXPECTED_SANDBOX_HOST ||
         api.username || api.password ||

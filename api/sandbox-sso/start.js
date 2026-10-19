@@ -55,7 +55,7 @@ module.exports = async function handler(req, res) {
   const verifier = randomBytes(32).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
   const cookie = sealState({ state, nonce, verifier, createdAt: Date.now(), origin: config.origin }, config.sealKey);
-  res.setHeader('Set-Cookie', \`\${COOKIE}=\${cookie}; Max-Age=300; Path=/; HttpOnly; Secure; SameSite=Lax\`);
+  res.setHeader('Set-Cookie', `${COOKIE}=${cookie}; Max-Age=300; Path=/; HttpOnly; Secure; SameSite=Lax`);
   res.setHeader('Location', startUrl(config, state, nonce, challenge));
   return res.status(302).end();
 };

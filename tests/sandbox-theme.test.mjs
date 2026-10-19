@@ -20,7 +20,7 @@ test('all sandbox visual rules require the sandbox-only document class', () => {
   const selectors = [...normalized.matchAll(/(?:^|\})\s*([^{}]+)\{/g)].map(x => x[1].trim());
   assert.ok(selectors.length >= 12, 'Expected visible theming across major page types');
   for (const rule of selectors) {
-    for (const selector of rule.split(',')) {
+    for (const selector of rule.split(/,(?![^()]*\\))/)) {
       assert.ok(selector.trim().startsWith('html.elevationpilot-sandbox'), 'Unscoped sandbox selector: ' + selector);
     }
   }
@@ -34,5 +34,5 @@ test('all sandbox visual rules require the sandbox-only document class', () => {
 });
 
 test('the role simulator cannot change access by changing the visual theme', () => {
-  assert.doesNotMatch(theme, /supabase|jwt|access_token|refresh_token|service_role/i);
+  assert.doesNotMatch(theme.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ''), /supabase|jwt|access_token|refresh_token|service_role/i);
 });

@@ -3,7 +3,8 @@
 // Sandbox-only OAuth callback: authenticate the Live identity, then fail closed.
 // A separate, audited Sandbox-native session handoff must be implemented before
 // turning on the initiation endpoint. Never use Live tokens for Sandbox RLS.
-const { createDecipheriv, createPublicKey, timingSafeEqual, verify } = require('node:crypto');
+const { createDecipheriv, createPublicKey, randomBytes, createHash, timingSafeEqual, verify } = require('node:crypto');
+const { sandboxClients } = require('./claim.js').__test;
 const { configFor } = require('./start.js').__test;
 
 const COOKIE_NAME = '__Host-eig_sandbox_oauth';
@@ -162,9 +163,29 @@ module.exports = async function handler(req, res) {
   try {
     const identity = await verifyCodeForIdentity(query.code, state, config);
     if (!identity) return res.status(403).end('Identity verification failed.');
-    // Intentionally no account creation, permissions grant, cookies or session.
-    // Next phase: one-use, Sandbox-native session, after audited allowlist checks.
-    return res.status(503).end('Identity verified. Sandbox session handoff is not enabled yet.');
+    const {admin} = sandboxClients(process.env);
+    // A server-authorized, expiring, one-time handoff. The browser never gets
+    // a Live token, a service key, or a magiclink.
+    const handoff = randomBytes(32).toString('base64url');
+    const {data: issued, error: issueError} = await admin.rpc(
+      'sandbox_issue_federated_handoff',
+      {
+        p_live_issuer: config.issuer,
+        p_live_subject: identity.id,
+        p_verified_email: identity.email,
+        p_handoff_hash: createHash('sha256').update(handoff).digest('hex'),
+      }
+    );
+    if (issueError || issued?.created !== true) {
+      return res.status(403).end('Practice access has not been approved.');
+    }
+    res.setHeader('Set-Cookie', [
+      COOKIE_CLEAR,
+      '__Host-eig_sandbox_handoff=' + handoff +
+        '; Max-Age=90; Path=/; HttpOnly; Secure; SameSite=Lax',
+    ]);
+    res.setHeader('Location', config.origin + '/?sandbox_sso=complete');
+    return res.status(303).end();
   } catch {
     return res.status(503).end('Sign-in could not be completed.');
   }

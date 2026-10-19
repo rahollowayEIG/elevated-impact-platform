@@ -43,6 +43,10 @@ function EIGAppHeader() {
             {sandboxBranding && <small className="eig-global-home-subtitle">{sandboxBranding.homeSubtitle}</small>}
           </span>
         </a>
+        {IS_SANDBOX && (
+          <div id="sandbox-session-header-slot" className="eig-sandbox-session-slot"
+            aria-label="Current Sandbox account and practice role" />
+        )}
       </header>
       {sandboxBranding && (
         <div className="eig-sandbox-indicator" role="status" aria-label="Sandbox practice environment" data-testid="sandbox-environment-indicator">

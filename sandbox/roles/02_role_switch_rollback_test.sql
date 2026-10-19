@@ -32,7 +32,8 @@ $seed$;
 
 -- Grants here exist only INSIDE this transaction. Persistent sandbox direct
 -- client app-table grants stay disabled after ROLLBACK.
-GRANT SELECT ON public.organization_memberships,public.event_assignments TO authenticated;
+GRANT SELECT ON public.organization_memberships,public.event_assignments,
+  public.golf_registration_events,public.organizations TO authenticated;
 GRANT USAGE ON SCHEMA app_private TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app_private TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_eig_admin(),

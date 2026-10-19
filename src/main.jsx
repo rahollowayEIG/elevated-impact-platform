@@ -6,7 +6,7 @@ import './sandbox/sandboxTheme.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
-import SandboxPersonaLogin from './sandbox/SandboxPersonaLogin.jsx';
+import SandboxPracticeRoles from './sandbox/SandboxPracticeRoles.jsx';
 import { getSandboxBranding } from './sandbox/sandboxBranding.mjs';
 
 const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true';
@@ -59,6 +59,6 @@ createRoot(document.getElementById('root')).render(
     <EIGAppHeader />
     <ElevatedImpactPhaseOneFrontend />
     <ActionConfirmation />
-    {IS_SANDBOX && <SandboxPersonaLogin />}
+    {IS_SANDBOX && <SandboxPracticeRoles />}
   </React.StrictMode>
 );

@@ -3,10 +3,27 @@
   "defaultAction": "deny",
   "mode": "allowlisted_config_only",
   "allowedTables": {
-    "golf_registration_events": ["event_key", "name", "description", "event_dates", "field_settings"],
-    "golf_event_setup": ["registration_fields", "team_size", "custom_field_config"]
+    "golf_registration_events": [
+      "event_key",
+      "name",
+      "event_dates",
+      "field_settings"
+    ],
+    "golf_event_setup": [
+      "event_key"
+    ]
   },
-  "blockedCategories": ["auth_users", "contacts", "private_messages", "registrations", "payments", "tokens", "signed_contracts", "oauth_credentials", "email_logs"],
+  "blockedCategories": [
+    "auth_users",
+    "contacts",
+    "private_messages",
+    "registrations",
+    "payments",
+    "tokens",
+    "signed_contracts",
+    "oauth_credentials",
+    "email_logs"
+  ],
   "restrictions": {
     "neverCopyRowsWithoutExplicitMapping": true,
     "noProductionDestinations": true,

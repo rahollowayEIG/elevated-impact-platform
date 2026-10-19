@@ -21,6 +21,7 @@ export function isAllowedSandboxFetchTarget(input, { appOrigin, sandboxSupabaseU
       : input?.url;
     if (!address || typeof address !== 'string') return false;
     const target = new URL(address, app);
+    if (target.username || target.password) return false;
     if (target.protocol === 'data:') return true; // local, not a network egress
     if (target.protocol === 'blob:') return target.origin === app.origin;
     if (target.protocol !== 'https:') return false;

@@ -16,14 +16,14 @@ test('production has no sandbox branding', () => {
   assert.equal(getSandboxBranding(undefined), null);
 });
 
-test('global app shell shows sandbox indicator on every app route only in sandbox mode', () => {
+test('global app shell keeps Sandbox labeling in the header without redundant floating corner badge', () => {
   const source = readFileSync('src/main.jsx', 'utf8');
   assert.match(source, /VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
   assert.match(source, /const sandboxBranding = getSandboxBranding\(IS_SANDBOX\)/);
   assert.match(source, /if \(sandboxBranding\) document\.title = sandboxBranding\.pageTitle/);
-  assert.match(source, /data-testid="sandbox-environment-indicator"/);
-  assert.match(source, /\{sandboxBranding && \(/);
-  assert.match(source, /position:fixed;left:12px/);
+  assert.match(source, /className="eig-sandbox-mode-label"/);
+  assert.match(source, /title="Training and demonstrations only"/);
   assert.match(source, /\{sandboxBranding && <small className="eig-global-home-subtitle"/);
+  assert.doesNotMatch(source, /data-testid="sandbox-environment-indicator"|className="eig-sandbox-indicator"|position:fixed;left:12px/);
   assert.match(source, /<ElevatedImpactPhaseOneFrontend \/>/);
 });

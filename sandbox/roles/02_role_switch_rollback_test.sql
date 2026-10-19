@@ -123,6 +123,39 @@ BEGIN
   END IF;
 END
 $check_audit$;
+
+-- An unrelated membership is never overwritten or deleted by role switching.
+-- This second fictional organization is also rolled back.
+DO $seed_unrelated$
+DECLARE
+  v_org uuid;
+  v_tester uuid := current_setting('sandbox.switch.test_user')::uuid;
+BEGIN
+  INSERT INTO public.organizations(name,slug,organization_type,is_test,status)
+  VALUES('Temporary Test Tenant','sandbox-role-isolation-negative','business',true,'active')
+  RETURNING id INTO v_org;
+  INSERT INTO public.organization_memberships(organization_id,user_id,role,status)
+  VALUES(v_org,v_tester,'organization_staff','active');
+END
+$seed_unrelated$;
+SET LOCAL ROLE authenticated;
+DO $reject_unrelated$
+DECLARE
+  v_tester uuid := current_setting('sandbox.switch.test_user')::uuid;
+BEGIN
+  PERFORM set_config('request.jwt.claim.sub',v_tester::text,true);
+  BEGIN
+    PERFORM public.sandbox_switch_practice_role('pilot');
+    RAISE EXCEPTION 'CROSS_TENANT_ROLE_SWITCH_SUCCEEDED';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'CROSS_TENANT_ROLE_SWITCH_SUCCEEDED' OR
+       SQLERRM NOT LIKE '%Unexpected organization memberships%' THEN
+      RAISE;
+    END IF;
+  END;
+END
+$reject_unrelated$;
+RESET ROLE;
 ROLLBACK;
 -- Only pre-existing sandbox data should remain after this point.
 SELECT (SELECT count(*) FROM sandbox_ops.practice_testers) AS persisted_testers,

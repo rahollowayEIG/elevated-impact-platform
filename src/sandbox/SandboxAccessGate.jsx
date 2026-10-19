@@ -4,11 +4,15 @@ import {
   checkSandboxAccess, normalizeSandboxEmail, isSandboxEmailCode,
   requestSandboxEmailCode, verifySandboxEmailCode,
 } from './sandboxAccess.mjs';
+import {claimSharedLogin, isPendingSharedLogin} from './sandboxSharedLogin.mjs';
 
 // Both are disabled by default. Only the Sandbox Vercel project may enable
 // email-code invitations after the isolated Auth template and tester allowlist
 // have been reviewed. Live ignores this entire component.
 const EMAIL_CODE_ENABLED = import.meta.env.VITE_SANDBOX_EMAIL_CODE_ENABLED === 'true';
+// OAuth/OIDC option requires separately reviewed Live and Sandbox Auth setup.
+// Never display an active sign-in link by default.
+const SHARED_LOGIN_ENABLED = import.meta.env.VITE_SANDBOX_SHARED_LOGIN_ENABLED === 'true';
 
 const panel = {
   maxWidth: 470, margin: '56px auto', padding: '28px',
@@ -57,6 +61,21 @@ export default function SandboxAccessGate({ children }) {
     let sequence = 0;
     async function updateAccess() {
       const current = ++sequence;
+      if (SHARED_LOGIN_ENABLED && isPendingSharedLogin(window.location)) {
+        // Query contains only a completion marker, never access tokens.
+        // Remove marker BEFORE setSession fires another Auth event.
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('sandbox_sso');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+        const claim = await claimSharedLogin(supabase, {
+          enabled: SHARED_LOGIN_ENABLED,
+          locationLike: window.location.origin === clean.origin
+            ? {origin: clean.origin, pathname: '/', search: '?sandbox_sso=complete'}
+            : null,
+          fetcher: window.fetch.bind(window)
+        });
+        if (!claim.ok && active) setNotice('Practice sign-in could not be completed. Please try again.');
+      }
       const result = await checkSandboxAccess(supabase);
       if (active && sequence === current) setGate(result);
     }
@@ -151,8 +170,13 @@ export default function SandboxAccessGate({ children }) {
 
   return <PracticePanel heading="Enter your practice workspace">
     <p>This is a separate Sandbox session for approved testers. Your Live credentials and information are never copied here.</p>
+    {SHARED_LOGIN_ENABLED && (
+      <a href="/api/sandbox-sso/start" style={{ ...action, display: 'block', boxSizing: 'border-box', textAlign: 'center', textDecoration: 'none' }}>
+        Sign in with ElevationPilot
+      </a>
+    )}
     {!EMAIL_CODE_ENABLED
-      ? <p role="status"><strong>Invitations aren't enabled yet.</strong> We're preparing the secure login and the isolated practice data. Nothing needs to be entered here today.</p>
+      ? !SHARED_LOGIN_ENABLED && <p role="status"><strong>Invitations aren't enabled yet.</strong> We're preparing the secure login and the isolated practice data. Nothing needs to be entered here today.</p>
       : <>
         {!codeRequested ? (
           <form onSubmit={requestCode} style={{ display: 'grid', gap: 14 }}>
@@ -178,5 +202,6 @@ export default function SandboxAccessGate({ children }) {
         {notice && <p role="status">{notice}</p>}
       </>
     }
+    {SHARED_LOGIN_ENABLED && notice && <p role="alert">{notice}</p>}
   </PracticePanel>;
 }

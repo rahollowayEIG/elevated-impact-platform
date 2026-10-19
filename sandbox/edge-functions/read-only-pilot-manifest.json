@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "kind": "elevationpilot_sandbox_readonly_edge_ports",
+  "live_source_project": "aszixzrdayrivungodwq",
+  "target_project": "publruuuyvpggogrrgwp",
+  "approved_origin": "https://elevationpilot-sandbox.vercel.app",
+  "source_policy": "Only read-only Live functions explicitly audited against the active Live deployed code can be ported, with exact Sandbox runtime target pin. Never import service keys, live data, or outbound provider credentials.",
+  "functions": [
+    {
+      "slug": "public-event-squawks",
+      "entrypoint": "sandbox/edge-functions/public-event-squawks/index.ts",
+      "live_sha256": "5140e0ad0b5d4d909df132afb665ff6e0152fe098adaae0a30e0bdc25b3486e2",
+      "verify_jwt": false,
+      "classification": "public_published_event_read_only",
+      "data": "Published synthetic Event Hub Squawks only; all other events return 404"
+    },
+    {
+      "slug": "golf-my-registrations",
+      "entrypoint": "sandbox/edge-functions/golf-my-registrations/index.ts",
+      "live_sha256": "d5bd4ef7bd47bf1254956f7dd7679dea956d40c2fc9d09efd7d769a1941d4133",
+      "verify_jwt": true,
+      "classification": "authenticated_golfer_read_only",
+      "data": "Registration lookup for the bearer-token user; client-side database grants not required"
+    }
+  ],
+  "excluded": "All other Live functions require an individual side-effect, role, provider, or redirect review. Copying the code here does not unlock the full Sandbox workspace."
+}

@@ -54,7 +54,8 @@ test('the UI only offers roles returned from the sandbox service', () => {
   assert.match(selector, /window\.location\.assign\(window\.location\.origin \+ '\/'\)/);
   assert.match(selector, /Shared ElevationPilot sign-in connection is still being configured|shared ElevationPilot sign-in connection is still being configured/);
   assert.doesNotMatch(selector, /auth\.signInWithPassword|auth\.setSession|localStorage|sessionStorage|service_role/);
-  assert.match(main, /\{IS_SANDBOX && <SandboxPracticeRoles \/>/);
+  assert.match(main, /IS_SANDBOX \? \(\s*<SandboxAccessGate>/);
+  assert.match(main, /<SandboxPracticeRoles \/>/);
 });
 
 test('feature has no outbound links, mail delivery, payment or production tokens', () => {

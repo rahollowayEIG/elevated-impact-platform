@@ -29,5 +29,6 @@ test('practice login requires real Supabase Auth and sandbox flag', () => {
   assert.match(login,/auth\.signInWithPassword/);
   assert.match(login,/auth\.signOut/);
   assert.doesNotMatch(login,/setItem\(['"]role|set_user_role|service_role/);
-  assert.match(root,/VITE_ELEVATIONPILOT_SANDBOX === 'true' && <SandboxPersonaLogin/);
+  assert.match(root,/const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
+  assert.match(root,/\{IS_SANDBOX && <SandboxPersonaLogin/);
 });

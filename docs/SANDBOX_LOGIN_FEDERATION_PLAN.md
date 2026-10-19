@@ -51,3 +51,21 @@ Sandbox database schemas use normal `auth.uid()` values and FKs to **its own** `
 - Confirm mail, Stripe, SMS, Google Workspace, screen scheduling and outbound webhooks are disabled or redirected to isolated test services.
 
 **Never interpret a green build or pink pages as proof that existing-credential SSO has been activated.** It has not.
+
+## Shared-login prototype status (2026-10-19, draft PR #69)
+
+The Sandbox branch now includes:
+- `api/sandbox-sso/start.js`: disabled-by-default OAuth authorization-code start with PKCE, fixed production issuer, exact Sandbox origin, a sealed 5-minute cookie, and no URL-borne auth credentials.
+- `api/sandbox-sso/callback.js`: verifies the encrypted state cookie and matching state, exchanges the one-time code server-side using a confidential client, verifies ES256 OIDC ID-token signature against the trusted issuer JWKS, checks nonce / issuer / audience / issued-at / expiry / verified email, and discards Live access/refresh tokens.
+- `tests/sandbox-shared-oidc-callback.test.mjs`: synthetic EC key and signed-token tests, malicious token and state denial tests, and disabled-by-default safety checks.
+- GitHub Actions **Sandbox routing safety** passed for the corresponding commit.
+
+This is **not working SSO yet**. The callback intentionally returns a locked/unavailable response even after a verified identity. It never issues a Sandbox session, creates an Auth user, assigns memberships, or enables a Live API.
+Do not enable `SANDBOX_SHARED_LOGIN_BACKEND_READY` or publish a usable sign-in button until these pending items are implemented and independently validated:
+1. A dedicated Live OAuth consent/login page and privately registered confidential client with exact Sandbox callback, narrow scopes and explicit user approval to enable OAuth Server beta.
+2. A server-owned, tenant-scoped mapping from verified Live issuer+subject to an explicitly approved Sandbox tester; never trust only an email match or an EIG Admin production role.
+3. A supported Sandbox-native Auth session handoff (single use, replay resistant, same origin, no URL tokens) after allowlist checks. This may require a linked internal Sandbox Auth record without a separate password.
+4. A complete revocation/sign-out audit, browser-level penetration-style negative tests, and outbound-integrations audit before any real app flows are unlocked.
+5. Production OAuth client scoping review: a Live OAuth access token must not inadvertently authorize business API reads just because the client was approved.
+
+Live settings, signing keys, user credentials, production data and deployments remain unchanged. Vercel deployment checks may be rate-limited independently of GitHub CI.

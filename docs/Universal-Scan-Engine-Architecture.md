@@ -182,6 +182,30 @@ Build the UI & Experience Inspector as a **first-class capability of EIG Project
 5. **Platform reuse:** compare proposed controls to the shared UI/design system, canonical identity and scoped permissions, search/sort platform rules, InceptionApex design assets, reusable patterns and known integrations. Prefer one approved change to a shared component over duplicating app-specific fixes.
 6. **Release safety:** no misleading mockup claims about deployed behavior. Check account access, forms, permissions, payment safety and app-owned data flow before any cosmetic or UX change is applied. Require regression coverage for altered interactions.
 
+### Two-way Build ↔ UI ↔ Database audit (owner note, October 19, 2026)
+
+**Goal:** Verify that every **approved, user-facing** ElevationPilot build is actually discoverable and usable in the intended app, workspace and role, and that every visible UI action has a real, correctly authorized implementation behind it. This extends the **existing** Universal Scan / UI & Experience Inspector / Build Lab orchestration. **Do not create a second scanner.** This is an audit contract and backlog note, **not an already-running automated database/UI crawler**.
+
+| Scan direction | Evidence and mapping | Problems to flag |
+| --- | --- | --- |
+| **Build → UI (forward scan)** | Owner-approved requirements, build/PR status, release commit, app/extension registry, route/component inventory, enabled features and expected user roles → accessible screens, menus, action buttons and forms in the **actual matching deployed environment** | Approved-and-deployed feature absent from the expected UI; unreachable route; wrong Hangar/event/edition/role; accidentally hidden control; implemented function with no intended entry point |
+| **UI → Build/API/DB (reverse scan)** | Actual visible controls, pages and forms → React handler and route → authorized service/API/Edge Function/RPC → expected table, view or domain record → persistence, validation, test and user-visible result | Dead button, inert placeholder presented as working, stale/duplicate UI, incorrect endpoint/table, disconnected save, missing form field, broken permissions/RLS, misleading success, failed reload or status |
+| **Schema/API ↔ UI compatibility** | Reviewed **read-only metadata** for Supabase tables/columns, views, RLS/grants, RPCs, Edge Function deployment and migrations, mapped through domain services to their intended UI contracts | App expects an absent column/RPC; changed required field isn't collected; outdated field names/validation; incorrect role visibility; orphaned interface contract. **Internal-only tables and private fields are not defects merely because they lack a UI.** |
+
+**Mandatory interpretation before reporting a gap:**
+
+1. Determine the feature's **intent and lifecycle**: proposed, draft PR, preview-only, Sandbox-only, feature-flagged, owner-approved production release, or independently browser-verified. Do not flag draft/unreleased work as missing from Live.
+2. Resolve **role, tenant, organization/Hangar, event, edition, entitlement, route and environment** before comparing visibility. A correct "hidden from unauthorized users" result is a PASS, not a missing-feature finding. Test authorized and unauthorized personas separately.
+3. Compare approved **user-facing features only** against UI expectations. Background jobs, private SQL tables, audit records, internal libraries and security functions can be intentionally UI-less; demand their intended management or status surface only when the owner approved one.
+4. Treat a route, button label, static screenshot or database object as **evidence of existence, not proof of functionality**. For VERIFIED end-to-end claims, exercise safe synthetic browser workflows in the isolated Sandbox, inspect returned state/persistence with appropriate read-only privileges and confirm the expected visible result. Mark unexecuted steps NOT TESTED.
+5. Respect application domain ownership: EIE/Event Builder, Airport, Cockpit, ATC, InceptionApex, EIC, Squawk Box and external extensions may own different data/APIs. Do not create duplicate identity, registry, event or payment records merely to make a scan pass.
+
+**Minimum output:** A bidirectional **Feature/UI/Service/Data coverage matrix**, keyed by project/app, approved feature ID, source PR/commit and deployment alias, lifecycle/flag, expected role/edition/Hangar, UI screen/route/control, owning service/API/RPC, table or data contract (when relevant), expected outcome, observed evidence/test reference, and result **PASS / FAIL / BLOCKED / NOT TESTED**. For failures, add severity, likely cause, responsible module, existing feature to reuse, proposed minimal repair and specific regression test. Keep **observed**, **inferred** and **proposed** claims separate and deduplicate across previous scans.
+
+**When to run:** During the existing **resume-work inventory**, after completing or deploying a feature, and optionally as part of the planned owner-approved periodic Master Scanner / Build Lab review. Start with low-cost static code/PR/deployment/metadata checks and existing CI evidence, then add approved read-only UI traversal and safe synthetic tests. Never query private customer rows, expose schema data across tenants, grant privileges, invoke real payments/email/Squawk/Drive writes, change production schema, automatically publish UI, or claim automatic cross-project/chat access without authorization.
+
+**First practical pilot:** For a named EIE/Event Builder function (e.g., registration or sponsor builder), trace its approved build and database/API contract to the actual permitted UI entry; then reverse-trace each visible control back to its service/data behavior. Include a deliberately disabled role and a deliberately undeployed draft feature as **expected nonfindings** so the scanner does not invent bugs. Only after its report is reviewed, extend to other EP apps.
+
 ### Suggested repeatable output
 
 - **Current-state review:** screenshot/walkthrough reference, build/version, viewport, observed vs inferred behaviors, usability findings ranked by impact and confidence.

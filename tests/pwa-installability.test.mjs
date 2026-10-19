@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { injectPwaHead, resolvePwaFlavor } from '../src/pwa/pwaBranding.mjs';
+import { injectPwaHead, injectPwaOnApplicationHtml, resolvePwaFlavor } from '../src/pwa/pwaBranding.mjs';
 
 const SANDBOX_URL = 'https://publruuuyvpggogrrgwp.supabase.co';
 const html = readFileSync('index.html', 'utf8');
@@ -78,10 +78,21 @@ test('four correctly-sized, visually distinct PNG icons can be built without net
   );
 });
 
+test('PWA injection skips stand-alone browser harness HTML but decorates the real app', () => {
+  const harness = readFileSync('tests/account-states.html', 'utf8');
+  assert.equal(injectPwaOnApplicationHtml(harness, 'live'), harness);
+  assert.equal(injectPwaOnApplicationHtml(harness, 'sandbox'), harness);
+  for (const flavor of ['live', 'sandbox']) {
+    const decorated = injectPwaOnApplicationHtml(html, flavor);
+    assert.ok(decorated.includes('href="/pwa/' + flavor + '.webmanifest"'));
+    assert.equal((decorated.match(/rel="manifest"/g) || []).length, 1);
+  }
+});
+
 test('PWA does not add a service worker, offline transaction queue, or private-data cache', () => {
   const vite = readFileSync('vite.config.js','utf8');
   const assets = readFileSync('scripts/generate-pwa-icons.mjs','utf8');
-  assert.match(vite, /injectPwaHead/);
+  assert.match(vite, /injectPwaOnApplicationHtml/);
   assert.match(vite, /resolvePwaFlavor/);
   assert.doesNotMatch(vite, /serviceWorker|workbox|registerSW/);
   assert.doesNotMatch(assets, /fetch\(|https?:\/\//);

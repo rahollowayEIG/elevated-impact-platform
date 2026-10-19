@@ -6,6 +6,7 @@ import './sandbox/sandboxTheme.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
+import SandboxAccessGate from './sandbox/SandboxAccessGate.jsx';
 import SandboxPracticeRoles from './sandbox/SandboxPracticeRoles.jsx';
 import { getSandboxBranding } from './sandbox/sandboxBranding.mjs';
 
@@ -54,11 +55,38 @@ function EIGAppHeader() {
   );
 }
 
+const SANDBOX_WORKSPACE_ENABLED = import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true';
+
+// App APIs, payments, mail, Drive, embeds and outgoing Live links must pass
+// independent Sandbox integration checks before enabling this last gate.
+function SandboxWorkspaceStaging() {
+  return (
+    <main style={{ maxWidth: 640, padding: '44px 24px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+      <section style={{ padding: 28, borderRadius: 16, border: '2px solid #ed9fcf', background: 'white', color: '#361333' }}>
+        <p style={{ fontSize: 12, letterSpacing: 2, color: '#a21e62', fontWeight: 800 }}>SANDBOX VERIFIED</p>
+        <h1>Welcome to your practice workspace.</h1>
+        <p>Your sandbox identity was approved. You can use the practice-role control to test authorized role switching.</p>
+        <p><strong>Full app workflows are locked for now</strong> while we isolate the remaining registration, payment, messaging and marketing integrations.</p>
+        <p>Nothing here can operate your Live data or send real customer communications.</p>
+      </section>
+    </main>
+  );
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <EIGAppHeader />
-    <ElevatedImpactPhaseOneFrontend />
-    <ActionConfirmation />
-    {IS_SANDBOX && <SandboxPracticeRoles />}
+    {IS_SANDBOX ? (
+      <SandboxAccessGate>
+        {SANDBOX_WORKSPACE_ENABLED ? <ElevatedImpactPhaseOneFrontend /> : <SandboxWorkspaceStaging />}
+        <ActionConfirmation />
+        <SandboxPracticeRoles />
+      </SandboxAccessGate>
+    ) : (
+      <>
+        <ElevatedImpactPhaseOneFrontend />
+        <ActionConfirmation />
+      </>
+    )}
   </React.StrictMode>
 );

@@ -89,3 +89,76 @@ html.elevationpilot-sandbox :is(a, button, input, select, textarea):focus-visibl
     scroll-behavior: auto;
   }
 }
+
+
+/* Visible signed-in context is intentionally scoped to Sandbox only. */
+html.elevationpilot-sandbox .eig-sandbox-session-slot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  margin-left: auto;
+}
+html.elevationpilot-sandbox .eig-sandbox-session {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 7px 10px 7px 13px;
+  color: #fff;
+  background: rgba(51, 8, 55, .45);
+  border: 1px solid rgba(255, 217, 239, .65);
+  border-radius: 999px;
+  font-family: system-ui, sans-serif;
+}
+html.elevationpilot-sandbox .eig-sandbox-session-account {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+  line-height: 1.1;
+}
+html.elevationpilot-sandbox .eig-sandbox-session-account-label {
+  font-size: 9px;
+  opacity: .85;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+html.elevationpilot-sandbox .eig-sandbox-session-handle {
+  display: block;
+  min-width: 0;
+  max-width: 210px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+html.elevationpilot-sandbox .eig-sandbox-session-role {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: #8f075f;
+  font-weight: 800;
+  font-size: 11px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  html.elevationpilot-sandbox .eig-sandbox-session {
+    padding: 5px;
+    gap: 6px;
+  }
+  html.elevationpilot-sandbox .eig-sandbox-session-handle {
+    max-width: 100px;
+    font-size: 11px;
+  }
+  html.elevationpilot-sandbox .eig-sandbox-session-account-label {
+    display: none;
+  }
+  html.elevationpilot-sandbox .eig-sandbox-session-role {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+}

@@ -63,3 +63,30 @@ test('visual identity is scoped to Sandbox and fits smaller screens', () => {
   assert.match(css, /html\.elevationpilot-sandbox \.eig-sandbox-session-handle/);
   assert.match(css, /@media \(max-width: 720px\)/);
 });
+
+
+test('the existing server-controlled role switcher is moved into the Sandbox header, not duplicated', () => {
+  const main = readFileSync('src/main.jsx', 'utf8');
+  const roleSwitch = readFileSync('src/sandbox/SandboxPracticeRoles.jsx', 'utf8');
+  const css = readFileSync('src/sandbox/sandboxTheme.css', 'utf8');
+
+  assert.match(main, /id="sandbox-practice-controls-slot"/);
+  assert.match(main, /className="eig-sandbox-mode-label"/);
+  assert.match(main, />SANDBOX<\/span>/);
+  assert.match(main, /<SandboxPracticeRoles \/>/);
+  assert.equal((main.match(/<SandboxPracticeRoles \/>/g) || []).length, 1);
+
+  assert.match(roleSwitch, /import \{ createPortal \} from 'react-dom'/);
+  assert.match(roleSwitch, /document\.getElementById\('sandbox-practice-controls-slot'\)/);
+  assert.match(roleSwitch, /return createPortal\(/);
+  assert.match(roleSwitch, /'Switch role ▼'/);
+  assert.match(roleSwitch, /aria-expanded=\{opened\}/);
+  assert.match(roleSwitch, /sandbox_switch_practice_role/);
+  assert.match(roleSwitch, /window\.location\.assign\(window\.location\.origin \+ '\/'\)/);
+  assert.doesNotMatch(roleSwitch, /position:\s*'fixed'|bottom:\s*14/);
+
+  assert.match(css, /html\.elevationpilot-sandbox \.eig-sandbox-practice-panel/);
+  assert.match(css, /html\.elevationpilot-sandbox \.eig-sandbox-mode-label/);
+  assert.match(css, /html\.elevationpilot-sandbox \.eig-sandbox-practice-trigger/);
+  assert.match(css, /max-width: 490px/);
+});

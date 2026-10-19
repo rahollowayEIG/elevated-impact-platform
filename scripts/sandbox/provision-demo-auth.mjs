@@ -103,7 +103,7 @@ async function run() {
       email: p.email,
       password: p.password,
       email_confirm: true, // ADMIN action: do not send signup/verification email.
-      user_metadata: { first_name, last_name, sandbox_demo: true },
+      user_metadata: { first_name, last_name, date_of_birth: '1990-01-01', gender: 'Prefer not to say', sandbox_demo: true },
       app_metadata: { sandbox_demo: true },
     }), 'Create fictional Auth user '+p.code);
     if (!created.user?.id) throw new Error('Missing Auth ID for '+p.code);
@@ -125,12 +125,12 @@ async function run() {
         event_id: events[0].id, user_id: uid, role: 'event_coordinator',
       }), 'Create fictional ATC assignment');
     }
-    if (p.code === 'passenger') {
-      await must(await api.from('passengers').insert({
-        auth_user_id: uid, first_name, last_name, preferred_name: first_name,
-        status: 'claimed', claimed_at: new Date().toISOString(),
-      }), 'Create fictional passenger');
-    }
+    // Every demo user can safely visit Airport, without real identity details.
+    await must(await api.from('passengers').insert({
+      auth_user_id: uid, first_name, last_name, preferred_name: first_name,
+      date_of_birth: '1990-01-01', gender: 'Prefer not to say',
+      status: 'claimed', claimed_at: new Date().toISOString(),
+    }), 'Create fictional passenger profile '+p.code);
     completed++;
     console.log('Provisioned fictional role '+p.code+'. No emails sent.');
   }

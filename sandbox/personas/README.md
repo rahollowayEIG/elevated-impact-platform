@@ -12,6 +12,16 @@
 - BOTH SQL tests use transient mock identities and `ROLLBACK`; the sandbox currently has **zero Auth users**, **zero permanent role assignments** and **zero client table grants**.
 - The UI component `src/sandbox/SandboxPersonaLogin.jsx` is enabled only when `VITE_ELEVATIONPILOT_SANDBOX=true`. It uses real `signInWithPassword`; selecting a persona NEVER impersonates a user or bypasses access controls.
 
+## Simpler dashboard route (no service key or terminal)
+
+In the **ElevationPilot-Sandbox project only**, open Supabase **Authentication → Users → Add user → Create user**, not *Send invitation*. Create these five fictional accounts with a separate strong password for each, saving passwords privately (do not paste them into chat):
+
+`alex@sandbox.invalid`, `jordan@sandbox.invalid`, `taylor@sandbox.invalid`, `morgan@sandbox.invalid`, `casey@sandbox.invalid`.
+
+Use the dashboard option to **auto-confirm** the created user, if shown. Do not send any mail or use personal/customer addresses. Once created, the operator can safely run `04_link_existing_dashboard_users.sql` through the sandbox SQL management connection. The script checks the sandbox marker, refuses any unrelated Auth email, links only confirmed demo users, and attaches role-scoped membership, assignments and the Passenger profile. It can be rerun as the five accounts are created and does not store passwords.
+
+For easiest testing, create **Alex Demo** first. Once verified, create the remaining four. Never reuse a production password.
+
 ## Provision five ACTUAL login accounts safely
 
 **Pending:** the connected Supabase management tools cannot directly invoke Auth Admin `createUser`; do not INSERT permanent login records into `auth.users` with SQL. Use Supabase Auth's supported Admin API through the one-time local script:

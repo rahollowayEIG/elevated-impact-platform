@@ -54,7 +54,9 @@ test('notice appears only after server-owned approved gate and never replaces it
   assert.match(root, /IS_SANDBOX \? \(\s*<SandboxAccessGate>/);
   assert.match(gate, /const result = await checkSandboxAccess\(supabase\)/);
   assert.match(gate, /if \(gate\.kind === 'authorized'\) \{/);
-  assert.match(gate, /if \(entered\) return <>\{children\}<\/>;/);
+  assert.match(gate, /if \(entered\) return <>/);
+  assert.match(gate, /<SandboxSessionHeader email=\{gate\.email\} activeRole=\{gate\.access\.activeRole\} \/>/);
+  assert.match(gate, /\{children\}\s*<\/>;/);
   assert.match(gate, /return <SandboxEntryNotice/);
   assert.match(gate, /aria-modal="true"/);
   assert.match(gate, /I Understand • Enter Sandbox/);

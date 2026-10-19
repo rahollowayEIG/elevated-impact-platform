@@ -1,0 +1,21 @@
+name: Sandbox safe-load guard
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/sandbox/**'
+      - '.github/workflows/sandbox-safe-load.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate sandbox safe-load policy
+        run: node scripts/sandbox/check-safe-load.mjs

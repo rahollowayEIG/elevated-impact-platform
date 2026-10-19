@@ -65,6 +65,8 @@ export function isAllowedSandboxReadOnlyRequest(input, init, options) {
       return method === 'POST' && [
         '/rest/v1/rpc/sandbox_practice_role_status',
         '/rest/v1/rpc/sandbox_switch_practice_role',
+        // Existing server-guarded Budget READ. Its write counterpart remains blocked.
+        '/rest/v1/rpc/read_eie_event_budget',
       ].includes(target.pathname);
     }
     if (target.pathname.startsWith('/rest/v1/')) {

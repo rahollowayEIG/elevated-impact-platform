@@ -1,0 +1,24 @@
+-- SANDBOX ONLY. Metadata-derived unique constraints. No row data.
+ALTER TABLE public."billing_accounts" ADD CONSTRAINT "billing_accounts_organization_id_key" UNIQUE ("organization_id");
+ALTER TABLE public."event_assignments" ADD CONSTRAINT "event_assignments_event_id_user_id_key" UNIQUE ("event_id", "user_id");
+ALTER TABLE public."event_contact_roles" ADD CONSTRAINT "event_contact_roles_event_id_contact_id_role_key" UNIQUE ("event_id", "contact_id", "role");
+ALTER TABLE public."event_product_entitlements" ADD CONSTRAINT "event_product_entitlements_event_id_product_id_key" UNIQUE ("event_id", "product_id");
+ALTER TABLE public."golf_event_payment_settings" ADD CONSTRAINT "golf_event_payment_settings_event_id_key" UNIQUE ("event_id");
+ALTER TABLE public."golf_event_setup" ADD CONSTRAINT "golf_event_setup_event_key_key" UNIQUE ("event_key");
+ALTER TABLE public."golf_registration_events" ADD CONSTRAINT "golf_registration_events_event_key_key" UNIQUE ("event_key");
+ALTER TABLE public."golf_registration_teams" ADD CONSTRAINT "golf_registration_teams_event_id_entry_number_key" UNIQUE ("event_id", "entry_number");
+ALTER TABLE public."golf_registration_teams" ADD CONSTRAINT "golf_registration_teams_event_id_team_id_key" UNIQUE ("event_id", "team_id");
+ALTER TABLE public."golf_roster_info_requests" ADD CONSTRAINT "golf_roster_info_requests_token_hash_key" UNIQUE ("token_hash");
+ALTER TABLE public."golf_team_invitations" ADD CONSTRAINT "golf_team_invitations_team_id_slot_number_key" UNIQUE ("team_id", "slot_number");
+ALTER TABLE public."golf_team_invitations" ADD CONSTRAINT "golf_team_invitations_token_hash_key" UNIQUE ("token_hash");
+ALTER TABLE public."golf_team_payment_shares" ADD CONSTRAINT "golf_team_payment_shares_team_id_slot_number_key" UNIQUE ("team_id", "slot_number");
+ALTER TABLE public."inception_drive_exports" ADD CONSTRAINT "inception_drive_exports_google_file_id_key" UNIQUE ("google_file_id");
+ALTER TABLE public."organization_memberships" ADD CONSTRAINT "organization_memberships_organization_id_user_id_key" UNIQUE ("organization_id", "user_id");
+ALTER TABLE public."organization_product_entitlements" ADD CONSTRAINT "organization_product_entitlement_organization_id_product_id_key" UNIQUE ("organization_id", "product_id");
+ALTER TABLE public."passenger_billing_profiles" ADD CONSTRAINT "passenger_billing_profiles_stripe_customer_id_key" UNIQUE ("stripe_customer_id");
+ALTER TABLE public."passenger_payment_methods" ADD CONSTRAINT "passenger_payment_methods_stripe_payment_method_id_key" UNIQUE ("stripe_payment_method_id");
+ALTER TABLE public."passengers" ADD CONSTRAINT "passengers_auth_user_id_key" UNIQUE ("auth_user_id");
+ALTER TABLE public."platform_account_audit" ADD CONSTRAINT "platform_account_audit_request_id_key" UNIQUE ("request_id");
+ALTER TABLE public."platform_google_drive_folders" ADD CONSTRAINT "platform_google_drive_folders_google_folder_id_key" UNIQUE ("google_folder_id");
+ALTER TABLE public."squawk_channel_connections" ADD CONSTRAINT "squawk_channel_connections_organization_id_channel_key" UNIQUE ("organization_id", "channel");
+ALTER TABLE public."squawk_message_recipients" ADD CONSTRAINT "squawk_message_recipients_message_id_recipient_type_channel_key" UNIQUE ("message_id", "recipient_type", "channel", "user_id", "contact_id", "registration_id");

@@ -94,7 +94,7 @@ export function createSandboxGuardedFetch(originalFetch, options) {
     if (!(options?.readOnly
       ? isAllowedSandboxReadOnlyRequest(input, init, options)
       : isAllowedSandboxFetchTarget(input, options))) {
-      return Promise.reject(new Error('Sandbox blocked a restricted network request.'));
+      return Promise.reject(new Error(options?.readOnly ? 'Sandbox blocked a restricted network request.' : 'Sandbox blocked an external network request.'));
     }
     return originalFetch(input, init);
   };

@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/PlatformApp.jsx'
       - 'src/main.jsx'
+      - 'src/lib/supabase.js'
       - 'src/sandbox/**'
       - 'src/ElevationAirport.jsx'
       - 'tests/sandbox-*.test.mjs'

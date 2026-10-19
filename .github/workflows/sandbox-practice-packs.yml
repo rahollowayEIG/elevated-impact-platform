@@ -1,0 +1,25 @@
+name: Sandbox miniature practice-pack safety
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sandbox/practice-packs/**'
+      - 'src/sandbox/practicePacks.mjs'
+      - 'scripts/sandbox/preview-practice-packs.mjs'
+      - 'tests/sandbox-practice-packs.test.mjs'
+      - 'docs/SANDBOX_MINI_PRACTICE_PACKS.md'
+      - '.github/workflows/sandbox-practice-packs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/sandbox-practice-packs.test.mjs
+      - run: node scripts/sandbox/preview-practice-packs.mjs

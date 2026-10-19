@@ -1,6 +1,6 @@
 /**
  * Sandbox markings are deliberately opt-in: production never changes its
- * title, main header, or on-screen environment indicator.
+ * title or header. A persistent top-header label replaces the old floating badge.
  */
 export function getSandboxBranding(enabled) {
   if (!enabled) return null;

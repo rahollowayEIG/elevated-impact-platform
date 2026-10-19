@@ -12,7 +12,14 @@
       "live_sha256": "5140e0ad0b5d4d909df132afb665ff6e0152fe098adaae0a30e0bdc25b3486e2",
       "verify_jwt": false,
       "classification": "public_published_event_read_only",
-      "data": "Published synthetic Event Hub Squawks only; all other events return 404"
+      "data": "Published synthetic Event Hub Squawks only; all other events return 404",
+      "sandbox_deployment": {
+        "version": 1,
+        "status": "ACTIVE",
+        "deployed_code_sha256": "52296b3ecf21fa3e081e4089df3e915c0e02a4fba43c2fde42979d2f17bad0d1",
+        "exact_git_source_verified": true,
+        "runtime_behavior": "NOT TESTED: direct external HTTP smoke test unavailable from execution environment"
+      }
     },
     {
       "slug": "golf-my-registrations",
@@ -20,7 +27,14 @@
       "live_sha256": "d5bd4ef7bd47bf1254956f7dd7679dea956d40c2fc9d09efd7d769a1941d4133",
       "verify_jwt": true,
       "classification": "authenticated_golfer_read_only",
-      "data": "Registration lookup for the bearer-token user; client-side database grants not required"
+      "data": "Registration lookup for the bearer-token user; client-side database grants not required",
+      "sandbox_deployment": {
+        "version": 1,
+        "status": "ACTIVE",
+        "deployed_code_sha256": "c39bd336b47bf95a7278521cf0068573da741685036967bf22569c514be80b5b",
+        "exact_git_source_verified": true,
+        "runtime_behavior": "NOT TESTED: direct external HTTP smoke test unavailable from execution environment"
+      }
     }
   ],
   "excluded": "All other Live functions require an individual side-effect, role, provider, or redirect review. Copying the code here does not unlock the full Sandbox workspace."

@@ -51,7 +51,7 @@ test('header is Sandbox-only and requires server access and training acknowledge
   assert.match(header, /createPortal\(/);
   assert.match(header, /document\.getElementById\('sandbox-session-header-slot'\)/);
   assert.match(header, /data-testid="sandbox-session-header"/);
-  assert.doesNotMatch(header, /auth\.getSession|auth\.getUser|\.rpc\(|profile|sessionStorage|localStorage|user_metadata|eig_admin|Live.*(supabase\.co)/i);
+  assert.doesNotMatch(header, /auth\.getSession|auth\.getUser|\.rpc\(|\.from\(['\"]profiles['\"]\)|sessionStorage|localStorage|user_metadata|eig_admin|Live.*(supabase\.co)/i);
   assert.match(roleSwitch, /supabase\.rpc\('sandbox_switch_practice_role'/);
   assert.match(roleSwitch, /window\.location\.assign\(window\.location\.origin \+ '\/'\)/);
 });

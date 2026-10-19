@@ -73,6 +73,7 @@ test('the existing server-controlled role switcher is moved into the Sandbox hea
   assert.match(main, /id="sandbox-practice-controls-slot"/);
   assert.match(main, /className="eig-sandbox-mode-label"/);
   assert.match(main, />SANDBOX<\/span>/);
+  assert.doesNotMatch(main, /className="eig-sandbox-indicator"|data-testid="sandbox-environment-indicator"/);
   assert.match(main, /<SandboxPracticeRoles \/>/);
   assert.equal((main.match(/<SandboxPracticeRoles \/>/g) || []).length, 1);
 

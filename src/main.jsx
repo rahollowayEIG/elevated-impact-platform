@@ -30,10 +30,8 @@ function EIGAppHeader() {
         .eig-global-home span{white-space:nowrap}
         .eig-global-home-label{display:flex;flex-direction:column;gap:3px;line-height:1.1}
         .eig-global-home-subtitle{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#ffcd69}
-        .eig-sandbox-indicator{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:2147482900;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 24px);padding:8px 12px;border:1px solid #a77413;border-radius:999px;background:#ffcf70;color:#242017;box-shadow:0 5px 16px rgba(0,0,0,.24);font-family:system-ui,sans-serif;font-size:12px;font-weight:900;letter-spacing:.05em;pointer-events:none}
-        .eig-sandbox-indicator-detail{font-size:11px;font-weight:600;letter-spacing:0}
         .platform-topbar .platform-brand-wrap{display:none}
-        @media(max-width:720px){.eig-global-header{min-height:54px;padding:9px 14px}.eig-global-home img{width:50px;height:34px}.eig-global-home-label{display:none}.eig-sandbox-indicator-detail{display:none}.eig-sandbox-indicator{padding:7px 10px;font-size:11px}}
+        @media(max-width:720px){.eig-global-header{min-height:54px;padding:9px 14px}.eig-global-home img{width:50px;height:34px}.eig-global-home-label{display:none}}
       `}</style>
       <header className="eig-global-header">
         <a className="eig-global-home" href="/" aria-label={IS_SANDBOX ? "ElevationPilot Sandbox home" : "EIG Platform home"}>
@@ -43,14 +41,16 @@ function EIGAppHeader() {
             {sandboxBranding && <small className="eig-global-home-subtitle">{sandboxBranding.homeSubtitle}</small>}
           </span>
         </a>
+        {IS_SANDBOX && (
+          <div className="eig-sandbox-header-actions">
+            <span className="eig-sandbox-mode-label" title="Training and demonstrations only">SANDBOX</span>
+            <div id="sandbox-session-header-slot" className="eig-sandbox-session-slot"
+              aria-label="Current Sandbox account and practice role" />
+            <div id="sandbox-practice-controls-slot" className="eig-sandbox-controls-slot"
+              aria-label="Sandbox practice role controls" />
+          </div>
+        )}
       </header>
-      {sandboxBranding && (
-        <div className="eig-sandbox-indicator" role="status" aria-label="Sandbox practice environment" data-testid="sandbox-environment-indicator">
-          <span aria-hidden="true">◆</span>
-          <strong>{sandboxBranding.badgeLabel}</strong>
-          <span className="eig-sandbox-indicator-detail">{sandboxBranding.badgeDetail}</span>
-        </div>
-      )}
     </>
   );
 }

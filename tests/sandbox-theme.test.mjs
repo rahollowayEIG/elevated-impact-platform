@@ -26,7 +26,8 @@ test('all sandbox visual rules require the sandbox-only document class', () => {
   }
   assert.match(theme, /#f43194/i);
   assert.match(theme, /\.eig-global-header/);
-  assert.match(theme, /\.eig-sandbox-indicator/);
+  assert.match(theme, /\.eig-sandbox-mode-label/);
+  assert.doesNotMatch(theme, /\.eig-sandbox-indicator/);
   assert.match(theme, /\.platform-auth-screen/);
   assert.match(theme, /\.platform-shell/);
   assert.match(theme, /\.airport-hero/);

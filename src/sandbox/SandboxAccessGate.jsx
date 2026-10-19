@@ -9,6 +9,7 @@ import {
   acknowledgeSandboxNotice,
   clearSandboxNotice,
 } from './sandboxNotice.mjs';
+import SandboxSessionHeader from './SandboxSessionHeader.jsx';
 
 // Both are disabled by default. Only the Sandbox Vercel project may enable
 // email-code invitations after the isolated Auth template and tester allowlist
@@ -232,7 +233,10 @@ export default function SandboxAccessGate({ children }) {
     // remains server-owned and cannot be bypassed by browser storage.
     const entered = acceptedEmail === gate.email ||
       hasAcknowledgedSandboxNotice(noticeStorage(), gate.email);
-    if (entered) return <>{children}</>;
+    if (entered) return <>
+      <SandboxSessionHeader email={gate.email} activeRole={gate.access.activeRole} />
+      {children}
+    </>;
     return <SandboxEntryNotice
       busy={busy}
       notice={notice}

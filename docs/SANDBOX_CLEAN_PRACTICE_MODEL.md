@@ -1,6 +1,6 @@
 # ElevationPilot Sandbox: Clean Practice Workspace
 
-**Status:** Approved product direction / implementation in progress. This document defines the desired operation, not a claim that the login bridge, role switcher, data reset, or mail sink is already active.
+**Verified status, October 19, 2026:** The isolated Sandbox **has one real verified tester, six-digit Sandbox email-code sign-in and server-enforced Pilot/Co-Pilot/ATC/Passenger practice roles**. The pink entry notice, account/role header and role switching were browser-tested by the owner. **The full ElevationPilot application is still locked**, and shared-credential sign-in, mail sink, payments/test adapters, reset and full UI scanner have NOT been activated. This document distinguishes the working baseline from future functionality.
 
 ## What a business owner should experience
 
@@ -28,7 +28,7 @@ Present a role selector for EIG Admin / Pilot / Co-Pilot / ATC / Passenger / Ven
 
 ## Minimal system data
 
-The isolated sandbox currently has schema parity and a small fictional Practice Club / EIG organization setup and one unpublished draft practice event used for structural tests. It has **no live customer data**, currently zero real Auth users, zero public-table/client RPC grants and no deployed Edge Functions. These platform fixtures are not a request to populate normal user workspaces with sample campaigns. Hide/reset scenario fixtures as needed once the safe UX is built.
+The isolated sandbox has **verified metadata parity** with Live: 71 public tables, 971 columns, 403 constraints, 222 indexes, 131 RLS policies, 25 triggers and 1 view. Sandbox also has two additional sandbox-only practice-role functions, one verified Sandbox Auth tester, a small fictional Practice Club and an unpublished practice event. It has **zero real customer rows copied**, **zero direct browser table grants**, and **zero deployed Edge Functions** versus 24 Edge Functions deployed in Live. These platform fixtures are not permission to auto-populate real customer content or enable all workflows.
 
 Avoid any default "Load Latest Live Version" importing data. Future refreshes should update **reviewed schema/configuration code only**, never live customer records or secrets. Require explicit audited field-level approval for any later sanitized settings import.
 
@@ -41,3 +41,16 @@ Avoid any default "Load Latest Live Version" importing data. Future refreshes sh
 - All outgoing communications are captured or verified-tester-only; payments are test-only.
 - All cross-origin registration and third-party integration routes reject live destinations.
 - Never merge draft sandbox branches or enable public table/RPC grants until validation and user approval.
+
+## Getting the same Live experience safely (scanner prerequisite, October 19)
+
+**Application parity is a release contract, not a literal production clone.** The protected Sandbox frontend currently descends from deployed Live commit `755328d18863fb20faa54f5b16d7698cf9097c21` with Sandbox-only guards and branding. Keep the **same EP UI/components/routes** by continually syncing reviewed Live releases into the Sandbox branch, checking intended UX differences and actual deployed commit/alias. Never copy real production users, messages, contact lists, registration rows, API credentials or payment methods. Separate test databases and services are a feature, not a parity defect.
+
+**Before enabling `VITE_SANDBOX_WORKSPACE_ENABLED`:**
+1. **Browser and server egress:** Use pinned Sandbox Supabase SDK, Sandbox-only browser fetch allowlist (draft implementation in `src/sandbox/sandboxBrowserFetchGuard.mjs`), and independently review XHR, WebSocket, SDKs, Vercel APIs, server webhooks, dynamic redirects, email, SMS, Drive, embeds and payments. Browser fetch guard **alone is NOT sufficient**; block at platform/network/integration boundaries too. Keep full workflow flag OFF until the cross-origin escape inventory and negative tests pass.
+2. **Authorized data/API contracts:** Preserve verified schema parity. Grant only minimal reviewed table/RPC access to enrolled tester identities with proven RLS tenant boundaries. Populate only isolated fictional records for the exact module being enabled; independently test denied roles. Do not copy Live grants wholesale: Live currently has 759 direct table grant records and Sandbox intentionally has zero.
+3. **Edge Functions and providers:** Live has 24 deployed Edge Functions; Sandbox has zero. Implement/deploy only reviewed test-safe service equivalents or mocks, **never** reuse production Stripe keys, webhook URLs, sender lists, OAuth tokens, service-role keys or file destinations. Safe stubs must report simulation, not pretend real integrations succeeded.
+4. **Staged release:** Unlock one verified module at a time through a server-enforced Sandbox-only entitlement or fine-grained feature gate. Start with a read-only scanner/UI parity pilot, then Event Builder and safe registrations with synthetic persistence; follow with Sponsors, InceptionApex, Squawk, payments and other extensions only after their specific guards pass. A single global flag must not bypass isolated module approvals.
+5. **Two-way scanner:** For each approved Live release compare intended feature → Sandbox UI and visible Sandbox UI → actual service/data result, using source commit, environment, role, entitlement, synthetic browser trace and PASS/FAIL/BLOCKED/NOT TESTED. Explicitly distinguish intentional placeholders/draft-only work. Reuse existing Master Scanner and Universal Scan Engine; do not create a separate clone scanner.
+
+**Current security posture:** The app-wide workflow gate stays **disabled**. A successful frontend build, matching database schema or visible pink shell does **not** prove a module is functional. Do not turn on the global flag for convenience.

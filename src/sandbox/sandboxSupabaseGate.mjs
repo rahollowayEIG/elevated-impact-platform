@@ -1,4 +1,4 @@
-const EXPECTED_SANDBOX_HOST = 'publruuuyvpggogrrgwp.supabase.co';
+export const EXPECTED_SANDBOX_HOST = 'publruuuyvpggogrrgwp.supabase.co';
 
 /**
  * Fail closed if a sandbox build is accidentally pointed at production.

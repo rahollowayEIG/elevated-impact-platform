@@ -4,6 +4,7 @@ import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
 import './sandbox/sandboxTheme.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
+import { installSandboxBrowserFetchGuard } from './sandbox/sandboxBrowserFetchGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
 import SandboxAccessGate from './sandbox/SandboxAccessGate.jsx';
@@ -14,6 +15,13 @@ const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true';
 const sandboxBranding = getSandboxBranding(IS_SANDBOX);
 
 assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: IS_SANDBOX, key: import.meta.env.VITE_SUPABASE_ANON_KEY });
+// Browser fetch requests must stay on this Sandbox origin or its isolated
+// Supabase service. This is defense in depth; all app workflows remain locked
+// until their API, XHR, redirect and outbound integration review is complete.
+installSandboxBrowserFetchGuard({
+  enabled: IS_SANDBOX,
+  sandboxSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+});
 installSandboxNavigationGuard({ enabled: IS_SANDBOX });
 if (IS_SANDBOX) document.documentElement.classList.add('elevationpilot-sandbox');
 if (sandboxBranding) document.title = sandboxBranding.pageTitle;

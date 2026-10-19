@@ -80,10 +80,18 @@ export default function SandboxPracticeRoles() {
   useEffect(() => {
     refresh();
     if (!supabase) return undefined;
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      // Avoid Supabase calls in the synchronous auth callback.
-      setCapabilities(null);
-      setStatus('Sandbox session changed. Select Refresh Access.');
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      // Ignore INITIAL_SESSION and refresh events: neither changes the
+      // already-verified role entitlement or requires a forced logout.
+      if (event === 'SIGNED_OUT') {
+        setEmail(null);
+        setCapabilities(null);
+        setSelected('');
+        setStatus('Sandbox session ended. Sign in through your approved tester access.');
+      } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        // Avoid calling the Supabase SDK synchronously in an Auth callback.
+        Promise.resolve().then(refresh);
+      }
     });
     return () => data?.subscription?.unsubscribe?.();
   }, [refresh]);

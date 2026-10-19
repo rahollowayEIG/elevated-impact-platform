@@ -39,7 +39,7 @@ test('cannot silently receive EIG admin or cross another tester practice org', (
   assert.match(sql, /m\.organization_id NOT IN \(v_org, v_headquarters\)/);
   assert.match(sql, /e\.organization_id IS DISTINCT FROM v_org/);
   assert.match(sql, /p_role = 'eig_admin'/);
-  assert.match(sql, /p_role = 'passenger'/);
+  assert.match(sql, /Passenger means no special membership/);
   assert.doesNotMatch(sql, /INSERT INTO auth\.users|DELETE FROM auth\.users/i);
 });
 
@@ -47,7 +47,7 @@ test('the UI only offers roles returned from the sandbox service', () => {
   assert.match(selector, /supabase\.auth\.getUser/);
   assert.match(selector, /supabase\.rpc\('sandbox_practice_role_status'\)/);
   assert.match(selector, /data\.roles\.filter\(role => Object\.hasOwn\(LABELS, role\)\)/);
-  assert.match(selector, /capabilities\.roles\.includes\(selected\)/);
+  assert.match(selector, /capabilities\?\.roles\.includes\(selected\)/);
   assert.match(selector, /supabase\.rpc\('sandbox_switch_practice_role'/);
   assert.match(selector, /window\.location\.assign\(window\.location\.origin \+ '\/'\)/);
   assert.match(selector, /Shared ElevationPilot sign-in connection is still being configured|shared ElevationPilot sign-in connection is still being configured/);

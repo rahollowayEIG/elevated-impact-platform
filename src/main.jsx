@@ -44,8 +44,13 @@ function EIGAppHeader() {
           </span>
         </a>
         {IS_SANDBOX && (
-          <div id="sandbox-session-header-slot" className="eig-sandbox-session-slot"
-            aria-label="Current Sandbox account and practice role" />
+          <div className="eig-sandbox-header-actions">
+            <span className="eig-sandbox-mode-label" title="Training and demonstrations only">SANDBOX</span>
+            <div id="sandbox-session-header-slot" className="eig-sandbox-session-slot"
+              aria-label="Current Sandbox account and practice role" />
+            <div id="sandbox-practice-controls-slot" className="eig-sandbox-controls-slot"
+              aria-label="Sandbox practice role controls" />
+          </div>
         )}
       </header>
       {sandboxBranding && (

@@ -21,3 +21,9 @@ test('blocks secret keys, but leaves production-mode configuration unchanged', (
   assert.throws(() => assertSandboxSupabaseTarget(URL, { enabled: true, key: 'sb_secret_fixture' }));
   assert.doesNotThrow(() => assertSandboxSupabaseTarget('https://other.example', { enabled: false }));
 });
+
+test('rejects legacy service_role JWTs in a browser bundle', () => {
+  const payload = Buffer.from(JSON.stringify({role:'service_role'})).toString('base64url');
+  const unsafeKey = 'eyJhbGciOiJIUzI1NiJ9.' + payload + '.signature';
+  assert.throws(() => assertSandboxSupabaseTarget(URL, {enabled:true,key:unsafeKey}));
+});

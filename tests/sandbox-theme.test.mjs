@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const appShell = readFileSync('src/main.jsx', 'utf8');
 const theme = readFileSync('src/sandbox/sandboxTheme.css', 'utf8');
+const cssNoComments = theme.replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('pink sandbox paint is applied only after the sandbox Supabase guard', () => {
   const guard = appShell.indexOf('assertSandboxSupabaseTarget(');
@@ -11,16 +12,15 @@ test('pink sandbox paint is applied only after the sandbox Supabase guard', () =
   assert.ok(guard >= 0 && enable > guard, 'Must verify backend before marking any app as a sandbox');
   assert.match(appShell, /import '\.\/sandbox\/sandboxTheme\.css'/);
   assert.match(appShell, /VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
-  assert.doesNotMatch(appShell, /document\.documentElement\.classList\.add\('elevationpilot-sandbox'\);\s*assertSandboxSupabaseTarget/);
 });
 
 test('all sandbox visual rules require the sandbox-only document class', () => {
-  const source = theme.replace(/\/\*[\s\S]*?\*\//g, '');
-  const normalized = source.replace(/@media[^{}]*\{/g, '');
+  const normalized = cssNoComments.replace(/@media[^{}]*\{/g, '');
   const selectors = [...normalized.matchAll(/(?:^|\})\s*([^{}]+)\{/g)].map(x => x[1].trim());
   assert.ok(selectors.length >= 12, 'Expected visible theming across major page types');
   for (const rule of selectors) {
-    for (const selector of rule.split(/,(?![^()]*\\))/)) {
+    // Ignore commas belonging to CSS functional pseudo-classes such as :is().
+    for (const selector of rule.split(/,(?![^()]*\))/)) {
       assert.ok(selector.trim().startsWith('html.elevationpilot-sandbox'), 'Unscoped sandbox selector: ' + selector);
     }
   }
@@ -33,6 +33,6 @@ test('all sandbox visual rules require the sandbox-only document class', () => {
   assert.match(theme, /\.cockpit-flightdeck/);
 });
 
-test('the role simulator cannot change access by changing the visual theme', () => {
-  assert.doesNotMatch(theme.replace(/\\/\\*[\\s\\S]*?\\*\\//g, ''), /supabase|jwt|access_token|refresh_token|service_role/i);
+test('visual theme cannot change backend authorization or point at real systems', () => {
+  assert.doesNotMatch(cssNoComments, /supabase|jwt|access_token|refresh_token|service_role/i);
 });

@@ -43,3 +43,14 @@ export function injectPwaHead(html, flavor) {
     .replace(/<title>[^<]*<\/title>/, '<title>' + name + '</title>')
     .replace('</head>', '    ' + tags + '\n  </head>');
 }
+
+/**
+ * Vite also transforms stand-alone HTML test harnesses (for example
+ * /tests/account-states.html). Those are not ElevationPilot app entrypoints:
+ * leave them untouched instead of requiring an app title and PWA manifest.
+ * The production index.html continues to fail closed in injectPwaHead.
+ */
+export function injectPwaOnApplicationHtml(html, flavor) {
+  const isAppEntry = /<script\b[^>]*\bsrc\s*=\s*(["'])\/src\/main\.jsx(?:\?[^"']*)?\1/i.test(html);
+  return isAppEntry ? injectPwaHead(html, flavor) : html;
+}

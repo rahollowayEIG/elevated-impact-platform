@@ -41,6 +41,8 @@ test('bad target/project configuration fails closed', () => {
   for (const altered of [
     { ...config, sandboxSupabaseUrl: 'https://aszixzrdayrivungodwq.supabase.co' },
     { ...config, appOrigin: 'http://elevationpilot-sandbox.vercel.app' },
+    { ...config, appOrigin: 'https://elevated-impact-platform.vercel.app' },
+    { ...config, appOrigin: 'https://evil.example' },
     { ...config, sandboxSupabaseUrl: 'https://publruuuyvpggogrrgwp.supabase.co.evil.example' },
     { ...config, sandboxSupabaseUrl: undefined },
   ]) {

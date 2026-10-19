@@ -24,12 +24,6 @@ html.elevationpilot-sandbox .eig-global-home,
 html.elevationpilot-sandbox .eig-global-home-subtitle {
   color: #fff !important;
 }
-html.elevationpilot-sandbox .eig-sandbox-indicator {
-  color: #fff !important;
-  background: #ad0c71 !important;
-  border: 2px solid #ffc9e9 !important;
-  box-shadow: 0 8px 24px rgba(67, 0, 55, .4) !important;
-}
 html.elevationpilot-sandbox .platform-shell,
 html.elevationpilot-sandbox .app,
 html.elevationpilot-sandbox .platform-auth-screen {

@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { injectPwaHead, resolvePwaFlavor } from './src/pwa/pwaBranding.mjs';
+import { injectPwaOnApplicationHtml, resolvePwaFlavor } from './src/pwa/pwaBranding.mjs';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
       {
         name: 'elevationpilot-dual-pwa-install',
         transformIndexHtml(html) {
-          return injectPwaHead(html, flavor);
+          return injectPwaOnApplicationHtml(html, flavor);
         },
       },
     ],

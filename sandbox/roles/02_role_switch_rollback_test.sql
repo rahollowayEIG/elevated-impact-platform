@@ -95,7 +95,7 @@ BEGIN
     RAISE EXCEPTION 'UNAUTHORIZED_EIG_ADMIN_SUCCEEDED';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'UNAUTHORIZED_EIG_ADMIN_SUCCEEDED' OR
-       SQLERRM NOT LIKE '%not authorized%' THEN RAISE;
+       SQLERRM NOT LIKE '%Unsupported practice role%' THEN RAISE;
     END IF;
   END;
   v_result := public.sandbox_practice_role_status();

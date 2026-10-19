@@ -31,6 +31,7 @@ test('single tester selector uses real authenticated sandbox RPCs, not impersona
   assert.match(login,/supabase\.rpc\('sandbox_switch_practice_role', \{ p_role: selected \}\)/);
   assert.doesNotMatch(login,/signInWithPassword|setSession|service_role|auth\.admin|localStorage/);
   assert.match(root,/const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
-  assert.match(root,/\{IS_SANDBOX && <SandboxPracticeRoles/);
+  assert.match(root,/IS_SANDBOX \? \(\s*<SandboxAccessGate>/);
+  assert.match(root,/<SandboxPracticeRoles \/>/);
   assert.doesNotMatch(root,/\{IS_SANDBOX && <SandboxPersonaLogin/);
 });

@@ -48,6 +48,7 @@ test('read-only UI and write restrictions remain enabled, without broadening oth
   assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/event_builder_assets?select=*',{method:'GET'},cfg),true);
   assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/event_builder_assets',{method:'POST'},cfg),false);
   assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/rpc/save_event_builder_assets',{method:'POST'},cfg),false);
-  assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/rpc/read_eie_event_budget',{method:'POST'},cfg),false);
+  assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/rpc/read_eie_event_budget',{method:'POST'},cfg),true);
+  assert.equal(isAllowedSandboxReadOnlyRequest(cfg.sandboxSupabaseUrl+'/rest/v1/rpc/save_eie_event_budget',{method:'POST'},cfg),false);
   assert.equal(isAllowedSandboxReadOnlyRequest('https://aszixzrdayrivungodwq.supabase.co/rest/v1/event_builder_assets',{method:'GET'},cfg),false);
 });

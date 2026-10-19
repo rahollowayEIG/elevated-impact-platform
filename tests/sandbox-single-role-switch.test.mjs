@@ -34,13 +34,15 @@ test('only authenticated, allowlisted sandbox users may change a real DB members
 });
 
 test('cannot silently receive EIG admin or cross another tester practice org', () => {
-  assert.match(sql, /allowed_roles <@ ARRAY\['eig_admin','pilot','co_pilot','atc','passenger'\]/);
+  assert.match(sql, /allowed_roles <@ ARRAY\['pilot','co_pilot','atc','passenger'\]/);
   assert.match(sql, /practice_organization_id/);
-  assert.match(sql, /m\.organization_id NOT IN \(v_org, v_headquarters\)/);
+  assert.match(sql, /m\.organization_id <> v_org/);
   assert.match(sql, /e\.organization_id IS DISTINCT FROM v_org/);
-  assert.match(sql, /p_role = 'eig_admin'/);
+  assert.doesNotMatch(sql, /p_role = 'eig_admin'/);
   assert.match(sql, /Passenger means no special membership/);
   assert.doesNotMatch(sql, /INSERT INTO auth\.users|DELETE FROM auth\.users/i);
+  assert.match(sql, /EIG staff cannot enter business practice sandboxes/);
+  assert.match(sql, /m\.role = 'eig_admin'/);
 });
 
 test('the UI only offers roles returned from the sandbox service', () => {
@@ -61,4 +63,17 @@ test('feature has no outbound links, mail delivery, payment or production tokens
     assert.doesNotMatch(source, /resend\.emails|stripe\.charges|sendEmail\(|sendSms\(/i);
     assert.doesNotMatch(source, /service_role_key|sb_secret_|api\.auth\.admin/i);
   }
+});
+
+test('EIG Administrator stays locked in customer practice and a separate EIG-only workspace is required', () => {
+  const migration = readFileSync('sandbox/roles/03_business_sandbox_eig_lock.sql','utf8');
+  assert.match(migration, /publruuuyvpggogrrgwp/);
+  assert.match(migration, /Existing admin practice users require manual review first/);
+  assert.match(migration, /Refusing EIG role lockdown outside the isolated Sandbox/);
+  assert.match(migration, /DROP CONSTRAINT practice_roles_allowed/);
+  assert.match(migration, /'eig_admin' = ANY\(t.allowed_roles\)/);
+  assert.match(migration, /EIG staff cannot enter business practice sandboxes/);
+  assert.match(migration, /p_role NOT IN \('pilot','co_pilot','atc','passenger'\)/);
+  assert.doesNotMatch(migration, /VALUES\(v_headquarters,v_uid,'eig_admin','active'\)/);
+  assert.doesNotMatch(selector, /eig_admin: 'EIG Administrator'/);
 });

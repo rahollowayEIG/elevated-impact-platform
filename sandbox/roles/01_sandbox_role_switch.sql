@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS sandbox_ops.practice_testers (
   enabled boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT practice_roles_not_empty CHECK (cardinality(allowed_roles) BETWEEN 1 AND 5),
-  CONSTRAINT practice_roles_allowed CHECK (allowed_roles <@ ARRAY['eig_admin','pilot','co_pilot','atc','passenger']::text[]),
+  CONSTRAINT practice_roles_not_empty CHECK (cardinality(allowed_roles) BETWEEN 1 AND 4),
+  CONSTRAINT practice_roles_allowed CHECK (allowed_roles <@ ARRAY['pilot','co_pilot','atc','passenger']::text[]),
   CONSTRAINT practice_roles_active_check CHECK (active_role = ANY(allowed_roles))
 );
 
@@ -69,7 +69,14 @@ BEGIN
     FROM sandbox_ops.practice_testers t
     JOIN public.organizations o ON o.id = t.practice_organization_id
     WHERE t.tester_user_id = v_uid AND t.enabled AND o.is_test IS TRUE
-      AND o.slug <> 'elevated-impact-group' AND o.status = 'active';
+      AND o.slug <> 'elevated-impact-group' AND o.status = 'active'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.organization_memberships m
+        JOIN public.organizations h ON h.id = m.organization_id
+        WHERE m.user_id = v_uid AND m.role = 'eig_admin'
+          AND h.slug = 'elevated-impact-group'
+      );
   IF NOT FOUND THEN
     RETURN jsonb_build_object('authorized', false, 'roles', jsonb_build_array());
   END IF;
@@ -96,13 +103,12 @@ DECLARE
   v_previous text;
   v_roles text[];
   v_org uuid;
-  v_headquarters uuid;
-  v_event uuid;
+    v_event uuid;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Sign in to the independent Sandbox first';
   END IF;
-  IF p_role IS NULL OR p_role NOT IN ('eig_admin','pilot','co_pilot','atc','passenger') THEN
+  IF p_role IS NULL OR p_role NOT IN ('pilot','co_pilot','atc','passenger') THEN
     RAISE EXCEPTION 'Unsupported practice role';
   END IF;
 
@@ -121,11 +127,15 @@ BEGIN
                    AND o.status = 'active' AND o.slug <> 'elevated-impact-group') THEN
     RAISE EXCEPTION 'A separate, active fictional practice organization is required';
   END IF;
-  SELECT o.id INTO v_headquarters
-    FROM public.organizations o
-    WHERE o.slug = 'elevated-impact-group' AND o.is_test IS TRUE AND o.status = 'active';
-  IF v_headquarters IS NULL THEN
-    RAISE EXCEPTION 'Fictional headquarters fixture is missing';
+  -- EIG headquarters membership is incompatible with merchant practice.
+  -- Staff administration belongs to a separate EIG-only sandbox project.
+  IF EXISTS (
+    SELECT 1 FROM public.organization_memberships m
+    JOIN public.organizations h ON h.id = m.organization_id
+    WHERE m.user_id = v_uid AND m.role = 'eig_admin'
+      AND h.slug = 'elevated-impact-group'
+  ) THEN
+    RAISE EXCEPTION 'EIG staff cannot enter business practice sandboxes';
   END IF;
   IF EXISTS (SELECT 1 FROM public.organizations o WHERE o.is_test IS NOT TRUE) THEN
     RAISE EXCEPTION 'Sandbox safety gate detected non-practice organizations';
@@ -133,7 +143,7 @@ BEGIN
 
   -- Reject mixed membership contexts; do not "clean up" other organizations.
   IF EXISTS (SELECT 1 FROM public.organization_memberships m
-             WHERE m.user_id = v_uid AND m.organization_id NOT IN (v_org, v_headquarters)) THEN
+             WHERE m.user_id = v_uid AND m.organization_id <> v_org) THEN
     RAISE EXCEPTION 'Unexpected organization memberships: inspect before switching roles';
   END IF;
   IF EXISTS (SELECT 1 FROM public.event_assignments a
@@ -155,12 +165,9 @@ BEGIN
   DELETE FROM public.event_assignments a USING public.golf_registration_events e
     WHERE a.event_id = e.id AND a.user_id = v_uid AND e.organization_id = v_org;
   DELETE FROM public.organization_memberships m
-    WHERE m.user_id = v_uid AND m.organization_id IN (v_org, v_headquarters);
+    WHERE m.user_id = v_uid AND m.organization_id = v_org;
 
-  IF p_role = 'eig_admin' THEN
-    INSERT INTO public.organization_memberships(organization_id,user_id,role,status)
-      VALUES(v_headquarters,v_uid,'eig_admin','active');
-  ELSIF p_role = 'pilot' THEN
+  IF p_role = 'pilot' THEN
     INSERT INTO public.organization_memberships(organization_id,user_id,role,status)
       VALUES(v_org,v_uid,'organization_admin','active');
   ELSIF p_role = 'co_pilot' THEN

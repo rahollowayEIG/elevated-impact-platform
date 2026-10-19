@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 
 const LABELS = Object.freeze({
-  eig_admin: 'EIG Administrator',
   pilot: 'Pilot',
   co_pilot: 'Co-Pilot',
   atc: 'ATC Coordinator',

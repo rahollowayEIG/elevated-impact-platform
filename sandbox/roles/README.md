@@ -1,6 +1,6 @@
 # ElevationPilot Sandbox Role Switching (Single Tester Session)
 
-**Status:** Staged on a separate GitHub branch. The role-control interface and database migration are written, but the migration must be reviewed and deployed **only to the isolated Sandbox Supabase project** before the selector can operate. Shared authentication with a user's existing Live credentials is **not yet implemented**. Never enter a Live password in a sandbox login form.
+**Status:** Staged on a separate GitHub branch. The role-control interface and database migration are written, but the role backend has been installed and tested in the isolated sandbox. The EIG-role-lock follow-up migration is reviewed separately. Browser use still requires sandbox login federation and app RLS grants. Shared authentication with a user's existing Live credentials is **not yet implemented**. Never enter a Live password in a sandbox login form.
 
 ## What changes
 
@@ -19,12 +19,12 @@ The SQL lives in `sandbox/roles/01_sandbox_role_switch.sql`, **not** in general 
 2. adds a `sandbox_ops.practice_testers` enrollment allowlist controlled only by the sandbox database operator;
 3. adds an append-only role-switch audit ledger;
 4. grants authenticated callers access **only** to role-status and role-switch RPCs; no grants on underlying practice tester tables;
-5. permits only the roles explicitly granted to the caller;
-6. updates the tester's memberships in that tester's fictional practice organization only, except EIG Admin, which belongs to the separate fictional sandbox headquarters;
+5. permits only server-approved Pilot, Co-Pilot, ATC and Passenger roles; **EIG Admin is not a selectable business practice role**;
+6. updates the tester's memberships in that tester's fictional practice organization only; no headquarters role or global EIG Admin membership is created;
 7. refuses unexpected external memberships or assignments instead of deleting them;
 8. requires a draft event in the test organization for ATC, and otherwise asks the tester to first create one as Pilot.
 
-**Important:** Enrolling EIG Admin is appropriate only for EIG's own trusted internal testers. A business or vendor customer must never receive unrestricted platform-admin practice permissions. Real RLS, cross-tenant checks, and test emails must be verified before enabling practice operations.
+**Important:** Reserve EIG platform administration for a **separate EIG-only test environment** when the team needs it. No outside business sandbox can be granted EIG Admin through this selector or its underlying practice tester allowlist. EIG staff should not have cross-tenant practice access. The existing shared sandbox project is treated as business-practice compatible, with EIG Admin locked out.
 
 ## Before enabling for people
 
@@ -47,3 +47,7 @@ The SQL lives in `sandbox/roles/01_sandbox_role_switch.sql`, **not** in general 
 ## Verification
 
 Run `node --test tests/sandbox-*.test.mjs` in this feature branch. This includes structural, permission, and fail-closed checks. A passing source-level check does **not** replace real RLS security integration tests against a real signed-in sandbox user.
+
+## EIG internal isolation (locked down in normal sandbox)
+
+Normal sandbox role choices are Pilot, Co-Pilot, ATC, and Passenger. Vendor will be added only when the platform's vendor role is implemented. **EIG Administrator never appears in another company's sandbox.** Staff administration is a distinct use case that should be performed inside a separate, EIG-controlled internal sandbox database/deployment, not by granting a global `eig_admin` membership inside a shared customer practice database. The client-role migration `03_business_sandbox_eig_lock.sql` removes the capability to assign EIG Admin even through the RPC. The backend also rejects users with pre-existing EIG HQ admin membership instead of deleting or repurposing that access. This is enforced server-side and requires security review before allowing additional tenant organizations.

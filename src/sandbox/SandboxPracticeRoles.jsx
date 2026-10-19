@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase.js';
 
 const LABELS = Object.freeze({
@@ -24,6 +25,7 @@ export default function SandboxPracticeRoles() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const triggerRef = useRef(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -115,24 +117,32 @@ export default function SandboxPracticeRoles() {
     }
   }
 
-  return (
-    <aside aria-label="Sandbox practice role selector" style={{
-      position: 'fixed', right: 14, bottom: 14, zIndex: 2147483000,
-      width: opened ? 'min(364px, calc(100vw - 28px))' : 'auto',
-      borderRadius: 12, background: '#47173e', border: '2px solid #ffa9da',
-      color: '#fff', boxShadow: '0 9px 30px rgba(45,5,35,.4)',
-      fontFamily: 'system-ui, sans-serif'
-    }}>
-      <button type="button" onClick={() => setOpened(value => !value)} aria-expanded={opened}
-        style={{
-          padding: '11px 16px', width: '100%', border: 0, borderRadius: 10,
-          background: '#bf166f', color: '#fff', textAlign: 'left',
-          fontWeight: 800, cursor: 'pointer'
-        }}>
-        {opened ? 'Close practice controls' : '✈ SANDBOX • Choose Practice Role'}
+  // This is the SAME server-authorized selector, only moved from the
+  // bottom-right corner into the Sandbox header. Never mount on Live.
+  const headerSlot = document.getElementById('sandbox-practice-controls-slot');
+  if (!headerSlot) return null;
+
+  return createPortal(
+    <aside aria-label="Sandbox practice role selector"
+      className="eig-sandbox-practice-switch"
+      onKeyDown={event => {
+        if (event.key === 'Escape' && opened) {
+          event.stopPropagation();
+          setOpened(false);
+          triggerRef.current?.focus();
+        }
+      }}>
+      <button type="button" ref={triggerRef}
+        className="eig-sandbox-practice-trigger"
+        onClick={() => setOpened(value => !value)}
+        aria-expanded={opened} aria-controls="sandbox-practice-role-panel">
+        {opened ? 'Close roles ▲' : 'Switch role ▼'}
       </button>
       {opened && (
-        <div style={{ padding: 16, display: 'grid', gap: 11, fontSize: 13 }}>
+        <div id="sandbox-practice-role-panel"
+          className="eig-sandbox-practice-panel"
+          style={{ padding: 16, display: 'grid', gap: 11, fontSize: 13 }}>
+          <strong style={{ fontSize: 12, letterSpacing: '.12em', color: '#ffbadc' }}>SANDBOX • TRAINING</strong>
           <strong style={{ fontSize: 16 }}>Practice workspace</strong>
           <div>One tester login, multiple approved roles. Nothing here changes your Live permissions.</div>
           {loading ? <div role="status">Checking practice access…</div> : email
@@ -168,6 +178,7 @@ export default function SandboxPracticeRoles() {
           <small>Sandbox role permissions are granted only by the isolated sandbox server. No practice action can change Live.</small>
         </div>
       )}
-    </aside>
+    </aside>,
+    headerSlot
   );
 }

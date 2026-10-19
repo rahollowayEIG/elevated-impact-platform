@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import {
   checkSandboxAccess, normalizeSandboxEmail, isSandboxEmailCode,
   requestSandboxEmailCode, verifySandboxEmailCode,
 } from './sandboxAccess.mjs';
+import {
+  hasAcknowledgedSandboxNotice,
+  acknowledgeSandboxNotice,
+  clearSandboxNotice,
+} from './sandboxNotice.mjs';
 
 // Both are disabled by default. Only the Sandbox Vercel project may enable
 // email-code invitations after the isolated Auth template and tester allowlist
@@ -42,6 +47,85 @@ function PracticePanel({ heading, children }) {
   );
 }
 
+
+function noticeStorage() {
+  try { return window.sessionStorage; }
+  catch { return null; }
+}
+
+/**
+ * An explicit, keyboard-accessible entry notice shown only AFTER independent
+ * Sandbox Auth and server-side practice-role approval. Never renders Live data.
+ */
+function SandboxEntryNotice({ onEnter, onCancel, busy, notice }) {
+  const enterRef = useRef(null);
+  const cancelRef = useRef(null);
+
+  useEffect(() => { enterRef.current?.focus(); }, []);
+
+  function keepFocusInside(event) {
+    if (event.key === 'Escape' && !busy) {
+      event.preventDefault();
+      onCancel();
+    }
+    if (event.key !== 'Tab') return;
+    if (event.shiftKey && document.activeElement === enterRef.current) {
+      event.preventDefault();
+      cancelRef.current?.focus();
+    } else if (!event.shiftKey && document.activeElement === cancelRef.current) {
+      event.preventDefault();
+      enterRef.current?.focus();
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 2147483500,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 18, overflowY: 'auto', boxSizing: 'border-box',
+      background: 'rgba(26, 7, 28, .9)', fontFamily: 'system-ui, sans-serif'
+    }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="sandbox-entry-title"
+        aria-describedby="sandbox-entry-description" onKeyDown={keepFocusInside}
+        style={{
+          width: '100%', maxWidth: 550, boxSizing: 'border-box',
+          padding: 'clamp(22px, 5vw, 38px)', borderRadius: 22,
+          background: '#fff9fd', color: '#281027', border: '3px solid #ff8dc9',
+          boxShadow: '0 22px 70px rgba(0,0,0,.44)', textAlign: 'center'
+        }}>
+        <div aria-hidden="true" style={{ fontSize: 44, marginBottom: 12 }}>✈</div>
+        <p style={{
+          color: '#a41467', fontSize: 12, fontWeight: 900, letterSpacing: 2,
+          margin: '0 0 10px'
+        }}>TRAINING &amp; DEMONSTRATION</p>
+        <h1 id="sandbox-entry-title" style={{
+          fontSize: 'clamp(24px, 5vw, 30px)', lineHeight: 1.25, margin: '0 0 18px'
+        }}>You are entering the ElevationPilot Sandbox</h1>
+        <div id="sandbox-entry-description" style={{ textAlign: 'left', lineHeight: 1.6, fontSize: 15 }}>
+          <p>This environment is for <strong>training, demonstrations, and testing only.</strong></p>
+          <p><strong>Not for live business operations.</strong> Practice data is separate from Live ElevationPilot.
+            Do not use this workspace for actual events, registrations, transactions, or customer records.</p>
+          <p>Please use fictional information. Do not enter real customer, payment-card, or confidential data.</p>
+        </div>
+        <div style={{ display: 'grid', gap: 10, marginTop: 26 }}>
+          <button ref={enterRef} autoFocus type="button" onClick={onEnter}
+            style={{ ...action, fontSize: 16, padding: '14px 16px' }}>
+            I Understand • Enter Sandbox
+          </button>
+          <button ref={cancelRef} type="button" disabled={busy} onClick={onCancel}
+            style={{
+              background: 'transparent', border: '1px solid #a96d96', borderRadius: 8,
+              color: '#64254e', padding: '12px 16px', fontWeight: 700, cursor: 'pointer'
+            }}>
+            {busy ? 'Signing out…' : 'Cancel and Sign Out'}
+          </button>
+        </div>
+        {notice && <p role="alert" style={{ color: '#8f1549' }}>{notice}</p>}
+      </section>
+    </div>
+  );
+}
+
 /** Guards EVERY sandbox application route before the actual app mounts. */
 export default function SandboxAccessGate({ children }) {
   const [gate, setGate] = useState({ kind: 'checking' });
@@ -51,6 +135,7 @@ export default function SandboxAccessGate({ children }) {
   const [codeRequested, setCodeRequested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [acceptedEmail, setAcceptedEmail] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -58,7 +143,13 @@ export default function SandboxAccessGate({ children }) {
     async function updateAccess() {
       const current = ++sequence;
       const result = await checkSandboxAccess(supabase);
-      if (active && sequence === current) setGate(result);
+      if (active && sequence === current) {
+        if (result.kind === 'signed_out') {
+          clearSandboxNotice(noticeStorage());
+          setAcceptedEmail('');
+        }
+        setGate(result);
+      }
     }
 
     void updateAccess();
@@ -66,7 +157,11 @@ export default function SandboxAccessGate({ children }) {
     const { data } = supabase.auth.onAuthStateChange(event => {
       if (event === 'SIGNED_OUT') {
         ++sequence;
-        if (active) setGate({ kind: 'signed_out' });
+        clearSandboxNotice(noticeStorage());
+        if (active) {
+          setAcceptedEmail('');
+          setGate({ kind: 'signed_out' });
+        }
       } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         // Do not await Supabase SDK calls inside the synchronous Auth event.
         Promise.resolve().then(() => { if (active) void updateAccess(); });
@@ -115,6 +210,8 @@ export default function SandboxAccessGate({ children }) {
     setBusy(true);
     try {
       await supabase?.auth?.signOut();
+      clearSandboxNotice(noticeStorage());
+      setAcceptedEmail('');
       setNotice('');
       setCode('');
       setCodeRequested(false);
@@ -130,7 +227,23 @@ export default function SandboxAccessGate({ children }) {
   if (gate.kind === 'checking') {
     return <PracticePanel heading="Checking practice access…"><p role="status">Verifying your isolated Sandbox session.</p></PracticePanel>;
   }
-  if (gate.kind === 'authorized') return <>{children}</>;
+  if (gate.kind === 'authorized') {
+    // The notice is for informed entry, not security. Authorization above
+    // remains server-owned and cannot be bypassed by browser storage.
+    const entered = acceptedEmail === gate.email ||
+      hasAcknowledgedSandboxNotice(noticeStorage(), gate.email);
+    if (entered) return <>{children}</>;
+    return <SandboxEntryNotice
+      busy={busy}
+      notice={notice}
+      onEnter={() => {
+        acknowledgeSandboxNotice(noticeStorage(), gate.email);
+        setAcceptedEmail(gate.email);
+        setNotice('');
+      }}
+      onCancel={signOut}
+    />;
+  }
 
   if (gate.kind === 'denied') {
     return <PracticePanel heading="Practice access is not approved">

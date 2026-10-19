@@ -109,7 +109,9 @@ test('sandbox UI gates ALL app routes and keeps dangerous workflows locked by de
   assert.match(root, /<SandboxPracticeRoles \/>[\s\S]*<\/SandboxAccessGate>/);
   assert.match(gate, /VITE_SANDBOX_EMAIL_CODE_ENABLED === 'true'/);
   assert.match(gate, /checkSandboxAccess\(supabase\)/);
-  assert.match(gate, /if \(gate\.kind === 'authorized'\) return <>\{children\}<\/>;/);
+  assert.match(gate, /if \(gate\.kind === 'authorized'\) \{/);
+  assert.match(gate, /if \(entered\) return <>\{children\}<\/>;/);
+  assert.match(gate, /return <SandboxEntryNotice/);
   assert.doesNotMatch(gate, /signInWithPassword|signUp\(|setSession\(|auth\.admin|window\.location\.assign/);
   assert.doesNotMatch(root, /<SandboxPersonaLogin \/>/);
   assert.doesNotMatch(gate, /aszixzrdayrivungodwq|golf-account-auth|service_role/i);

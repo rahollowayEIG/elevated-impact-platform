@@ -1,0 +1,57 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "sponsors-starter",
+  "app": "sponsors",
+  "title": "Try One Event Sponsor",
+  "description": "One draft event, one sample sponsorship package and one fictional sponsor.",
+  "steps": [
+    "Load a draft sample sponsorship event.",
+    "View the Hole Sponsor package and linked sponsor.",
+    "Edit the draft package amount without collecting payments."
+  ],
+  "records": [
+    {
+      "key": "sponsor-event",
+      "kind": "event",
+      "data": {
+        "name": "Practice Sponsor Showcase",
+        "slug": "practice-sponsor-showcase",
+        "description": "Fictional practice event used for sponsor testing.",
+        "event_type": "Golf Outing",
+        "location": "Fictional Fairways Practice Course",
+        "event_date": "2027-06-12",
+        "max_golfers": 20,
+        "registration_status": "draft",
+        "is_published": false,
+        "status": "pending_review"
+      }
+    },
+    {
+      "key": "hole-package",
+      "kind": "sponsor_package",
+      "data": {
+        "event_ref": "sponsor-event",
+        "name": "Practice Hole Sponsor",
+        "price": 150,
+        "quantity_available": 2,
+        "status": "draft"
+      }
+    },
+    {
+      "key": "practice-sponsor",
+      "kind": "sponsor",
+      "data": {
+        "event_ref": "sponsor-event",
+        "package_ref": "hole-package",
+        "name": "Practice Market Cafe",
+        "contact_email": "sponsor@practice.example",
+        "amount": 150,
+        "status": "draft"
+      }
+    }
+  ]
+}

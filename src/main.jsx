@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client';
 import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
+import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
 
+assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true', key: import.meta.env.VITE_SUPABASE_ANON_KEY });
 installSandboxNavigationGuard({ enabled: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' });
 
 const EIG_ICON = 'https://raw.githubusercontent.com/rahollowayEIG/elevated-impact-group-site/main/assets/eig-header-icon.png';

@@ -23,12 +23,14 @@ test('sandbox Auth provisioning script is inert unless explicitly enabled', () =
   assert.match(body,/auth\.admin\.createUser/);
   assert.match(body,/SANDBOX_CREDENTIALS_OUTPUT/);
 });
-test('practice login requires real Supabase Auth and sandbox flag', () => {
-  const login=readFileSync('src/sandbox/SandboxPersonaLogin.jsx','utf8');
+test('single tester selector uses real authenticated sandbox RPCs, not impersonation', () => {
+  const login=readFileSync('src/sandbox/SandboxPracticeRoles.jsx','utf8');
   const root=readFileSync('src/main.jsx','utf8');
-  assert.match(login,/auth\.signInWithPassword/);
-  assert.match(login,/auth\.signOut/);
-  assert.doesNotMatch(login,/setItem\(['"]role|set_user_role|service_role/);
+  assert.match(login,/supabase\.auth\.getUser\(\)/);
+  assert.match(login,/supabase\.rpc\('sandbox_practice_role_status'\)/);
+  assert.match(login,/supabase\.rpc\('sandbox_switch_practice_role', \{ p_role: selected \}\)/);
+  assert.doesNotMatch(login,/signInWithPassword|setSession|service_role|auth\.admin|localStorage/);
   assert.match(root,/const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
-  assert.match(root,/\{IS_SANDBOX && <SandboxPersonaLogin/);
+  assert.match(root,/\{IS_SANDBOX && <SandboxPracticeRoles/);
+  assert.doesNotMatch(root,/\{IS_SANDBOX && <SandboxPersonaLogin/);
 });

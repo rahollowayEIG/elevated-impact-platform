@@ -23,6 +23,8 @@
 
 The orchestrator de-duplicates findings, preserves provenance and version information, and asks the owner to choose the next high-value improvement.
 
+**Required future coverage: forward + reverse Build/UI/Data audit.** Reuse the [Universal Scan Engine's two-way Build ↔ UI ↔ Database audit contract](./Universal-Scan-Engine-Architecture.md): (a) check each approved and deployed *user-facing* EP capability against its intended screen, role, edition and feature flag, and (b) trace each visible control back through routes, handlers, authorized APIs/RPCs and relevant persisted domain data. Report intentional hidden/admin-only/unreleased work distinctly from missing UI, and label unsupported runtime journeys **NOT TESTED**. Trigger this check at resume and after approved feature completion, alongside existing CI; there is **no** live all-app crawler, runtime DB-to-UI mapper or new scheduled worker yet.
+
 ## Cadence design
 
 - **Event-triggered (default first):** Run light inspections after an authorized repo PR, test failure or package/design-system change. Use existing CI results rather than re-running full suites wastefully. No AI provider charge required.

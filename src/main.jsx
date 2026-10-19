@@ -2,7 +2,10 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
+import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
+
+installSandboxNavigationGuard({ enabled: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' });
 
 const EIG_ICON = 'https://raw.githubusercontent.com/rahollowayEIG/elevated-impact-group-site/main/assets/eig-header-icon.png';
 

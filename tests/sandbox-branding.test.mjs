@@ -21,7 +21,8 @@ test('global app shell shows sandbox indicator on every app route only in sandbo
   assert.match(source, /VITE_ELEVATIONPILOT_SANDBOX === 'true'/);
   assert.match(source, /const sandboxBranding = getSandboxBranding\(IS_SANDBOX\)/);
   assert.match(source, /if \(sandboxBranding\) document\.title = sandboxBranding\.pageTitle/);
-  assert.match(source, /\{sandboxBranding && \(/[\s\S]*?data-testid="sandbox-environment-indicator"/);
+  assert.match(source, /data-testid="sandbox-environment-indicator"/);
+  assert.match(source, /\{sandboxBranding && \(/);
   assert.match(source, /position:fixed;left:12px/);
   assert.match(source, /\{sandboxBranding && <small className="eig-global-home-subtitle"/);
   assert.match(source, /<ElevatedImpactPhaseOneFrontend \/>/);

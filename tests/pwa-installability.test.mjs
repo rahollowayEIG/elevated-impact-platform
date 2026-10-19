@@ -80,10 +80,11 @@ test('four correctly-sized, visually distinct PNG icons can be built without net
 
 test('PWA injection skips stand-alone browser harness HTML but decorates the real app', () => {
   const harness = readFileSync('tests/account-states.html', 'utf8');
-  assert.equal(injectPwaOnApplicationHtml(harness, 'live'), harness);
-  assert.equal(injectPwaOnApplicationHtml(harness, 'sandbox'), harness);
+  const testContext = { filename: '/repo/tests/account-states.html', path: '/tests/account-states.html' };
+  assert.equal(injectPwaOnApplicationHtml(harness, 'live', testContext), harness);
+  assert.equal(injectPwaOnApplicationHtml(harness, 'sandbox', testContext), harness);
   for (const flavor of ['live', 'sandbox']) {
-    const decorated = injectPwaOnApplicationHtml(html, flavor);
+    const decorated = injectPwaOnApplicationHtml(html, flavor, { filename: '/repo/index.html', path: '/' });
     assert.ok(decorated.includes('href="/pwa/' + flavor + '.webmanifest"'));
     assert.equal((decorated.match(/rel="manifest"/g) || []).length, 1);
   }

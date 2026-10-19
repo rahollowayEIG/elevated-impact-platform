@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
       react(),
       {
         name: 'elevationpilot-dual-pwa-install',
-        transformIndexHtml(html) {
-          return injectPwaOnApplicationHtml(html, flavor);
+        transformIndexHtml(html, context) {
+          return injectPwaOnApplicationHtml(html, flavor, context);
         },
       },
     ],

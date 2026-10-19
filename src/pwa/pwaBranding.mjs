@@ -50,7 +50,15 @@ export function injectPwaHead(html, flavor) {
  * leave them untouched instead of requiring an app title and PWA manifest.
  * The production index.html continues to fail closed in injectPwaHead.
  */
-export function injectPwaOnApplicationHtml(html, flavor) {
-  const isAppEntry = /<script\b[^>]*\bsrc\s*=\s*(["'])\/src\/main\.jsx(?:\?[^"']*)?\1/i.test(html);
-  return isAppEntry ? injectPwaHead(html, flavor) : html;
+export function injectPwaOnApplicationHtml(html, flavor, context = {}) {
+  // Check the actual HTML template Vite is transforming, not the script tags:
+  // build-time Vite transformations may already have rewritten script URLs.
+  const filename = String(context?.filename || '').replace(/\\/g, '/');
+  if (filename && !/(^|\/)index\.html$/i.test(filename)) return html;
+  // Some test transforms provide path instead of filename.
+  if (!filename) {
+    const route = String(context?.path || '').split('?')[0];
+    if (route && /\.html$/i.test(route) && route !== '/index.html') return html;
+  }
+  return injectPwaHead(html, flavor);
 }

@@ -20,10 +20,11 @@ Keep this lightweight: compare evidence that changed since the last verified bas
 
 1. Run **existing targeted scanners first** for the changed app/workflow, plus affected unit/integration tests, build, security and dependency checks. Reuse the Master Scanner foundation for repository code/build checks where applicable.
 2. If an isolated Sandbox test is safe and authorized, verify the actual new behavior, role boundaries, routing, storage and integration isolation. Use fictional data; keep Live data, payments, outgoing communications and production write targets outside testing.
-3. Recheck related modules and open PRs for regressions and duplicated functionality. Confirm the exact commit, environment and deployment alias match what was tested.
-4. Classify each result **PASS**, **FAIL**, **BLOCKED**, or **NOT TESTED**. Build/CI passing does not prove an interactive browser journey succeeded. A planned future scan is not a completed one.
-5. Record a compact evidence-backed handoff: what changed, what was reused, tests and evidence, environment, unresolved blockers, approval required, recommended next action. Store durable project implementation changes in the repo/registry, not solely in chat.
-6. No autonomous merging, production release, permission changes, customer data ingestion, payments, paid provider calls or broad environment unlocks from a scanner result. Existing owner approval and least-privilege gates still apply.
+3. **Forward + reverse Build/UI/Data coverage for user-facing changes:** Confirm an owner-approved and actually deployed feature is present in the expected ElevationPilot app, route, role, edition, Hangar/event and feature-flag context; then trace the rendered UI control to its real handler, authorized API/RPC, domain data contract and visible result. Consult the two-way audit design in the existing Universal Scan Engine (draft PR #53) rather than inventing another scanner. Intentionally hidden, draft-only and internal backend functions are not automatically defects; mark missing browser/data verification BLOCKED or NOT TESTED.
+4. Recheck related modules and open PRs for regressions and duplicated functionality. Confirm the exact commit, environment and deployment alias match what was tested.
+5. Classify each result **PASS**, **FAIL**, **BLOCKED**, or **NOT TESTED**. Build/CI passing does not prove an interactive browser journey succeeded. A planned future scan is not a completed one.
+6. Record a compact evidence-backed handoff: what changed, what was reused, tests and evidence, environment, unresolved blockers, approval required, recommended next action. Store durable project implementation changes in the repo/registry, not solely in chat.
+7. No autonomous merging, production release, permission changes, customer data ingestion, payments, paid provider calls or broad environment unlocks from a scanner result. Existing owner approval and least-privilege gates still apply.
 
 ## Reuse, not new scanners
 

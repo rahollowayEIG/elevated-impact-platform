@@ -35,7 +35,7 @@ test('public Squawk feed preserves the existing published event and hub-visible 
   const file = readFileSync('sandbox/edge-functions/public-event-squawks/index.ts','utf8');
   assert.match(file, /eq\("status", "published"\)/);
   assert.match(file, /contains\("metadata", \{ hub_visible: true \}\)/);
-  assert.match(file, /if \(!event\)/);
+  assert.match(file, /if \(eventError \|\| !event\)/);
   assert.match(file, /supabaseUrl !== "https:\/\/publruuuyvpggogrrgwp\.supabase\.co"/);
 });
 

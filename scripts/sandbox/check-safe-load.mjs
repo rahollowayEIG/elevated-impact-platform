@@ -1,24 +1,49 @@
 import fs from 'node:fs';
 const policy = JSON.parse(fs.readFileSync(new URL('./safe-load-policy.json', import.meta.url), 'utf8'));
-const forbidden = new Set(['email','phone','first_name','last_name','date_of_birth','dob','payment_method','stripe_customer_id','access_token','refresh_token','user_id','password','address','recipient']);
-export function checkSandboxImport({projectId,table,record}) {
-  if (projectId !== policy.restrictions.requireSandboxProjectId) throw new Error('Refusing non-sandbox destination');
-  const allowed = policy.allowedTables[table];
-  if (!allowed) throw new Error('Table is not allowlisted');
-  const keys = Object.keys(record || {});
-  for (const key of keys) {
-    if (!allowed.includes(key) || forbidden.has(key.toLowerCase())) throw new Error('Unapproved or sensitive field: '+key);
+const sensitive = /(^|[_-])(email|phone|mobile|dob|birth|password|secret|token|credential|recipient|address|contact|customer|payment|account|session|private|user_id|auth)([_-]|$)/i;
+const destination = policy.restrictions.requireSandboxProjectId;
+function inspect(value, path = '', depth = 0) {
+  if (depth > 20) throw new Error('Nested payload exceeds safe depth');
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') return;
+  if (typeof value === 'string') {
+    if (value.length > 20000) throw new Error('Oversized import field: ' + path);
+    if (/@|\\b(?:sk_live|pk_live|sb_secret_|eyJ[A-Za-z0-9_-]{30,}|https?:\\/\\/[^\\s]*(?:supabase\\.co|stripe\\.com))/.test(value)) {
+      throw new Error('Possible private value or live endpoint: ' + path);
+    }
+    return;
   }
-  return {table,fields:keys,approved:true};
+  if (Array.isArray(value)) { value.forEach((item, i) => inspect(item, path + '[' + i + ']', depth + 1)); return; }
+  if (typeof value !== 'object') throw new Error('Unsupported import value: ' + path);
+  for (const [key, child] of Object.entries(value)) {
+    if (sensitive.test(key)) throw new Error('Sensitive nested key: ' + (path ? path + '.' : '') + key);
+    inspect(child, path ? path + '.' + key : key, depth + 1);
+  }
+}
+export function checkSandboxImport({projectId, table, record}) {
+  if (projectId !== destination) throw new Error('Refusing non-sandbox destination');
+  const allowed = policy.allowedTables[table];
+  if (!allowed || !record || typeof record !== 'object' || Array.isArray(record)) throw new Error('Table or record not allowlisted');
+  for (const [key, value] of Object.entries(record)) {
+    if (!allowed.includes(key) || sensitive.test(key)) throw new Error('Unapproved field: ' + key);
+    inspect(value, key);
+  }
+  return {table, fields:Object.keys(record), approved:true};
 }
 if (process.argv[1]?.endsWith('check-safe-load.mjs')) {
-  const ok = checkSandboxImport({projectId:policy.restrictions.requireSandboxProjectId,table:'golf_registration_events',record:{event_key:'fictional-scramble',name:'Sample Event'}});
-  let blocked = 0;
-  for (const record of [{email:'private@example.com'},{stripe_customer_id:'cus_example'}]) {
-    try { checkSandboxImport({projectId:policy.restrictions.requireSandboxProjectId,table:'golf_registration_events',record}); }
-    catch {blocked++;}
+  const good = {projectId:destination, table:'golf_registration_events', record:{event_key:'sample-scramble', name:'Fictional Golf Event'}};
+  checkSandboxImport(good);
+  const bad = [
+    {...good,projectId:'aszixzrdayrivungodwq'},
+    {...good,record:{email:'person@example.com'}},
+    {...good,record:{field_settings:{captain_email:'person@example.com'}}},
+    {...good,record:{field_settings:{nested:[{access_token:'abc'}]}}},
+    {...good,record:{name:'realperson@example.com'}},
+    {...good,record:{name:'https://live.supabase.co/private'}}
+  ];
+  for (const item of bad) {
+    let denied = false;
+    try { checkSandboxImport(item); } catch { denied = true; }
+    if (!denied) throw new Error('An unsafe import was accepted');
   }
-  try {checkSandboxImport({projectId:'aszixzrdayrivungodwq',table:'golf_registration_events',record:{name:'test'}});} catch {blocked++;}
-  if (blocked !== 3) process.exitCode=1;
-  else console.log('Sandbox import safety preflight passed: 3 unsafe cases denied; '+ok.fields.length+' sample fields allowed.');
+  console.log('Safe-load preflight passed: allowed example accepted; ' + bad.length + ' unsafe cases denied.');
 }

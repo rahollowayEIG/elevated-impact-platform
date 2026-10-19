@@ -54,3 +54,13 @@ InceptionApex is the shared creative app. Event Builder tools are an entry point
 ## Google Drive organization
 
 Before adding Drive folder creation, exports or sync writers, read `docs/ElevationPilot-Drive-Folder-Rules.md`. Resolve the authorized Hangar first and use stable folder mappings. Event files belong under their owning Hangar and event. Do not claim existing Drive organization is complete until legacy writers and folder parents have been verified.
+
+## Work continuity: resume and completion scans
+
+Before substantial work resumes after a break, across EIG projects or from a prior session, read `docs/EIG-Work-Continuity-and-Scan-Rule.md`.
+
+- First review the **most recent available** relevant project/chats and their decisions, then compare the current GitHub PRs/branches, deployed version, tests, and configuration. Identify completed vs in-progress vs unverified work before proposing a new feature or scanner.
+- Reuse the existing Master Scanner, Universal Scan Engine, Build Lab modules, Platform Registry concepts and targeted tests. Do not recreate already implemented functionality or declare a draft to be deployed.
+- After implementation, run the appropriate existing scanner/test suite against the changed surface. Report PASS, FAIL, BLOCKED and NOT TESTED honestly with commit/environment evidence.
+- This is a procedural checkpoint, **not** automatic access to private chat history or permission to run costly/sensitive background work. Never enable production writes, live communications, payments, migrations, or provider spending without explicit approval.
+

@@ -61,11 +61,13 @@ BEGIN
       INSERT INTO public.event_assignments(event_id,user_id,role,status)
       VALUES(v_event,v_id,'event_coordinator','active')
       ON CONFLICT (event_id,user_id) DO NOTHING;
-    ELSIF p.persona_key = 'passenger' THEN
-      INSERT INTO public.passengers(auth_user_id,first_name,last_name,preferred_name,status,claimed_at)
-      VALUES(v_id,v_first,'Demo',v_first,'claimed',now())
-      ON CONFLICT (auth_user_id) DO NOTHING;
     END IF;
+    -- All five demo roles have a fictional Airport/Passenger identity.
+    INSERT INTO public.passengers (
+      auth_user_id,first_name,last_name,preferred_name,date_of_birth,gender,status,claimed_at
+    ) VALUES (
+      v_id,v_first,'Demo',v_first,DATE '1990-01-01','Prefer not to say','claimed',now()
+    ) ON CONFLICT (auth_user_id) DO NOTHING;
   END LOOP;
 END
 $sandbox_link_existing_users$;

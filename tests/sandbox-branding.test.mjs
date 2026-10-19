@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getSandboxBranding } from '../src/sandbox/sandboxBranding.mjs';
 
-test('sandbox is clearly named in the page title, header and persistent indicator', () => {
+test('sandbox is clearly named in the page title and header', () => {
   const branding = getSandboxBranding(true);
   assert.equal(branding.pageTitle, 'SANDBOX | ElevationPilot');
   assert.equal(branding.homeSubtitle, 'ElevationPilot Sandbox');

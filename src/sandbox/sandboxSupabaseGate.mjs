@@ -19,5 +19,14 @@ export function assertSandboxSupabaseTarget(url, { enabled = false, key = '' } =
   if (!key || key.startsWith('sb_secret_')) {
     throw new Error('Sandbox requires a public/publishable Supabase key, never a secret key.');
   }
+  if (key.startsWith('eyJ')) {
+    try {
+      const payload = key.split('.')[1];
+      const jwt = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      if (jwt.role !== 'anon') throw new Error('Unexpected JWT role');
+    } catch {
+      throw new Error('Sandbox rejected a non-anon or unreadable legacy Supabase JWT.');
+    }
+  }
   return true;
 }

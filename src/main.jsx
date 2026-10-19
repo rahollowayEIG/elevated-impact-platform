@@ -5,6 +5,7 @@ import './styles.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
+import SandboxPersonaLogin from './sandbox/SandboxPersonaLogin.jsx';
 
 assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true', key: import.meta.env.VITE_SUPABASE_ANON_KEY });
 installSandboxNavigationGuard({ enabled: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' });
@@ -37,5 +38,6 @@ createRoot(document.getElementById('root')).render(
     <EIGAppHeader />
     <ElevatedImpactPhaseOneFrontend />
     <ActionConfirmation />
+    {import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' && <SandboxPersonaLogin />}
   </React.StrictMode>
 );

@@ -32,6 +32,16 @@ on:
       - "src/components/EigBuildLab.jsx"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "server/eig-master-schema-snapshot.json"
+      - "server/eig-master-source-scan.cjs"
+      - "server/eig-master-scan-handler.cjs"
+      - "api/eig-build-lab-master-scan.js"
+      - "src/lib/eigMasterScanClient.mjs"
+      - "src/components/BuildLabMasterScanner.jsx"
+      - "src/components/build-lab-master-scanner.css"
+      - "tests/eig-master-source-scan.test.cjs"
+      - "tests/eig-master-scan-access.test.cjs"
+      - "tests/eig-master-scan-client.test.mjs"
       - "src/main.jsx"
       - "src/styles.css"
       - "src/lib/desktopAppMode.mjs"
@@ -72,6 +82,16 @@ on:
       - "src/components/EigBuildLab.jsx"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "server/eig-master-schema-snapshot.json"
+      - "server/eig-master-source-scan.cjs"
+      - "server/eig-master-scan-handler.cjs"
+      - "api/eig-build-lab-master-scan.js"
+      - "src/lib/eigMasterScanClient.mjs"
+      - "src/components/BuildLabMasterScanner.jsx"
+      - "src/components/build-lab-master-scanner.css"
+      - "tests/eig-master-source-scan.test.cjs"
+      - "tests/eig-master-scan-access.test.cjs"
+      - "tests/eig-master-scan-client.test.mjs"
       - "src/main.jsx"
       - "src/styles.css"
       - "src/lib/desktopAppMode.mjs"
@@ -101,7 +121,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs
+      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

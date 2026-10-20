@@ -9,6 +9,14 @@ const SANDBOX_EVENT_DETAILS_SAVE_ENABLED =
   import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
   import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
 
+// Second, separately authorized original-UI save: fictional Registration Details.
+// The browser and private server routine enforce this independently of Event Details.
+const SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED =
+  import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' &&
+  import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true' &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
+  import.meta.env.VITE_SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED === 'true';
+
 const STEP_ITEMS = [
   ['details', '1', 'Event Details'],
   ['registration', '2', 'Registration Details'],
@@ -584,6 +592,101 @@ export default function EieEventSetupSteps({
         custom_fields: registration.custom_fields,
         participant_fields_status: 'configured',
       };
+
+      if (SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED) {
+        // The entire original registration + base-offer + payment-config +
+        // master-deadline save is one server-validated Sandbox transaction.
+        // Other saves, outgoing emails, Stripe, Google sheets and publishing
+        // remain forbidden by independent browser and database policies.
+        if (!event.updated_at) {
+          throw new Error('Reload the fictional practice event before saving Registration Details.');
+        }
+        const deadlineLocal = registration.registration_deadline || '';
+        const deadlineDate = deadlineLocal ? new Date(deadlineLocal) : null;
+        if (deadlineDate && !Number.isFinite(deadlineDate.getTime())) {
+          throw new Error('Registration deadline must be a valid date and time.');
+        }
+        const { data: saved, error: sandboxError } = await supabase.rpc(
+          'sandbox_save_practice_registration_details',
+          {
+            p_event_id: event.id,
+            p_expected_updated_at: event.updated_at,
+            p_registration: {
+              base_price: Number(registration.base_price || 0),
+              team_size: teamSize,
+              allow_team_name: Boolean(registration.allow_team_name),
+              allow_partial_team: Boolean(registration.allow_partial_team),
+              team_payment_mode: details.structure === 'team'
+                ? registration.team_payment_mode : 'captain_all',
+              allow_split_team_payments: details.structure === 'team' &&
+                Boolean(registration.allow_split_team_payments),
+              registration_item_name: registration.registration_item_name.trim() || 'Registration',
+              registration_description: registration.registration_description.trim(),
+              registration_charge_by: registration.registration_charge_by ||
+                (details.structure === 'team' ? 'team' : 'player'),
+              payment_hold_days: Number(registration.payment_hold_days || 3),
+              allow_online: Boolean(registration.allow_online),
+              allow_clubhouse: Boolean(registration.allow_clubhouse),
+              convenience_fee_type: registration.convenience_fee_type || 'none',
+              convenience_fee_value: Number(registration.convenience_fee_value || 0),
+              allow_card_guarantee: Boolean(registration.allow_card_guarantee),
+              clubhouse_payment_payee: registration.clubhouse_payment_payee.trim(),
+              clubhouse_payment_location_name: registration.clubhouse_payment_location_name.trim(),
+              clubhouse_payment_address: registration.clubhouse_payment_address.trim(),
+              clubhouse_payment_instructions: registration.clubhouse_payment_instructions.trim(),
+              availability_start: registration.availability_start || '',
+              availability_end: registration.availability_end || '',
+              registration_deadline: deadlineLocal,
+              registration_deadline_utc: deadlineDate ? deadlineDate.toISOString() : null,
+              registration_contact_name: registration.registration_contact_name.trim(),
+              registration_contact_email: registration.registration_contact_email.trim(),
+              registration_contact_phone: registration.registration_contact_phone.trim(),
+              dob: registration.dob,
+              gender: registration.gender,
+              division: divisionSetting,
+              membership: details.event_access === 'members_only'
+                ? 'hidden' : registration.membership,
+              ghin: registration.ghin,
+              custom_fields: registration.custom_fields.map((field) => ({
+                id: field.id,
+                label: field.label,
+                type: field.type,
+                required: Boolean(field.required),
+                options: Array.isArray(field.options) ? field.options : [],
+              })),
+            },
+          },
+        );
+        if (sandboxError) throw sandboxError;
+        if (!saved?.event || saved.event.id !== event.id ||
+            saved.event.status !== 'draft' ||
+            saved.event.field_settings?.participant_fields_status !== 'configured' ||
+            !saved?.base_offer || !saved?.payment) {
+          throw new Error('The Sandbox Registration Details save returned unexpected data.');
+        }
+        setRegistration((current) => ({
+          ...current,
+          team_size: Number(saved.event.field_settings.team_size) || teamSize,
+        }));
+        setPaymentSettings(saved.payment);
+        setOffers((current) => {
+          const offer = {
+            ...saved.base_offer,
+            price: saved.base_offer.price ?? '',
+            availability_start: saved.base_offer.availability_start || '',
+            availability_end: saved.base_offer.availability_end || '',
+            metadata: saved.base_offer.metadata || {},
+            _removed: saved.base_offer.status !== 'active',
+          };
+          return [...current.filter((item) => item.id !== offer.id), offer]
+            .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+        });
+        onEventUpdated(saved.event);
+        await onReload();
+        setNotice('Sandbox practice Registration Details saved. The event remains Draft; no payment or invitations were sent.');
+        if (next) onStepChange('pricing');
+        return;
+      }
 
       const { data, error } = await supabase
         .from('golf_registration_events')

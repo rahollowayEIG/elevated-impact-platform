@@ -62,6 +62,10 @@ export function isAllowedSandboxReadOnlyRequest(input, init, options) {
       ].includes(target.pathname);
     }
     if (target.pathname.startsWith('/rest/v1/rpc/')) {
+      if (method === 'POST' && options?.eventDetailsWriteEnabled === true &&
+          target.pathname === '/rest/v1/rpc/sandbox_save_practice_event_details') {
+        return true; // Exact sandbox-authenticated atomic first-save only.
+      }
       return method === 'POST' && [
         '/rest/v1/rpc/sandbox_practice_role_status',
         '/rest/v1/rpc/sandbox_switch_practice_role',
@@ -103,7 +107,7 @@ export function createSandboxGuardedFetch(originalFetch, options) {
 }
 
 export function installSandboxBrowserFetchGuard({
-  enabled = false, readOnly = false, windowObject, sandboxSupabaseUrl,
+  enabled = false, readOnly = false, eventDetailsWriteEnabled = false, windowObject, sandboxSupabaseUrl,
 } = {}) {
   if (!enabled) return () => {};
   const win = windowObject ?? (typeof window !== 'undefined' ? window : null);
@@ -115,6 +119,7 @@ export function installSandboxBrowserFetchGuard({
     appOrigin: win.location.origin,
     sandboxSupabaseUrl,
     readOnly,
+    eventDetailsWriteEnabled,
   });
   win.fetch = guarded;
   return () => {

@@ -106,6 +106,8 @@ const fs = require("node:fs/promises");
     await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
     await page.getByRole("heading", { name: /Environment Evidence: Compare Live/ }).waitFor();
+    await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).waitFor();
+    await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).click();
     await page.locator(".blm-env-delta").getByText(/security policies differ/i).first().waitFor();
     assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
     await page.getByLabel("Search Master Scanner modules").fill("invoice");

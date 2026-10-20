@@ -16,3 +16,16 @@ export function desktopAppFromLaunch({ standalone = false, search = '', previewE
 export function shouldFocusBuildLab({ standalone = false, preference = null } = {}) {
   return typeof preference === 'boolean' ? preference : standalone === true;
 }
+
+// Navigation planner is UI-only. It cannot authorize a Build Lab session.
+// The server must grant the exact owner access before any workspace switch.
+export function buildLabLaunchStep({
+  requested = false, ready = false, userId = '', grant = null,
+  eigOrganizationId = '', activeOrganizationId = '',
+  portalView = '', adminView = '',
+} = {}) {
+  if (!requested || !ready || !userId || !eigOrganizationId ||
+      grant?.allowed !== true || grant?.userId !== userId) return 'wait';
+  if (activeOrganizationId !== eigOrganizationId || portalView !== 'workspace') return 'enter_eig_workspace';
+  return adminView === 'build_lab' ? 'complete' : 'open_build_lab';
+}

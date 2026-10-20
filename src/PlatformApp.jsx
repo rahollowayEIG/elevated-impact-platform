@@ -17,13 +17,13 @@ import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
-import { desktopAppFromLaunch, shouldFocusBuildLab } from './lib/desktopAppMode.mjs';
+import { desktopAppFromLaunch, shouldFocusBuildLab, buildLabLaunchStep } from './lib/desktopAppMode.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
 const IS_STANDALONE_WINDOW = window.matchMedia?.('(display-mode: standalone)')?.matches === true || window.matchMedia?.('(display-mode: minimal-ui)')?.matches === true || window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches === true;
-const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: IS_STANDALONE_WINDOW, search: window.location.search }) === 'build_lab';
+const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: IS_STANDALONE_WINDOW, search: window.location.search, previewEnabled: EIG_BUILD_LAB_PREVIEW_ENABLED }) === 'build_lab';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -3476,7 +3476,7 @@ export default function App() {
     setAdminView('build_lab');
     return true;
   }
-  function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
+  function closeBuildLab() { if (!canLeaveInception()) return; buildLabLaunchStarted.current = true; setBuildLabDirty(false); setAdminView('command'); }
   function toggleBuildLabFocus() {
     setBuildLabFocusPreference((current) => {
       const next = !shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: current });
@@ -3484,17 +3484,36 @@ export default function App() {
       return next;
     });
   }
-  // Installed app relaunches directly into Build Lab after the existing owner gate.
-  // Keep the launch URL intact, including after refresh. The one-shot guard
-  // prevents reopening after a user deliberately returns to Command Center.
+  // Vercel-protected previews sometimes install as a Chrome shortcut to "/",
+  // without the manifest's ?buildlab=1 start URL. Standalone root windows on
+  // this Build Lab-only preview must still launch Build Lab, but an ordinary
+  // browser's homepage remains untouched. An explicit query also works.
+  // Owner authorization is checked by the server before switching workspaces.
   useEffect(() => {
-    if (!session?.user?.id) { buildLabLaunchStarted.current = false; return; }
-    if (!IS_INSTALLED_BUILD_LAB || !buildLabAllowed || buildLabLaunchStarted.current) return;
+    const userId = session?.user?.id || '';
+    if (!userId) { buildLabLaunchStarted.current = false; return; }
+    if (buildLabLaunchStarted.current) return;
+    const eigOrganizationId = organizations.find((org) => org.slug === EIG_SLUG)?.id || '';
+    const ready = authReady && !recoveryMode && inviteCheckUserId === userId &&
+      pendingInvitations.length === 0 && canUseAutoResizer(memberships) &&
+      !(loadingData && !memberships.length);
+    const step = buildLabLaunchStep({
+      requested: IS_INSTALLED_BUILD_LAB, ready, userId, grant: buildLabOwnerGrant,
+      eigOrganizationId, activeOrganizationId, portalView, adminView,
+    });
+    if (step === 'enter_eig_workspace') {
+      openWorkspace(eigOrganizationId);
+      return;
+    }
+    if (step === 'complete') { buildLabLaunchStarted.current = true; return; }
+    if (step !== 'open_build_lab' || !buildLabAllowed) return;
     buildLabLaunchStarted.current = true;
     void openBuildLab().then((opened) => {
       if (!opened) buildLabLaunchStarted.current = false;
     }).catch(() => { buildLabLaunchStarted.current = false; });
-  }, [session?.user?.id, buildLabOwnerGrant, activeOrganizationId, memberships, adminView]);
+  }, [session?.user?.id, authReady, recoveryMode, inviteCheckUserId, pendingInvitations.length,
+      loadingData, buildLabOwnerGrant, activeOrganizationId, organizations, memberships,
+      portalView, adminView]);
 
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;

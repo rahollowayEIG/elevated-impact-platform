@@ -81,3 +81,10 @@ test("arbitrary modules and environment targets fail without creating or updatin
   assert.throws(()=>buildEnvironmentAudit({mode:"compare",moduleId,modules:MODULES}),/Unknown approved module/);
  assert.throws(()=>buildEnvironmentAudit({mode:"compare",modules:[]}),/catalog required/);
 });
+
+test("a future table missing from both projects is a coverage gap, not a fabricated environment difference",()=>{
+ const audit=buildEnvironmentAudit({mode:"compare",moduleId:"invoices",modules:MODULES});
+ assert.deepEqual(audit.compare.database.selectedDifferentTables,[]);
+ assert.ok(audit.live.missingRelevantTables.length>0);
+ assert.deepEqual(audit.live.missingRelevantTables,audit.sandbox.missingRelevantTables);
+});

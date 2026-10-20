@@ -155,7 +155,7 @@ const fs = require("node:fs/promises");
     assert.equal(await page.getByLabel("What are we doing?").inputValue(), "ui_review");
     await page.getByRole("button", { name: /Create draft blueprint/ }).click();
     await page.getByText("Evaluate a reusable tool first").waitFor();
-    await page.getByText("InceptionApex creative studio", { exact: false }).waitFor();
+    await page.locator(".bl-chip").filter({ hasText: "InceptionApex creative studio" }).waitFor();
     const proposals = page.locator(".bl-suggestion");
     assert.equal(await proposals.count(), 6);
     await proposals.first().getByRole("button", { name: /Accept/ }).click();

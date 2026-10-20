@@ -61,7 +61,7 @@ BEGIN
  OR result->'event'->'field_settings'->>'is_sandbox_fixture'<>'true'
  OR result->'event'->'field_settings'->>'team_size'<>'4'
  OR result->'event'->'field_settings'->>'gender'<>'required'
- OR result->'event'->>'member_price'<>'480'
+ OR (result->'event'->>'member_price')::numeric<>480
  OR result->'base_offer'->>'status'<>'active'
  OR result->'base_offer'->>'charge_by'<>'team'
  OR result->'payment'->>'auto_charge_at_deadline'<>'false'

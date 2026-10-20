@@ -60,6 +60,9 @@ function tableDifferences(names){
  const differences=[];
  for(const name of chosen){
    const a=l.get(name),b=s.get(name);
+   // A module can reference a future table absent in BOTH environments.
+   // That is a coverage gap, not a difference between Live and Sandbox.
+   if(!a&&!b)continue;
    if(!a||!b){
      differences.push({table:name,kind:"table_missing",presentIn:a?"live":b?"sandbox":"neither",
        liveColumnCount:a?.col_count??null,sandboxColumnCount:b?.col_count??null});

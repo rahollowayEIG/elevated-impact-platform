@@ -18,6 +18,8 @@ const SANDBOX_READONLY_PREVIEW_ENABLED = IS_SANDBOX && !SANDBOX_WORKSPACE_ENABLE
   import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true';
 const SANDBOX_EVENT_DETAILS_SAVE_ENABLED = SANDBOX_READONLY_PREVIEW_ENABLED &&
   import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
+const SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED = SANDBOX_READONLY_PREVIEW_ENABLED &&
+  import.meta.env.VITE_SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED === 'true';
 const SANDBOX_READONLY_REQUESTED = SANDBOX_READONLY_PREVIEW_ENABLED &&
   new URLSearchParams(window.location.search).get('sandbox_readonly') === '1';
 const sandboxBranding = getSandboxBranding(IS_SANDBOX);
@@ -30,11 +32,13 @@ installSandboxBrowserFetchGuard({
   enabled: IS_SANDBOX,
   readOnly: SANDBOX_READONLY_PREVIEW_ENABLED,
   eventDetailsWriteEnabled: SANDBOX_EVENT_DETAILS_SAVE_ENABLED,
+  registrationDetailsWriteEnabled: SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED,
   sandboxSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
 });
 installSandboxReadOnlyActionsGuard({
   enabled: SANDBOX_READONLY_PREVIEW_ENABLED,
   eventDetailsWriteEnabled: SANDBOX_EVENT_DETAILS_SAVE_ENABLED,
+  registrationDetailsWriteEnabled: SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED,
   sandboxSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
 });
 installSandboxNavigationGuard({ enabled: IS_SANDBOX });
@@ -83,12 +87,16 @@ function EIGAppHeader() {
 function SandboxReadOnlyPreview() {
   return <>
     <aside role="status" style={{ background: '#421038', color: '#fff', padding: '11px 18px', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
-      <strong>{SANDBOX_EVENT_DETAILS_SAVE_ENABLED
-        ? 'SANDBOX · CONTROLLED EVENT DETAILS SAVE'
-        : 'SANDBOX · READ-ONLY UI TEST'}</strong>
-      {' '} {SANDBOX_EVENT_DETAILS_SAVE_ENABLED
-        ? 'Only Event Details for the fictional Draft event can save. Payments, messages, registrations, publishing and all other editing are disabled.'
-        : 'Existing ElevationPilot screens and isolated practice data. Saving, payments, outgoing messages and other integrations are disabled.'}
+      <strong>{SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+        ? 'SANDBOX · CONTROLLED EVENT + REGISTRATION SETUP'
+        : SANDBOX_EVENT_DETAILS_SAVE_ENABLED
+          ? 'SANDBOX · CONTROLLED EVENT DETAILS SAVE'
+          : 'SANDBOX · READ-ONLY UI TEST'}</strong>
+      {' '} {SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+        ? 'Only Event Details and Registration Details settings for the fictional Draft event can save. Actual registrations, payments, reminders, invitations, publishing and all other editing remain disabled.'
+        : SANDBOX_EVENT_DETAILS_SAVE_ENABLED
+          ? 'Only Event Details for the fictional Draft event can save. Payments, messages, registrations, publishing and all other editing are disabled.'
+          : 'Existing ElevationPilot screens and isolated practice data. Saving, payments, outgoing messages and other integrations are disabled.'}
       {' '} <a href="/" style={{ color: '#fff', fontWeight: 800 }}>Exit preview</a>
     </aside>
     <ElevatedImpactPhaseOneFrontend />
@@ -107,8 +115,8 @@ function SandboxWorkspaceStaging() {
         {SANDBOX_READONLY_PREVIEW_ENABLED && (
           <p>
             <a href="/?sandbox_readonly=1" style={{ display: 'inline-block', padding: '12px 16px', borderRadius: 8, background: '#a31361', color: '#fff', fontWeight: 800, textDecoration: 'none' }}>
-              {SANDBOX_EVENT_DETAILS_SAVE_ENABLED
-                ? 'Open existing ElevationPilot screens (limited practice save) →'
+              {SANDBOX_EVENT_DETAILS_SAVE_ENABLED || SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+                ? 'Open existing ElevationPilot screens (limited practice saves) →'
                 : 'Inspect existing ElevationPilot screens (read-only) →'}
             </a>
           </p>

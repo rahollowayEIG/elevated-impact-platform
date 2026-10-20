@@ -32,9 +32,15 @@ const MODULES = Object.freeze([
   {id:"event-builder",title:"Event Builder",priority:"high",
     source:[["src/EieEventSetupSteps.jsx","function EieEventSetupSteps"]],
     ui:[["src/PlatformApp.jsx","<EieEventSetupSteps"]],
-    tests:[["tests/event-builder-browser.cjs","chromium.launch"]],
-    tables:["event_offers","event_requests","event_builder_assets"],
-    next:"Run an authorized Sandbox event-creation and save/reopen browser test; compare visible steps with stored fields."},
+    // A browser launching proves nothing about Step 1/2 persistence. Require
+    // explicit saved Event Details, Registration, and reopening test actions.
+    tests:[
+      ["tests/event-builder-browser.cjs",'"Save Event Details"'],
+      ["tests/event-builder-browser.cjs",'"Save Registration"'],
+      ["tests/event-builder-browser.cjs",'"Players per team"'],
+    ],
+    tables:["events","golf_registration_events","event_offers","golf_event_payment_settings"],
+    next:"The current event-builder-browser.cjs tests Event Packet Studio, not the core Event Details or Registration save/reopen flow. Add synthetic event create, save, reopen and field-persistence assertions before calling the setup wizard verified."},
   {id:"registration",title:"Team Registration & Main Cabin",priority:"high",
     source:[["src/ElevationAirport.jsx","function MainCabinPage"]],
     ui:[["src/PlatformApp.jsx","<MainCabinPage"]],
@@ -74,9 +80,12 @@ const MODULES = Object.freeze([
   {id:"event-packet",title:"Creative Event Packets",priority:"medium",
     source:[["src/components/EventPacketStudio.jsx","function EventPacketStudio"]],
     ui:[["src/PlatformApp.jsx","<EventPacketStudio"]],
-    tests:[],
+    tests:[
+      ["tests/event-builder-browser.cjs",'"Save event packet"'],
+      ["tests/event-builder-browser.cjs","await page.reload()"],
+    ],
     tables:["event_builder_assets","event_builder_asset_audit"],
-    next:"Test packet creation, saving, PDF/export and re-open without relying on source evidence alone."},
+    next:"The synthetic browser script contains packet save/reopen and export steps. Check the latest run result separately, then verify real Sandbox packet saving without customer data."},
   {id:"event-budget",title:"Event Budget",priority:"medium",
     source:[["src/components/EventBudget.jsx","function EventBudget"]],
     ui:[["src/PlatformApp.jsx","<EventBudget"]],
@@ -165,6 +174,9 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   const fingerprint=createHash("sha256");
   for(const f of FILE_PATHS) fingerprint.update(f+"\0"+sources[f]+"\0");
   fingerprint.update(JSON.stringify(schemaSnapshot)+"\0");
+  // The rulebook is part of report identity. Changed coverage requirements
+  // must reset prior owner decisions even if application source is unchanged.
+  fingerprint.update(JSON.stringify(MODULES)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));
   const modules=MODULES.filter(rule=>moduleId===null||rule.id===moduleId).map(rule=>{
@@ -175,14 +187,19 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
       table,production:prod.has(table),sandbox:sandbox.has(table),
       provenance:"captured_database_metadata_snapshot"
     }));
+    const sourceComplete=src.length===rule.source.length;
+    const uiComplete=ui.length===rule.ui.length;
+    const testComplete=!rule.tests.length||tests.length===rule.tests.length;
     const status=(!src.length)?"not_observed_in_sample":
-      (!ui.length||(!tests.length&&rule.tests.length)||db.some(x=>!x.production||!x.sandbox))
+      (!sourceComplete||!uiComplete||!testComplete||db.some(x=>!x.production||!x.sandbox))
         ?"review_needed":"evidence_present";
     return {
       id:rule.id,title:rule.title,priority:rule.priority,status,
       sourceStatus:src.length?"source_marker_found":"not_observed_in_sample",
       uiStatus:ui.length?"ui_marker_found":"not_observed_in_sample",
-      testStatus:!rule.tests.length?"not_sampled":tests.length?"test_code_found":"not_observed_in_sample",
+      testStatus:!rule.tests.length?"not_sampled":
+        tests.length===rule.tests.length?"test_code_found":
+        tests.length?"partial_test_code":"not_observed_in_sample",
       dbStatus:!rule.tables.length?"not_applicable":
         db.every(x=>x.production&&x.sandbox)?"tables_in_dated_snapshot":"snapshot_gap",
       evidence:[...src,...ui,...tests],tables:db,nextCheck:rule.next,

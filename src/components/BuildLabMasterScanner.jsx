@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
+import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 import "./build-lab-master-scanner.css";
 
 const LEVEL={high:0,medium:1,low:2};
@@ -53,6 +54,7 @@ const COLS=[
 ];
 export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
  const [restored] = useState(()=>restoreDraft(ownerUserId));
+ const [selectedScope,setSelectedScope] = useState(()=>restored?.report?.scope==="module"?restored.report.selectedModule:"all");
  const [report,setReport] = useState(()=>restored?.report||null);
  const [reviews,setReviews] = useState(()=>restored?.reviews||{});
  const [running,setRunning] = useState(false);
@@ -97,14 +99,14 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   if(running)return;
   setRunning(true);setError("");setNotice("");
   try {
-   const next=await requestMasterScan(supabaseClient);
+   const next=await requestMasterScan(supabaseClient,undefined,selectedScope==="all"?null:selectedScope);
    const identical=report?.sourceFingerprint===next.sourceFingerprint;
    setReviews(current=>identical?current:{});
    setEditing("");setNote("");
    setReport(next);
-   setNotice(identical
-    ?"Source scan complete. Existing review decisions were preserved for unchanged evidence."
-    :"Source scan complete. Review decisions reset because the source or metadata baseline changed.");
+   const label=selectedScope==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(t=>t.id===selectedScope)?.label||"Selected module";
+   setNotice((identical?"Existing decisions were preserved. ":"Source evidence changed; previous decisions were reset. ")+
+    label+" scan complete. Source inspection is static and the database comparison is a dated snapshot.");
   } catch(e){setError(e?.message||"Unable to run protected Master Scanner.");}
   finally{setRunning(false);}
  }
@@ -118,6 +120,9 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
  }
  const db=report?.database;
  const untouched=report?.summary;
+ const selectedLabel=selectedScope==="all"?"Entire ElevationPilot platform":MASTER_SCAN_TARGETS.find(t=>t.id===selectedScope)?.label||"Selected module";
+ const reportSelection=report?.scope==="module"?report.selectedModule:"all";
+ const reportMatchesSelection=!report||reportSelection===selectedScope;
  return <section className="platform-section-card blm-root" aria-labelledby="blm-heading">
   <div className="blm-head">
    <div>
@@ -125,15 +130,25 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     <h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2>
     <p>Review first-party modules, UI wiring, test-source coverage and dated database metadata together.</p>
    </div>
-   <button type="button" className="platform-primary-button" onClick={run} disabled={running}>
-    {running?"Scanning approved code…":report?"Run Master Scan Again":"Run Read-Only Master Scan →"}
-   </button>
+   <div className="blm-launch-controls">
+    <label htmlFor="blm-scope">What should Build Lab scan?
+     <select id="blm-scope" value={selectedScope} onChange={e=>setSelectedScope(e.target.value)} disabled={running}>
+      <option value="all">Entire ElevationPilot platform (15 modules)</option>
+      {MASTER_SCAN_TARGETS.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+     </select>
+    </label>
+    <button type="button" className="platform-primary-button" onClick={run} disabled={running}>
+     {running?"Scanning approved code…":selectedScope==="all"?"Scan Entire Platform →":"Scan Selected Module →"}
+    </button>
+   </div>
   </div>
-  <p className="blm-disclaimer">Owner-only. The button scans approved source files on this preview. Its database comparison uses a separately captured snapshot and does <strong>not</strong> query the current Sandbox or production database on every run. No records, messages, payments, or deployments are changed.</p>
+  <p className="blm-disclaimer">Owner-only. Choose <strong>Entire Platform</strong> or one approved module such as InceptionApex, Event Builder or Team Registration. Both options inspect the same fixed set of approved source/test files; a selected-module scan returns findings for that module. This is a source evidence review, <strong>not</strong> a live UI scan. The database comparison is a separately captured snapshot and does not query production or Sandbox on each run. No records, messages, payments or deployments are changed.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blm-message" role="status">{notice}</p>}
   {saveError&&<p className="platform-error" role="alert">Browser autosave unavailable. Export the report JSON to keep these review decisions.</p>}
+  {report&&!reportMatchesSelection&&<p className="blm-message" role="status">Displaying the last {reportSelection==="all"?"full-platform":"selected-module"} report. Click <strong>{selectedScope==="all"?"Scan Entire Platform":"Scan Selected Module"}</strong> to inspect {selectedLabel}.</p>}
   {report&&<>
+   <p className="blm-report-scope">Report scope: <strong>{report?.scope==="module"?report.modules[0]?.title:"Entire ElevationPilot platform"}</strong>{report?.scope==="module"?" (one module from the fixed source catalog)":""}.</p>
    <div className="blm-stats" aria-label="Scanner summary">
     <div><strong>{untouched.modulesReviewed}</strong><span>Modules compared</span></div>
     <div><strong>{untouched.evidencePresent}</strong><span>Evidence observed</span></div>
@@ -142,7 +157,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
    </div>
    <div className="blm-schema">
     <div className="blm-schema-top"><div><h3>Supabase: Production vs Sandbox</h3>
-     <p>Read-only catalog snapshot captured {db.capturedOn}. This is <strong>not</strong> a live DB refresh.</p></div>
+     <p>Full database catalog snapshot captured {db.capturedOn}, even when one module is selected. This is <strong>not</strong> a live DB refresh.</p></div>
      <span className="blm-state blm-review">Dated snapshot</span>
     </div>
     <div className="blm-schema-metrics">

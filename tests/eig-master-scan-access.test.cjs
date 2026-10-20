@@ -28,6 +28,9 @@ test("verified owner can run real read-only Master Scanner",async()=>{
  const f=fixture(),x=await f.send();
  assert.equal(x.status,200);assert.equal(x.body.report.kind,"eig_build_lab_master_scan");
  assert.equal(x.body.report.safety.autoApproved,false);
+ assert.equal(x.body.report.environmentAudit.selected,"compare");
+ assert.equal(x.body.report.environmentAudit.functionalTests.live,"not_run");
+ assert.equal(x.body.report.environmentAudit.safety.liveModified,false);
  assert.equal(x.headers["Cache-Control"],"private, no-store, max-age=0");
  assert.equal(f.state.sourceReads,1);assert.equal(f.state.scans,1);
  assert.ok(!JSON.stringify(x.body).includes(OWNER));
@@ -48,6 +51,13 @@ test("every forbidden target or untrusted caller fails before reading any source
   [{},{body:{target:"elevationpilot",moduleId:"forged-module"}}],
   [{},{body:{target:"elevationpilot",moduleId:null}}],
   [{},{body:{target:"elevationpilot",moduleId:{url:"https://x"}}}],
+  [{},{body:{target:"elevationpilot",environmentMode:"production"}}],
+  [{},{body:{target:"elevationpilot",environmentMode:"preview"}}],
+  [{},{body:{target:"elevationpilot",environmentMode:"all"}}],
+  [{},{body:{target:"elevationpilot",environmentMode:"../.env"}}],
+  [{},{body:{target:"elevationpilot",environmentMode:null}}],
+  [{},{body:{target:"elevationpilot",environmentMode:{name:"live"}}}],
+  [{},{body:{target:"elevationpilot",environmentMode:["live"]}}],
   [{},{body:{url:"https://third-party.example"}}],
  ];
  for(const [o,request] of cases) {
@@ -71,4 +81,21 @@ test("valid single-module scan requires existing owner grant and narrows report"
  assert.deepEqual(r.body.report.modules.map(m=>m.id),["inception"]);
  assert.equal(r.body.report.files.length,17);
  assert.equal(f.state.sourceReads,1);assert.equal(f.state.scans,1);
+});
+
+test("only authorized read-only Live and Sandbox targets return the requested environment",async()=>{
+ for(const mode of ["live","sandbox","compare"]){
+  const f=fixture();
+  const x=await f.send({body:{target:"elevationpilot",moduleId:"event-builder",environmentMode:mode}});
+  assert.equal(x.status,200);
+  assert.equal(x.body.report.environmentAudit.selected,mode);
+  assert.equal(x.body.report.environmentAudit.scope,"event-builder");
+  assert.equal(x.body.report.environmentAudit.freshDatabaseQuery,false);
+  assert.equal(x.body.report.environmentAudit.freshDeploymentQuery,false);
+  assert.equal(x.body.report.environmentAudit.safety.liveModified,false);
+  assert.equal(x.body.report.environmentAudit.safety.sandboxModified,false);
+  assert.equal(x.body.report.environmentAudit.safety.automaticRepairsEnabled,false);
+  assert.equal(f.state.sourceReads,1);
+  assert.equal(f.state.scans,1);
+ }
 });

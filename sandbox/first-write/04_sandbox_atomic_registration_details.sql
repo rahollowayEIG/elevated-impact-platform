@@ -424,8 +424,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'event',to_jsonb(v_out),
-    'base_offer',jsonb_build_object('id',v_offer.id,
-      'status',v_offer.status,'price',v_offer.price,'charge_by',v_offer.charge_by),
+    'base_offer',to_jsonb(v_offer),
     'payment',to_jsonb(v_pay),
     'preview_only',true
   );

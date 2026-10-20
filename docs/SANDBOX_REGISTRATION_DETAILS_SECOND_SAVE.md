@@ -1,6 +1,6 @@
 # Sandbox EIE Registration Details: second controlled practice save
 
-Status: STAGED, NOT DEPLOYED, REGISTRATION FEATURE SWITCH OFF (October 20, 2026).
+Status: SANDBOX REGISTRATION DETAILS SAVE ACTIVE, LIVE UNCHANGED (October 20, 2026).
 
 ## Purpose
 The original EIE Registration Details Save makes separate writes to golf_registration_events, event_offers, golf_event_payment_settings, and the master events deadline. A partial failure can leave inconsistent settings. This change instead uses the existing original UI with one isolated private SQL transaction behind a public security-invoker facade.
@@ -33,3 +33,13 @@ Fictional $480 team price, four-player team, four-day clubhouse hold, Gender req
 7. Proceed to roster/team management only after separately isolating its administrative functions.
 
 DO NOT merge draft PR into Live or enable the broad workspace flag.
+
+## Activated isolated Sandbox deployment (October 20, 2026)
+
+- All SIX GitHub workflows passed, including Sandbox routing tests, registration gate tests and production build, on code commit e9c84d2f49831af0a91e0f6fcfedbc43dfb8419b.
+- Deployed the new original UI on existing Sandbox Vercel project, initially with Registration Details Save OFF. Enabled production-only VITE_SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED=true after a successful backend smoke; deployed final Sandbox build dpl_Guv3XncA9kWc9cKwXDPHH1hR4BQc, verified READY and live alias elevationpilot-sandbox.vercel.app.
+- Installed only the two narrowly scoped Registration Details RPC functions in isolated Supabase Sandbox publruuuyvpggogrrgwp with migration sandbox_first_atomic_registration_details_save_20261020. Executed the same full transaction-only role and malformed-data smoke test AFTER installation; all passed, ROLLBACK with no changed records.
+- Audit: only authorized Pilot/Co-Pilot can save the one fictional Draft event; anonymous RPC denied; zero broad authenticated table-write grants; zero registrations, published events, active offers or saved payment rules before owner tests. Normal Event Details Save remains active. Calendar sync, real checkout, participant enrollment, emails, reminders, publishing and roster mutations remain locked.
+- Independently verified Live Vercel main SHA remains 755328d18863fb20faa54f5b16d7698cf9097c21. Draft PR #75 remains stacked on Sandbox-only #74 and unmerged.
+- Owner acceptance PENDING: set four-day clubhouse payment hold and Gender Required on Practice Scramble Showcase Registration Details, Save, refresh; confirm both persisted. Record browser behavior before progressing to participant-management writes.
+- Rollback: remove only the Sandbox Vercel Registration Details feature flag, redeploy safe prior Sandbox build, execute sandbox/first-write/06_rollback_atomic_registration_details.sql. Do not remove existing Event Details permissions.

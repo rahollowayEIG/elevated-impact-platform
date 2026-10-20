@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {requestMasterScan,validateMasterScanReport} from "../src/lib/eigMasterScanClient.mjs";
+import {MASTER_SCAN_TARGETS} from "../src/lib/eigMasterScanTargets.mjs";
+import {createRequire} from "node:module";
+const require=createRequire(import.meta.url);
+const {MODULES}=require("../server/eig-master-source-scan.cjs");
 
 function fixture(){
  return {schemaVersion:1,kind:"eig_build_lab_master_scan",target:"elevationpilot",
@@ -61,4 +65,11 @@ test("selected module is sent as allowlisted target and must match returned scop
  for(const invalid of ["../../.env","",{},7]){
   await assert.rejects(requestMasterScan(client,async()=>{throw Error("should not fetch");},invalid),/Unsupported Master Scanner module/);
  }
+});
+
+test("selectable module picker matches exact authoritative server scan catalog",()=>{
+ const ids=MASTER_SCAN_TARGETS.map(x=>x.id);
+ assert.equal(new Set(ids).size,ids.length);
+ assert.deepEqual(ids,MODULES.map(x=>x.id));
+ assert.deepEqual(MASTER_SCAN_TARGETS.map(x=>x.label),MODULES.map(x=>x.title));
 });

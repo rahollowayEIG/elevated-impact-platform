@@ -147,8 +147,12 @@ function evidenceFor(files, tuples, kind) {
   }).filter(Boolean);
 }
 
-function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString()) {
+function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null) {
   if (!sources || typeof sources !== "object") throw new TypeError("Source map required");
+  // Narrow the report to a catalogued module. The underlying source read
+  // remains the same fixed allowlist. Never permit arbitrary paths or targets.
+  if (moduleId !== null && !MODULES.some(rule=>rule.id===moduleId))
+    throw new Error("Unsupported Master Scanner module.");
   if (!(sourceVersion==="local-unversioned" || /^[a-f0-9]{40}$/i.test(sourceVersion)))
     throw new Error("Invalid source version");
   if (schemaSnapshot.schemaVersion!==1 || !Array.isArray(schemaSnapshot.tables?.production) ||
@@ -163,7 +167,7 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   fingerprint.update(JSON.stringify(schemaSnapshot)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));
-  const modules=MODULES.map(rule=>{
+  const modules=MODULES.filter(rule=>moduleId===null||rule.id===moduleId).map(rule=>{
     const src=evidenceFor(sources,rule.source,"source");
     const ui=evidenceFor(sources,rule.ui,"ui");
     const tests=evidenceFor(sources,rule.tests,"test");
@@ -195,6 +199,7 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
     sandbox:[...sandbox.values()].filter(x=>!x.rls).map(x=>x.table)};
   return {
     schemaVersion:1,kind:"eig_build_lab_master_scan",target:"elevationpilot",
+    scope:moduleId===null?"full":"module",selectedModule:moduleId,
     scannerVersion:"source-plus-dated-schema-v1",sourceVersion,inspectedAt,
     sourceFingerprint:fingerprint.digest("hex"),files,modules,
     summary:{

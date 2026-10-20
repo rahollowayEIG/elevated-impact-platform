@@ -44,6 +44,10 @@ test("every forbidden target or untrusted caller fails before reading any source
   [{},{method:"GET"}],
   [{},{body:{target:"../../secrets"}}],
   [{},{body:{target:"elevationpilot",sql:"SELECT * FROM users"}}],
+  [{},{body:{target:"elevationpilot",moduleId:"../../.env"}}],
+  [{},{body:{target:"elevationpilot",moduleId:"forged-module"}}],
+  [{},{body:{target:"elevationpilot",moduleId:null}}],
+  [{},{body:{target:"elevationpilot",moduleId:{url:"https://x"}}}],
   [{},{body:{url:"https://third-party.example"}}],
  ];
  for(const [o,request] of cases) {
@@ -56,4 +60,15 @@ test("unavailable source fails closed instead of claiming a successful audit",as
  const f=fixture({missing:true}),x=await f.send();
  assert.equal(x.status,503);assert.equal(x.body.report,undefined);
  assert.equal(f.state.sourceReads,1);assert.equal(f.state.scans,0);
+});
+
+test("valid single-module scan requires existing owner grant and narrows report",async()=>{
+ const f=fixture();
+ const r=await f.send({body:{target:"elevationpilot",moduleId:"inception"}});
+ assert.equal(r.status,200);
+ assert.equal(r.body.report.scope,"module");
+ assert.equal(r.body.report.selectedModule,"inception");
+ assert.deepEqual(r.body.report.modules.map(m=>m.id),["inception"]);
+ assert.equal(r.body.report.files.length,17);
+ assert.equal(f.state.sourceReads,1);assert.equal(f.state.scans,1);
 });

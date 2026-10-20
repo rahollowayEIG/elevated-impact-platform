@@ -19,6 +19,42 @@ const fs = require("node:fs/promises");
     // This fixture checks UI/search/review persistence. Separate unit tests
     // read the committed source, compare actual dated database metadata and
     // test server-side authorization before any files are read.
+    const demoLive={
+      label:"ElevationPilot Live",vercelProject:"elevated-impact-platform",
+      gitRef:"main",deployedCommit:"a".repeat(40),
+      deploymentHost:"elevated-impact-platform-preview.vercel.app",
+      tables:71,functions:38,rlsDisabled:[],
+      relevantTables:[{table:"events",columns:26,policies:4,indexes:3,rlsEnabled:true}],
+      missingRelevantTables:[],
+    };
+    const demoSandbox={...demoLive,label:"ElevationPilot Sandbox",
+      vercelProject:"elevationpilot-sandbox",gitRef:"feature/sandbox-readonly-live-ui-20261019",
+      deployedCommit:"b".repeat(40),deploymentHost:"elevationpilot-sandbox-preview.vercel.app",
+      functions:42,relevantTables:[{table:"events",columns:26,policies:5,indexes:3,rlsEnabled:true}],
+    };
+    function demoAudit(mode,selected){
+      const full=mode==="compare";
+      return {version:1,selected:mode,scope:selected?"event-builder":"all",capturedOn:"2026-10-20",
+        freshDatabaseQuery:false,freshDeploymentQuery:false,sourceInspection:"preview_reference_only",
+        live:mode==="sandbox"?null:demoLive,sandbox:mode==="live"?null:demoSandbox,
+        compare:full?{
+          source:{githubStatus:"ahead",commitsAhead:161,commitsBehind:0,totalChangedFiles:78,
+            relevantChangedFiles:[{path:"src/EieEventSetupSteps.jsx",status:"modified",additions:160,deletions:0}]},
+          database:{totalDifferentTables:2,totalDifferentFunctions:4,
+            selectedDifferentTables:[{table:"events",kind:"structure_diff",
+              liveColumnCount:26,sandboxColumnCount:26,liveOnlyColumns:[],
+              sandboxOnlyColumns:[],changedColumns:[],rlsDifferent:false,
+              liveRls:true,sandboxRls:true,policyDifferent:true,livePolicyCount:4,
+              sandboxPolicyCount:5,indexDifferent:false,liveIndexCount:3,sandboxIndexCount:3}],
+            functionDifferences:[{signature:"sandbox_practice_role_status()",status:"sandbox_only"}]},
+        }:null,
+        functionalTests:{live:"not_run",sandbox:"not_run"},
+        safety:{readOnly:true,liveModified:false,sandboxModified:false,
+          paymentsAttempted:false,automaticRepairsEnabled:false},
+        notes:["These are dated snapshots, not live browser tests.",
+          "Review code differs by deployed commit; reference source is preview only."],
+      };
+    }
     const masterFixture = {
       schemaVersion: 1, kind: "eig_build_lab_master_scan", target: "elevationpilot",
       scannerVersion: "source-plus-dated-schema-v1", sourceVersion: "a".repeat(40),
@@ -54,6 +90,7 @@ const fs = require("node:fs/promises");
       assert.equal(route.request().method(), "POST");
       const request = route.request().postDataJSON();
       assert.equal(request.target, "elevationpilot");
+      assert.ok(["live","sandbox","compare"].includes(request.environmentMode));
       assert.ok(!request.moduleId || request.moduleId === "event-builder");
       assert.match(route.request().headers().authorization || "", /Bearer synthetic-browser-test-token/);
       const selected = request.moduleId === "event-builder";
@@ -61,13 +98,15 @@ const fs = require("node:fs/promises");
         scope: selected ? "module" : "full", selectedModule: selected ? "event-builder" : null,
         modules: selected ? [masterFixture.modules[0]] : masterFixture.modules,
         summary: selected ? { modulesReviewed: 1, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 0 } : masterFixture.summary,
+        environmentAudit:demoAudit(request.environmentMode,selected),
       };
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, report: responseReport }) });
     });
     await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
-    await page.locator(".blm-schema").getByText(/events:/).waitFor();
+    await page.getByRole("heading", { name: /Environment Evidence: Compare Live/ }).waitFor();
+    await page.locator(".blm-env-delta").getByText(/security policies differ/i).first().waitFor();
     assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
     await page.getByLabel("Search Master Scanner modules").fill("invoice");
     assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
@@ -91,6 +130,20 @@ const fs = require("node:fs/promises");
     await page.locator(".blm-report-scope").getByText(/Event Builder/).waitFor();
     assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
     await page.locator(".blm-table tbody tr").getByText("Needs verification").waitFor();
+    // Live and Sandbox selectors affect the actual authenticated request,
+    // the rendered environment identity, and the report scope.
+    await page.getByLabel("Which environment?").selectOption("live");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Live \(read-only\)/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 1);
+    await page.getByLabel("Which environment?").selectOption("sandbox");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Sandbox \(read-only\)/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 1);
+    await page.getByLabel("Which environment?").selectOption("compare");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Compare Live \+ Sandbox/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 2);
     await page.getByLabel("What should Build Lab scan?").selectOption("all");
     await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-report-scope").getByText(/Entire ElevationPilot platform/).waitFor();

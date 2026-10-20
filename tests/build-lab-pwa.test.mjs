@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {desktopAppFromLaunch} from '../src/lib/desktopAppMode.mjs';
+import {desktopAppFromLaunch,shouldFocusBuildLab} from '../src/lib/desktopAppMode.mjs';
 const manifest=JSON.parse(readFileSync('public/build-lab.webmanifest','utf8'));
 const html=readFileSync('index.html','utf8');
 const app=readFileSync('src/PlatformApp.jsx','utf8');
 const entry=readFileSync('src/main.jsx','utf8');
+const component=readFileSync('src/components/EigBuildLab.jsx','utf8');
+const css=readFileSync('src/styles.css','utf8');
 test('online-only install manifest stays on platform origin',()=>{
  assert.equal(manifest.display,'standalone');
  assert.equal(manifest.start_url,'/?buildlab=1');
@@ -29,11 +31,25 @@ test('desktop mode requires a real installed standalone window and explicit laun
  assert.equal(desktopAppFromLaunch({standalone:true,search:'?other=1'}),null);
 });
 test('focused layout hides main navigation only inside authorized installed Build Lab',()=>{
- assert.ok(app.includes("compactBuildLab={IS_INSTALLED_BUILD_LAB && adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace}"));
+ assert.ok(app.includes("compactBuildLab={focusedBuildLab}"));
+ assert.ok(app.includes("adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace"));
+ assert.ok(app.includes('onToggleFocus={toggleBuildLabFocus}'));
+ assert.ok(component.includes('onClick={onToggleFocus}'));
+ assert.ok(css.includes('body:has(.platform-standalone-build-lab) .eig-global-header { display: none; }'));
  assert.ok(app.includes('compactBuildLab ? <header className="platform-topbar bl-standalone-bar"'));
  assert.ok(app.includes('Open EIG Command Center'));
  assert.ok(app.includes('onSignOut'));
  assert.ok(entry.includes('{!focusedBuildLabWindow && <EIGAppHeader />}'));
  assert.ok(app.includes('buildLabLaunchStarted.current = true'));
  assert.ok(!app.includes("target.searchParams.delete('buildlab')"));
+});
+
+test('generic Chrome installed windows and manual focus preference both work',()=>{
+ assert.equal(shouldFocusBuildLab({standalone:true}),true);
+ assert.equal(shouldFocusBuildLab({standalone:false}),false);
+ assert.equal(shouldFocusBuildLab({standalone:false,preference:true}),true);
+ assert.equal(shouldFocusBuildLab({standalone:true,preference:false}),false);
+ assert.ok(app.includes("window.localStorage.getItem('eig-build-lab-focus-v1')"));
+ assert.ok(app.includes("window.localStorage.setItem('eig-build-lab-focus-v1'"));
+ assert.ok(app.includes('IS_STANDALONE_WINDOW'));
 });

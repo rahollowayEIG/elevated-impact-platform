@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 
+// Strictly opt-in first-write pilot for the isolated fictional Sandbox fixture.
+// Live continues through the existing three-update implementation unchanged.
+const SANDBOX_EVENT_DETAILS_SAVE_ENABLED =
+  import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' &&
+  import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true' &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
+  import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
+
 const STEP_ITEMS = [
   ['details', '1', 'Event Details'],
   ['registration', '2', 'Registration Details'],
@@ -430,6 +438,55 @@ export default function EieEventSetupSteps({
       };
 
       const dates = [details.day1, details.day2].filter(Boolean);
+      if (SANDBOX_EVENT_DETAILS_SAVE_ENABLED) {
+        // Only this one atomic, server-owned fictitious-event save is permitted.
+        // Every other original edit path stays blocked by the Sandbox preview.
+        if (details.google_calendar_sync_enabled) {
+          throw new Error('Sandbox Event Details cannot enable Google Calendar synchronization.');
+        }
+        if (!event.updated_at) {
+          throw new Error('Reload the practice event before saving; event version is missing.');
+        }
+        const { data: saved, error: sandboxSaveError } = await supabase.rpc(
+          'sandbox_save_practice_event_details',
+          {
+            p_event_id: event.id,
+            p_expected_updated_at: event.updated_at,
+            p_details: {
+              name: details.name.trim(),
+              course: details.course.trim(),
+              dates,
+              event_start_time: details.event_start_time || null,
+              max_golfers: intendedMaxGolfers,
+              structure: details.structure,
+              event_access: details.event_access,
+              team_size: details.structure === 'team'
+                ? Math.max(2, Math.min(12, Number(registration.team_size || 4)))
+                : 1,
+              allow_team_name: details.structure === 'team' && Boolean(registration.allow_team_name),
+              allow_partial_team: details.structure === 'team' && Boolean(registration.allow_partial_team),
+              team_payment_mode: details.structure === 'team' ? registration.team_payment_mode : 'captain_all',
+              divisions_enabled: Boolean(details.divisions_enabled),
+              flights_enabled: Boolean(details.flights_enabled),
+              division: details.divisions_enabled && registration.division === 'required' ? 'required'
+                : details.divisions_enabled ? 'optional' : 'hidden',
+              division_details: divisionDetails,
+              tournament_format: details.tournament_format.trim(),
+              format_description: details.format_description.trim(),
+              player_information: details.player_information.trim(),
+            },
+          },
+        );
+        if (sandboxSaveError) throw sandboxSaveError;
+        if (!saved?.event || saved.event.id !== event.id || saved.event.status !== 'draft') {
+          throw new Error('The Sandbox practice save returned an unexpected event.');
+        }
+        onEventUpdated(saved.event);
+        await onReload();
+        setNotice('Sandbox practice Event Details saved safely. This event is still Draft.');
+        if (next) onStepChange('registration');
+        return;
+      }
       const { data, error } = await supabase
         .from('golf_registration_events')
         .update({

@@ -6,12 +6,16 @@ import { isAllowedSandboxFetchTarget, isAllowedSandboxReadOnlyRequest } from './
  * isolation. Applies only to the explicitly enabled Sandbox read-only preview.
  */
 export function installSandboxReadOnlyActionsGuard({
-  enabled = false, eventDetailsWriteEnabled = false, windowObject, sandboxSupabaseUrl,
+  enabled = false, eventDetailsWriteEnabled = false,
+  registrationDetailsWriteEnabled = false, windowObject, sandboxSupabaseUrl,
 } = {}) {
   if (!enabled) return () => {};
   const win = windowObject ?? (typeof window !== 'undefined' ? window : null);
   if (!win?.location?.origin) throw new Error('Sandbox preview origin unavailable.');
-  const options = { appOrigin: win.location.origin, sandboxSupabaseUrl, eventDetailsWriteEnabled };
+  const options = {
+    appOrigin: win.location.origin, sandboxSupabaseUrl,
+    eventDetailsWriteEnabled, registrationDetailsWriteEnabled,
+  };
   if (!isAllowedSandboxFetchTarget('/', options)) {
     throw new Error('Sandbox preview refused an unapproved origin.');
   }

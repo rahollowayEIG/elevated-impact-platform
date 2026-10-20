@@ -3466,7 +3466,7 @@ export default function App() {
     target.searchParams.delete('buildlab');
     window.history.replaceState(window.history.state, '', target.pathname + target.search + target.hash);
     void openBuildLab();
-  }, [buildLabAllowed, session?.user?.id]);
+  }, [session?.user?.id, buildLabOwnerGrant, activeOrganizationId, memberships]);
 
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;

@@ -15,6 +15,68 @@ const fs = require("node:fs/promises");
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
     await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
+    // Master Scanner gets its own owner-authenticated, read-only client path.
+    // This fixture checks UI/search/review persistence. Separate unit tests
+    // read the committed source, compare actual dated database metadata and
+    // test server-side authorization before any files are read.
+    const masterFixture = {
+      schemaVersion: 1, kind: "eig_build_lab_master_scan", target: "elevationpilot",
+      scannerVersion: "source-plus-dated-schema-v1", sourceVersion: "a".repeat(40),
+      inspectedAt: "2026-10-20T22:00:00.000Z",
+      sourceFingerprint: "d".repeat(64),
+      files: [{ path: "src/PlatformApp.jsx", lines: 1000, kind: "source" }],
+      modules: [
+        { id: "event-builder", title: "Event Builder", priority: "high",
+          status: "evidence_present", sourceStatus: "source_marker_found",
+          uiStatus: "ui_marker_found", testStatus: "test_code_found", dbStatus: "tables_in_dated_snapshot",
+          evidence: [{ kind: "ui", path: "src/PlatformApp.jsx", line: 8, excerpt: "<EieEventSetupSteps" }],
+          tables: [{ table: "events", production: true, sandbox: true }],
+          nextCheck: "Run an authorized Sandbox event-creation and save/reopen browser test." },
+        { id: "invoices", title: "EIG Invoicing", priority: "high",
+          status: "not_observed_in_sample", sourceStatus: "not_observed_in_sample",
+          uiStatus: "not_observed_in_sample", testStatus: "not_sampled", dbStatus: "snapshot_gap",
+          evidence: [], tables: [{ table: "invoices", production: false, sandbox: false }],
+          nextCheck: "Check full repository before designing an invoice issuer." },
+      ],
+      summary: { modulesReviewed: 2, evidencePresent: 1, reviewNeeded: 0, notObservedInSample: 1 },
+      database: {
+        capturedOn: "2026-10-20", freshLiveQuery: false, productionTables: 71, sandboxTables: 71,
+        missingInSandbox: [], missingInProduction: [],
+        policyDifferences: [{ table: "events", productionPolicies: 4, sandboxPolicies: 5,
+          productionRls: true, sandboxRls: true }],
+        rlsDisabled: { production: [], sandbox: [] },
+      },
+      limitations: ["Static source inspection only.", "Dated schema metadata snapshot only."],
+      safety: { readOnly: true, liveChanges: false, customerRowsRead: false,
+        autoApproved: false, autoDeployed: false },
+    };
+    await page.route("**/api/eig-build-lab-master-scan", async (route) => {
+      assert.equal(route.request().method(), "POST");
+      assert.deepEqual(route.request().postDataJSON(), { target: "elevationpilot" });
+      assert.match(route.request().headers().authorization || "", /Bearer synthetic-browser-test-token/);
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, report: masterFixture }) });
+    });
+    await page.getByRole("button", { name: /Run Read-Only Master Scan/ }).click();
+    await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
+    await page.locator(".blm-schema").getByText(/events:/).waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
+    await page.getByLabel("Search Master Scanner modules").fill("invoice");
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
+    await page.getByLabel("Search Master Scanner modules").fill("");
+    const masterRow = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
+    await masterRow.locator("summary").click();
+    await masterRow.getByRole("button", { name: "Accept for follow-up" }).click();
+    await page.waitForFunction(() => {
+      const data = window.localStorage.getItem("eig:master-scan:v1:11111111-1111-4111-8111-111111111111");
+      return data && JSON.parse(data).reviews["event-builder"]?.review === "accept";
+    });
+    await page.reload();
+    const masterRestored = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
+    await masterRestored.locator("summary").click();
+    assert.match(await masterRestored.innerText(), /Review: accept/);
+    assert.equal(await page.locator(".blm-root").getByRole("button", { name: "Export JSON" }).count(), 1);
+
     // The scanner is mocked here to exercise authenticated UI and local
     // review persistence; separate server tests read actual first-party files.
     const scanFixture = {

@@ -2017,3 +2017,19 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .eig-confirmation-card { animation: none; }
 }
 
+
+/* Standalone, online-only Build Lab desktop window. Normal platform navigation is unchanged. */
+.platform-standalone-build-lab .platform-main-content { padding-top: 20px; }
+.bl-standalone-bar { padding: 10px 20px; }
+.bl-standalone-brand, .bl-standalone-controls { display: flex; align-items: center; gap: 12px; }
+.bl-standalone-brand img { display: block; border-radius: 9px; }
+.bl-standalone-brand div { display: grid; gap: 2px; }
+.bl-standalone-brand strong { font-size: 15px; }
+.bl-standalone-brand span { font-size: 11px; color: #91a3b7; }
+.bl-standalone-controls a.platform-secondary-button { text-decoration: none; padding: 10px 12px; font-size: 12px; }
+@media (max-width: 650px) {
+  .bl-standalone-bar { gap: 8px; flex-wrap: wrap; }
+  .bl-standalone-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .bl-standalone-controls .platform-user-block { gap: 8px; }
+  .bl-standalone-controls .platform-user-block span { overflow-wrap: anywhere; }
+}

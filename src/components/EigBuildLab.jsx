@@ -268,8 +268,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">
         <div>
-          <h2 id="bl-source-title">Source Inspector · InceptionApex</h2>
-          <p>First actual read-only scan: source files, existing browser-test code, and linked evidence.</p>
+          <h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2>
+          <p>Original InceptionApex-only test scanner, kept for comparison. To scan any other module, use the Master Scanner above.</p>
         </div>
         <button type="button" className="platform-primary-button" disabled={scanRunning}
           onClick={runSourceScan}>

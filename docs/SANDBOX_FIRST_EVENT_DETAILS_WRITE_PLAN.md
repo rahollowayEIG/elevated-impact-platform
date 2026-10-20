@@ -1,8 +1,18 @@
 # Sandbox first-write slice: original EIE Event Details (review gate)
 
-Status: **STAGED AND TESTED IN DRAFT PR / NOT DEPLOYED / NO WRITE PERMISSIONS GRANTED**
+Status: **SANDBOX FIRST-WRITE ACTIVE / ONE FICTIONAL DRAFT EVENT ONLY / LIVE UNCHANGED**
 
-## Implementation progress (October 20, 2026)
+## First safe practice-save rollout (October 20, 2026)
+
+- Database: installed `sandbox_first_atomic_event_details_save_20261020` **only** to Supabase Sandbox `publruuuyvpggogrrgwp`. Public invoker RPC delegates to the private, server-authorized transaction; the authorized Pilot/Co-Pilot can save the tagged Draft fixture only.
+- Frontend: enabled `VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED=true` **production target on Sandbox Vercel project only**, and deployed Vercel Sandbox `dpl_9LYLWT2QesCV45a9XuQQAGY5oAJj`, UI code SHA `fe22b3e6bc3ec2a5bd545a3b40ad2c2b5610a265`. Verified canonical Sandbox alias points to that deployment.
+- Auth: server denies ATC, Passenger, anonymous users, stale saves, unknown events, malformed details and attempts to publish. Existing logout/login and temporary role switching stay intact.
+- Regression: all six GitHub workflows passed, including Sandbox routing/build; one flaky unrelated InceptionApex image-load test passed on its first rerun. In deployed Sandbox database, repeatable test `sandbox/first-write/03_transactional_smoke_test.sql` passed, **rolled back** all test writes and preserved the fictional event name.
+- Post-rollout: authenticated table writes **0**, anonymous Save RPC **denied**, ordinary Budget save **denied**, registrations **0**, published events **0**, non-fictional organizations **0**. Full-workspace flag remains OFF. No Live deployment/data modified.
+- Next owner acceptance: open the Practice Scramble Showcase Event Details tab; edit a harmless text field such as Format Description; click **Save Event Details**; refresh and verify the text persists. If unexpected behavior occurs, run `sandbox/first-write/02_rollback_atomic_event_details.sql`, remove the Sandbox-only frontend flag, and redeploy the known-good prior Sandbox commit.
+- Limitations: this does NOT make Registration, Pricing, Hub, Roster, Creative Packet or Budget saving available. No payment, invitation, email, Google Calendar or real-user behavior has been enabled.
+
+## Historical staged implementation notes (superseded by active rollout)
 
 - The existing real Event Details form is now conditionally wired to a single
   atomic Sandbox RPC, but only when the separate

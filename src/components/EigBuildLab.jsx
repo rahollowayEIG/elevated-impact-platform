@@ -37,7 +37,7 @@ function SectionHeading({ number, title, description }) {
   return <div className="bl-heading"><span className="bl-number">{number}</span><div><h2>{title}</h2><p>{description}</p></div></div>;
 }
 
-export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDirtyChange }) {
+export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDirtyChange, focusedMode = false, onToggleFocus }) {
   const [restoredDraft] = useState(() => {
     try { return loadBuildLabDraft(window.localStorage, ownerUserId); }
     catch { return null; }
@@ -243,6 +243,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       </div>
       <div className="bl-hero-actions">
         <span className="bl-draft-tag">{saveStatus === "saved" ? "Browser autosave on" : needsBackup ? "Backup required" : "Preparing local draft"}</span>
+        {onToggleFocus && <button type="button" className="platform-secondary-button" onClick={onToggleFocus}>{focusedMode ? "Show full navigation" : "Focus window"}</button>}
         <button type="button" className="platform-secondary-button" onClick={handleBack}>← EIG Command Center</button>
       </div>
     </header>

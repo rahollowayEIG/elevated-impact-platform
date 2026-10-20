@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
+import BuildLabEnvironmentPanel from "./BuildLabEnvironmentPanel.jsx";
 import "./build-lab-master-scanner.css";
 
 const LEVEL={high:0,medium:1,low:2};
@@ -47,14 +48,15 @@ const COLS=[
  {key:"title",name:"Module"},
  {key:"priority",name:"Priority"},
  {key:"status",name:"Evidence status"},
- {key:"sourceStatus",name:"Source"},
- {key:"uiStatus",name:"UI"},
- {key:"testStatus",name:"Tests"},
- {key:"dbStatus",name:"Database"},
+ {key:"sourceStatus",name:"Preview source"},
+ {key:"uiStatus",name:"Preview UI"},
+ {key:"testStatus",name:"Preview tests"},
+ {key:"dbStatus",name:"DB snapshot"},
 ];
 export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
  const [restored] = useState(()=>restoreDraft(ownerUserId));
  const [selectedScope,setSelectedScope] = useState(()=>restored?.report?.scope==="module"?restored.report.selectedModule:"all");
+ const [selectedEnvironment,setSelectedEnvironment] = useState(()=>restored?.report?.environmentAudit?.selected||"compare");
  const [report,setReport] = useState(()=>restored?.report||null);
  const [reviews,setReviews] = useState(()=>restored?.reviews||{});
  const [running,setRunning] = useState(false);
@@ -99,14 +101,15 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   if(running)return;
   setRunning(true);setError("");setNotice("");
   try {
-   const next=await requestMasterScan(supabaseClient,undefined,selectedScope==="all"?null:selectedScope);
+   const next=await requestMasterScan(supabaseClient,undefined,selectedScope==="all"?null:selectedScope,selectedEnvironment);
    const identical=report?.sourceFingerprint===next.sourceFingerprint;
    setReviews(current=>identical?current:{});
    setEditing("");setNote("");
    setReport(next);
    const label=selectedScope==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(t=>t.id===selectedScope)?.label||"Selected module";
-   setNotice((identical?"Existing decisions were preserved. ":"Source evidence changed; previous decisions were reset. ")+
-    label+" scan complete. Source inspection is static and the database comparison is a dated snapshot.");
+   const modeLabel={live:"Live (read-only)",sandbox:"Sandbox (read-only)",compare:"Compare Both"}[selectedEnvironment];
+   setNotice((identical?"Existing decisions were preserved. ":"Evidence or scope changed; prior decisions were reset. ")+
+    label+" · "+modeLabel+" scan complete. Deployment and database evidence comes from dated read-only snapshots.");
   } catch(e){setError(e?.message||"Unable to run protected Master Scanner.");}
   finally{setRunning(false);}
  }
@@ -118,17 +121,16 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   setReviews(current=>({...current,[id]:{review,note:review==="revise"?message.trim():""}}));
   setError("");setEditing("");setNote("");
  }
- const db=report?.database;
  const untouched=report?.summary;
  const selectedLabel=selectedScope==="all"?"Entire ElevationPilot platform":MASTER_SCAN_TARGETS.find(t=>t.id===selectedScope)?.label||"Selected module";
  const reportSelection=report?.scope==="module"?report.selectedModule:"all";
- const reportMatchesSelection=!report||reportSelection===selectedScope;
+ const reportMatchesSelection=!report||(reportSelection===selectedScope&&report.environmentAudit?.selected===selectedEnvironment);
  return <section className="platform-section-card blm-root" aria-labelledby="blm-heading">
   <div className="blm-head">
    <div>
     <p className="platform-eyebrow">EIG BUILD LAB / MASTER SCANNER</p>
     <h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2>
-    <p>Review first-party modules, UI wiring, test-source coverage and dated database metadata together.</p>
+    <p>Inspect reference source evidence alongside actual deployed Live/Sandbox versions and read-only database metadata.</p>
    </div>
    <div className="blm-launch-controls">
     <label htmlFor="blm-scope">What should Build Lab scan?
@@ -137,16 +139,23 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
       {MASTER_SCAN_TARGETS.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
      </select>
     </label>
+    <label htmlFor="blm-environment">Which environment?
+     <select id="blm-environment" value={selectedEnvironment} onChange={e=>setSelectedEnvironment(e.target.value)} disabled={running}>
+      <option value="compare">Compare Live + Sandbox</option>
+      <option value="live">Live ElevationPilot · read-only</option>
+      <option value="sandbox">ElevationPilot Sandbox · read-only</option>
+     </select>
+    </label>
     <button type="button" className="platform-primary-button" onClick={run} disabled={running}>
      {running?"Scanning approved code…":selectedScope==="all"?"Scan Entire Platform →":"Scan Selected Module →"}
     </button>
    </div>
   </div>
-  <p className="blm-disclaimer">Owner-only. Choose <strong>Entire Platform</strong> or one approved module such as InceptionApex, Event Builder or Team Registration. Both options inspect the same fixed set of approved source/test files; a selected-module scan returns findings for that module. This is a source evidence review, <strong>not</strong> a live UI scan. The database comparison is a separately captured snapshot and does not query production or Sandbox on each run. No records, messages, payments or deployments are changed.</p>
+  <p className="blm-disclaimer">Owner-only. Choose an approved module or the entire platform, then select Live, Sandbox or Compare Both. Environment evidence uses actual deployment commit metadata and independent Supabase schema snapshots, not a live connection every time you click. Source/UI/test badges below are from this protected <strong>Build Lab preview code</strong>, not proof of behavior in either deployment. No browser automation or write operations are performed.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blm-message" role="status">{notice}</p>}
   {saveError&&<p className="platform-error" role="alert">Browser autosave unavailable. Export the report JSON to keep these review decisions.</p>}
-  {report&&!reportMatchesSelection&&<p className="blm-message" role="status">Displaying the last {reportSelection==="all"?"full-platform":"selected-module"} report. Click <strong>{selectedScope==="all"?"Scan Entire Platform":"Scan Selected Module"}</strong> to inspect {selectedLabel}.</p>}
+  {report&&!reportMatchesSelection&&<p className="blm-message" role="status">Showing the previous {report.environmentAudit?.selected||"unknown"} report for {reportSelection==="all"?"the entire platform":"one module"}. Run <strong>{selectedScope==="all"?"Scan Entire Platform":"Scan Selected Module"}</strong> to inspect {selectedLabel} in the newly selected environment.</p>}
   {report&&<>
    <p className="blm-report-scope">Report scope: <strong>{report?.scope==="module"?report.modules[0]?.title:"Entire ElevationPilot platform"}</strong>{report?.scope==="module"?" (one module from the fixed source catalog)":""}.</p>
    <div className="blm-stats" aria-label="Scanner summary">
@@ -155,28 +164,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     <div><strong>{untouched.reviewNeeded}</strong><span>Needs verification</span></div>
     <div><strong>{untouched.notObservedInSample}</strong><span>Not observed in sample</span></div>
    </div>
-   <div className="blm-schema">
-    <div className="blm-schema-top"><div><h3>Supabase: Production vs Sandbox</h3>
-     <p>Full database catalog snapshot captured {db.capturedOn}, even when one module is selected. This is <strong>not</strong> a live DB refresh.</p></div>
-     <span className="blm-state blm-review">Dated snapshot</span>
-    </div>
-    <div className="blm-schema-metrics">
-     <span><strong>{db.productionTables}</strong> production tables</span>
-     <span><strong>{db.sandboxTables}</strong> Sandbox tables</span>
-     <span><strong>{db.missingInSandbox.length+db.missingInProduction.length}</strong> missing table names</span>
-     <span><strong>{db.policyDifferences.length}</strong> policy-count differences</span>
-    </div>
-    {(db.missingInSandbox.length>0||db.missingInProduction.length>0)&&
-     <p className="blm-db-review">Table-name differences require review: {[
-      ...db.missingInSandbox.map(n=>n+" (missing in Sandbox)"),
-      ...db.missingInProduction.map(n=>n+" (missing in production)")].join(", ")}</p>}
-    {db.policyDifferences.map(x=><p key={x.table} className="blm-db-review">
-     <strong>{x.table}:</strong> {x.productionPolicies} production policies; {x.sandboxPolicies} Sandbox policies.
-     Count difference only, not a security verdict.
-    </p>)}
-    {(db.rlsDisabled.production.length+db.rlsDisabled.sandbox.length===0)&&
-     <p className="blm-schema-note">RLS enabled on all recorded public tables in both snapshots. Individual policy correctness still requires review.</p>}
-   </div>
+   <BuildLabEnvironmentPanel audit={report.environmentAudit} />
    <div className="blm-toolbar">
     <label>Search modules
      <input type="search" value={query} onChange={e=>setQuery(e.target.value)}
@@ -197,7 +185,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
       <div className="blm-module-details">
        <p><strong>Next verification:</strong> {row.nextCheck}</p>
        <p><strong>Database fields checked:</strong> {row.tables.length?row.tables.map(x=>x.table+" ("+(x.production&&x.sandbox?"both snapshots":"snapshot gap")+")").join(", "):"Not applicable"}</p>
-       <p><strong>Source and test evidence:</strong></p>
+       <p><strong>Build Lab preview source and test references only:</strong></p>
        {row.evidence.length?<ul>{row.evidence.map((ev,i)=><li key={ev.path+ev.kind+i}>
         <code>{ev.path}:{ev.line}</code> ({ev.kind}) <span>{ev.excerpt}</span>
        </li>)}</ul>:<p>No matching evidence in approved source sample. This does not prove the feature is absent.</p>}

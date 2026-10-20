@@ -4,6 +4,68 @@ const SHA=/^[a-f0-9]{64}$/i;
 const ID=/^[a-z0-9-]{3,80}$/;
 const SOURCES=new Set(["source","ui","test"]);
 const STATES=new Set(["evidence_present","review_needed","not_observed_in_sample"]);
+const ENV_MODES=new Set(["live","sandbox","compare"]);
+const CODE_DIFF_STATUSES=new Set(["added","modified","removed","renamed","copied","changed"]);
+const DB_DIFF_TYPES=new Set(["table_missing","structure_diff"]);
+function safeName(s){return typeof s==="string"&&/^[a-zA-Z_][a-zA-Z0-9_]{0,90}$/.test(s);}
+function safePath(s){return typeof s==="string"&&s.length<=180&&/^[a-zA-Z0-9./_-]+$/.test(s)&&!s.includes("..");}
+function assertEnvironmentAudit(a,report){
+ if(!a||a.version!==1||!ENV_MODES.has(a.selected)||
+    a.scope!==(report.scope==="module"?report.selectedModule:"all")||
+    a.freshDatabaseQuery!==false||a.freshDeploymentQuery!==false||
+    a.sourceInspection!=="preview_reference_only"||
+    !/^\d{4}-\d{2}-\d{2}$/.test(a.capturedOn||"")||
+    a.functionalTests?.live!=="not_run"||a.functionalTests?.sandbox!=="not_run"||
+    a.safety?.readOnly!==true||a.safety?.liveModified!==false||
+    a.safety?.sandboxModified!==false||a.safety?.paymentsAttempted!==false||
+    a.safety?.automaticRepairsEnabled!==false||
+    !Array.isArray(a.notes)||a.notes.length<2||a.notes.length>8)throw Error("Invalid environment audit.");
+ function checkEnvironment(p){
+  if(!p||typeof p.label!=="string"||p.label.length>90||
+     typeof p.vercelProject!=="string"||!SHA.test((p.deployedCommit||"").padEnd(64,"0"))||
+     !/^[a-f0-9]{40}$/i.test(p.deployedCommit||"")||
+     typeof p.gitRef!=="string"||p.gitRef.length>140||
+     typeof p.deploymentHost!=="string"||p.deploymentHost.length>200||
+     !p.deploymentHost.endsWith(".vercel.app")||
+     !Number.isInteger(p.tables)||p.tables<0||p.tables>500||
+     !Number.isInteger(p.functions)||p.functions<0||p.functions>1000||
+     !Array.isArray(p.rlsDisabled)||p.rlsDisabled.length>500||
+     !Array.isArray(p.relevantTables)||p.relevantTables.length>500||
+     !Array.isArray(p.missingRelevantTables)||p.missingRelevantTables.length>500)
+    throw Error("Invalid environment identity.");
+  for(const t of p.relevantTables)if(!safeName(t?.table)||
+   !Number.isInteger(t.columns)||!Number.isInteger(t.policies)||!Number.isInteger(t.indexes)||
+   typeof t.rlsEnabled!=="boolean")throw Error("Invalid environment table evidence.");
+ }
+ if(a.selected==="live"){
+  checkEnvironment(a.live);
+  if(a.sandbox!==null||a.compare!==null)throw Error("Unrequested environment data.");
+ }else if(a.selected==="sandbox"){
+  checkEnvironment(a.sandbox);
+  if(a.live!==null||a.compare!==null)throw Error("Unrequested environment data.");
+ }else{
+  checkEnvironment(a.live);checkEnvironment(a.sandbox);
+  const c=a.compare;
+  if(!c||!c.source||!c.database||
+   !Number.isInteger(c.source.totalChangedFiles)||c.source.totalChangedFiles>400||
+   !Array.isArray(c.source.relevantChangedFiles)||c.source.relevantChangedFiles.length>400||
+   !Array.isArray(c.database.selectedDifferentTables)||c.database.selectedDifferentTables.length>500||
+   !Array.isArray(c.database.functionDifferences)||c.database.functionDifferences.length>1000||
+   !Number.isInteger(c.database.totalDifferentTables)||
+   !Number.isInteger(c.database.totalDifferentFunctions))
+   throw Error("Invalid compare evidence.");
+  for(const f of c.source.relevantChangedFiles)
+    if(!safePath(f?.path)||!CODE_DIFF_STATUSES.has(f.status)||
+       !Number.isInteger(f.additions)||!Number.isInteger(f.deletions))
+       throw Error("Invalid deployed source delta.");
+  for(const t of c.database.selectedDifferentTables)
+    if(!safeName(t?.table)||!DB_DIFF_TYPES.has(t.kind))throw Error("Invalid schema comparison.");
+  for(const x of c.database.functionDifferences)
+    if(typeof x?.signature!=="string"||x.signature.length>320||
+       !["live_only","sandbox_only","different_definition"].includes(x.status))
+       throw Error("Invalid function comparison.");
+ }
+}
 export function validateMasterScanReport(report) {
   if(!report||typeof report!=="object"||report.kind!=="eig_build_lab_master_scan"||
     report.schemaVersion!==1||report.target!=="elevationpilot"||
@@ -40,6 +102,7 @@ export function validateMasterScanReport(report) {
         throw Error("Invalid schema metadata.");
     }
   }
+  assertEnvironmentAudit(report.environmentAudit,report);
   const db=report.database;
   if(!db||db.freshLiveQuery!==false||typeof db.capturedOn!=="string"||
     !/^\d{4}-\d{2}-\d{2}$/.test(db.capturedOn)||
@@ -51,7 +114,7 @@ export function validateMasterScanReport(report) {
     throw Error("Invalid database snapshot in Master Scanner report.");
   return report;
 }
-export async function requestMasterScan(supabase,http=fetch,moduleId=null){
+export async function requestMasterScan(supabase,http=fetch,moduleId=null,environmentMode="compare"){
   if(!supabase?.auth?.getSession||typeof http!=="function")
     throw Error("Sign in to your owner Build Lab account before scanning.");
   const {data,error}=await supabase.auth.getSession();
@@ -59,9 +122,10 @@ export async function requestMasterScan(supabase,http=fetch,moduleId=null){
   if(error||typeof token!=="string"||!token)
     throw Error("Sign in again before starting a Master Scan.");
   if(moduleId!==null && !ID.test(moduleId)) throw Error("Unsupported Master Scanner module.");
+  if(!ENV_MODES.has(environmentMode)) throw Error("Unsupported Master Scanner environment.");
   const res=await http("/api/eig-build-lab-master-scan",{
     method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify(moduleId===null?{target:"elevationpilot"}:{target:"elevationpilot",moduleId}),cache:"no-store",credentials:"same-origin",
+    body:JSON.stringify(moduleId===null?{target:"elevationpilot",environmentMode}:{target:"elevationpilot",moduleId,environmentMode}),cache:"no-store",credentials:"same-origin",
   });
   if(!res.ok)throw Error([401,403].includes(res.status)
     ?"Your owner authorization or Build Lab preview access needs verification."
@@ -72,5 +136,7 @@ export async function requestMasterScan(supabase,http=fetch,moduleId=null){
     throw Error("Master Scanner returned a different module than requested.");
   if(moduleId===null && report.scope==="module")
     throw Error("Master Scanner returned a targeted report for a full scan.");
+  if(report.environmentAudit.selected!==environmentMode)
+    throw Error("Master Scanner returned evidence for a different environment.");
   return report;
 }

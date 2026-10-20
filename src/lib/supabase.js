@@ -7,6 +7,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const isSandbox = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true';
 const sandboxReadOnlyPreview = isSandbox &&
   import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true';
+const sandboxEventDetailsSaveEnabled = sandboxReadOnlyPreview &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
+  import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
 assertSandboxSupabaseTarget(supabaseUrl, { enabled: isSandbox, key: supabaseAnonKey });
 
 export const supabase = supabaseUrl && supabaseAnonKey
@@ -15,6 +18,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
           appOrigin: globalThis.location?.origin,
           sandboxSupabaseUrl: supabaseUrl,
           readOnly: sandboxReadOnlyPreview,
+          eventDetailsWriteEnabled: sandboxEventDetailsSaveEnabled,
         }) } }
       : undefined)
   : null;

@@ -22,7 +22,7 @@ SET LOCAL ROLE authenticated;
 DO $smoke$
 DECLARE
  evt uuid; prev timestamptz; payload jsonb; result jsonb; now_saved timestamptz;
- blocked boolean; current_role text; offers_before int; default_name text;
+ blocked boolean; v_role_name text; offers_before int; default_name text;
  reg_settings jsonb; v_price numeric;
 BEGIN
  SELECT e.id,e.updated_at INTO evt,prev
@@ -110,12 +110,12 @@ BEGIN
  THEN RAISE EXCEPTION 'Co-Pilot deadline was not saved to both event records'; END IF;
  now_saved:=(result->'event'->>'updated_at')::timestamptz;
  -- ATC/Passenger and anonymous must never modify the practice settings.
- FOR current_role IN SELECT unnest(ARRAY['atc','passenger']) LOOP
-   PERFORM public.sandbox_switch_practice_role(current_role);
+ FOR v_role_name IN SELECT unnest(ARRAY['atc','passenger']) LOOP
+   PERFORM public.sandbox_switch_practice_role(v_role_name);
    blocked:=false;
    BEGIN PERFORM public.sandbox_save_practice_registration_details(evt,now_saved,payload);
    EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
-   IF NOT blocked THEN RAISE EXCEPTION 'Forbidden role % could save Registration Details',current_role; END IF;
+   IF NOT blocked THEN RAISE EXCEPTION 'Forbidden role % could save Registration Details',v_role_name; END IF;
  END LOOP;
  IF has_function_privilege('anon','public.sandbox_save_practice_registration_details(uuid,timestamptz,jsonb)','EXECUTE')
  OR has_table_privilege('authenticated','public.golf_registration_events','UPDATE')

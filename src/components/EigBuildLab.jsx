@@ -8,6 +8,7 @@ import { requestInceptionSourceScan } from "../lib/eigBuildLabScanClient.mjs";
 import "./eig-build-lab.css";
 import BuildImpactReview from "./BuildImpactReview.jsx";
 import BuildLabAiConnection from "./BuildLabAiConnection.jsx";
+import BuildLabMasterScanner from "./BuildLabMasterScanner.jsx";
 import ResearchTargetPlanner from "./ResearchTargetPlanner.jsx";
 
 const EIG_PILOT = {
@@ -244,14 +245,14 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       <div className="bl-hero-actions">
         <span className="bl-draft-tag">{saveStatus === "saved" ? "Browser autosave on" : needsBackup ? "Backup required" : "Preparing local draft"}</span>
         {onToggleFocus && <button type="button" className="platform-secondary-button" onClick={onToggleFocus}>{focusedMode ? "Show full navigation" : "Focus window"}</button>}
-        <button type="button" className="platform-secondary-button" onClick={handleBack}>← EIG Command Center</button>
+        {!focusedMode && <button type="button" className="platform-secondary-button" onClick={handleBack}>← EIG Command Center</button>}
       </div>
     </header>
 
     <p className="bl-disclosure" role="note">
       <strong>What this pilot does:</strong> Turns your description into a deterministic planning checklist and editable review.
-      The new InceptionApex Source Inspector reads a small approved set of first-party code and existing test scripts.
-      It does not browse external websites, execute app actions, run AI, create tasks, save to Supabase or change live apps.
+      The Master Scanner and InceptionApex Source Inspector examine approved first-party code and test scripts. The Master Scanner also displays an explicitly dated Supabase schema metadata snapshot.
+      These scanners do not browse external websites, execute app actions, run AI, create tasks, write to Supabase or change live apps.
       Source observations are not proof of bugs or live behavior. Drafts autosave in this browser only.
       Do not enter passwords, private customer information or API secrets.
     </p>
@@ -261,6 +262,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         ? "Browser autosave is unavailable. Download reusable JSON to keep your work."
         : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
+
+    <BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
 
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">

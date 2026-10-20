@@ -1,6 +1,26 @@
 # Sandbox first-write slice: original EIE Event Details (review gate)
 
-Status: **PLAN / NOT YET IMPLEMENTED / NO WRITE PERMISSIONS GRANTED**
+Status: **STAGED AND TESTED IN DRAFT PR / NOT DEPLOYED / NO WRITE PERMISSIONS GRANTED**
+
+## Implementation progress (October 20, 2026)
+
+- The existing real Event Details form is now conditionally wired to a single
+  atomic Sandbox RPC, but only when the separate
+  VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED flag is enabled.
+- The private implementation and public invoker facade are staged at
+  sandbox/first-write/01_sandbox_atomic_event_details.sql.
+- The complete SQL was created and exercised inside a rolled-back transaction
+  on the existing Sandbox project. Pilot and Co-Pilot save checks passed;
+  ATC and Passenger, anonymous users, stale saves and publishing attempts
+  were rejected. No functions or data remained after rollback.
+- Six GitHub CI workflows, including Sandbox routing tests and a production
+  application build, passed on commit fd0a44e16a284f40bb1ce75f2de2e714daa59c27.
+- The first-save flag and full-workspace flag are both absent from Sandbox Vercel.
+  No new write grants, functions, or fixtures have been deployed; Live is untouched.
+- Next safety gate: independent review and explicit approval before applying
+  the narrow RPC to Sandbox or enabling any real practice save.
+
+
 
 ## Observed Live UI flow
 

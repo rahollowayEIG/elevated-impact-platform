@@ -26,7 +26,7 @@ test('Real first-save protections have matching automated negative SQL scenarios
     'Unknown event accepted',
     'Co-Pilot denied',
     'Forbidden role % could save',
-    'Anonymous RPC or broad authenticated table write grant',
+    'Unexpected anonymous RPC or broad authenticated table write grant',
   ]) assert.ok(script.includes(expected),'Missing negative test: '+expected);
   assert.match(source,/AND google_calendar_sync_enabled IS FALSE/);
   assert.match(source,/AND status='draft'/);

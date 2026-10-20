@@ -5,6 +5,7 @@ import './styles.css';
 import './sandbox/sandboxTheme.css';
 import { installSandboxNavigationGuard } from './sandbox/sandboxNavigationGuard.mjs';
 import { installSandboxBrowserFetchGuard } from './sandbox/sandboxBrowserFetchGuard.mjs';
+import { installSandboxReadOnlyActionsGuard } from './sandbox/sandboxReadOnlyActionsGuard.mjs';
 import { assertSandboxSupabaseTarget } from './sandbox/sandboxSupabaseGate.mjs';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
 import SandboxAccessGate from './sandbox/SandboxAccessGate.jsx';
@@ -12,6 +13,15 @@ import SandboxPracticeRoles from './sandbox/SandboxPracticeRoles.jsx';
 import { getSandboxBranding } from './sandbox/sandboxBranding.mjs';
 
 const IS_SANDBOX = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true';
+const SANDBOX_WORKSPACE_ENABLED = import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true';
+const SANDBOX_READONLY_PREVIEW_ENABLED = IS_SANDBOX && !SANDBOX_WORKSPACE_ENABLED &&
+  import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true';
+const SANDBOX_EVENT_DETAILS_SAVE_ENABLED = SANDBOX_READONLY_PREVIEW_ENABLED &&
+  import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
+const SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED = SANDBOX_READONLY_PREVIEW_ENABLED &&
+  import.meta.env.VITE_SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED === 'true';
+const SANDBOX_READONLY_REQUESTED = SANDBOX_READONLY_PREVIEW_ENABLED &&
+  new URLSearchParams(window.location.search).get('sandbox_readonly') === '1';
 const sandboxBranding = getSandboxBranding(IS_SANDBOX);
 
 assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: IS_SANDBOX, key: import.meta.env.VITE_SUPABASE_ANON_KEY });
@@ -20,6 +30,15 @@ assertSandboxSupabaseTarget(import.meta.env.VITE_SUPABASE_URL, { enabled: IS_SAN
 // until their API, XHR, redirect and outbound integration review is complete.
 installSandboxBrowserFetchGuard({
   enabled: IS_SANDBOX,
+  readOnly: SANDBOX_READONLY_PREVIEW_ENABLED,
+  eventDetailsWriteEnabled: SANDBOX_EVENT_DETAILS_SAVE_ENABLED,
+  registrationDetailsWriteEnabled: SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED,
+  sandboxSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+});
+installSandboxReadOnlyActionsGuard({
+  enabled: SANDBOX_READONLY_PREVIEW_ENABLED,
+  eventDetailsWriteEnabled: SANDBOX_EVENT_DETAILS_SAVE_ENABLED,
+  registrationDetailsWriteEnabled: SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED,
   sandboxSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
 });
 installSandboxNavigationGuard({ enabled: IS_SANDBOX });
@@ -63,10 +82,27 @@ function EIGAppHeader() {
   );
 }
 
-const SANDBOX_WORKSPACE_ENABLED = import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true';
-
 // App APIs, payments, mail, Drive, embeds and outgoing Live links must pass
 // independent Sandbox integration checks before enabling this last gate.
+function SandboxReadOnlyPreview() {
+  return <>
+    <aside role="status" style={{ background: '#421038', color: '#fff', padding: '11px 18px', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+      <strong>{SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+        ? 'SANDBOX · CONTROLLED EVENT + REGISTRATION SETUP'
+        : SANDBOX_EVENT_DETAILS_SAVE_ENABLED
+          ? 'SANDBOX · CONTROLLED EVENT DETAILS SAVE'
+          : 'SANDBOX · READ-ONLY UI TEST'}</strong>
+      {' '} {SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+        ? 'Only Event Details and Registration Details settings for the fictional Draft event can save. Actual registrations, payments, reminders, invitations, publishing and all other editing remain disabled.'
+        : SANDBOX_EVENT_DETAILS_SAVE_ENABLED
+          ? 'Only Event Details for the fictional Draft event can save. Payments, messages, registrations, publishing and all other editing are disabled.'
+          : 'Existing ElevationPilot screens and isolated practice data. Saving, payments, outgoing messages and other integrations are disabled.'}
+      {' '} <a href="/" style={{ color: '#fff', fontWeight: 800 }}>Exit preview</a>
+    </aside>
+    <ElevatedImpactPhaseOneFrontend />
+  </>;
+}
+
 function SandboxWorkspaceStaging() {
   return (
     <main style={{ maxWidth: 640, padding: '44px 24px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
@@ -76,6 +112,15 @@ function SandboxWorkspaceStaging() {
         <p>Your sandbox identity was approved. You can use the practice-role control to test authorized role switching.</p>
         <p><strong>Full app workflows are locked for now</strong> while we isolate the remaining registration, payment, messaging and marketing integrations.</p>
         <p>Nothing here can operate your Live data or send real customer communications.</p>
+        {SANDBOX_READONLY_PREVIEW_ENABLED && (
+          <p>
+            <a href="/?sandbox_readonly=1" style={{ display: 'inline-block', padding: '12px 16px', borderRadius: 8, background: '#a31361', color: '#fff', fontWeight: 800, textDecoration: 'none' }}>
+              {SANDBOX_EVENT_DETAILS_SAVE_ENABLED || SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED
+                ? 'Open existing ElevationPilot screens (limited practice saves) →'
+                : 'Inspect existing ElevationPilot screens (read-only) →'}
+            </a>
+          </p>
+        )}
       </section>
     </main>
   );
@@ -86,7 +131,11 @@ createRoot(document.getElementById('root')).render(
     <EIGAppHeader />
     {IS_SANDBOX ? (
       <SandboxAccessGate>
-        {SANDBOX_WORKSPACE_ENABLED ? <ElevatedImpactPhaseOneFrontend /> : <SandboxWorkspaceStaging />}
+        {SANDBOX_WORKSPACE_ENABLED
+          ? <ElevatedImpactPhaseOneFrontend />
+          : SANDBOX_READONLY_REQUESTED
+            ? <SandboxReadOnlyPreview />
+            : <SandboxWorkspaceStaging />}
         <ActionConfirmation />
         <SandboxPracticeRoles />
       </SandboxAccessGate>

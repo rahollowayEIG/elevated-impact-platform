@@ -5,6 +5,14 @@ import { createSandboxGuardedFetch } from '../sandbox/sandboxBrowserFetchGuard.m
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const isSandbox = import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true';
+const sandboxReadOnlyPreview = isSandbox &&
+  import.meta.env.VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true';
+const sandboxEventDetailsSaveEnabled = sandboxReadOnlyPreview &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
+  import.meta.env.VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED === 'true';
+const sandboxRegistrationDetailsSaveEnabled = sandboxReadOnlyPreview &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED !== 'true' &&
+  import.meta.env.VITE_SANDBOX_REGISTRATION_DETAILS_SAVE_ENABLED === 'true';
 assertSandboxSupabaseTarget(supabaseUrl, { enabled: isSandbox, key: supabaseAnonKey });
 
 export const supabase = supabaseUrl && supabaseAnonKey
@@ -12,6 +20,9 @@ export const supabase = supabaseUrl && supabaseAnonKey
       ? { global: { fetch: createSandboxGuardedFetch(globalThis.fetch.bind(globalThis), {
           appOrigin: globalThis.location?.origin,
           sandboxSupabaseUrl: supabaseUrl,
+          readOnly: sandboxReadOnlyPreview,
+          eventDetailsWriteEnabled: sandboxEventDetailsSaveEnabled,
+          registrationDetailsWriteEnabled: sandboxRegistrationDetailsSaveEnabled,
         }) } }
       : undefined)
   : null;

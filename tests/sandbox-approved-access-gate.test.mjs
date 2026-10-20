@@ -104,7 +104,10 @@ test('sandbox UI gates ALL app routes and keeps dangerous workflows locked by de
   const gate = readFileSync('src/sandbox/SandboxAccessGate.jsx','utf8');
   assert.match(root, /import SandboxAccessGate from '\.\/sandbox\/SandboxAccessGate\.jsx'/);
   assert.match(root, /IS_SANDBOX \? \(\s*<SandboxAccessGate>/);
-  assert.match(root, /SANDBOX_WORKSPACE_ENABLED \? <ElevatedImpactPhaseOneFrontend \/> : <SandboxWorkspaceStaging \/>/);
+  assert.match(root, /SANDBOX_WORKSPACE_ENABLED\s*\?\s*<ElevatedImpactPhaseOneFrontend \/>/);
+  assert.match(root, /SANDBOX_READONLY_REQUESTED\s*\?\s*<SandboxReadOnlyPreview \/>/);
+  assert.match(root, /:\s*<SandboxWorkspaceStaging \/>/);
+  assert.match(root, /VITE_SANDBOX_READONLY_PREVIEW_ENABLED === 'true'/);
   assert.match(root, /VITE_SANDBOX_WORKSPACE_ENABLED === 'true'/);
   assert.match(root, /<SandboxPracticeRoles \/>[\s\S]*<\/SandboxAccessGate>/);
   assert.match(gate, /VITE_SANDBOX_EMAIL_CODE_ENABLED === 'true'/);

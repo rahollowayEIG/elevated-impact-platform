@@ -50,5 +50,7 @@ test('golfer registration service still requires a real bearer-token user identi
 test('full application remains gated; no Live environment or new grant is changed', () => {
   const main = readFileSync('src/main.jsx', 'utf8');
   assert.match(main, /VITE_SANDBOX_WORKSPACE_ENABLED === 'true'/);
-  assert.match(main, /SANDBOX_WORKSPACE_ENABLED \? <ElevatedImpactPhaseOneFrontend \/> : <SandboxWorkspaceStaging \/>/);
+  assert.match(main, /SANDBOX_WORKSPACE_ENABLED\s*\?\s*<ElevatedImpactPhaseOneFrontend \/>/);
+  assert.match(main, /SANDBOX_READONLY_REQUESTED\s*\?\s*<SandboxReadOnlyPreview \/>/);
+  assert.match(main, /:\s*<SandboxWorkspaceStaging \/>/);
 });

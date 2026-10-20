@@ -2033,3 +2033,7 @@ button.main-cabin-seat-shell{font:inherit;cursor:pointer}
   .bl-standalone-controls .platform-user-block { gap: 8px; }
   .bl-standalone-controls .platform-user-block span { overflow-wrap: anywhere; }
 }
+
+/* The global EIG header is a sibling of the app. Hide it only while an
+   authorized Build Lab workspace is in Focus mode, not on login or other apps. */
+body:has(.platform-standalone-build-lab) .eig-global-header { display: none; }

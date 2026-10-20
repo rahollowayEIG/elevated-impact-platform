@@ -17,10 +17,12 @@ import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
+import { desktopAppFromLaunch } from './lib/desktopAppMode.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
+const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: window.matchMedia?.('(display-mode: standalone)')?.matches === true, search: window.location.search }) === 'build_lab';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -530,11 +532,15 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception, onSocial }) {
+function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception, onSocial, compactBuildLab = false }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onSocial && <button className="platform-secondary-button" type="button" onClick={onSocial}>Social Media & Ads</button>}{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  return <div className={`platform-shell${compactBuildLab ? ' platform-standalone-build-lab' : ''}`}>
+    {compactBuildLab ? <header className="platform-topbar bl-standalone-bar">
+      <div className="bl-standalone-brand"><img src="/build-lab-icon.svg" alt="" width="38" height="38" /><div><strong>EIG Build Lab</strong><span>Online workspace · Owner only</span></div></div>
+      <div className="bl-standalone-controls"><a className="platform-secondary-button" href="/" target="_blank" rel="noopener noreferrer">Open EIG Command Center ↗</a><div className="platform-user-block"><span>{user?.email}</span><button type="button" onClick={onSignOut}>Sign out</button></div></div>
+    </header> : <header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onSocial && <button className="platform-secondary-button" type="button" onClick={onSocial}>Social Media & Ads</button>}{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header>}<main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -2818,6 +2824,7 @@ export default function App() {
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [buildLabDirty, setBuildLabDirty] = useState(false);
   const [buildLabOwnerGrant, setBuildLabOwnerGrant] = useState(null);
+  const buildLabLaunchStarted = useRef(false);
   const [socialDirty, setSocialDirty] = useState(false);
   const socialReturn = useRef('chooser');
   const [eventStudioDirty, setEventStudioDirty] = useState(false);
@@ -3437,7 +3444,7 @@ export default function App() {
 
   function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty || buildLabDirty) || window.confirm('Leave without exporting your Build Lab blueprint or saving your campaign, design, event packet or budget changes?'); }
   async function openBuildLab() {
-    if (!buildLabAllowed || !canLeaveInception()) return;
+    if (!buildLabAllowed || !canLeaveInception()) return false;
     const accountId = session?.user?.id || '';
     // Require a fresh server decision for each entry, including after
     // a role/session change. A frontend flag or fabricated response is not
@@ -3445,28 +3452,30 @@ export default function App() {
     const allowed = await requestOwnerBuildLabAccess(supabase);
     if (!allowed || currentAuthSession.current?.user?.id !== accountId) {
       setBuildLabOwnerGrant(null);
-      return;
+      return false;
     }
     const eigOrg = organizations.find((org) => org.slug === EIG_SLUG);
-    if (!eigOrg?.id) return;
+    if (!eigOrg?.id) return false;
     setBuildLabDirty(false);
     setActiveOrganizationId(eigOrg.id);
     setPortalView('workspace');
     setCockpitApp('');
     setEieInitialEventId('');
     setAdminView('build_lab');
+    return true;
   }
   function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
-  // Installed online-only Build Lab launches at the same protected platform origin.
-  // Never bypass the existing server-side owner authorization check.
+  // Installed app relaunches directly into Build Lab after the existing owner gate.
+  // Keep the launch URL intact, including after refresh. The one-shot guard
+  // prevents reopening after a user deliberately returns to Command Center.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('buildlab') !== '1') return;
-    if (!buildLabAllowed || !session?.user?.id) return;
-    const target = new URL(window.location.href);
-    target.searchParams.delete('buildlab');
-    window.history.replaceState(window.history.state, '', target.pathname + target.search + target.hash);
-    void openBuildLab();
-  }, [session?.user?.id, buildLabOwnerGrant, activeOrganizationId, memberships]);
+    if (!session?.user?.id) { buildLabLaunchStarted.current = false; return; }
+    if (!IS_INSTALLED_BUILD_LAB || !buildLabAllowed || buildLabLaunchStarted.current) return;
+    buildLabLaunchStarted.current = true;
+    void openBuildLab().then((opened) => {
+      if (!opened) buildLabLaunchStarted.current = false;
+    }).catch(() => { buildLabLaunchStarted.current = false; });
+  }, [session?.user?.id, buildLabOwnerGrant, activeOrganizationId, memberships, adminView]);
 
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
@@ -3524,7 +3533,7 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell compactBuildLab={IS_INSTALLED_BUILD_LAB && adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace} user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {portalView === 'social'
         ? <React.Suspense fallback={<LoadingScreen message="Opening Social Media & Ads…" />}><SocialMediaApp key={session.user.id} onBack={closeSocial} onArtwork={() => openInception()} onDirtyChange={setSocialDirty} /></React.Suspense>

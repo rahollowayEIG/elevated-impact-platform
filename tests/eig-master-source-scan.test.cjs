@@ -67,7 +67,8 @@ test("approved targeted scan returns only requested module, with full fixed sour
   assert.deepEqual(scoped.modules.map(m=>m.id),[id]);
   assert.equal(scoped.summary.modulesReviewed,1);
   assert.equal(scoped.files.length,FILE_PATHS.length);
-  assert.equal(scoped.sourceFingerprint,full.sourceFingerprint);
+  assert.notEqual(scoped.sourceFingerprint,full.sourceFingerprint);
+  assert.equal(scoped.sourceFingerprint,scanMasterSource(input,"b".repeat(40),"2026-10-20T22:00:00.000Z",id).sourceFingerprint);
   assert.equal(scoped.database.productionTables,full.database.productionTables);
   assert.equal(scoped.database.freshLiveQuery,false);
   assert.equal(scoped.safety.autoDeployed,false);

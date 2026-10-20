@@ -3457,6 +3457,17 @@ export default function App() {
     setAdminView('build_lab');
   }
   function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
+  // Installed online-only Build Lab launches at the same protected platform origin.
+  // Never bypass the existing server-side owner authorization check.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('buildlab') !== '1') return;
+    if (!buildLabAllowed || !session?.user?.id) return;
+    const target = new URL(window.location.href);
+    target.searchParams.delete('buildlab');
+    window.history.replaceState(window.history.state, '', target.pathname + target.search + target.hash);
+    void openBuildLab();
+  }, [buildLabAllowed, session?.user?.id]);
+
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
     if (portalView !== 'inception') inceptionReturn.current = portalView;

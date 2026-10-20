@@ -15,7 +15,7 @@ test('online-only install manifest stays on platform origin',()=>{
 });
 test('deep link calls protected owner access path and no offline service worker',()=>{
  assert.ok(app.includes('IS_INSTALLED_BUILD_LAB'));
- assert.ok(app.includes('if (!buildLabAllowed || !session?.user?.id) return;'));
+ assert.ok(app.includes('if (!IS_INSTALLED_BUILD_LAB || !buildLabAllowed || buildLabLaunchStarted.current) return;'));
  assert.ok(app.includes('void openBuildLab().then((opened) => {'));
  assert.ok(app.includes('const allowed = await requestOwnerBuildLabAccess(supabase);'));
  assert.ok(!html.includes('serviceWorker.register'));

@@ -20,6 +20,18 @@ test("actually scans sampled committed source without reading customer data",()=
  assert.equal(x.safety.customerRowsRead,false);
  assert.equal(x.safety.autoDeployed,false);
  assert.ok(x.modules.some(m=>m.id==="event-builder"&&m.sourceStatus==="source_marker_found"));
+ const eventBuilder=x.modules.find(m=>m.id==="event-builder");
+ assert.equal(eventBuilder.uiStatus,"ui_marker_found");
+ assert.equal(eventBuilder.status,"review_needed");
+ assert.equal(eventBuilder.testStatus,"not_observed_in_sample");
+ assert.deepEqual(eventBuilder.tables.map(x=>x.table),[
+   "events","golf_registration_events","event_offers","golf_event_payment_settings"
+ ]);
+ assert.match(eventBuilder.nextCheck,/Event Packet Studio/);
+ const packets=x.modules.find(m=>m.id==="event-packet");
+ assert.equal(packets.testStatus,"test_code_found");
+ assert.ok(packets.evidence.some(e=>e.kind==="test"&&e.path==="tests/event-builder-browser.cjs"));
+
  assert.ok(x.modules.some(m=>m.id==="registration"&&m.uiStatus==="ui_marker_found"));
  const invoice=x.modules.find(m=>m.id==="invoices");
  assert.equal(invoice.status,"not_observed_in_sample");
@@ -62,4 +74,24 @@ test("approved targeted scan returns only requested module, with full fixed sour
  }
  for(const invalid of ["../secrets","strange-module","",42,{},["inception"]])
   assert.throws(()=>scanMasterSource(input,"b".repeat(40),undefined,invalid),/Unsupported Master Scanner module/);
+});
+
+test("launching a browser is not evidence that event creation and registration settings were saved",()=>{
+ const source=readAllowlistedMasterSource();
+ const original=scanMasterSource(source);
+ assert.equal(original.modules.find(x=>x.id==="event-builder").testStatus,"not_observed_in_sample");
+ const fake={...source,
+  "tests/event-builder-browser.cjs":source["tests/event-builder-browser.cjs"]+
+    '\n// A browser launch is not an actual Event Details or Registration save check.\n'};
+ const inspected=scanMasterSource(fake);
+ assert.equal(inspected.modules.find(x=>x.id==="event-builder").status,"review_needed");
+ assert.equal(inspected.modules.find(x=>x.id==="event-builder").testStatus,"not_observed_in_sample");
+ const verifiedSteps={...source,
+  "tests/event-builder-browser.cjs":source["tests/event-builder-browser.cjs"]+
+    '\ngetByRole("button", { name: "Save Event Details" });'+
+    '\ngetByRole("button", { name: "Save Registration" });'+
+    '\ngetByLabel("Players per team");'};
+ const withCoverage=scanMasterSource(verifiedSteps);
+ assert.equal(withCoverage.modules.find(x=>x.id==="event-builder").testStatus,"test_code_found");
+ assert.equal(withCoverage.modules.find(x=>x.id==="event-builder").status,"evidence_present");
 });

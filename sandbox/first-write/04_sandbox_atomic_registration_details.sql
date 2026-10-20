@@ -120,7 +120,7 @@ BEGIN
   SELECT * INTO v_master FROM public.events m
   WHERE m.id=v_event.master_event_id AND m.organization_id=v_org.id
     AND m.status='pending_review' AND m.is_published IS FALSE
-    AND m.registration_status='closed'
+    AND m.registration_status IN ('draft','closed')
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'The master event must remain unpublished and closed'
     USING ERRCODE='42501'; END IF;
@@ -322,7 +322,7 @@ BEGIN
   UPDATE public.events m SET registration_deadline=v_master_deadline
   WHERE m.id=v_master.id AND m.organization_id=v_org.id
     AND m.status='pending_review' AND m.is_published IS FALSE
-    AND m.registration_status='closed';
+    AND m.registration_status IN ('draft','closed');
   IF NOT FOUND THEN RAISE EXCEPTION 'Master event is not safe for practice setup'
     USING ERRCODE='42501'; END IF;
 

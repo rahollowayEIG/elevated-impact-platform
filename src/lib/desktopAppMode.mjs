@@ -6,3 +6,9 @@ export function desktopAppFromLaunch({ standalone = false, search = '' } = {}) {
   if (params.get('buildlab') === '1') return 'build_lab';
   return null;
 }
+
+// Display-only decision. A manual preference covers Chrome's generic "install page as app"
+// windows when Vercel preview protection prevents the manifest from loading.
+export function shouldFocusBuildLab({ standalone = false, preference = null } = {}) {
+  return typeof preference === 'boolean' ? preference : standalone === true;
+}

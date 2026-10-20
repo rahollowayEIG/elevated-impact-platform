@@ -13,6 +13,13 @@ export function validateMasterScanReport(report) {
     !Array.isArray(report.files)||report.files.length<1||report.files.length>35||
     !Array.isArray(report.modules)||report.modules.length<1||report.modules.length>30)
     throw Error("Unsupported Master Scanner report.");
+  // Reports saved before target selection remain valid as full-platform scans.
+  const scope=report.scope||"full";
+  if(!["full","module"].includes(scope)||
+    (scope==="module"&&(!ID.test(report.selectedModule||"")||
+      report.modules.length!==1||report.modules[0].id!==report.selectedModule))||
+    (scope==="full"&&report.selectedModule!==undefined&&report.selectedModule!==null))
+    throw Error("Invalid Master Scanner scope.");
   const files=new Set(report.files.map(f=>f.path));
   if(files.size!==report.files.length||[...files].some(p=>typeof p!=="string"||
     !/^(src|tests)\/[a-zA-Z0-9_.\/-]+$/.test(p)||p.includes("..")))throw Error("Invalid source list.");
@@ -44,20 +51,26 @@ export function validateMasterScanReport(report) {
     throw Error("Invalid database snapshot in Master Scanner report.");
   return report;
 }
-export async function requestMasterScan(supabase,http=fetch){
+export async function requestMasterScan(supabase,http=fetch,moduleId=null){
   if(!supabase?.auth?.getSession||typeof http!=="function")
     throw Error("Sign in to your owner Build Lab account before scanning.");
   const {data,error}=await supabase.auth.getSession();
   const token=data?.session?.access_token;
   if(error||typeof token!=="string"||!token)
     throw Error("Sign in again before starting a Master Scan.");
+  if(moduleId!==null && !ID.test(moduleId)) throw Error("Unsupported Master Scanner module.");
   const res=await http("/api/eig-build-lab-master-scan",{
     method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({target:"elevationpilot"}),cache:"no-store",credentials:"same-origin",
+    body:JSON.stringify(moduleId===null?{target:"elevationpilot"}:{target:"elevationpilot",moduleId}),cache:"no-store",credentials:"same-origin",
   });
   if(!res.ok)throw Error([401,403].includes(res.status)
     ?"Your owner authorization or Build Lab preview access needs verification."
     :"Master Scanner could not complete. Check the protected preview and try again.");
   const payload=await res.json();
-  return validateMasterScanReport(payload?.report);
+  const report=validateMasterScanReport(payload?.report);
+  if(moduleId!==null && (report.scope!=="module"||report.selectedModule!==moduleId))
+    throw Error("Master Scanner returned a different module than requested.");
+  if(moduleId===null && report.scope==="module")
+    throw Error("Master Scanner returned a targeted report for a full scan.");
+  return report;
 }

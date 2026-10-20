@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
 const schemaSnapshot = require("./eig-master-schema-snapshot.json");
+const {buildEnvironmentAudit}=require("./eig-master-environment-compare.cjs");
 
 const FILE_PATHS = Object.freeze([
   "src/PlatformApp.jsx",
@@ -156,7 +157,7 @@ function evidenceFor(files, tuples, kind) {
   }).filter(Boolean);
 }
 
-function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null) {
+function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null,environmentMode="compare") {
   if (!sources || typeof sources !== "object") throw new TypeError("Source map required");
   // Narrow the report to a catalogued module. The underlying source read
   // remains the same fixed allowlist. Never permit arbitrary paths or targets.
@@ -177,6 +178,8 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   // The rulebook is part of report identity. Changed coverage requirements
   // must reset prior owner decisions even if application source is unchanged.
   fingerprint.update(JSON.stringify(MODULES)+"\0");
+  const environmentAudit=buildEnvironmentAudit({mode:environmentMode,moduleId,modules:MODULES});
+  fingerprint.update(JSON.stringify(environmentAudit)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));
   const modules=MODULES.filter(rule=>moduleId===null||rule.id===moduleId).map(rule=>{
@@ -217,8 +220,8 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   return {
     schemaVersion:1,kind:"eig_build_lab_master_scan",target:"elevationpilot",
     scope:moduleId===null?"full":"module",selectedModule:moduleId,
-    scannerVersion:"source-plus-dated-schema-v1",sourceVersion,inspectedAt,
-    sourceFingerprint:fingerprint.digest("hex"),files,modules,
+    scannerVersion:"source-plus-deployed-environment-v2",sourceVersion,inspectedAt,
+    sourceFingerprint:fingerprint.digest("hex"),files,modules,environmentAudit,
     summary:{
       modulesReviewed:modules.length,
       evidencePresent:modules.filter(x=>x.status==="evidence_present").length,
@@ -236,6 +239,8 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
       "Database information is a point-in-time metadata snapshot, NOT a new Supabase query when this button is pressed.",
       "This scan does not crawl websites, visit authenticated Sandbox pages, execute payments, send messages or run an external AI model.",
       "A missing marker in these allowlisted files is not evidence the feature is absent from the full repository.",
+      "Live/Sandbox database schemas and deployed commit files are compared from dated verified metadata, not by visiting the running applications.",
+      "Source/UI/test markers refer to the Build Lab preview code. Their presence does not verify either production deployment.",
     ],
     safety:{readOnly:true,liveChanges:false,autoApproved:false,autoDeployed:false,customerRowsRead:false},
   };

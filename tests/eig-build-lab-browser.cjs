@@ -52,12 +52,20 @@ const fs = require("node:fs/promises");
     };
     await page.route("**/api/eig-build-lab-master-scan", async (route) => {
       assert.equal(route.request().method(), "POST");
-      assert.deepEqual(route.request().postDataJSON(), { target: "elevationpilot" });
+      const request = route.request().postDataJSON();
+      assert.equal(request.target, "elevationpilot");
+      assert.ok(!request.moduleId || request.moduleId === "event-builder");
       assert.match(route.request().headers().authorization || "", /Bearer synthetic-browser-test-token/);
+      const selected = request.moduleId === "event-builder";
+      const responseReport = { ...masterFixture,
+        scope: selected ? "module" : "full", selectedModule: selected ? "event-builder" : null,
+        modules: selected ? [masterFixture.modules[0]] : masterFixture.modules,
+        summary: selected ? { modulesReviewed: 1, evidencePresent: 1, reviewNeeded: 0, notObservedInSample: 0 } : masterFixture.summary,
+      };
       await route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ ok: true, report: masterFixture }) });
+        body: JSON.stringify({ ok: true, report: responseReport }) });
     });
-    await page.getByRole("button", { name: /Run Read-Only Master Scan/ }).click();
+    await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
     await page.locator(".blm-schema").getByText(/events:/).waitFor();
     assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
@@ -76,6 +84,17 @@ const fs = require("node:fs/promises");
     await masterRestored.locator("summary").click();
     assert.match(await masterRestored.innerText(), /Review: accept/);
     assert.equal(await page.locator(".blm-root").getByRole("button", { name: "Export JSON" }).count(), 1);
+    // The original IA-only Source Inspector remains separate. Master Scanner
+    // supports a real server-scoped review for any approved module target.
+    await page.getByLabel("What should Build Lab scan?").selectOption("event-builder");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.locator(".blm-report-scope").getByText(/Event Builder/).waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
+    await page.getByLabel("What should Build Lab scan?").selectOption("all");
+    await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
+    await page.locator(".blm-report-scope").getByText(/Entire ElevationPilot platform/).waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
+
 
     // The scanner is mocked here to exercise authenticated UI and local
     // review persistence; separate server tests read actual first-party files.

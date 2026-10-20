@@ -17,12 +17,13 @@ import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
-import { desktopAppFromLaunch } from './lib/desktopAppMode.mjs';
+import { desktopAppFromLaunch, shouldFocusBuildLab } from './lib/desktopAppMode.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
-const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: window.matchMedia?.('(display-mode: standalone)')?.matches === true, search: window.location.search }) === 'build_lab';
+const IS_STANDALONE_WINDOW = window.matchMedia?.('(display-mode: standalone)')?.matches === true || window.matchMedia?.('(display-mode: minimal-ui)')?.matches === true || window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches === true;
+const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: IS_STANDALONE_WINDOW, search: window.location.search }) === 'build_lab';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -536,6 +537,11 @@ function PlatformShell({ user, memberships, activeOrganizationId, children, onSi
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
+  useEffect(() => {
+    const originalTitle = document.title;
+    if (compactBuildLab) document.title = 'EIG Build Lab';
+    return () => { document.title = originalTitle; };
+  }, [compactBuildLab]);
   return <div className={`platform-shell${compactBuildLab ? ' platform-standalone-build-lab' : ''}`}>
     {compactBuildLab ? <header className="platform-topbar bl-standalone-bar">
       <div className="bl-standalone-brand"><img src="/build-lab-icon.svg" alt="" width="38" height="38" /><div><strong>EIG Build Lab</strong><span>Online workspace · Owner only</span></div></div>
@@ -2824,6 +2830,12 @@ export default function App() {
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [buildLabDirty, setBuildLabDirty] = useState(false);
   const [buildLabOwnerGrant, setBuildLabOwnerGrant] = useState(null);
+  const [buildLabFocusPreference, setBuildLabFocusPreference] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('eig-build-lab-focus-v1');
+      return saved === 'on' ? true : saved === 'off' ? false : null;
+    } catch { return null; }
+  });
   const buildLabLaunchStarted = useRef(false);
   const [socialDirty, setSocialDirty] = useState(false);
   const socialReturn = useRef('chooser');
@@ -3465,6 +3477,13 @@ export default function App() {
     return true;
   }
   function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
+  function toggleBuildLabFocus() {
+    setBuildLabFocusPreference((current) => {
+      const next = !shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: current });
+      try { window.localStorage.setItem('eig-build-lab-focus-v1', next ? 'on' : 'off'); } catch { /* Optional display preference. */ }
+      return next;
+    });
+  }
   // Installed app relaunches directly into Build Lab after the existing owner gate.
   // Keep the launch URL intact, including after refresh. The one-shot guard
   // prevents reopening after a user deliberately returns to Command Center.
@@ -3521,6 +3540,8 @@ export default function App() {
     userId: session.user.id,
     serverGrant: buildLabOwnerGrant,
   });
+  const focusedBuildLab = shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: buildLabFocusPreference }) &&
+    adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace;
   const isAirport = portalView === 'airport';
   const isProfile = portalView === 'profile';
   const isMainCabin = portalView === 'main_cabin';
@@ -3533,7 +3554,7 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell compactBuildLab={IS_INSTALLED_BUILD_LAB && adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace} user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell compactBuildLab={focusedBuildLab} user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {portalView === 'social'
         ? <React.Suspense fallback={<LoadingScreen message="Opening Social Media & Ads…" />}><SocialMediaApp key={session.user.id} onBack={closeSocial} onArtwork={() => openInception()} onDirtyChange={setSocialDirty} /></React.Suspense>
@@ -3560,7 +3581,7 @@ export default function App() {
             : isEigAdminWorkspace
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} />
                 : adminView === 'build_lab' && buildLabAllowed
-                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} /></React.Suspense>
+                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} focusedMode={focusedBuildLab} onToggleFocus={toggleBuildLabFocus} /></React.Suspense>
                   : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : null} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />

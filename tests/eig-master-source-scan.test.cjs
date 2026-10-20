@@ -43,3 +43,23 @@ test("fingerprint changes with actual code while false gaps stay explicitly unve
  const fake=scanMasterSource({...input,"../../.env":"test-secret"});
  assert.ok(!JSON.stringify(fake).includes("test-secret"));
 });
+
+test("approved targeted scan returns only requested module, with full fixed source provenance",()=>{
+ const input=readAllowlistedMasterSource();
+ const full=scanMasterSource(input,"b".repeat(40),"2026-10-20T22:00:00.000Z");
+ assert.equal(full.scope,"full");assert.equal(full.selectedModule,null);
+ assert.equal(full.modules.length,MODULES.length);
+ for(const id of ["inception","event-builder","registration","payments","build-lab"]){
+  const scoped=scanMasterSource(input,"b".repeat(40),"2026-10-20T22:00:00.000Z",id);
+  assert.equal(scoped.scope,"module");assert.equal(scoped.selectedModule,id);
+  assert.deepEqual(scoped.modules.map(m=>m.id),[id]);
+  assert.equal(scoped.summary.modulesReviewed,1);
+  assert.equal(scoped.files.length,FILE_PATHS.length);
+  assert.equal(scoped.sourceFingerprint,full.sourceFingerprint);
+  assert.equal(scoped.database.productionTables,full.database.productionTables);
+  assert.equal(scoped.database.freshLiveQuery,false);
+  assert.equal(scoped.safety.autoDeployed,false);
+ }
+ for(const invalid of ["../secrets","strange-module","",42,{},["inception"]])
+  assert.throws(()=>scanMasterSource(input,"b".repeat(40),undefined,invalid),/Unsupported Master Scanner module/);
+});

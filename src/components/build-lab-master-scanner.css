@@ -55,3 +55,12 @@
 .blm-limitations{font-size:.78rem;line-height:1.55;color:#aabdd1;margin:9px 0 0;padding-left:20px}
 @media(max-width:850px){.blm-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.blm-root{padding:18px}}
 @media(max-width:500px){.blm-stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.blm-head .platform-primary-button{width:100%}.blm-toolbar>label{width:100%}}
+
+/* Whole-platform versus single-module scan, with a real selected target. */
+.blm-launch-controls{display:flex;align-items:flex-end;justify-content:flex-end;gap:10px;flex-wrap:wrap;max-width:650px;min-width:0}
+.blm-launch-controls label{display:grid;gap:6px;color:#dce9f7;font-size:.82rem;font-weight:700;min-width:min(330px,100%)}
+.blm-launch-controls select{max-width:100%;width:100%;padding:10px 12px;border:1px solid #7698b7;border-radius:10px;background:#eaf2fb;color:#112a40;font-size:.9rem;font-weight:600}
+.blm-launch-controls button{min-height:41px}
+.blm-report-scope{margin:0 0 12px;color:#d1dfed;font-size:.87rem}
+@media(max-width:850px){.blm-launch-controls{width:100%;max-width:100%;justify-content:flex-start}.blm-launch-controls label{flex:1;min-width:min(260px,100%)}}
+@media(max-width:500px){.blm-launch-controls{display:grid;width:100%}.blm-launch-controls label{min-width:0}.blm-launch-controls button{width:100%}}

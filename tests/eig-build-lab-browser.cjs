@@ -27,8 +27,8 @@ const fs = require("node:fs/promises");
       files: [{ path: "src/PlatformApp.jsx", lines: 1000, kind: "source" }],
       modules: [
         { id: "event-builder", title: "Event Builder", priority: "high",
-          status: "evidence_present", sourceStatus: "source_marker_found",
-          uiStatus: "ui_marker_found", testStatus: "test_code_found", dbStatus: "tables_in_dated_snapshot",
+          status: "review_needed", sourceStatus: "source_marker_found",
+          uiStatus: "ui_marker_found", testStatus: "not_observed_in_sample", dbStatus: "tables_in_dated_snapshot",
           evidence: [{ kind: "ui", path: "src/PlatformApp.jsx", line: 8, excerpt: "<EieEventSetupSteps" }],
           tables: [{ table: "events", production: true, sandbox: true }],
           nextCheck: "Run an authorized Sandbox event-creation and save/reopen browser test." },
@@ -38,7 +38,7 @@ const fs = require("node:fs/promises");
           evidence: [], tables: [{ table: "invoices", production: false, sandbox: false }],
           nextCheck: "Check full repository before designing an invoice issuer." },
       ],
-      summary: { modulesReviewed: 2, evidencePresent: 1, reviewNeeded: 0, notObservedInSample: 1 },
+      summary: { modulesReviewed: 2, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 1 },
       database: {
         capturedOn: "2026-10-20", freshLiveQuery: false, productionTables: 71, sandboxTables: 71,
         missingInSandbox: [], missingInProduction: [],
@@ -60,7 +60,7 @@ const fs = require("node:fs/promises");
       const responseReport = { ...masterFixture,
         scope: selected ? "module" : "full", selectedModule: selected ? "event-builder" : null,
         modules: selected ? [masterFixture.modules[0]] : masterFixture.modules,
-        summary: selected ? { modulesReviewed: 1, evidencePresent: 1, reviewNeeded: 0, notObservedInSample: 0 } : masterFixture.summary,
+        summary: selected ? { modulesReviewed: 1, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 0 } : masterFixture.summary,
       };
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, report: responseReport }) });
@@ -90,6 +90,7 @@ const fs = require("node:fs/promises");
     await page.getByRole("button", { name: /Scan Selected Module/ }).click();
     await page.locator(".blm-report-scope").getByText(/Event Builder/).waitFor();
     assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
+    await page.locator(".blm-table tbody tr").getByText("Needs verification").waitFor();
     await page.getByLabel("What should Build Lab scan?").selectOption("all");
     await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-report-scope").getByText(/Entire ElevationPilot platform/).waitFor();

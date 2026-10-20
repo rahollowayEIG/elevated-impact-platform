@@ -49,3 +49,15 @@ Do not ask for repetitive screenshots when automated checks can replace them. Do
 ## Next gate
 
 Run CI/build on the staged draft PR, audit any failures, verify first-write feature flag is absent from the active Sandbox Vercel project, and leave actual write capability OFF until explicit approval. Keep draft PR unmerged.
+
+## Rollout update: first practice Event Details save ACTIVE
+
+After the user returned ready to test, the assistant performed an additional production safety review and:
+
+1. Added repeatable transactional smoke SQL and static regression coverage. Sandbox routing tests and build passed; the unrelated image-loading InceptionApex test passed on one rerun; remaining four checks also passed.
+2. Deployed the first-save UI code to the **existing Sandbox Vercel project only** with the switch OFF, then installed the exact pre-tested, narrowly scoped server function ONLY in Supabase Sandbox as migration `sandbox_first_atomic_event_details_save_20261020`.
+3. Executed `sandbox/first-write/03_transactional_smoke_test.sql` against the installed function and confirmed Pilot/Co-Pilot allowed, ATC/Passenger denied, unknown event/stale version/status-injection/invalid date/invalid team size rejected, and full rollback.
+4. Enabled only the Sandbox production flag `VITE_SANDBOX_EVENT_DETAILS_SAVE_ENABLED=true` and deployed `dpl_9LYLWT2QesCV45a9XuQQAGY5oAJj`. Verified `elevationpilot-sandbox.vercel.app` now points to this READY build, UI SHA `fe22b3e6bc3ec2a5bd545a3b40ad2c2b5610a265`.
+5. Independently verified Live deployment SHA remains `755328d18863fb20faa54f5b16d7698cf9097c21`; PR #75 remains draft/unmerged; no customer data/imports, published events, registrations, or broad table writes.
+
+**Owner browser test pending:** change a harmless Event Details field on **Practice Scramble Showcase**, click Save Event Details, refresh and verify persistence. This is the sole newly enabled write workflow. All other workflows remain blocked. Rollback instructions are maintained in the first-write plan.

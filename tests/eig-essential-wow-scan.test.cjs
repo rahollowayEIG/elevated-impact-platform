@@ -12,6 +12,8 @@ test("standards-based product rubric offers essentials and standout ideas withou
  assert.ok(RADAR_RULES.some(x=>x.id==="my-activity"));
  assert.ok(RADAR_RULES.some(x=>x.id==="self-healing-build-lab"&&x.lane==="wow"));
  assert.ok(RADAR_RULES.some(x=>x.id==="customization-studio"&&x.lane==="wow"));
+ assert.ok(RADAR_RULES.some(x=>x.id==="verified-vendor-catalog"&&x.lane==="essential"));
+ assert.ok(RADAR_RULES.some(x=>x.id==="likes-to-registry"&&x.lane==="wow"));
  assert.equal(new Set(RADAR_REFERENCES.map(x=>x.id)).size,RADAR_REFERENCES.length);
  for(const r of RADAR_RULES){
   assert.ok(["essential","wow"].includes(r.lane));
@@ -30,6 +32,9 @@ test("read-only capability scan uses exact Master Scanner approved sources and e
  assert.deepEqual(audit.safety,{readOnly:true,externalsVisited:false,aiCalled:false,autoBuilt:false,liveChanges:false,approvalRequired:true});
  assert.ok(audit.limitations.some(x=>x.includes("not confirmed missing")));
  assert.ok(audit.suggestions.every(x=>x.claim==="product_upgrade_candidate_not_verified"));
+ const discovery=audit.suggestions.find(x=>x.id==="likes-to-registry");
+ assert.ok(discovery&&discovery.evidence.some(x=>x.path==="src/components/EigBuildLab.jsx"));
+ assert.match(discovery.verify,/fictional Build Lab demo/);
  assert.ok(audit.suggestions.every(x=>x.ownerReview==="pending"));
  assert.ok(audit.suggestions.every(x=>x.signalCount===x.evidence.length));
  assert.ok(audit.suggestions.every(x=>x.evidence.every(e=>FILE_PATHS.includes(e.path)&&e.line>0)));

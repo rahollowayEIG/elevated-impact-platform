@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
   BUILD_LAB_MODES, BUILD_LAB_REUSE, createBuildBlueprint,
@@ -312,6 +313,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           {scanRunning ? "Inspecting source…" : scanReport ? "Scan this source version again" : "Inspect InceptionApex source →"}
         </button>
       </div>
+      <ScannerToolsDisclosure kind="inspector" />
       <p className="bl-quiet">The scanner examines code from this deployed preview. It does not visit your live app, scan customer designs, or run an AI model.</p>
       {scanError && <p className="platform-error" role="alert">{scanError}</p>}
       {scanNotice && <p className="bl-notice" role="status">{scanNotice}</p>}

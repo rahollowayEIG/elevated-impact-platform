@@ -23,7 +23,16 @@ const fs = require("node:fs/promises");
       assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
       assert.equal(await toolNav.getByRole("button",{name,exact:true}).getAttribute("aria-pressed"),"true");
     }
+    await chooseTool("Master Scanner");
+    const sourceTools=page.locator("#bl-panel-master .bl-scanner-tools");
+    await sourceTools.getByText("Tools used by this scanner",{exact:true}).click();
+    await sourceTools.getByText("Playwright + GitHub Actions",{exact:true}).waitFor();
+    assert.match(await sourceTools.innerText(),/does not query live customer data/);
     await chooseTool("AI Review");
+    const aiTools=page.locator("#bl-panel-ai .bl-scanner-tools");
+    await aiTools.getByText("Tools used by this scanner",{exact:true}).click();
+    await aiTools.getByText("OpenAI · gpt-4.1-mini",{exact:true}).waitFor();
+    assert.match(await aiTools.innerText(),/Manual request/);
     let aiCalls=0;
     // AI recommendations are owner-clicked, source-only proposals.
     // Mock the provider-backed endpoint: browser tests must never spend money.
@@ -52,6 +61,7 @@ const fs = require("node:fs/promises");
     assert.match(await aiPanel.innerText(),/Pending owner review/);
     assert.match(await aiPanel.innerText(),/No changes applied/);
     assert.equal(aiCalls,1);
+    await aiTools.getByText("Response received",{exact:true}).waitFor();
     await chooseTool("Master Scanner");
     await chooseTool("AI Review");
     await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();

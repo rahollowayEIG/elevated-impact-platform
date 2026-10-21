@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useState} from "react";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 const MAX_ITEMS=4;
@@ -62,6 +63,7 @@ export default function BuildLabAiConnection({supabaseClient}) {
  return <section className="platform-section-card" aria-labelledby="bl-ai-title">
    <h2 id="bl-ai-title">OpenAI Connection &amp; Scanner Review</h2>
    <p>Owner-only, protected-preview integration. A connection test sends fixed text. A selected scanner review sends only bounded first-party scanner metadata, never customer records or raw source code. These are proposals, not verified functionality or automatic code edits.</p>
+   <ScannerToolsDisclosure kind="ai" completed={Boolean(review)} />
    <button type="button" className="platform-primary-button" disabled={busy} onClick={testConnection}>{busy?"Testing connection…":"Test OpenAI Connection"}</button>
    {error&&<p role="alert" className="platform-error">{error}</p>}
    {result&&<p role="status">Connected successfully · {result.model} · Input tokens: {result.input} · Output tokens: {result.output}. No application changes were made.</p>}

@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
@@ -151,6 +152,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     </button>
    </div>
   </div>
+  <ScannerToolsDisclosure />
   <p className="blm-disclaimer">Owner-only. Choose an approved module or the entire platform, then select Live, Sandbox or Compare Both. Environment evidence uses actual deployment commit metadata and independent Supabase schema snapshots, not a live connection every time you click. Source/UI/test badges below are from this protected <strong>Build Lab preview code</strong>, not proof of behavior in either deployment. No browser automation or write operations are performed.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blm-message" role="status">{notice}</p>}
@@ -168,7 +170,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     <div>
       <h3>What should we improve next?</h3>
       <p>The same protected scan also identified <strong>{report.improvementAudit.summary.essential} essential capability checks</strong> and <strong>{report.improvementAudit.summary.wow} standout ideas</strong>.</p>
-      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> directly below this scanner.</p>
+      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> using the Upgrade Radar button at the top.</p>
     </div>
     <ul>{report.improvementAudit.suggestions.filter(x=>x.lane==="essential").slice(0,3).map(item=>
       <li key={item.id}><strong>{item.title}</strong><span>{item.priority} · {item.status==="not_observed_in_sample"?"No source signal found":"Preview source signals found; functionality unverified"}</span></li>

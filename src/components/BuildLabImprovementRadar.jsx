@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestImprovementRadar,validateImprovementRadar} from "../lib/eigMasterScanClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
@@ -158,6 +159,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
     </button>
    </div>
   </div>
+  <ScannerToolsDisclosure kind="radar" />
   <p className="blr-disclosure">This uses the <strong>same owner-authorized, read-only source scanner</strong>, with a fixed product-quality rubric.
    It proposes areas to investigate; it cannot prove a capability is missing or implemented.
    No live browsers, external competitors, AI calls, records, payments or deployments are involved.</p>

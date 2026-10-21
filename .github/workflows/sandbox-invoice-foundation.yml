@@ -5,6 +5,7 @@ on:
       - 'supabase/sandbox/**'
       - 'src/lib/epInvoice*.mjs'
       - 'src/components/EpInvoice*.jsx'
+      - 'src/components/ep-invoice-pilot.css'
       - 'tests/ep-invoice-*'
       - 'tests/fixtures/ep-invoice-db.mjs'
       - '.github/workflows/sandbox-invoice-foundation.yml'

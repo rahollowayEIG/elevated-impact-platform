@@ -125,20 +125,57 @@ export function makeUnifiedStoreDraft({
  };
 }
 function assertDraft(draft){
+ const legalOwner=org(draft?.ownerOrganizationId);
+ const legalBeneficiary=draft?.beneficiaryOrganizationId?org(draft.beneficiaryOrganizationId):null;
+ const legalEvent=draft?.eventId?event(draft.eventId):null;
+ const type=draft?.type;
+ const invalidType=
+  type==="hangar"?(!!draft.eventId||!!draft.beneficiaryOrganizationId||draft.goalCents!==0):
+  type==="nonprofit"?(legalOwner?.kind!=="nonprofit"||!!draft.eventId||
+    draft.beneficiaryOrganizationId!==draft.ownerOrganizationId):
+  type==="fundraiser"?(!legalEvent||legalEvent.ownerOrganizationId!==draft.ownerOrganizationId||
+    legalBeneficiary?.kind!=="nonprofit"):true;
+ const wrongItems=!Array.isArray(draft?.items)||draft.items.length>30||
+    draft.items.some(x=>{
+      const item=catalog.get(x?.itemId);
+      return !item||!item.availableIn.includes(type)||
+        x.name!==item.name||x.kind!==item.kind||x.source!=="fictional_demo"||
+        x.examplePriceCents!==item.priceCents||x.priceVerified!==false||
+        x.payeeVerified!==false||x.notLive!==true;
+    })||new Set(draft?.items?.map(x=>x.itemId)||[]).size!==draft?.items?.length;
  if(!draft||draft.kind!=="ep_universal_store_draft"||
+    draft.schemaVersion!==1||
+    !/^demo-store-[0-9a-f-]{36}$/i.test(draft.id||"")||
     draft.source!=="fictional_demo"||
-    !TYPE_SET.has(draft.type)||
-    !org(draft.ownerOrganizationId)||
+    !TYPE_SET.has(type)||
+    !legalOwner||invalidType||
+    draft.ownerOrganizationName!==legalOwner.name||
+    draft.beneficiaryOrganizationName!==(legalBeneficiary?.name||null)||
+    draft.eventName!==(legalEvent?.name||null)||
+    !MODE_SET.has(draft.operatingMode)||
+    !safeMoney(draft.goalCents)||!cleanTitle(draft.title)||
     !["draft_pending_owner_review","approved_in_demo_not_published"].includes(draft.status)||
-    draft.visibility!=="creator_only"||
-    !Array.isArray(draft.items)||draft.items.length>30||
+    draft.visibility!=="creator_only"||wrongItems||
+    draft.sellerIdentityVerified!==false||
+    draft.authorityToOperateVerified!==false||
+    draft.nonprofitStatusVerified!==false||
+    draft.merchantOfRecordConfigured!==false||
+    draft.sponsorshipFulfillmentConfigured!==false||
+    draft.realProductInventoryConfirmed!==false||
     draft.liveCheckoutEnabled!==false||
     draft.donationCheckoutEnabled!==false||
+    draft.recurringChargeEnabled!==false||
     draft.customerFundsTransferred!==false||
     draft.taxReceiptsEnabled!==false||
     draft.payoutAccountVerified!==false||
-    draft.nonprofitStatusVerified!==false||
-    draft.moneyRules?.settlementRecipientOrganizationId!==null)
+    draft.raisedVerifiedCents!==0||
+    draft.createdWithoutExternalEffects!==true||
+    draft.moneyRules?.merchandiseSellerOrganizationId!==draft.ownerOrganizationId||
+    draft.moneyRules?.contributedFundsIntendedForOrganizationId!==(legalBeneficiary?.id||null)||
+    draft.moneyRules?.settlementRecipientOrganizationId!==null||
+    draft.moneyRules?.platformFeesConfigured!==false||
+    draft.moneyRules?.sellerVsBeneficiarySeparated!==true||
+    draft.moneyRules?.taxDeductibility!=="not_determined")
    throw Error("Only safe, unverified demonstration stores are allowed.");
  return draft;
 }

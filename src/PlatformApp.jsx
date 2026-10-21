@@ -5,6 +5,10 @@ import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
+import EventInquiryAccountPrompt from './components/EventInquiryAccountPrompt.jsx';
+import EventInquiryDashboard from './components/EventInquiryDashboard.jsx';
+import { validateInquirySubmission,isVerifiedInquiryAccount } from './lib/eventInquiryLifecycle.mjs';
+import { sendVerifiedEventInquiry } from './lib/eventInquiryPortalClient.mjs';
 import { ACCOUNT_GENDERS, validateAccountIdentity } from './lib/accountIdentity.mjs';
 import GolfTeamInvitation from './GolfTeamInvitation.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +26,10 @@ import { desktopAppFromLaunch, shouldFocusBuildLab, buildLabLaunchStep } from '.
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
+// Deliberately off in Live. Enable only on an isolated Sandbox preview after
+// deploying and verifying the server-owned event-inquiry-portal Edge Function.
+const EVENT_INQUIRY_PORTAL_ENABLED = import.meta.env.VITE_EIE_INQUIRY_PORTAL_ENABLED === 'true' &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true';
 const IS_STANDALONE_WINDOW = window.matchMedia?.('(display-mode: standalone)')?.matches === true || window.matchMedia?.('(display-mode: minimal-ui)')?.matches === true || window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches === true;
 const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: IS_STANDALONE_WINDOW, search: window.location.search, previewEnabled: EIG_BUILD_LAB_PREVIEW_ENABLED }) === 'build_lab';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
@@ -481,6 +489,9 @@ function PublicInquiryPage({ slug }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [accountPromptOpen,setAccountPromptOpen] = useState(false);
+  const [requestReceiptId,setRequestReceiptId] = useState('');
+  const [requestId,setRequestId] = useState(()=>window.crypto?.randomUUID?.()||'');
   const [form, setForm] = useState({
     contact_full_name: '', group_name: '', contact_phone: '', contact_email: '', preferred_date: '', alternate_date: '', second_alternate_date: '', unavailable_date_notes: '', estimated_participants: '', preferred_start_type: 'Not Sure', preferred_start_time: '', event_type: 'Charity / Fundraiser', golf_format: 'Not Sure', food_needed: 'Not Sure', special_requests: '',
   });
@@ -498,9 +509,39 @@ function PublicInquiryPage({ slug }) {
 
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
 
+  async function finishVerifiedInquiry(verifiedUser) {
+    if(!EVENT_INQUIRY_PORTAL_ENABLED) throw Error('Account request tracking is not enabled.');
+    if(!requestId)throw Error('Could not generate a safe request reference. Refresh and try again.');
+    setBusy(true);setError('');
+    try {
+      const receipt=await sendVerifiedEventInquiry(supabase,{
+        form,verifiedUser,organizationId:organization.id,requestId,
+      });
+      setRequestReceiptId(receipt.id);
+      setSubmitted(true);
+      setAccountPromptOpen(false);
+    } catch(e) {
+      setError(e?.message||'Your request could not be submitted.');
+      throw e;
+    } finally {setBusy(false);}
+  }
+
   async function submit(event) {
     event.preventDefault(); setError('');
     if (!organization?.id) return;
+    if (EVENT_INQUIRY_PORTAL_ENABLED) {
+      const invalid=validateInquirySubmission(form);
+      if(invalid){setError(invalid);return;}
+      setBusy(true);
+      try {
+        const {data}=await supabase.auth.getUser();
+        if(isVerifiedInquiryAccount(data?.user,form.contact_email)){
+          await finishVerifiedInquiry(data.user);
+        } else setAccountPromptOpen(true);
+      } catch(e) {setError(e?.message||'Could not verify your account.');setAccountPromptOpen(true);}
+      finally{setBusy(false);}
+      return;
+    }
     if (!form.preferred_date) { setError('Please select a first-choice date.'); return; }
     setBusy(true);
     const { error: insertError } = await supabase.from('event_requests').insert({
@@ -513,6 +554,18 @@ function PublicInquiryPage({ slug }) {
 
   if (loading) return <LoadingScreen message="Loading outing inquiry..." />;
   if (!organization) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Venue not found.</h1><p>This inquiry link is not connected to an active EIG venue.</p>{error && <div className="platform-error">{error}</div>}</div></div>;
+  if (submitted && EVENT_INQUIRY_PORTAL_ENABLED)
+    return <div className="inquiry-public-shell">
+      <div className="inquiry-public-card success-card">
+        <div className="platform-logo-mark">EIG</div>
+        <p className="platform-eyebrow">{organization.name} · Verified Request</p>
+        <h1>Your event request was submitted.</h1>
+        <p>Your account is now linked to request <code>{requestReceiptId.slice(0,8)}</code>.
+          The venue will review your dates and details before confirming any reservation.</p>
+        <EventInquiryDashboard supabaseClient={supabase}
+          onNewRequest={()=>{setSubmitted(false);setRequestId(window.crypto?.randomUUID?.()||'');}} />
+      </div>
+    </div>;
   if (submitted) return <div className="inquiry-public-shell"><div className="inquiry-public-card success-card"><div className="platform-logo-mark">EIG</div><p className="platform-eyebrow">{organization.name}</p><h1>Your outing request was submitted.</h1><p>The venue will review your requested dates and outing details and follow up with you. Your selected dates are requests until the venue confirms one.</p><button className="platform-secondary-button" onClick={() => window.location.reload()}>Submit another request</button></div></div>;
 
   return (
@@ -525,6 +578,11 @@ function PublicInquiryPage({ slug }) {
         {error && <div className="platform-error">{error}</div>}
         <div className="form-submit-row"><p>Submitting this form does not reserve or confirm a date.</p><button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Submitting...' : 'Submit Outing Request'}</button></div>
       </form>
+      {accountPromptOpen && EVENT_INQUIRY_PORTAL_ENABLED &&
+        <EventInquiryAccountPrompt contactEmail={form.contact_email}
+          contactFullName={form.contact_full_name} supabaseClient={supabase}
+          onCancel={()=>setAccountPromptOpen(false)}
+          onAuthenticated={finishVerifiedInquiry} />}
     </div></div>
   );
 }

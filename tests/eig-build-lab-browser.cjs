@@ -54,7 +54,7 @@ const fs = require("node:fs/promises");
         externalResearch:false,readOnly:true,autoBuilt:false,autoApproved:false,autoDeployed:false}
        }})});
     });
-    const aiPanel=page.getByRole("heading",{name:"OpenAI Connection & Scanner Review"}).locator("..");
+    const aiPanel=page.locator("#bl-panel-ai > .platform-section-card");
     await aiPanel.getByLabel("Which module should AI review?").selectOption("invoices");
     await aiPanel.getByRole("button",{name:"Analyze this scanner module with AI"}).click();
     await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();

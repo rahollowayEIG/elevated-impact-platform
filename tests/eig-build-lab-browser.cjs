@@ -14,6 +14,31 @@ const fs = require("node:fs/promises");
     page.on("pageerror", (e) => errors.push(e.message));
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
+    // AI recommendations are owner-clicked, source-only proposals.
+    // Mock the provider-backed endpoint: browser tests must never spend money.
+    await page.route("**/api/eig-build-lab-ai-review",async route=>{
+      const request=route.request();
+      assert.deepEqual(request.postDataJSON(),{moduleId:"invoices"});
+      assert.ok((request.headers().authorization||"").startsWith("Bearer "));
+      await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+       ok:true,review:{kind:"eig_build_lab_ai_review",schemaVersion:1,moduleId:"invoices",
+       sourceVersion:"a".repeat(40),summary:"Invoice data and signature gates require owner review.",
+       model:"gpt-4.1-mini",usage:{input_tokens:100,output_tokens:60},
+       recommendations:[{id:"ai-review-invoices-1",title:"Keep invoice snapshots immutable",
+        why:"Invoice line database records are not yet verified.",
+        nextAction:"Test authorized order line snapshots in isolated Sandbox.",
+        evidenceFiles:["src/lib/epInvoiceDraft.mjs"],
+        status:"unverified_proposal",ownerReview:"pending"}],
+       safety:{ownerOnly:true,previewOnly:true,customerDataUploaded:false,rawSourceUploaded:false,
+        externalResearch:false,readOnly:true,autoBuilt:false,autoApproved:false,autoDeployed:false}
+       }}});
+    });
+    const aiPanel=page.getByRole("heading",{name:"OpenAI Connection & Scanner Review"}).locator("..");
+    await aiPanel.getByLabel("Which module should AI review?").selectOption("invoices");
+    await aiPanel.getByRole("button",{name:"Analyze this scanner module with AI"}).click();
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    assert.match(await aiPanel.innerText(),/Pending owner review/);
+    assert.match(await aiPanel.innerText(),/No changes applied/);
     await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
     // Shared commerce prototype runs without API calls or real profiles.
     const discover=page.locator(".epd-root");

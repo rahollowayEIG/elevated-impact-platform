@@ -10,6 +10,7 @@ import BuildImpactReview from "./BuildImpactReview.jsx";
 import BuildLabAiConnection from "./BuildLabAiConnection.jsx";
 import BuildLabMasterScanner from "./BuildLabMasterScanner.jsx";
 import BuildLabImprovementRadar from "./BuildLabImprovementRadar.jsx";
+import EpDiscoveryPilot from "./EpDiscoveryPilot.jsx";
 import ResearchTargetPlanner from "./ResearchTargetPlanner.jsx";
 
 const EIG_PILOT = {
@@ -266,6 +267,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
 
     <BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
     <BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
+    <EpDiscoveryPilot />
 
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">

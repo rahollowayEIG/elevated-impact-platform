@@ -175,9 +175,10 @@ const RADAR_RULES=Object.freeze([
 ]);
 const LANE_ORDER={essential:0,wow:1};
 const PRIORITY_ORDER={critical:0,high:1,medium:2,low:3};
-function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],sourceVersion="local-unversioned"}={}){
+function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],moduleIds=[],sourceVersion="local-unversioned"}={}){
  if(!sources||typeof sources!=="object"||Array.isArray(sources))throw Error("Approved source map required.");
- if(typeof moduleId!=="string"&&moduleId!==null)throw Error("Unsupported improvement scope.");
+ if((typeof moduleId!=="string"&&moduleId!==null)||
+    (moduleId!==null&&!moduleIds.includes(moduleId)))throw Error("Unsupported improvement scope.");
  const allowed=new Set(allowedFiles);
  if(!allowed.size||[...allowed].some(x=>typeof x!=="string"||!Object.prototype.hasOwnProperty.call(sources,x)))
    throw Error("Approved source catalog required.");

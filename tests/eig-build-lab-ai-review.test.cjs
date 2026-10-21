@@ -161,3 +161,27 @@ test("provider and validation failures have distinct safe diagnostics",async()=>
  assert.equal(invalid.body.errorCode,"ai_review_validation_failed");
  assert.equal(JSON.stringify(unavailable.body).includes("secret provider details"),false);
 });
+
+test("provider schema enforces the same compact limits and evidence paths as local validation",()=>{
+ const {LIMITS}=require('../server/eig-build-lab-ai-review.cjs');
+ const c=context(),request=buildAiReviewRequest(c),schema=request.text.format.schema;
+ assert.equal(schema.properties.summary.maxLength,LIMITS.summary);
+ const list=schema.properties.recommendations;
+ assert.equal(list.maxItems,MAX_ACTIONS);
+ for(const key of ['title','why','nextAction'])assert.equal(list.items.properties[key].maxLength,LIMITS[key]);
+ assert.deepEqual(list.items.properties.evidenceFiles.items.enum,c.files);
+ assert.equal(list.items.properties.evidenceFiles.maxItems,LIMITS.evidenceFiles);
+ assert.equal(buildAiReviewRequest({...c,files:[]}).text.format.schema.properties.recommendations.items.properties.evidenceFiles.maxItems,0);
+ for(const key of ['summary','title','why','nextAction']){
+  const payload=fakeAI(c.files),parsed=JSON.parse(payload.output[0].content[0].text);
+  if(key==='summary')parsed.summary='x'.repeat(LIMITS[key]+1);else parsed.recommendations[0][key]='x'.repeat(LIMITS[key]+1);
+  payload.output[0].content[0].text=JSON.stringify(parsed);
+  assert.throws(()=>validateAiReviewResponse(payload,c));
+ }
+});
+test("incomplete, truncated and refused output remains rejected with safe reason codes",()=>{
+ const c=context();
+ assert.throws(()=>validateAiReviewResponse({status:'incomplete',incomplete_details:{reason:'max_output_tokens'},output:[]},c),e=>e.reviewCode==='token_limit');
+ assert.throws(()=>validateAiReviewResponse({status:'completed',output:[{content:[{type:'refusal',refusal:'private text'}]}]},c),e=>e.reviewCode==='refused');
+ assert.throws(()=>validateAiReviewResponse({status:'completed',output:[{content:[{type:'output_text',text:'{"summary":'}]}]},c),e=>e.reviewCode==='invalid_json');
+});

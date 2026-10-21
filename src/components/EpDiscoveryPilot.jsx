@@ -6,12 +6,14 @@ import {
  buildEventProposal,draftCustomizationRequest
 } from "../lib/epDiscoveryEngine.mjs";
 import "./ep-discovery-pilot.css";
+import VendorStoreConnectionsPilot from "./VendorStoreConnectionsPilot.jsx";
 
 const TABS=[
  {id:"likes",title:"My Likes",emoji:"❤️"},
  {id:"discover",title:"Discoveries",emoji:"✨"},
  {id:"registry",title:"Gift Registry",emoji:"🎁"},
  {id:"events",title:"Event Concierge",emoji:"⛳"},
+ {id:"stores",title:"Connect My Store",emoji:"🏪"},
 ];
 const cents=v=>(v/100).toLocaleString("en-US",{style:"currency",currency:"USD"});
 const detail=EP_INTERESTS.reduce((m,x)=>({...m,[x.id]:x.label}),{});
@@ -278,6 +280,7 @@ export default function EpDiscoveryPilot(){
     <p className="epd-bottom-note">Approval/order buttons will remain disabled until real vendor verification, organizer account ownership and contract/payment controls are ready.</p>
    </div>}
   </div>}
+  {tab==="stores"&&<div role="tabpanel" id="epd-panel-stores" aria-labelledby="epd-tab-stores" className="epd-panel"><VendorStoreConnectionsPilot/></div>}
   <footer className="epd-footer">Fictional sample catalog ({EP_DEMO_OFFERS.length} offers). Demo state exists only in this browser tab and clears on refresh.
     Production publishing, vendor messaging, registry sharing, paid subscriptions and automatic ordering remain disabled. Safety: {EP_PILOT_SAFETY.realPaymentsMade?"UNSAFE":"No payments"}.</footer>
  </section>;

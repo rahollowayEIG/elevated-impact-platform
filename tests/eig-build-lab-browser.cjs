@@ -31,7 +31,7 @@ const fs = require("node:fs/promises");
         status:"unverified_proposal",ownerReview:"pending"}],
        safety:{ownerOnly:true,previewOnly:true,customerDataUploaded:false,rawSourceUploaded:false,
         externalResearch:false,readOnly:true,autoBuilt:false,autoApproved:false,autoDeployed:false}
-       }}});
+       }})});
     });
     const aiPanel=page.getByRole("heading",{name:"OpenAI Connection & Scanner Review"}).locator("..");
     await aiPanel.getByLabel("Which module should AI review?").selectOption("invoices");

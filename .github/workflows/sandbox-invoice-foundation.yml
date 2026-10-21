@@ -1,0 +1,34 @@
+name: Sandbox Invoice Foundation
+on:
+  pull_request:
+    paths:
+      - 'supabase/sandbox/**'
+      - 'src/lib/epInvoice*.mjs'
+      - 'src/components/EpInvoice*.jsx'
+      - 'tests/ep-invoice-*'
+      - 'tests/fixtures/ep-invoice-db.mjs'
+      - '.github/workflows/sandbox-invoice-foundation.yml'
+      - 'package*.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fictional-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:invoice-draft && npm run test:invoice-persistence
+      - run: npx playwright install --with-deps chromium
+      - run: mkdir -p test-results && npm run test:invoice-persistence-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sandbox-invoice-browser
+          path: test-results/ep-invoice-persistence-mobile.png
+          if-no-files-found: ignore

@@ -119,3 +119,9 @@ Owner priority: evolve Build Lab from a manual Project Architect into a proactiv
 **Modules:** server/eig-inception-source-scan.cjs, server/eig-build-lab-scan-handler.cjs, server/eig-build-lab-preview-access.cjs, server/eig-build-lab-auth-client.cjs, api/eig-build-lab-scan.js, src/lib/eigBuildLabScanClient.mjs, src/components/EigBuildLab.jsx. Tests inspect the actual files, enforce read-before-auth denial, validate report schemas and exercise browser review autosave.
 
 **Deployment:** Draft PR #53 only; read-only private Vercel branch preview. No merge, production migration, paid branch, AI request, cron task, customer data operation or live release. Next phase: permissioned synthetic browser walkthroughs to test actual rendered UI, plus separately authorized CI artifact ingestion. Weekly monitoring requires explicit owner approval and budgets.
+
+## Focused tool navigation (October 21, 2026)
+
+Build Lab has top buttons for Master Scanner, Upgrade Radar, AI Review, IA Inspector, Research, Impact Review, Discoveries, Invoices and Project Architect. Only the selected workspace is visible. Panels stay mounted when switching so existing forms, scan results, AI responses and in-flight work survive tool changes; switching never invokes a scanner or an AI request. The selected tool is a per-owner browser-session preference, not an access grant or a cross-device save. Missing/blocked session storage falls back to Master Scanner. Existing draft persistence and owner authorization remain unchanged.
+
+The AI connection probe and recommendation endpoint have distinct enable flags. A successful probe does not establish that recommendations are enabled. On October 21 the protected orchestrator preview's recommendation flag was verified as enabled, but its latest deployment predated the flag. Rebuilding that same preview picked up current environment configuration; the authenticated owner must still verify a real recommendation response.

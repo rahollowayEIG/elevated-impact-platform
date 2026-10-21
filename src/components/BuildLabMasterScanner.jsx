@@ -164,6 +164,16 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     <div><strong>{untouched.reviewNeeded}</strong><span>Needs verification</span></div>
     <div><strong>{untouched.notObservedInSample}</strong><span>Not observed in sample</span></div>
    </div>
+   {report.improvementAudit&&<section className="blm-upgrade-teaser" aria-label="Proactive product improvement suggestions">
+    <div>
+      <h3>What should we improve next?</h3>
+      <p>The same protected scan also identified <strong>{report.improvementAudit.summary.essential} essential capability checks</strong> and <strong>{report.improvementAudit.summary.wow} standout ideas</strong>.</p>
+      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> directly below this scanner.</p>
+    </div>
+    <ul>{report.improvementAudit.suggestions.filter(x=>x.lane==="essential").slice(0,3).map(item=>
+      <li key={item.id}><strong>{item.title}</strong><span>{item.priority} · {item.status==="not_observed_in_sample"?"No source signal found":"Preview source signals found; functionality unverified"}</span></li>
+    )}</ul>
+   </section>}
    <BuildLabEnvironmentPanel audit={report.environmentAudit} />
    <div className="blm-toolbar">
     <label>Search modules

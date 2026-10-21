@@ -55,6 +55,32 @@ const fs = require("node:fs/promises");
           "Review code differs by deployed commit; reference source is preview only."],
       };
     }
+    function demoUpgrade(selected){
+      const suggestion={
+        id:"identity-for-actions",title:"Account-first for every trackable action",
+        lane:"essential",scope:["*"],priority:"critical",impact:"high",effort:"medium",
+        why:"Every trackable action needs a verified account.",proposal:"Use one account gateway for requests and forms.",
+        verify:"Verify ownership and account continuation in an isolated Sandbox.",
+        dependencies:["Verified accounts"],standard:"owasp-asvs",
+        status:"partial_preview_signals",signalCount:1,signalsChecked:2,
+        evidence:[{path:"src/PlatformApp.jsx",line:4,excerpt:"EventInquiryAccountPrompt"}],
+        claim:"product_upgrade_candidate_not_verified",ownerReview:"pending",
+      };
+      return {
+        kind:"eig_build_lab_improvement_radar",schemaVersion:1,
+        scope:selected?"event-builder":"all",sourceVersion:"a".repeat(40),
+        origin:"protected_preview_source_heuristics",
+        benchmark:"Static product quality rubric, not a live external comparison.",
+        references:[{id:"owasp-asvs",name:"OWASP ASVS",url:"https://asvs.owasp.org/"}],
+        suggestions:[suggestion],
+        summary:{essential:1,wow:0,signalsFound:0,partial:1,notObserved:0},
+        safety:{readOnly:true,externalsVisited:false,aiCalled:false,
+          autoBuilt:false,liveChanges:false,approvalRequired:true},
+        limitations:["Upgrade candidates, not confirmed missing features.",
+          "Preview source markers are not runtime tests.",
+          "No AI and no external websites accessed."],
+      };
+    }
     const masterFixture = {
       schemaVersion: 1, kind: "eig_build_lab_master_scan", target: "elevationpilot",
       scannerVersion: "source-plus-dated-schema-v1", sourceVersion: "a".repeat(40),
@@ -99,12 +125,15 @@ const fs = require("node:fs/promises");
         modules: selected ? [masterFixture.modules[0]] : masterFixture.modules,
         summary: selected ? { modulesReviewed: 1, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 0 } : masterFixture.summary,
         environmentAudit:demoAudit(request.environmentMode,selected),
+        improvementAudit:demoUpgrade(selected),
       };
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, report: responseReport }) });
     });
     await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
     await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
+    await page.locator(".blm-upgrade-teaser").getByText("What should we improve next?").waitFor();
+    await page.locator(".blm-upgrade-teaser").getByText("Account-first for every trackable action").waitFor();
     await page.getByRole("heading", { name: /Environment Evidence: Compare Live/ }).waitFor();
     await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).waitFor();
     await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).click();

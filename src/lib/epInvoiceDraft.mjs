@@ -52,7 +52,7 @@ export function invoiceLine({id,label,quantity,unitCents}={}){
  if(!Number.isSafeInteger(total)||total>MAX_INVOICE_CENTS)throw Error("Line item exceeds the example invoice limit.");
  return {id:lineId,label:cleanLabel,quantity,unitCents,totalCents:total};
 }
-function safeBill({issuerId,customerName,customerEmail,sourceType,reference,notes,issueDate,dueDate,taxBasisPoints,lines}={}){
+function safeBill({issuerId,customerName,recipient:existingRecipient,customerEmail,sourceType,reference,notes,issueDate,dueDate,taxBasisPoints,lines}={}){
  if(!ISSUERS.has(issuerId))throw Error("Choose a sample issuer.");
  if(!SOURCES.has(sourceType))throw Error("Select an invoice source.");
  if(!CURRENCIES.has("USD"))throw Error("Unsupported currency.");
@@ -62,7 +62,7 @@ function safeBill({issuerId,customerName,customerEmail,sourceType,reference,note
  if(typeof customerEmail!=="string"||customerEmail.length>160||
    (customerEmail!==""&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)))
   throw Error("Enter a valid example email or leave it empty.");
- const recipient=nonEmpty(customerName,"Recipient",140);
+ const recipient=nonEmpty(customerName??existingRecipient,"Recipient",140);
  if(!Array.isArray(lines)||lines.length<1||lines.length>MAX_LINES)
   throw Error("Add 1–30 line items.");
  const normalized=lines.map(x=>invoiceLine(x));

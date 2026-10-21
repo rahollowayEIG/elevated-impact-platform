@@ -1,0 +1,231 @@
+// EIG Build Lab: Essentials & Wow Radar.
+// Product capability discovery from FIXED, owner-only Master Scanner sources.
+// Evidence is a source marker, never proof a feature is complete, missing,
+// authorized, deployed or working. No external web, AI, writes or new paths.
+const RADAR_REFERENCES=Object.freeze([
+  {id:"owasp-asvs",name:"OWASP ASVS 5.0",url:"https://asvs.owasp.org/"},
+  {id:"wcag",name:"W3C WCAG 2.2",url:"https://www.w3.org/TR/WCAG22/"},
+  {id:"nng",name:"Nielsen Norman Group usability heuristics",url:"https://www.nngroup.com/articles/ten-usability-heuristics/"},
+  {id:"vitals",name:"Google Core Web Vitals",url:"https://web.dev/articles/vitals"},
+]);
+const E=(id,title,scope,priority,impact,effort,why,upgrade,verify,dependencies,signals,standard="nng")=>({
+ id,title,lane:"essential",scope,priority,impact,effort,why,upgrade,verify,dependencies,signals,standard
+});
+const W=(id,title,scope,priority,impact,effort,why,upgrade,verify,dependencies,signals)=>({
+ id,title,lane:"wow",scope,priority,impact,effort,why,upgrade,verify,dependencies,signals,standard:"nng"
+});
+const ALL=Object.freeze(["*"]);
+const RADAR_RULES=Object.freeze([
+ E("identity-for-actions","Account-first for every trackable action",ALL,"critical","high","medium",
+  "Requests, applications, donations, purchases and registrations need a verified owner so the user can return later.",
+  "Make one reusable Sign In / Create Account continuation gate across modules. Preserve the completed form, verify identity, and finalize only once the backend confirms ownership.",
+  "Inventory every submit/payment/request action; test existing and new accounts, code verification, cross-device resume and mismatched-email rejection.",
+  ["Verified accounts","Server authorization","Idempotent submission"],
+  [["src/PlatformApp.jsx","EVENT_INQUIRY_PORTAL_ENABLED"],["src/PlatformApp.jsx","EventInquiryAccountPrompt"],["src/ElevationAirport.jsx","MainCabinPage"]],"owasp-asvs"),
+ E("least-privilege","End-to-end permissions and public API hardening",ALL,"critical","high","high",
+  "A login screen alone does not secure anonymous APIs or ensure each account sees only authorized records.",
+  "Audit effective API grants, policies, roles and service functions for every tenant, guest, Passenger, Pilot, ATC and EIG owner.",
+  "Check database grants and RLS per environment using read-only SQL; add denied-access tests and preserve intentional public intake.",
+  ["Role matrix","Security regression tests","Safe rollback"],
+  [["src/PlatformApp.jsx","accessWindowIsActive"],["src/SquawkCenter.jsx","required_roles"],["tests/recovery-session.test.mjs","test("]],"owasp-asvs"),
+ E("my-activity","One account-wide My Activity and status center",ALL,"high","high","medium",
+  "People should be able to see every request, registration, order and obligation, rather than hunt through separate apps.",
+  "Build a shared My Activity index with request owner, reference ID, status, next action, timeline and deep link across all apps.",
+  "Map each trackable workflow to an account; check no cross-tenant leakage, searching, sorting, mobile usability and stale updates.",
+  ["Account-first gateway","Common activity schema","Permission-filtered views"],
+  [["src/PlatformApp.jsx","EventInquiryDashboard"],["src/ElevationAirport.jsx","MainCabinPage"],["src/PlatformApp.jsx","eventRequests"]]),
+ E("reliable-notifications","Notification delivery, preferences and failure recovery",ALL,"high","high","high",
+  "Important actions need reliable, understandable email and in-app updates, without duplicates or spam.",
+  "Create event-driven notification outbox, Squawk/email recipient tracking, digest preferences, retries, quiet hours and delivery failure alerts.",
+  "Simulate each status change and failure; verify only intended recipients get one message with a working, authorized deep link.",
+  ["Verified owner identity","Outbox/idempotency","Delivery adapters"],
+  [["src/SquawkCenter.jsx","squawk_message_recipients"],["src/SquawkCenter.jsx","squawk_recipient_preferences"],["src/PlatformApp.jsx","venue_response"]]),
+ E("workflow-history","Activity timeline, accountability and audit trails",ALL,"high","high","medium",
+  "Every consequential status, approval, message and price change should be explainable afterward.",
+  "Record who changed what and when, separating customer-visible updates from confidential internal audit events.",
+  "Exercise Hangar status, contract and payment state changes; compare audit entries, source actions and requester-visible histories.",
+  ["Role permissions","Event/outbox rules"],
+  [["src/PlatformApp.jsx","venue_reviewed_by"],["src/SquawkCenter.jsx","squawk_message_reviews"],["src/EieEventSetupSteps.jsx","updated_at"]],"owasp-asvs"),
+ E("draft-resilience","Autosave, crash recovery and resumable forms",ALL,"high","high","medium",
+  "Long workflows should survive browser reloads, accidental navigation and interruptions.",
+  "Add reusable draft storage, dirty-state warnings, conflict handling and resume links to every multistep form.",
+  "Test interrupted entry, switching tabs/devices, timeouts and restoring saved data without duplicate submission.",
+  ["Verified accounts","Encrypted/server-side drafts for sensitive data"],
+  [["src/components/EigBuildLab.jsx","localStorage"],["src/components/EventPacketStudio.jsx","draft"],["src/PlatformApp.jsx","onBeforeUnload"]]),
+ E("failure-guardrails","Validation, idempotency and actionable error recovery",ALL,"high","high","medium",
+  "Users deserve clear feedback, safe retries and prevention of duplicated purchases, bookings or forms.",
+  "Standardize client/server validation, deduplicated commands, clear empty/loading/error states and undo where safe.",
+  "Retry network failures, repeated submit clicks, stale sessions and partial failures; confirm no double charge or duplicate team.",
+  ["Central validation","Transaction/idempotency tests"],
+  [["src/PlatformApp.jsx","validateInquirySubmission"],["tests/team-payment-cart.test.mjs","test("],["src/EieEventSetupSteps.jsx","error"]]),
+ E("accessibility","Accessibility and keyboard-first interaction",ALL,"high","high","medium",
+  "Users should navigate forms, tables and dashboards with a keyboard, screen reader and adequate contrast.",
+  "Adopt a shared WCAG 2.2 review and accessible control patterns for every extension and role.",
+  "Run automated axe checks AND manual keyboard, focus, labels, dialogs, zoom and screen-reader smoke tests on mobile.",
+  ["Shared design system","Accessibility browser test runner"],
+  [["src/PlatformApp.jsx","aria-label"],["src/components/EigBuildLab.jsx","aria-label"],["src/ElevationAirport.jsx","aria-label"]],"wcag"),
+ E("findability","Search, sort, filters and consistent navigation",ALL,"high","high","low",
+  "People need to find events, sponsors, invoices, messages and next actions quickly.",
+  "Enforce platform rules: searchable meaningful lists, sortable meaningful columns, remembered filters and clear breadcrumbs.",
+  "Inventory every roster/directory/table; test search relevance, ascending/descending sort, zero state and tenant scoping.",
+  ["Shared list controls","Role navigation map"],
+  [["src/PlatformApp.jsx","aria-sort"],["src/ElevationAirport.jsx","search"],["src/components/EigBuildLab.jsx","Search"]]),
+ E("release-safety","Automated functional tests, observability and rollback",ALL,"critical","high","high",
+  "Reliable product upgrades require more than code existing: workflows must run, failures must surface and releases must be recoverable.",
+  "Add branch-isolated test coverage, smoke checks, error telemetry, dependency impact, deployment approval and rollback verification.",
+  "Run synthetic Sandbox end-to-end flows and permission checks; confirm no Live writes or real financial/email side effects.",
+  ["Protected previews","Synthetic data","Owner approval"],
+  [["tests/eig-build-lab-browser.cjs","chromium.launch"],["src/components/EigBuildLab.jsx","BuildLabMasterScanner"],["tests/event-builder-browser.cjs","Save Registration"]],"owasp-asvs"),
+ E("data-portability","Import/export, data ownership and backup restoration",ALL,"medium","high","medium",
+  "Customers need trustworthy records, accurate exports and recoverability if systems or vendors change.",
+  "Define data export, retention, secure restore checks and schema-compatible integrations for each organization and event.",
+  "Test export completeness, tenant boundaries, redaction, retention and actual restore into a fresh isolated environment.",
+  ["Organization data model","Audit logging"],
+  [["src/components/EventPacketStudio.jsx","export"],["src/components/EigBuildLab.jsx","Download reusable JSON"],["src/EieRosterMaintenance.jsx","export"]],"owasp-asvs"),
+ E("integration-health","Connected-app health and reconciliation",ALL,"high","high","high",
+  "Email, payments, files and external providers can fail even when internal UI appears healthy.",
+  "Create a provider status center with failed job queues, sync timestamps, API limits, retries, reconciliation and admin alerts.",
+  "Disconnect Google, Stripe or mail in Sandbox and verify alerts, eventual consistency, error handling and zero duplicate work.",
+  ["Provider registry","Job logs","Health monitoring"],
+  [["src/SquawkCenter.jsx","delivery_status"],["src/EieEventSetupSteps.jsx","stripe"],["src/PlatformApp.jsx","google"]]),
+ E("performance-mobile","Mobile speed, responsiveness and quality budgets",ALL,"medium","high","medium",
+  "Heavy dashboards and editors must remain fast and usable on phones, slower networks and older laptops.",
+  "Establish route-level bundle/performance budgets, image optimization, Core Web Vitals and real-device quality checks.",
+  "Measure LCP, INP, CLS, keyboard responsiveness and mobile form completion on real representative pages.",
+  ["Baseline measurements","Synthetic tests"],
+  [["src/PlatformApp.jsx","React.lazy"],["src/ElevationAirport.jsx","@media"],["src/components/EventPacketStudio.jsx","resize"]],"vitals"),
+ E("privacy-controls","Privacy, retention and consent by design",ALL,"high","high","medium",
+  "Role-based data handling, records retention and marketing preferences reduce risk and build trust.",
+  "Create discoverable consent controls, deletion/retention policies, export requests and staff-side data access accountability.",
+  "Audit personal data, tracking, deletion, consent changes, recipient opt-out and least-privilege API responses.",
+  ["Account ownership","Audit trail"],
+  [["src/SquawkCenter.jsx","squawk_recipient_preferences"],["src/PlatformApp.jsx","contact_email"],["src/ElevationAirport.jsx","phone"]],"owasp-asvs"),
+ W("one-home","One personalized home for everything",ALL,"high","high","high",
+  "A single screen showing everything pending across registrations, requests, store, Squawks and contracts makes the platform feel cohesive.",
+  "Create a role-aware Today and My Activity page with cards, urgent actions, completed tasks and fast deep links.",
+  "Test a single user with multiple roles, events and organizations; ensure only authorized tasks are shown.",
+  ["Account-first gateway","Unified activity index","Role permissions"],
+  [["src/PlatformApp.jsx","portalView"],["src/ElevationAirport.jsx","MainCabinPage"],["src/SquawkCenter.jsx","unreadCount"]]),
+ W("request-to-event","Turn a request into a ready-to-run event",["event-builder","registration","contracts"],"high","high","medium",
+  "Organizers should not have to reenter what they already told the Hangar.",
+  "One-click authorized request-to-Flight handoff: prefill Event Builder, terms, staff tasks, invited organizer and event packet.",
+  "Trace every request field into the created Flight, preserve approved locks and prohibit duplicate events.",
+  ["Requester ownership","Hangar approval","Template mapping"],
+  [["src/PlatformApp.jsx","event_requests"],["src/EieEventSetupSteps.jsx","function EieEventSetupSteps"],["src/PlatformApp.jsx","organizer_handoff_at"]]),
+ W("smart-next-steps","Smart next-action companion",ALL,"high","high","medium",
+  "A platform that always knows what needs doing next feels dramatically easier to use.",
+  "Offer context-based checklists and reminders: complete team, approve contract, upload sponsor artwork or review venue response.",
+  "Test when tasks are complete, blocked, due soon or permission-restricted; never nag about an already completed task.",
+  ["Activity statuses","Deadlines","Permissions"],
+  [["src/ElevationAirport.jsx","missing"],["src/PlatformApp.jsx","status"],["src/components/EigBuildLab.jsx","next"]]),
+ W("ai-workflow-helper","AI-assisted setup and creation with confirmation",ALL,"medium","high","high",
+  "AI could turn event descriptions into practical itineraries, flyers, packages, announcements and draft workflows.",
+  "Add an evidence-grounded copilot that produces editable drafts, checks permissions and asks before any outward-facing action.",
+  "Require human approval, citations to internal source, clear AI costs and adversarial prompt-safety tests.",
+  ["Safe AI connection","Budget limits","Approval gates"],
+  [["src/components/EigBuildLab.jsx","blueprint"],["src/components/InceptionApex.jsx","design"],["src/components/EventPacketStudio.jsx","itinerary"]]),
+ W("actionable-squawk","Squawk Box that resolves tasks, not just messages",["squawk","event-builder","registration"],"high","high","medium",
+  "Messages should let recipients act in context instead of navigating through multiple applications.",
+  "Add permission-aware action cards: confirm dates, finish registration, approve designs or open a relevant Event Builder step.",
+  "Verify each action deep link, role restrictions, read status, duplicate taps and user notification choices.",
+  ["Recipient security","Account-wide activity","Deep links"],
+  [["src/SquawkCenter.jsx","openDirect"],["src/SquawkCenter.jsx","eventId"],["src/PlatformApp.jsx","venue_response"]]),
+ W("template-magic","Instant branded preview and reusable design systems",["event-packet","inception","social","sponsors"],"medium","high","medium",
+  "A business or event should look polished without requiring an experienced designer.",
+  "Generate live, editable previews from event data across print, flyers, social cards, digital displays and sponsor placements.",
+  "Test master-size designs, safe margins, print bleed, output fidelity, theme consistency and brand rights.",
+  ["Design assets","Output presets","Brand registry"],
+  [["src/components/InceptionApex.jsx","template"],["src/components/EventPacketStudio.jsx","sponsor"],["src/components/SocialMediaApp.jsx","campaign"]]),
+ W("event-day-hq","Mobile Event Day Command Center",["registration","roster","event-builder"],"high","high","high",
+  "Coordinators need everything they need during event check-in without navigating five separate systems.",
+  "Create a mobile-first Event Day view for check-in, teams, volunteer jobs, notices, sponsor issues and real-time status.",
+  "Test low-connectivity conditions, fast check-in, conflict resolution, ATC access and delayed sync.",
+  ["Role-specific data","Reliable messaging","Offline policy"],
+  [["src/EieRosterMaintenance.jsx","check"],["src/ElevationAirport.jsx","MainCabinPage"],["src/EieEventSetupSteps.jsx","itinerary"]]),
+ W("live-map-yardage","Interactive venue maps, GPS and sponsored flyovers",["maps","event-packet","event-builder"],"medium","high","high",
+  "Maps can help guests navigate and create a unique sponsor experience that translates into printable formats.",
+  "Connect venue layout, golf GPS, hole flyovers, sponsor overlays and printable yardage/scorecard templates.",
+  "Validate course data and coordinates, consent/license restrictions, accessible alternatives and offline print fallback.",
+  ["Venue map data","Sponsor assets","Image rights"],
+  [["src/components/EventPacketStudio.jsx","map"],["src/components/EventPacketStudio.jsx","sponsor"],["src/PlatformApp.jsx","Flight"]]),
+ W("smart-sponsorship","Sponsor ROI and repeat-business autopilot",["sponsors","social","event-builder"],"medium","high","high",
+  "Sponsors return when fulfillment is transparent and value is demonstrated.",
+  "Add sponsor packages, proofs, multi-channel placement summaries, delivery evidence and optional renewal reminders.",
+  "Test sponsor visibility, permissions, actual proof of service and no misleading reach claims.",
+  ["Sponsor registry","Asset proofs","Reporting"],
+  [["src/EieEventSetupSteps.jsx","sponsors"],["src/components/SocialMediaApp.jsx","campaign"],["src/components/EventPacketStudio.jsx","sponsor"]]),
+ W("customization-studio","Event-type extensions and no-code customization",["event-builder","registration","inception"],"high","high","high",
+  "A configurable core can serve golf, weddings, charity events and corporate programs without fragmented apps.",
+  "Build an extension registry and Customization Studio for fields, forms, pricing, roles, workflows and design themes.",
+  "Check configuration isolation, schema versioning, template portability and permissions for each event type.",
+  ["Shared event schema","Entitlements","Component registry"],
+  [["src/EieEventSetupSteps.jsx","event_type"],["src/PlatformApp.jsx","entitlements"],["src/components/InceptionApex.jsx","template"]]),
+ W("self-healing-build-lab","AI diagnosis, repair proposals and automatic retesting",["build-lab"],"high","high","high",
+  "Continuous analysis can reduce repetitive testing and make every new feature safer.",
+  "Use scan evidence to write isolated failing tests, propose patches in feature branches, run CI and request owner approval.",
+  "Demonstrate red/green tests, cost controls, regression protection and a hard block on unapproved production changes.",
+  ["Isolated sandbox","Browser runner","AI budget","Owner approval"],
+  [["src/components/EigBuildLab.jsx","BuildLabMasterScanner"],["tests/eig-build-lab-browser.cjs","chromium.launch"],["src/components/EigBuildLab.jsx","Accept"]]),
+ W("thoughtful-delight","Personalized, accessible moments of delight",ALL,"medium","medium","medium",
+  "Small details make complex apps feel trustworthy and enjoyable: clear onboarding, celebration, useful defaults and welcoming empty states.",
+  "Apply microcopy, progress feedback, personalized onboarding and tasteful success moments without distracting people from tasks.",
+  "Run quick role-by-role usability sessions; validate reduced motion, color contrast and accessibility.",
+  ["User research","Design tokens","Preference settings"],
+  [["src/PlatformApp.jsx","platform-success"],["src/ElevationAirport.jsx","welcome"],["src/components/EigBuildLab.jsx","notice"]])
+]);
+const LANE_ORDER={essential:0,wow:1};
+const PRIORITY_ORDER={critical:0,high:1,medium:2,low:3};
+function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],sourceVersion="local-unversioned"}={}){
+ if(!sources||typeof sources!=="object"||Array.isArray(sources))throw Error("Approved source map required.");
+ if(typeof moduleId!=="string"&&moduleId!==null)throw Error("Unsupported improvement scope.");
+ const allowed=new Set(allowedFiles);
+ if(!allowed.size||[...allowed].some(x=>typeof x!=="string"||!Object.prototype.hasOwnProperty.call(sources,x)))
+   throw Error("Approved source catalog required.");
+ const candidates=RADAR_RULES.filter(x=>moduleId===null||x.scope.includes("*")||x.scope.includes(moduleId));
+ if(moduleId!==null&&!candidates.length)throw Error("Unsupported improvement scope.");
+ const suggestions=candidates.map(rule=>{
+   const evidence=[];
+   for(const [file,marker] of rule.signals){
+     if(!allowed.has(file))throw Error("Improvement rule refers to unapproved source.");
+     const data=sources[file];
+     if(typeof data!=="string")throw Error("Approved source file unavailable.");
+     const position=data.indexOf(marker);
+     if(position<0)continue;
+     const line=data.slice(0,position).split("\n").length;
+     const excerpt=data.split("\n")[line-1].trim().slice(0,150);
+     evidence.push({path:file,line,excerpt});
+   }
+   const status=evidence.length===0?"not_observed_in_sample":
+     evidence.length===rule.signals.length?"preview_signals_found":"partial_preview_signals";
+   return {
+     id:rule.id,title:rule.title,lane:rule.lane,priority:rule.priority,
+     impact:rule.impact,effort:rule.effort,scope:rule.scope,
+     why:rule.why,proposal:rule.upgrade,verify:rule.verify,
+     dependencies:rule.dependencies,standard:rule.standard,status,
+     signalCount:evidence.length,signalsChecked:rule.signals.length,evidence,
+     claim:"product_upgrade_candidate_not_verified",
+     ownerReview:"pending",
+   };
+ }).sort((a,b)=>LANE_ORDER[a.lane]-LANE_ORDER[b.lane]||
+   PRIORITY_ORDER[a.priority]-PRIORITY_ORDER[b.priority]||a.title.localeCompare(b.title));
+ return {
+   kind:"eig_build_lab_improvement_radar",schemaVersion:1,
+   scope:moduleId||"all",sourceVersion,origin:"protected_preview_source_heuristics",
+   benchmark:"Static product-quality rubric inspired by OWASP ASVS, WCAG 2.2, NN/g usability heuristics and Core Web Vitals. No external app comparison or live UI audit was performed.",
+   references:RADAR_REFERENCES.map(x=>({...x})),
+   suggestions,
+   summary:{essential:suggestions.filter(s=>s.lane==="essential").length,
+     wow:suggestions.filter(s=>s.lane==="wow").length,
+     signalsFound:suggestions.filter(s=>s.status==="preview_signals_found").length,
+     partial:suggestions.filter(s=>s.status==="partial_preview_signals").length,
+     notObserved:suggestions.filter(s=>s.status==="not_observed_in_sample").length},
+   safety:{readOnly:true,externalsVisited:false,aiCalled:false,autoBuilt:false,liveChanges:false,approvalRequired:true},
+   limitations:[
+     "Proposals are software-product improvement candidates, not confirmed missing or broken features.",
+     "A matching code marker is NOT proof a feature works; missing markers do not prove absence elsewhere.",
+     "Evidence is from the Build Lab preview allowlist, not deployed Live or Sandbox runtime behavior.",
+     "No external competitor website was scanned, no AI model was called, and no automatic changes were made.",
+   ]
+ };
+}
+module.exports={RADAR_RULES,RADAR_REFERENCES,runImprovementRadar};

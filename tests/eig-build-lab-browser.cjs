@@ -25,12 +25,12 @@ const fs = require("node:fs/promises");
     }
     await chooseTool("Master Scanner");
     const sourceTools=page.locator("#bl-panel-master .bl-scanner-tools");
-    await sourceTools.getByText("Tools used by this scanner",{exact:true}).click();
-    await sourceTools.getByText("Playwright + GitHub Actions",{exact:true}).waitFor();
-    assert.match(await sourceTools.innerText(),/does not query live customer data/);
+    await sourceTools.getByText("Tools used",{exact:true}).click();
+    await sourceTools.getByText("ElevationPilot Source Scanner",{exact:true}).waitFor();
+    assert.match(await sourceTools.innerText(),/does not make a fresh database or GitHub query/);
     await chooseTool("AI Review");
     const aiTools=page.locator("#bl-panel-ai .bl-scanner-tools");
-    await aiTools.getByText("Tools used by this scanner",{exact:true}).click();
+    await aiTools.getByText("Tools used",{exact:true}).click();
     await aiTools.getByText("OpenAI · gpt-4.1-mini",{exact:true}).waitFor();
     assert.match(await aiTools.innerText(),/Manual request/);
     let aiCalls=0;

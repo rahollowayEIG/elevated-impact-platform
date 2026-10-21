@@ -130,7 +130,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   <div className="blm-head">
    <div>
     <p className="platform-eyebrow">EIG BUILD LAB / MASTER SCANNER</p>
-    <h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2>
+    <div className="bl-scanner-title"><h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2><ScannerToolsDisclosure kind="source" /></div>
     <p>Inspect reference source evidence alongside actual deployed Live/Sandbox versions and read-only database metadata.</p>
    </div>
    <div className="blm-launch-controls">
@@ -152,7 +152,6 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     </button>
    </div>
   </div>
-  <ScannerToolsDisclosure />
   <p className="blm-disclaimer">Owner-only. Choose an approved module or the entire platform, then select Live, Sandbox or Compare Both. Environment evidence uses actual deployment commit metadata and independent Supabase schema snapshots, not a live connection every time you click. Source/UI/test badges below are from this protected <strong>Build Lab preview code</strong>, not proof of behavior in either deployment. No browser automation or write operations are performed.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blm-message" role="status">{notice}</p>}

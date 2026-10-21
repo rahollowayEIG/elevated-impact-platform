@@ -145,7 +145,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
  return <section className="platform-section-card blr-root" aria-labelledby="blr-heading">
   <div className="blr-header">
    <div><p className="platform-eyebrow">BUILD LAB / PRODUCT INTELLIGENCE</p>
-     <h2 id="blr-heading">Essentials & Wow Radar</h2>
+     <div className="bl-scanner-title"><h2 id="blr-heading">Essentials & Wow Radar</h2><ScannerToolsDisclosure kind="radar" /></div>
      <p>Automatically surface the overlooked software fundamentals and distinctive experiences worth building next.</p></div>
    <div className="blr-launch">
     <label htmlFor="blr-scope">Scan product opportunities for
@@ -159,7 +159,6 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
     </button>
    </div>
   </div>
-  <ScannerToolsDisclosure kind="radar" />
   <p className="blr-disclosure">This uses the <strong>same owner-authorized, read-only source scanner</strong>, with a fixed product-quality rubric.
    It proposes areas to investigate; it cannot prove a capability is missing or implemented.
    No live browsers, external competitors, AI calls, records, payments or deployments are involved.</p>

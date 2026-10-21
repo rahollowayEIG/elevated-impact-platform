@@ -305,7 +305,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">
         <div>
-          <h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2>
+          <div className="bl-scanner-title"><h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2><ScannerToolsDisclosure kind="inspector" /></div>
           <p>Original InceptionApex-only test scanner, kept for comparison. To scan any other module, use the Master Scanner above.</p>
         </div>
         <button type="button" className="platform-primary-button" disabled={scanRunning}
@@ -313,7 +313,6 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           {scanRunning ? "Inspecting source…" : scanReport ? "Scan this source version again" : "Inspect InceptionApex source →"}
         </button>
       </div>
-      <ScannerToolsDisclosure kind="inspector" />
       <p className="bl-quiet">The scanner examines code from this deployed preview. It does not visit your live app, scan customer designs, or run an AI model.</p>
       {scanError && <p className="platform-error" role="alert">{scanError}</p>}
       {scanNotice && <p className="bl-notice" role="status">{scanNotice}</p>}

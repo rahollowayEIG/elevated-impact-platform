@@ -1,36 +1,22 @@
 import React from 'react';
 import './scanner-tools-disclosure.css';
 
-const SOURCE_TOOLS=[
- ['ElevationPilot scanner','Runs here','Checks the fixed, approved source-file list in this deployed preview.'],
- ['GitHub','Code origin','The scan reads the deployed code copy; it does not fetch GitHub on each click.'],
- ['Supabase','Reference snapshot','Uses dated schema metadata; this button does not query live customer data.'],
- ['Vercel','Hosting','Runs the protected preview and supplies recorded deployment context.'],
- ['Playwright + GitHub Actions','Separate test workflow','Automated browser and regression checks run in CI. Clicking Scan does not execute those tests.'],
-];
-const PLANNED=[
- ['Web research / search','Planned','Source-linked comparisons with other apps and services.'],
- ['Image and document reading','Planned','Extract candidates from authorized product photos and documents for review.'],
- ['Maps / course imagery','Planned','Course mapping and flyover research; no mapping provider is connected here.'],
-];
+const ACCESS=['Supabase owner authorization','Access check','Checks the signed-in owner and current EIG membership before running this scan.'];
+const SOURCE=['ElevationPilot Source Scanner','Evidence scan','Reads the fixed, approved first-party source and test files in this deployed preview. It does not execute the tests.'];
+const ENVIRONMENT=['ElevationPilot Environment Comparison','Snapshot comparison','Compares dated deployment and database-schema snapshots. It does not make a fresh database or GitHub query.'];
 export default function ScannerToolsDisclosure({kind='source',completed=false}){
  const rows=kind==='ai'?[
-  ['OpenAI · gpt-4.1-mini',completed?'Response received':'Manual request','Analyzes bounded scanner metadata only when you click Analyze. No raw source or customer records are sent.'],
-  ['ElevationPilot scanner','Evidence input','Builds the first-party source findings before calling OpenAI.'],
-  ['Supabase','Session authorization','Checks your owner login and EIG membership; schema evidence is a dated snapshot.'],
-  ['Vercel','Hosting','Runs the owner-protected preview API.'],
+  ACCESS,SOURCE,
+  ['OpenAI · gpt-4.1-mini',completed?'Response received':'On Analyze click','Reviews bounded scanner metadata. No raw source or customer records are sent.'],
+  ['ElevationPilot Evidence Validator','Output check','Checks the AI response and its file references before showing recommendations.'],
  ]:kind==='inspector'?[
-  ['ElevationPilot IA inspector','Runs here','Checks four approved InceptionApex source/test files in the deployed preview.'],
-  ['GitHub','Code origin','Reads the deployed code copy; no new GitHub fetch is made by this scan.'],
-  ['Supabase','Session authorization','Verifies the owner login and current EIG membership.'],
-  ['Vercel','Hosting','Runs the protected source-inspection endpoint.'],
- ]:SOURCE_TOOLS;
+  ACCESS,['ElevationPilot IA Source Inspector','Evidence scan','Checks four approved InceptionApex source/test files. It does not run AI or execute browser tests.'],
+ ]:kind==='radar'?[
+  ACCESS,SOURCE,['ElevationPilot Essentials & Wow Rules','Rules engine','Applies built-in product-quality rules and static standards references. No AI or competitor-site visit.'],
+ ]:[ACCESS,SOURCE,ENVIRONMENT];
  return <details className="bl-scanner-tools">
-  <summary>Tools used by this scanner</summary>
-  <p>{kind==='radar'?'Upgrade Radar applies built-in rules to first-party evidence and static standards references. It does not run AI or visit competitor sites.':'This describes the current implementation. A configured integration is not proof that a scan or test completed.'}</p>
+  <summary>Tools used</summary>
   <dl>{rows.map(([name,status,description])=><div key={name}><dt><strong>{name}</strong> <span>{status}</span></dt><dd>{description}</dd></div>)}</dl>
-  <h4>Planned connections</h4>
-  <dl>{PLANNED.map(([name,status,description])=><div key={name}><dt><strong>{name}</strong> <span>{status}</span></dt><dd>{description}</dd></div>)}</dl>
-  <p>Opening this dropdown does not run a tool or make an AI request.</p>
+  <p>Opening this list does not run a scan or make an AI request.</p>
  </details>;
 }

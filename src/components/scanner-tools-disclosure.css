@@ -8,3 +8,9 @@
 .bl-scanner-tools dt span{font-weight:400;color:#b9d9ee}
 .bl-scanner-tools dd{margin:5px 0 0;overflow-wrap:anywhere;color:#cfdfeb}
 .bl-scanner-tools h4{color:#fff;margin:16px 0 6px}
+
+.bl-scanner-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;min-width:0}
+.bl-scanner-title>h2{margin:0}
+.bl-scanner-title>.bl-scanner-tools{margin:0;padding:0;border:0;background:transparent}
+.bl-scanner-title>.bl-scanner-tools[open]{flex:1 1 100%;padding:10px 14px;border:1px solid #55758d;background:#122d43}
+.bl-scanner-title .bl-scanner-tools summary{color:#c2e4fa;font-size:.8rem;min-height:30px;padding:4px}

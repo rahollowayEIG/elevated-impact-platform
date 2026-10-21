@@ -135,6 +135,8 @@ begin
   d:=p_data->'invoice'; inv_id:=(p_data->>'id')::uuid;
   if p_data->'fictional_confirmed' is distinct from 'true'::jsonb or inv_id is null or d is null or jsonb_typeof(d)<>'object' or
    not (d @> '{"kind":"ep_manual_invoice_preview","schemaVersion":1,"status":"draft_not_issued","invoiceNumber":null,"simulatedPaymentCents":0,"verifiedPaidCents":0,"realPaymentStatus":"not_connected","realCustomerContacted":false,"publicInvoiceUrl":null,"publicPaymentUrl":null,"actualInvoiceIssued":false,"actualTaxVerified":false,"approvalRequired":true,"privacy":"in_browser_memory_only","source":"fictional_or_user_entered_preview_not_persisted"}'::jsonb) or
+   exists(select 1 from unnest(array['issuerLabel','recipient','customerEmail','reference','notes','issueDate','dueDate','disclaimer']) k where coalesce(jsonb_typeof(d->k),'')<>'string') or
+   coalesce(jsonb_typeof(d->'taxBasisPoints'),'')<>'number' or
    coalesce(d->>'status','')<>'draft_not_issued' or
    coalesce(d->>'actualInvoiceIssued','')<>'false' or
    coalesce(d->>'verifiedPaidCents','')<>'0' or coalesce(d->>'simulatedPaymentCents','')<>'0' or
@@ -154,11 +156,16 @@ begin
    (d->>'dueDate')::date<(d->>'issueDate')::date or
    coalesce(jsonb_typeof(d->'lines'),'')<>'array' then raise exception 'Only unissued fictional previews without contacts or payments may be saved'; end if;
   if jsonb_array_length(d->'lines') not between 1 and 30 then raise exception 'Use 1-30 lines'; end if;
+  if (select count(distinct x->>'id') from jsonb_array_elements(d->'lines') x)<>jsonb_array_length(d->'lines') then raise exception 'Unique source line IDs required'; end if;
   -- Prevent any contact/payment/issuance fields outside the supported preview contract.
   if exists(select 1 from jsonb_object_keys(d) k where k not in
    ('kind','schemaVersion','id','status','invoiceNumber','issuerId','issuerLabel','recipient','customerEmail','sourceType','reference','notes','issueDate','dueDate','taxBasisPoints','lines','currency','subtotalCents','taxCents','totalCents','simulatedPaymentCents','verifiedPaidCents','realPaymentStatus','balanceExampleCents','realCustomerContacted','publicInvoiceUrl','publicPaymentUrl','actualInvoiceIssued','actualTaxVerified','source','approvalRequired','privacy','disclaimer')) then raise exception 'Unsupported invoice fields'; end if;
   for l in select value from jsonb_array_elements(d->'lines') loop
    if coalesce(jsonb_typeof(l),'')<>'object' or
+    exists(select 1 from unnest(array['quantity','unitCents','totalCents']) k where coalesce(jsonb_typeof(l->k),'')<>'number') or
+    coalesce(jsonb_typeof(l->'label'),'')<>'string' or
+    coalesce(l->>'id','')!~'^demo-line-[0-9a-f-]{36}$' or
+    (select count(*) from jsonb_object_keys(l))<>5 or
     coalesce(l->>'quantity','')!~'^[0-9]+$' or coalesce(l->>'unitCents','')!~'^[0-9]+$' or
     coalesce(l->>'totalCents','')!~'^[0-9]+$' or
     (l->>'quantity')::numeric not between 1 and 10000 or

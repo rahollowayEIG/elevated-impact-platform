@@ -66,7 +66,7 @@ test('real Postgres snapshots, review transitions, isolation, duplicate barriers
    read=await call('read',{id});assert.equal(read.lines.length,2);assert.deepEqual(read.invoice.snapshot,invoice);
    const list=await call('list');assert.equal(list.invoices.length,1);assert.equal(list.products.length,0);assert.equal(list.reviews.length,0);
    await assert.rejects(()=>call('save',{id,invoice:{...invoice,notes:'Changed'},fictional_confirmed:true}),/immutable/);
-   for(const bad of [{totalCents:1},{simulatedPaymentCents:2},{customerEmail:'x@example.com'},{actualInvoiceIssued:true},{invoiceNumber:'INV-1'},{unexpected:'field'},{lines:[]},{taxBasisPoints:9999}])
+   for(const bad of [{totalCents:1},{simulatedPaymentCents:2},{customerEmail:'x@example.com'},{actualInvoiceIssued:true},{invoiceNumber:'INV-1'},{unexpected:'field'},{lines:[]},{taxBasisPoints:9999},{recipient:{name:'Malformed'}},{taxBasisPoints:'700'},{lines:[{...invoice.lines[0],quantity:'2'}]},{lines:[invoice.lines[0],invoice.lines[0]]}])
     await assert.rejects(()=>call('save',{id:crypto.randomUUID(),invoice:{...invoice,...bad},fictional_confirmed:true}));
    await assert.rejects(()=>call('save',{id:crypto.randomUUID(),invoice}),/fictional/);
    await assert.rejects(()=>call('read',{id},org2),/unavailable/);

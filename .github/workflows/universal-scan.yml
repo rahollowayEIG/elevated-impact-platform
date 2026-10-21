@@ -32,6 +32,19 @@ on:
       - "src/components/EigBuildLab.jsx"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "src/lib/eventInquiryLifecycle.mjs"
+      - "src/lib/eventInquiryPortalClient.mjs"
+      - "src/components/EventInquiryAccountPrompt.jsx"
+      - "src/components/event-inquiry-account-prompt.css"
+      - "src/components/EventInquiryDashboard.jsx"
+      - "src/components/event-inquiry-dashboard.css"
+      - "supabase/functions/event-inquiry-portal/**"
+      - "tests/event-inquiry-lifecycle.test.mjs"
+      - "tests/event-inquiry-portal-client.test.mjs"
+      - "tests/event-inquiry-browser.cjs"
+      - "tests/event-inquiry-harness.jsx"
+      - "tests/event-inquiry.html"
+      - "docs/EIE-INQUIRY-PORTAL-BLUEPRINT.md"
       - "server/eig-master-schema-snapshot.json"
       - "server/eig-master-environment-baseline.json"
       - "server/eig-master-deployment-baseline.json"
@@ -90,6 +103,19 @@ on:
       - "src/components/EigBuildLab.jsx"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "src/lib/eventInquiryLifecycle.mjs"
+      - "src/lib/eventInquiryPortalClient.mjs"
+      - "src/components/EventInquiryAccountPrompt.jsx"
+      - "src/components/event-inquiry-account-prompt.css"
+      - "src/components/EventInquiryDashboard.jsx"
+      - "src/components/event-inquiry-dashboard.css"
+      - "supabase/functions/event-inquiry-portal/**"
+      - "tests/event-inquiry-lifecycle.test.mjs"
+      - "tests/event-inquiry-portal-client.test.mjs"
+      - "tests/event-inquiry-browser.cjs"
+      - "tests/event-inquiry-harness.jsx"
+      - "tests/event-inquiry.html"
+      - "docs/EIE-INQUIRY-PORTAL-BLUEPRINT.md"
       - "server/eig-master-schema-snapshot.json"
       - "server/eig-master-environment-baseline.json"
       - "server/eig-master-deployment-baseline.json"
@@ -137,14 +163,17 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs
+      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs
+      - run: node tests/event-inquiry-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: eig-build-lab-browser-evidence
-          path: test-results/eig-build-lab/
+          path: |
+            test-results/eig-build-lab/
+            test-results/event-inquiry/
           retention-days: 7
           if-no-files-found: ignore

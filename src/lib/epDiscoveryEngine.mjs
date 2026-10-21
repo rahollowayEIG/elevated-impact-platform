@@ -143,6 +143,9 @@ export function buildRegistryDraft({occasion="birthday",title="",budgetCents=150
  if(!["birthday","wedding","charity","golf","other"].includes(occasion))
    throw Error("Choose a supported event occasion.");
  const limit=money(budgetCents,15000,1000000);
+ if(!Array.isArray(selectedProductIds)||selectedProductIds.length>30||
+  selectedProductIds.some(id=>typeof id!=="string"||!catalog.some(p=>p.id===id)))
+  throw Error("Select a valid available demo product.");
  const pickedIds=distinct(selectedProductIds,new Set(catalog.map(x=>x.id)),30);
  const requested=pickedIds.map(id=>offerFor(catalog,id));
  const sorted=discoverOffers({...p,budgetCents:limit},catalog,{sort:"match"}).items;

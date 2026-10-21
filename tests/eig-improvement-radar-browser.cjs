@@ -24,7 +24,7 @@ const fs=require("node:fs/promises");
   assert.equal(await page.locator(".blr-card").count(),1);
   const card=page.locator(".blr-card").filter({hasText:"Account-first for every trackable action"});
   await card.getByRole("button",{name:"Accept for blueprint"}).click();
-  await card.getByText("accept",{exact:true}).waitFor();
+  await card.locator(".blr-meta").getByText(/Review\s+accept/).waitFor();
   await page.getByRole("button",{name:"Export Upgrade Backlog JSON"}).waitFor();
   const [download]=await Promise.all([
    page.waitForEvent("download"),
@@ -39,7 +39,7 @@ const fs=require("node:fs/promises");
   await page.reload();
   await page.getByRole("heading",{name:"Essentials & Wow Radar"}).waitFor();
   const restored=page.locator(".blr-card").filter({hasText:"Account-first for every trackable action"});
-  await restored.getByText("accept",{exact:true}).waitFor();
+  await restored.locator(".blr-meta").getByText(/Review\s+accept/).waitFor();
   await page.getByLabel("Filter improvement categories").selectOption("all");
   await page.getByLabel("Search opportunities").fill("next-action");
   assert.equal(await page.locator(".blr-card").count(),1);
@@ -49,7 +49,7 @@ const fs=require("node:fs/promises");
   await page.getByRole("button",{name:/Scan for Essentials & Upgrades/}).click();
   await page.getByText("New source or rubric evidence").first().waitFor();
   assert.equal(await page.evaluate(()=>window.radarHarness.stats.calls.at(-1)),"event-builder");
-  await page.locator(".blr-card").first().getByText("pending",{exact:true}).waitFor();
+  await page.locator(".blr-card").first().locator(".blr-meta").getByText(/Review\s+pending/).waitFor();
   await page.screenshot({path:"test-results/eig-improvement-radar/radar.png",fullPage:true});
   const mobile=await browser.newPage({viewport:{width:390,height:844}});
   mobile.on("pageerror",e=>errors.push(e.message));

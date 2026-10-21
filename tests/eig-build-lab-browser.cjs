@@ -148,7 +148,7 @@ const fs = require("node:fs/promises");
     await second.getByLabel("Unit price ($)").fill("45.75");
     await invoice.getByRole("button",{name:"Create manual invoice preview"}).click();
     await invoice.locator(".epi-print-preview").getByText("Fictional Golf Sponsor").waitFor();
-    await invoice.locator(".epi-print-preview").getByText("$231.66").waitFor();
+    await invoice.locator(".epi-grand").getByText("$231.66").waitFor();
     await invoice.getByRole("button",{name:"Copy sample email wording"}).click();
     assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/DEMO ONLY/);
     await invoice.getByRole("button",{name:"Copy sample text wording"}).click();

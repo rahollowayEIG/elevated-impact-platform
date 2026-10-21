@@ -8,6 +8,7 @@ import {
 import "./ep-discovery-pilot.css";
 import VendorStoreConnectionsPilot from "./VendorStoreConnectionsPilot.jsx";
 import EpUnifiedStorePilot from "./EpUnifiedStorePilot.jsx";
+import EpProductCapturePilot from "./EpProductCapturePilot.jsx";
 
 const TABS=[
  {id:"likes",title:"My Likes",emoji:"❤️"},
@@ -16,6 +17,7 @@ const TABS=[
  {id:"events",title:"Event Concierge",emoji:"⛳"},
  {id:"stores",title:"Connect My Store",emoji:"🏪"},
  {id:"store-engine",title:"Store Structures",emoji:"🏬"},
+ {id:"capture",title:"Product Capture",emoji:"📸"},
 ];
 const cents=v=>(v/100).toLocaleString("en-US",{style:"currency",currency:"USD"});
 const detail=EP_INTERESTS.reduce((m,x)=>({...m,[x.id]:x.label}),{});
@@ -284,6 +286,7 @@ export default function EpDiscoveryPilot(){
   </div>}
   {tab==="stores"&&<div role="tabpanel" id="epd-panel-stores" aria-labelledby="epd-tab-stores" className="epd-panel"><VendorStoreConnectionsPilot/></div>}
   {tab==="store-engine"&&<div role="tabpanel" id="epd-panel-store-engine" aria-labelledby="epd-tab-store-engine" className="epd-panel"><EpUnifiedStorePilot/></div>}
+ {tab==="capture"&&<div role="tabpanel" id="epd-panel-capture" aria-labelledby="epd-tab-capture" className="epd-panel"><EpProductCapturePilot/></div>}
   <footer className="epd-footer">Fictional sample catalog ({EP_DEMO_OFFERS.length} offers). Demo state exists only in this browser tab and clears on refresh.
     Production publishing, vendor messaging, registry sharing, paid subscriptions and automatic ordering remain disabled. Safety: {EP_PILOT_SAFETY.realPaymentsMade?"UNSAFE":"No payments"}.</footer>
  </section>;

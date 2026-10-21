@@ -16,5 +16,6 @@ export const MASTER_SCAN_TARGETS = Object.freeze([
   {id:"build-lab",label:"Build Lab"},
   {id:"maps",label:"Course Maps & Flyovers"},
   {id:"invoices",label:"Universal Invoicing"},
+  {id:"product-registry",label:"Product Capture & Inventory Double Sync"},
   {id:"contracts",label:"Event Contracts"},
 ]);

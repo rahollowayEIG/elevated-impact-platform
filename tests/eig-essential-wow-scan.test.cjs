@@ -15,6 +15,7 @@ test("standards-based product rubric offers essentials and standout ideas withou
  assert.ok(RADAR_RULES.some(x=>x.id==="verified-vendor-catalog"&&x.lane==="essential"));
  assert.ok(RADAR_RULES.some(x=>x.id==="vendor-store-interoperability"&&x.lane==="essential"));
  assert.ok(RADAR_RULES.some(x=>x.id==="unified-charitable-store-safety"&&x.lane==="essential"));
+ assert.ok(RADAR_RULES.some(x=>x.id==="catalog-product-double-sync"&&x.lane==="essential"&&x.priority==="critical"));
  assert.ok(RADAR_RULES.some(x=>x.id==="fundraiser-store-experience"&&x.lane==="wow"));
  assert.ok(RADAR_RULES.some(x=>x.id==="likes-to-registry"&&x.lane==="wow"));
  assert.equal(new Set(RADAR_REFERENCES.map(x=>x.id)).size,RADAR_REFERENCES.length);

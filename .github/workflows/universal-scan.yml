@@ -34,6 +34,10 @@ on:
       - "src/components/BuildLabImprovementRadar.jsx"
       - "src/lib/epDiscoveryEngine.mjs"
       - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epStorefrontSources.mjs"
+      - "src/components/VendorStoreConnectionsPilot.jsx"
+      - "src/components/vendor-store-connections-pilot.css"
+      - "tests/ep-storefront-sources.test.mjs"
       - "src/components/ep-discovery-pilot.css"
       - "tests/ep-discovery-engine.test.mjs"
       - "docs/EP-TECH-FIRST-DELIVERY-PLAN.md"
@@ -119,6 +123,10 @@ on:
       - "src/components/BuildLabImprovementRadar.jsx"
       - "src/lib/epDiscoveryEngine.mjs"
       - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epStorefrontSources.mjs"
+      - "src/components/VendorStoreConnectionsPilot.jsx"
+      - "src/components/vendor-store-connections-pilot.css"
+      - "tests/ep-storefront-sources.test.mjs"
       - "src/components/ep-discovery-pilot.css"
       - "tests/ep-discovery-engine.test.mjs"
       - "docs/EP-TECH-FIRST-DELIVERY-PLAN.md"
@@ -193,6 +201,7 @@ jobs:
       - run: npm ci
       - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
       - run: node --test tests/ep-discovery-engine.test.mjs
+      - run: node --test tests/ep-storefront-sources.test.mjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

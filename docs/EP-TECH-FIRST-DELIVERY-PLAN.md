@@ -39,6 +39,38 @@ Do **not** build duplicate login, vendor, creative, product, payment or organiza
 
 Each pilot item shows fictional sample vendors, illustrative prices and unverified availability. The demo uses **no external API, AI model, real customer data, order, purchase, email, text, Squawk, subscription charge, geolocation or background agent**. The owner's temporary demo selections stay only in the open browser tab and disappear on refresh. Approving a registry draft **does not publish or share it**.
 
+## Universal E-Commerce Connections: owner-requested strategy
+
+**Principle:** A participating vendor never needs to abandon Shopify, WooCommerce, Square Online, Etsy, Amazon, eBay, their own independent store, or other compliant e-commerce channels just to participate in EP. One Hangar vendor may have multiple merchant-owned storefront sources.
+
+### Proposed connection methods
+
+| Method | Minimum vendor action | EP capability after verification | Checkout |
+| --- | --- | --- | --- |
+| Shopify | Owner-authorized app/API connection with reviewed permissions | Eligible product and variant syncing, price/availability updates, branded recommendations | Shopify checkout initially |
+| Supported commerce APIs (WooCommerce, Square Online and others) | Vendor authorizes provider integration or supported import feed | Provider-specific approved product updates and inventory freshness | Original merchant checkout initially |
+| External storefront/product URL (Etsy, Amazon, any eligible HTTPS site) | Vendor adds a source URL and verifies ownership, seller rights and terms | Linked, manually reviewed listing or vendor-approved metadata; **no automatic import assumed** | External site |
+| CSV/manual catalog | Vendor owns catalog and confirms prices/availability | EP-managed catalog with manual updates, quote requests, options and images they own | Future approved EP order workflow |
+
+**Shopify:** The official Storefront API provides products, collections, carts and a `checkoutUrl` to redirect the buyer to the merchant's own checkout. Merchants authorize GraphQL Admin API scopes through an app installation/OAuth process when privileged product or inventory access is required. Use least-privilege scopes, encrypted server-side credentials, API versioning, webhook verification and clean revocation.
+Official docs: https://shopify.dev/docs/storefronts/headless/overview ; https://shopify.dev/docs/api/usage/authentication ; https://shopify.dev/docs/api/admin-graphql/latest/objects/Product .
+
+**Cross-provider constraints:** An arbitrary URL is **not a live inventory integration**. Never scrape sites without authorization, assume image reuse rights, or display unverified real-time price/stock as current. Respect seller marketplaces' terms, referral policies, and supported APIs. Products must include vendor ownership, original URL, source platform, SKU/variant identity, sync timestamp, sale restrictions, allowed uses, and an approval status. Deduplicate across multiple merchant channels to avoid duplicate registry gift items.
+
+**Payment reality:** Linking to someone else's store does not give ElevationPilot a checkout commission. Require a supported affiliate/referral arrangement, a separately agreed listing/subscription charge, marketplace attribution with appropriate consent, or a genuine EIG-mediated transaction before recording fees. Never imply a combined cart will check out across independent stores. Keep the original merchant responsible for external payment, refunds, shipping and taxes unless a signed separate arrangement explicitly changes that.
+
+**Demo progress:** `src/lib/epStorefrontSources.mjs` and `src/components/VendorStoreConnectionsPilot.jsx` allow entry and validation of multiple public HTTPS storefront links in the **private Build Lab demo**. Links are local, never crawled or synced, and neither vendor ownership nor orders are verified. This is NOT a real Shopify connector.
+
+### Acceptance conditions for first real store integration
+
+1. Verified Hangar vendor securely authorizes their own Shopify store through approved permissions. No passwords or API secrets enter the browser or logs.
+2. EP imports only eligible products, variants, licensed images, real inventory and correct localized prices, recording source and last successful update.
+3. Merchant changes a listing; EP receives a verified update or fails safely with a stale-data warning and never silently advertises unavailable stock.
+4. Passenger sees the product in Discoveries, registry and an event proposal, and can navigate to the seller's own checkout. All recommendations respect profile consent.
+5. Vendor disconnects. EP revokes access, stops syncing, marks listings unavailable according to policy, and does not keep pulling personal or commercial data.
+6. No EIG percentage is charged or falsely recorded without an authorized payment/commission mechanism and contractual terms.
+7. Two vendors cannot modify each other's stores, products, or connection credentials.
+
 ## Delivery sequence and exit gates
 
 ### P0: Safety & confidence (finish before public launch)

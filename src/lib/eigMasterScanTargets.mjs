@@ -17,5 +17,6 @@ export const MASTER_SCAN_TARGETS = Object.freeze([
   {id:"maps",label:"Course Maps & Flyovers"},
   {id:"invoices",label:"Universal Invoicing"},
   {id:"product-registry",label:"Product Capture & Inventory Double Sync"},
-  {id:"contracts",label:"Event Contracts"},
+  {id:"contracts",label:"Agreements & DocuSign"},
+  {id:"pos-tax",label:"POS, Catalog & Tax Hierarchy"},
 ]);

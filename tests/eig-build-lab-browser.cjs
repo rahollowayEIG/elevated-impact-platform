@@ -132,6 +132,45 @@ const fs = require("node:fs/promises");
     await discover.getByRole("tab",{name:/My Likes/}).click();
     await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
 
+    // Manual Invoice Builder is a protected preview, not an issued invoice.
+    // A realistic business invoice must still pass server-side numbering/RLS and delivery gates.
+    const invoice=page.locator(".epi-root");
+    await invoice.getByRole("heading",{name:/Manual Invoice Builder/}).waitFor();
+    await invoice.getByLabel("Invoice issuer / Hangar").selectOption("demo-hangar");
+    await invoice.getByLabel("Source / business activity").selectOption("sponsorship");
+    await invoice.getByLabel("Customer / billed organization").fill("Fictional Golf Sponsor");
+    await invoice.getByLabel("Reference / event").fill("Example Charity Golf Event");
+    await invoice.getByLabel("Illustrative tax rate (%), not verified").fill("7");
+    await invoice.getByRole("button",{name:/Add line/}).click();
+    const second=invoice.locator(".epi-input-line").nth(1);
+    await second.getByLabel(/description/).fill("Extra tee sign");
+    await second.getByLabel("Quantity").fill("2");
+    await second.getByLabel("Unit price ($)").fill("45.75");
+    await invoice.getByRole("button",{name:"Create manual invoice preview"}).click();
+    await invoice.locator(".epi-print-preview").getByText("Fictional Golf Sponsor").waitFor();
+    await invoice.locator(".epi-print-preview").getByText("$231.66").waitFor();
+    await invoice.getByRole("button",{name:"Copy sample email wording"}).click();
+    assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/DEMO ONLY/);
+    await invoice.getByRole("button",{name:"Copy sample text wording"}).click();
+    assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/Not issued, payable or sent/);
+    await invoice.getByRole("button",{name:"Approve preview in demo"}).click();
+    await invoice.getByLabel(/Example payment amount/).fill("31.66");
+    await invoice.getByRole("button",{name:"Simulate payment"}).click();
+    await invoice.locator(".epi-print-preview").getByText("$200.00").waitFor();
+    const invoiceWait=page.waitForEvent("download");
+    await invoice.getByRole("button",{name:"Export draft JSON"}).click();
+    const invoiceFile=await invoiceWait;
+    const invoiceData=JSON.parse(await fs.readFile(await invoiceFile.path(),"utf8")).invoice;
+    assert.equal(invoiceData.issuerId,"demo-hangar");
+    assert.equal(invoiceData.status,"approved_in_demo_not_issued");
+    assert.equal(invoiceData.totalCents,23166);
+    assert.equal(invoiceData.simulatedPaymentCents,3166);
+    assert.equal(invoiceData.balanceExampleCents,20000);
+    assert.equal(invoiceData.actualInvoiceIssued,false);
+    assert.equal(invoiceData.realCustomerContacted,false);
+    assert.equal(invoiceData.publicPaymentUrl,null);
+    assert.equal(invoiceData.verifiedPaidCents,0);
+    await page.screenshot({path:"test-results/eig-build-lab/invoice-pilot-desktop.png",fullPage:true});
     // Master Scanner gets its own owner-authenticated, read-only client path.
     // This fixture checks UI/search/review persistence. Separate unit tests
     // read the committed source, compare actual dated database metadata and

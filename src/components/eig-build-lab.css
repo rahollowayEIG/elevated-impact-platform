@@ -106,3 +106,14 @@
 .bl-app .bl-research-target label{display:flex;flex-direction:column;gap:8px;min-width:0;font-weight:600}
 .bl-app .bl-research-target input,.bl-app .bl-research-target select{box-sizing:border-box;width:100%;min-width:0;padding:11px 12px;border-radius:8px;line-height:1.4;font:inherit}
 @media(max-width:750px){.bl-app .bl-research-target .bl-research-grid{grid-template-columns:1fr}}
+
+/* One focused workspace, with accessible buttons that remain available while scrolling. */
+.bl-tool-nav{position:sticky;top:8px;z-index:10;display:flex;flex-wrap:wrap;gap:8px;padding:12px;margin:16px 0;background:#12263b;border:1px solid #56748e;border-radius:12px;box-shadow:0 8px 22px #07132166}
+.bl-tool-nav button{border:1px solid #66839d;background:#23445e;color:#ecf5ff;border-radius:8px;padding:10px 14px;min-height:44px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+.bl-tool-nav button[aria-pressed="true"]{background:#df1433;border-color:#ff8497;color:white;box-shadow:0 0 0 2px #ff849733}
+.bl-tool-nav button:focus-visible{outline:3px solid #a4dfff;outline-offset:3px}
+.bl-tool-panel{min-width:0;scroll-margin-top:100px}
+.bl-tool-panel[hidden]{display:none!important}
+.bl-about{margin:12px 0 18px;color:#c7dbea;font-size:.85rem}
+.bl-about summary{cursor:pointer;padding:8px 0}
+@media(max-width:570px){.bl-tool-nav{gap:6px;padding:8px;top:4px}.bl-tool-nav button{flex:1 1 calc(50% - 6px);padding:9px 8px;font-size:.8rem}}

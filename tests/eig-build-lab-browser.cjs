@@ -14,9 +14,21 @@ const fs = require("node:fs/promises");
     page.on("pageerror", (e) => errors.push(e.message));
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
+    const toolNav=page.getByRole("navigation",{name:"Build Lab tools"});
+    const chooseTool=name=>toolNav.getByRole("button",{name,exact:true}).click();
+    assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
+    assert.equal(await toolNav.getByRole("button",{name:"Master Scanner",exact:true}).getAttribute("aria-pressed"),"true");
+    for(const name of ["Upgrade Radar","AI Review","IA Inspector","Research","Impact Review","Discoveries","Invoices","Project Architect"]){
+      await chooseTool(name);
+      assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
+      assert.equal(await toolNav.getByRole("button",{name,exact:true}).getAttribute("aria-pressed"),"true");
+    }
+    await chooseTool("AI Review");
+    let aiCalls=0;
     // AI recommendations are owner-clicked, source-only proposals.
     // Mock the provider-backed endpoint: browser tests must never spend money.
     await page.route("**/api/eig-build-lab-ai-review",async route=>{
+      aiCalls++;
       const request=route.request();
       assert.deepEqual(request.postDataJSON(),{moduleId:"invoices"});
       assert.ok((request.headers().authorization||"").startsWith("Bearer "));
@@ -39,7 +51,14 @@ const fs = require("node:fs/promises");
     await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
     assert.match(await aiPanel.innerText(),/Pending owner review/);
     assert.match(await aiPanel.innerText(),/No changes applied/);
-    await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
+    assert.equal(aiCalls,1);
+    await chooseTool("Master Scanner");
+    await chooseTool("AI Review");
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    assert.equal(aiCalls,1);
+    await page.screenshot({path:"test-results/eig-build-lab/tool-navigation-desktop.png",fullPage:true});
+    await chooseTool("Discoveries");
+    await page.getByRole("heading", { name: /Build Lab Scanners & Tools/ }).waitFor();
     // Shared commerce prototype runs without API calls or real profiles.
     const discover=page.locator(".epd-root");
     await discover.getByRole("heading",{name:/My Likes \+ Marketplace Pilot/}).waitFor();
@@ -218,6 +237,7 @@ const fs = require("node:fs/promises");
 
     // Manual Invoice Builder is a protected preview, not an issued invoice.
     // A realistic business invoice must still pass server-side numbering/RLS and delivery gates.
+    await chooseTool("Invoices");
     const invoice=page.locator(".epi-root");
     await invoice.getByRole("heading",{name:/Manual Invoice Builder/}).waitFor();
     await invoice.getByLabel("Invoice issuer / Hangar").selectOption("demo-hangar");
@@ -255,6 +275,11 @@ const fs = require("node:fs/promises");
     assert.equal(invoiceData.publicPaymentUrl,null);
     assert.equal(invoiceData.verifiedPaidCents,0);
     await page.screenshot({path:"test-results/eig-build-lab/invoice-pilot-desktop.png",fullPage:true});
+    await chooseTool("AI Review");
+    await chooseTool("Invoices");
+    assert.equal(await invoice.getByLabel("Customer / billed organization").inputValue(),"Fictional Golf Sponsor");
+    await invoice.locator(".epi-print-preview").getByText("$200.00").waitFor();
+    await chooseTool("Master Scanner");
     // Master Scanner gets its own owner-authenticated, read-only client path.
     // This fixture checks UI/search/review persistence. Separate unit tests
     // read the committed source, compare actual dated database metadata and
@@ -460,6 +485,7 @@ const fs = require("node:fs/promises");
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, report: scanFixture }) });
     });
+    await chooseTool("IA Inspector");
     await page.getByRole("button", { name: /Inspect InceptionApex source/ }).click();
     await page.getByText("Review native confirmation dialogs").waitFor();
     await page.getByRole("button", { name: "Download source report JSON" }).waitFor();
@@ -476,6 +502,7 @@ const fs = require("node:fs/promises");
     await page.getByText("Review native confirmation dialogs").waitFor();
     assert.equal(await page.locator(".bl-scan-finding .state-accept").count(), 1);
     assert.equal(await page.getByRole("button", { name: "Download reusable JSON" }).count(), 0);
+    await chooseTool("Project Architect");
     await page.getByRole("button", { name: "Load InceptionApex pilot" }).click();
     assert.equal(await page.getByLabel("What are we doing?").inputValue(), "ui_review");
     await page.getByRole("button", { name: /Create draft blueprint/ }).click();
@@ -551,6 +578,7 @@ const fs = require("node:fs/promises");
     assert.equal(await page.locator(".bl-suggestions .state-reject").count(), 1);
     // The same browser cannot restore a different owner's saved work.
     await page.evaluate(() => window.buildLabHarness.setOwner("22222222-2222-4222-8222-222222222222"));
+    await chooseTool("Project Architect");
     await page.getByText("Your blueprint appears here").waitFor();
     assert.equal(await page.getByLabel("Project name").inputValue(), "");
     await page.evaluate(() => window.buildLabHarness.setOwner("11111111-1111-4111-8111-111111111111"));
@@ -563,6 +591,7 @@ const fs = require("node:fs/promises");
     // Also preserve a partially typed mission before Generate is clicked.
     const partial = await browser.newPage({ viewport: { width: 950, height: 850 } });
     await partial.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
+    await partial.getByRole("navigation",{name:"Build Lab tools"}).getByRole("button",{name:"Project Architect",exact:true}).click();
     await partial.getByLabel("Project name").fill("Draft without a blueprint");
     await partial.getByLabel("Goal and definition of success").fill("Save this unfinished idea too.");
     await partial.getByRole("button", { name: /EIG Command Center/ }).click();

@@ -14,6 +14,14 @@ import EpDiscoveryPilot from "./EpDiscoveryPilot.jsx";
 import EpInvoicePilot from "./EpInvoicePilot.jsx";
 import ResearchTargetPlanner from "./ResearchTargetPlanner.jsx";
 
+const LAB_TOOLS = [
+  ["master", "Master Scanner"], ["radar", "Upgrade Radar"],
+  ["ai", "AI Review"], ["inspector", "IA Inspector"],
+  ["research", "Research"], ["impact", "Impact Review"],
+  ["discoveries", "Discoveries"], ["invoices", "Invoices"],
+  ["architect", "Project Architect"],
+];
+
 const EIG_PILOT = {
   name: "InceptionApex UI & Workflow Improvement",
   goal: "Make the flyer studio easier for an EIG administrator to understand, customize, save, approve and reopen on desktop and phone.",
@@ -42,6 +50,16 @@ function SectionHeading({ number, title, description }) {
 }
 
 export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDirtyChange, focusedMode = false, onToggleFocus }) {
+  const viewKey = "eig-build-lab-tool:" + ownerUserId;
+  const [activeTool, setActiveTool] = useState(() => {
+    try {
+      const saved = window.sessionStorage.getItem(viewKey);
+      return LAB_TOOLS.some(([id]) => id === saved) ? saved : "master";
+    } catch { return "master"; }
+  });
+  useEffect(() => {
+    try { window.sessionStorage.setItem(viewKey, activeTool); } catch { /* Navigation works without storage. */ }
+  }, [viewKey, activeTool]);
   const [restoredDraft] = useState(() => {
     try { return loadBuildLabDraft(window.localStorage, ownerUserId); }
     catch { return null; }
@@ -242,8 +260,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
   return <main className="platform-page bl-app" aria-label="EIG Build Lab">
     <header className="platform-hero bl-hero">
       <div><p className="platform-eyebrow">EIG COMMAND CENTER / PRIVATE PILOT</p>
-        <h1>Build Lab <span className="bl-subtitle">Project Architect</span></h1>
-        <p>Define the goal. Find reusable tools. Review a blueprint before building.</p>
+        <h1>Build Lab <span className="bl-subtitle">Scanners &amp; Tools</span></h1>
+        <p>Choose a tool below. Switch between scanners without scrolling through every section.</p>
       </div>
       <div className="bl-hero-actions">
         <span className="bl-draft-tag">{saveStatus === "saved" ? "Browser autosave on" : needsBackup ? "Backup required" : "Preparing local draft"}</span>
@@ -252,13 +270,22 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       </div>
     </header>
 
+    <nav className="bl-tool-nav" aria-label="Build Lab tools">
+      {LAB_TOOLS.map(([id, label]) => <button key={id} id={"bl-tool-" + id} type="button"
+        aria-pressed={activeTool === id} aria-controls={"bl-panel-" + id}
+        onClick={() => setActiveTool(id)}>{label}</button>)}
+    </nav>
+
+    <details className="bl-about"><summary>About Build Lab &amp; saved work</summary>
     <p className="bl-disclosure" role="note">
       <strong>What this pilot does:</strong> Turns your description into a deterministic planning checklist and editable review.
       The Master Scanner checks approved source, test scripts and dated environment metadata. Essentials & Wow Radar uses those same owner-authorized sources to propose upgrades. The InceptionApex Source Inspector remains as an early pilot.
-      These scanners do not browse external websites, execute app actions, run AI, create tasks, write to Supabase or change live apps. Upgrade candidates are not proven gaps.
+      Source scanners do not browse external websites or change live apps. AI Review makes a separate, owner-requested analysis of scanner metadata. Upgrade candidates are not proven gaps.
       Source observations are not proof of bugs or live behavior. Drafts autosave in this browser only.
       Do not enter passwords, private customer information or API secrets.
     </p>
+
+    </details>
 
     <p className={"bl-save-note" + (needsBackup ? " bl-save-error" : "")} role="status">
       {needsBackup
@@ -266,10 +293,13 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
 
-    <BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
-    <BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
-    <EpDiscoveryPilot />
-    <EpInvoicePilot />
+    {/* Keep panels mounted so switching tools preserves forms, results and in-flight requests. */}
+    <div className="bl-tool-panel" id="bl-panel-master" role="region" aria-labelledby="bl-tool-master" hidden={activeTool !== "master"}><BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-radar" role="region" aria-labelledby="bl-tool-radar" hidden={activeTool !== "radar"}><BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-discoveries" role="region" aria-labelledby="bl-tool-discoveries" hidden={activeTool !== "discoveries"}><EpDiscoveryPilot /></div>
+    <div className="bl-tool-panel" id="bl-panel-invoices" role="region" aria-labelledby="bl-tool-invoices" hidden={activeTool !== "invoices"}><EpInvoicePilot /></div>
+
+    <div className="bl-tool-panel" id="bl-panel-inspector" role="region" aria-labelledby="bl-tool-inspector" hidden={activeTool !== "inspector"}>
 
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">
@@ -360,10 +390,12 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       </>}
     </section>
 
-    <BuildLabAiConnection supabaseClient={supabaseClient} />
-    <ResearchTargetPlanner />
-    <BuildImpactReview ownerUserId={ownerUserId} />
+    </div>
+    <div className="bl-tool-panel" id="bl-panel-ai" role="region" aria-labelledby="bl-tool-ai" hidden={activeTool !== "ai"}><BuildLabAiConnection supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-research" role="region" aria-labelledby="bl-tool-research" hidden={activeTool !== "research"}><ResearchTargetPlanner /></div>
+    <div className="bl-tool-panel" id="bl-panel-impact" role="region" aria-labelledby="bl-tool-impact" hidden={activeTool !== "impact"}><BuildImpactReview ownerUserId={ownerUserId} /></div>
 
+    <div className="bl-tool-panel" id="bl-panel-architect" role="region" aria-labelledby="bl-tool-architect" hidden={activeTool !== "architect"}>
     <div className="bl-two-column">
       <form className="platform-section-card bl-brief" onSubmit={generate}>
         <SectionHeading number="01" title="Define the mission" description="What are we trying to accomplish, and who does it help?"/>
@@ -475,6 +507,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           </section>
         </>}
       </div>
+    </div>
     </div>
   </main>;
 }

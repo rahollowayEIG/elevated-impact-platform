@@ -34,6 +34,11 @@ on:
       - "src/components/BuildLabImprovementRadar.jsx"
       - "src/lib/epDiscoveryEngine.mjs"
       - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epProductCapture.mjs"
+      - "src/components/EpProductCapturePilot.jsx"
+      - "src/components/ep-product-capture-pilot.css"
+      - "tests/ep-product-capture.test.mjs"
+      - "docs/EP-SMART-PRODUCT-CAPTURE-DOUBLE-SYNC.md"
       - "src/lib/epInvoiceDraft.mjs"
       - "src/components/EpInvoicePilot.jsx"
       - "src/components/ep-invoice-pilot.css"
@@ -133,6 +138,11 @@ on:
       - "src/components/BuildLabImprovementRadar.jsx"
       - "src/lib/epDiscoveryEngine.mjs"
       - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epProductCapture.mjs"
+      - "src/components/EpProductCapturePilot.jsx"
+      - "src/components/ep-product-capture-pilot.css"
+      - "tests/ep-product-capture.test.mjs"
+      - "docs/EP-SMART-PRODUCT-CAPTURE-DOUBLE-SYNC.md"
       - "src/lib/epInvoiceDraft.mjs"
       - "src/components/EpInvoicePilot.jsx"
       - "src/components/ep-invoice-pilot.css"
@@ -224,6 +234,7 @@ jobs:
       - run: node --test tests/ep-storefront-sources.test.mjs
       - run: node --test tests/ep-unified-store.test.mjs
       - run: node --test tests/ep-invoice-draft.test.mjs
+      - run: node --test tests/ep-product-capture.test.mjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

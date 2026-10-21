@@ -9,6 +9,7 @@ import "./eig-build-lab.css";
 import BuildImpactReview from "./BuildImpactReview.jsx";
 import BuildLabAiConnection from "./BuildLabAiConnection.jsx";
 import BuildLabMasterScanner from "./BuildLabMasterScanner.jsx";
+import BuildLabImprovementRadar from "./BuildLabImprovementRadar.jsx";
 import ResearchTargetPlanner from "./ResearchTargetPlanner.jsx";
 
 const EIG_PILOT = {
@@ -251,8 +252,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
 
     <p className="bl-disclosure" role="note">
       <strong>What this pilot does:</strong> Turns your description into a deterministic planning checklist and editable review.
-      The Master Scanner and InceptionApex Source Inspector examine approved first-party code and test scripts. The Master Scanner also displays an explicitly dated Supabase schema metadata snapshot.
-      These scanners do not browse external websites, execute app actions, run AI, create tasks, write to Supabase or change live apps.
+      The Master Scanner checks approved source, test scripts and dated environment metadata. Essentials & Wow Radar uses those same owner-authorized sources to propose upgrades. The InceptionApex Source Inspector remains as an early pilot.
+      These scanners do not browse external websites, execute app actions, run AI, create tasks, write to Supabase or change live apps. Upgrade candidates are not proven gaps.
       Source observations are not proof of bugs or live behavior. Drafts autosave in this browser only.
       Do not enter passwords, private customer information or API secrets.
     </p>
@@ -264,6 +265,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     </p>
 
     <BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
+    <BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} />
 
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">

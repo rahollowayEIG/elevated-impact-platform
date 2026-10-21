@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
   BUILD_LAB_MODES, BUILD_LAB_REUSE, createBuildBlueprint,
@@ -304,7 +305,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">
         <div>
-          <h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2>
+          <div className="bl-scanner-title"><h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2><ScannerToolsDisclosure kind="inspector" /></div>
           <p>Original InceptionApex-only test scanner, kept for comparison. To scan any other module, use the Master Scanner above.</p>
         </div>
         <button type="button" className="platform-primary-button" disabled={scanRunning}

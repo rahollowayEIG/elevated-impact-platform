@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestImprovementRadar,validateImprovementRadar} from "../lib/eigMasterScanClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
@@ -144,7 +145,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
  return <section className="platform-section-card blr-root" aria-labelledby="blr-heading">
   <div className="blr-header">
    <div><p className="platform-eyebrow">BUILD LAB / PRODUCT INTELLIGENCE</p>
-     <h2 id="blr-heading">Essentials & Wow Radar</h2>
+     <div className="bl-scanner-title"><h2 id="blr-heading">Essentials & Wow Radar</h2><ScannerToolsDisclosure kind="radar" /></div>
      <p>Automatically surface the overlooked software fundamentals and distinctive experiences worth building next.</p></div>
    <div className="blr-launch">
     <label htmlFor="blr-scope">Scan product opportunities for

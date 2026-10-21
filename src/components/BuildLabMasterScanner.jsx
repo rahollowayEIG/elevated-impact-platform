@@ -1,3 +1,4 @@
+import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
@@ -129,7 +130,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   <div className="blm-head">
    <div>
     <p className="platform-eyebrow">EIG BUILD LAB / MASTER SCANNER</p>
-    <h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2>
+    <div className="bl-scanner-title"><h2 id="blm-heading">ElevationPilot Source & Sandbox Audit</h2><ScannerToolsDisclosure kind="source" /></div>
     <p>Inspect reference source evidence alongside actual deployed Live/Sandbox versions and read-only database metadata.</p>
    </div>
    <div className="blm-launch-controls">
@@ -168,7 +169,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     <div>
       <h3>What should we improve next?</h3>
       <p>The same protected scan also identified <strong>{report.improvementAudit.summary.essential} essential capability checks</strong> and <strong>{report.improvementAudit.summary.wow} standout ideas</strong>.</p>
-      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> directly below this scanner.</p>
+      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> using the Upgrade Radar button at the top.</p>
     </div>
     <ul>{report.improvementAudit.suggestions.filter(x=>x.lane==="essential").slice(0,3).map(item=>
       <li key={item.id}><strong>{item.title}</strong><span>{item.priority} · {item.status==="not_observed_in_sample"?"No source signal found":"Preview source signals found; functionality unverified"}</span></li>

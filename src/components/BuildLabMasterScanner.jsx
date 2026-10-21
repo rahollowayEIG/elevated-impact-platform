@@ -135,7 +135,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
    <div className="blm-launch-controls">
     <label htmlFor="blm-scope">What should Build Lab scan?
      <select id="blm-scope" value={selectedScope} onChange={e=>setSelectedScope(e.target.value)} disabled={running}>
-      <option value="all">Entire ElevationPilot platform (15 modules)</option>
+      <option value="all">Entire ElevationPilot platform ({MASTER_SCAN_TARGETS.length} modules)</option>
       {MASTER_SCAN_TARGETS.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
      </select>
     </label>

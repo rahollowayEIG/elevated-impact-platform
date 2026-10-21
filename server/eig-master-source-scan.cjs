@@ -30,6 +30,10 @@ const FILE_PATHS = Object.freeze([
   "src/components/EpInvoicePilot.jsx",
   "src/components/SponsorBuilder.jsx",
   "tests/ep-invoice-draft.test.mjs",
+  "src/lib/epProductCapture.mjs",
+  "src/components/EpProductCapturePilot.jsx",
+  "src/components/EpDiscoveryPilot.jsx",
+  "tests/ep-product-capture.test.mjs",
 ]);
 
 // A matched file/line proves the code or test instruction exists, NOT that a
@@ -138,6 +142,21 @@ const MODULES = Object.freeze([
     ],
     tables:["billing_accounts","eig_credit_ledger","invoices","invoice_lines"],
     next:"Owner-only manual invoice builder is DEMO ONLY: no official numbering, database persistence, approved issuer, real send, payment or tax verification. First implement scoped invoice/line tables with RLS and server-issued immutable numbering; test save/reopen, PDF, authorized email/SMS, receipts, partial payments and Hangar boundaries in Sandbox. Snapshot gaps remain until independently verified."},
+  {id:"product-registry",title:"Product Capture & Inventory Double Sync",priority:"high",
+    source:[
+      ["src/lib/epProductCapture.mjs","export function checkExistingProducts"],
+      ["src/lib/epProductCapture.mjs","export function previewDoubleSync"],
+    ],
+    ui:[
+      ["src/components/EpProductCapturePilot.jsx","function EpProductCapturePilot"],
+      ["src/components/EpDiscoveryPilot.jsx","<EpProductCapturePilot"],
+    ],
+    tests:[
+      ["tests/ep-product-capture.test.mjs","approve fictional missing invoice sale exactly once"],
+      ["tests/eig-build-lab-browser.cjs","Double Sync"],
+    ],
+    tables:["catalog_items","inventory_movements","invoice_lines"],
+    next:"Product Capture is a fictional owner-only demo. No online product import, AI photo analysis, customer image upload, real invoice association or inventory adjustment exists. Existing products represent platform entitlements, NOT confirmed merchant stock. Require verified catalog, variant/location balances, per-source order-line keys, external POS synchronization, historical stock reconciliation audit and cross-Hangar test coverage before release."},
   {id:"contracts",title:"Event Contracts",priority:"medium",
     source:[["src/PlatformApp.jsx","contract"]],
     ui:[["src/PlatformApp.jsx","<EventContract"]],

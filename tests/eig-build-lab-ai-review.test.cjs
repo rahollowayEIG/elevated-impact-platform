@@ -113,3 +113,49 @@ test("provider failure and invalid hallucinated evidence fail closed",async()=>{
  assert.equal(unsafe.code,503);
  assert.equal(unsafe.body.ok,false);
 });
+
+test("deployed scanner and AI routes explicitly package every allowlisted evidence file",()=>{
+ const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
+ const {FILE_PATHS}=require("../server/eig-master-source-scan.cjs");
+ const config=require("../vercel.json");
+ const root=path.resolve(__dirname,"..");
+ for(const route of ["api/eig-build-lab-master-scan.js","api/eig-build-lab-ai-review.js"]){
+  const pattern=config.functions[route]?.includeFiles;
+  assert.equal(typeof pattern,"string",route+" needs explicit evidence packaging");
+  const included=pattern.slice(1,-1).split(",");
+  assert.deepEqual([...included].sort(),[...FILE_PATHS].sort());
+  const bundle=fs.mkdtempSync(path.join(os.tmpdir(),"build-lab-source-bundle-"));
+  try{
+   // Static require dependencies are traced; evidence is loaded dynamically and
+   // must be copied from the route's includeFiles declaration.
+   fs.mkdirSync(path.join(bundle,"server"));
+   for(const name of fs.readdirSync(path.join(root,"server")))
+    if(/\.(cjs|json)$/.test(name))fs.copyFileSync(path.join(root,"server",name),path.join(bundle,"server",name));
+   for(const file of included){
+    fs.mkdirSync(path.dirname(path.join(bundle,file)),{recursive:true});
+    fs.copyFileSync(path.join(root,file),path.join(bundle,file));
+   }
+   const reader=require(path.join(bundle,"server/eig-master-source-scan.cjs"));
+   assert.deepEqual(Object.keys(reader.readAllowlistedMasterSource()).sort(),[...FILE_PATHS].sort());
+   fs.unlinkSync(path.join(bundle,FILE_PATHS[0]));
+   assert.throws(()=>reader.readAllowlistedMasterSource(),/ENOENT/);
+  }finally{fs.rmSync(bundle,{recursive:true,force:true});}
+ }
+});
+test("source loading failure is distinguished and never sends an AI request",async()=>{
+ let called=0;
+ const res=response();
+ await handler({readSources:()=>{throw Error("sensitive internal path");},http:async()=>{called++;}})(req,res);
+ assert.equal(called,0);assert.equal(res.code,503);
+ assert.equal(res.body.errorCode,"scanner_source_unavailable");
+ assert.equal(JSON.stringify(res.body).includes("sensitive internal path"),false);
+});
+test("provider and validation failures have distinct safe diagnostics",async()=>{
+ const unavailable=response();
+ await handler({http:async()=>{throw Error("secret provider details");}})(req,unavailable);
+ assert.equal(unavailable.body.errorCode,"ai_provider_unavailable");
+ const invalid=response();
+ await handler({http:async()=>({ok:true,json:async()=>fakeAI(["src/.env"])})})(req,invalid);
+ assert.equal(invalid.body.errorCode,"ai_review_validation_failed");
+ assert.equal(JSON.stringify(unavailable.body).includes("secret provider details"),false);
+});

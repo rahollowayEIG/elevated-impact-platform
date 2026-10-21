@@ -98,21 +98,32 @@ function createBuildLabAiReview({env,verifyUser,membershipsForUser,readSources,s
    return response(res,400,{ok:false,message:"Choose one approved scanner module; no free-form prompts are permitted."});
   const key=env("OPENAI_API_KEY");
   if(!key)return response(res,503,{ok:false,message:"AI credential not configured."});
+  let stage="source";
   try{
    const sources=await readSources();
    const report=await scan(sources,env("VERCEL_GIT_COMMIT_SHA")||"local-unversioned",
     undefined,body.moduleId,"compare");
    const context=buildSafeAnalysisContext(report);
+   stage="provider";
    const upstream=await http("https://api.openai.com/v1/responses",{
     method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},
     body:JSON.stringify(buildAiReviewRequest(context)),signal:AbortSignal.timeout(18000)
    });
    if(!upstream.ok)return response(res,502,{ok:false,message:"OpenAI did not accept this review request."});
    const data=await upstream.json();
+   stage="validation";
    const review=validateAiReviewResponse(data,context);
    return response(res,200,{ok:true,review});
   }catch{
-   return response(res,503,{ok:false,message:"AI recommendation unavailable or output failed source validation. No changes were made."});
+   const failures={
+    source:["scanner_source_unavailable","Scanner evidence could not be loaded in this preview. No changes were made."],
+    provider:["ai_provider_unavailable","AI request did not complete. No changes were made."],
+    validation:["ai_review_validation_failed","AI response did not pass evidence validation. No changes were made."]
+   };
+   const [errorCode,message]=failures[stage];
+   // Never log provider payloads, bearer tokens, source contents or raw errors.
+   console.error(JSON.stringify({event:"build_lab_ai_review_failed",stage,errorCode}));
+   return response(res,503,{ok:false,errorCode,message});
   }
  };
 }

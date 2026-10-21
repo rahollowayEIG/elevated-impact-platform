@@ -122,8 +122,10 @@ test("deployed scanner and AI routes explicitly package every allowlisted eviden
  for(const route of ["api/eig-build-lab-master-scan.js","api/eig-build-lab-ai-review.js"]){
   const pattern=config.functions[route]?.includeFiles;
   assert.equal(typeof pattern,"string",route+" needs explicit evidence packaging");
-  const included=pattern.slice(1,-1).split(",");
-  assert.deepEqual([...included].sort(),[...FILE_PATHS].sort());
+  assert.ok(pattern.length<=256,"Vercel includeFiles limit is 256 characters");
+  const included=fs.globSync(pattern,{cwd:root});
+  assert.ok(FILE_PATHS.every(file=>included.includes(file)),"Every evidence file must be bundled");
+  assert.ok(included.every(file=>/^(src|tests)\//.test(file)&&/\.(jsx|mjs|cjs)$/.test(file)),"Bundle source/test files only");
   const bundle=fs.mkdtempSync(path.join(os.tmpdir(),"build-lab-source-bundle-"));
   try{
    // Static require dependencies are traced; evidence is loaded dynamically and

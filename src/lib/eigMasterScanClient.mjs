@@ -86,7 +86,7 @@ export function validateImprovementRadar(radar,files,sourceVersion,selectedScope
  const allowed=new Set(files);
  for(const ref of radar.references)
    if(!validString(ref?.id,70)||!validString(ref?.name,140)||
-      !/^https:\/\/(?:www\.w3\.org|www\.nngroup\.com|asvs\.owasp\.org|web\.dev)\/[a-zA-Z0-9/._-]+\/?$/.test(ref.url||""))
+      !/^https:\/\/(?:www\.w3\.org|www\.nngroup\.com|asvs\.owasp\.org|web\.dev)\/[a-zA-Z0-9/._-]*$/.test(ref.url||""))
      throw Error("Invalid Upgrade Radar benchmark reference.");
  const seen=new Set();
  for(const item of radar.suggestions){

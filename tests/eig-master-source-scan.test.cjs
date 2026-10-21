@@ -67,7 +67,7 @@ test("actually scans sampled committed source without reading customer data",()=
  const posTax=x.modules.find(m=>m.id==="pos-tax");
  assert.equal(posTax.sourceStatus,"source_marker_found");
  assert.equal(posTax.testStatus,"test_code_found");
- assert.equal(posTax.uiStatus,"not_applicable");
+ assert.equal(posTax.uiStatus,"not_observed_in_sample");
  assert.equal(posTax.dbStatus,"snapshot_gap");
  assert.match(posTax.nextCheck,/blueprint only/);
  assert.ok(x.limitations.some(z=>z.includes("NOT a new Supabase query")));

@@ -55,7 +55,7 @@ export default function EpInvoicePersistence({draft,store:providedStore}) {
     <label>Product name<input value={details.name} maxLength={160} onChange={e=>edit('name',e.target.value)}/></label>
     <label>SKU (optional)<input value={details.sku} maxLength={48} onChange={e=>edit('sku',e.target.value)}/></label>
     <label>Description<textarea value={details.description} maxLength={1000} onChange={e=>edit('description',e.target.value)}/></label>
-    <label>Classification<select value={details.kind} onChange={e=>{edit('kind',e.target.value);edit('track_inventory',false);}}>{ITEM_KINDS.map(k=><option key={k} value={k}>{k.replaceAll('_',' ')}</option>)}</select></label>
+    <label>Classification<select aria-label="Classification" value={details.kind} onChange={e=>{edit('kind',e.target.value);edit('track_inventory',false);}}>{ITEM_KINDS.map(k=><option key={k} value={k}>{k.replaceAll('_',' ')}</option>)}</select></label>
     <label><input type="checkbox" checked={details.track_inventory} disabled={details.kind!=='physical_merchandise'} onChange={e=>edit('track_inventory',e.target.checked)}/>Track physical inventory (stock not initialized or changed)</label>
     <label>Proposed unit price ($)<input value={details.price} onChange={e=>edit('price',e.target.value)}/></label>
     <button type="button" onClick={()=>run(async()=>{

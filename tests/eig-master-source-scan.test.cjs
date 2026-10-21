@@ -7,7 +7,7 @@ test("actually scans sampled committed source without reading customer data",()=
  const x=scanMasterSource(files,"a".repeat(40),"2026-10-20T22:00:00.000Z");
  assert.equal(x.kind,"eig_build_lab_master_scan");
  assert.equal(x.modules.length,MODULES.length);
- assert.equal(x.files.length,21);
+ assert.equal(x.files.length,25);
  assert.match(x.sourceFingerprint,/^[a-f0-9]{64}$/);
  assert.deepEqual(x.database.missingInSandbox,[]);
  assert.deepEqual(x.database.missingInProduction,[]);
@@ -47,6 +47,16 @@ test("actually scans sampled committed source without reading customer data",()=
  assert.match(invoice.nextCheck,/server-issued immutable numbering/);
  assert.ok(invoice.evidence.some(e=>e.path==="src/lib/epInvoiceDraft.mjs"));
  assert.ok(invoice.evidence.some(e=>e.path==="tests/eig-build-lab-browser.cjs"));
+ const capture=x.modules.find(m=>m.id==="product-registry");
+ assert.equal(capture.title,"Product Capture & Inventory Double Sync");
+ assert.equal(capture.sourceStatus,"source_marker_found");
+ assert.equal(capture.uiStatus,"ui_marker_found");
+ assert.equal(capture.testStatus,"test_code_found");
+ assert.equal(capture.status,"review_needed");
+ assert.equal(capture.dbStatus,"snapshot_gap");
+ assert.equal(capture.tables.find(t=>t.table==="inventory_movements").production,false);
+ assert.match(capture.nextCheck,/fictional owner-only demo/);
+ assert.ok(capture.evidence.some(e=>e.path==="tests/ep-product-capture.test.mjs"));
  assert.ok(x.limitations.some(z=>z.includes("NOT a new Supabase query")));
  for(const module of x.modules) for(const e of module.evidence) {
    assert.ok(FILE_PATHS.includes(e.path));
@@ -73,7 +83,7 @@ test("approved targeted scan returns only requested module, with full fixed sour
  const full=scanMasterSource(input,"b".repeat(40),"2026-10-20T22:00:00.000Z");
  assert.equal(full.scope,"full");assert.equal(full.selectedModule,null);
  assert.equal(full.modules.length,MODULES.length);
- for(const id of ["inception","event-builder","registration","payments","build-lab","invoices"]){
+ for(const id of ["inception","event-builder","registration","payments","build-lab","invoices","product-registry"]){
   const scoped=scanMasterSource(input,"b".repeat(40),"2026-10-20T22:00:00.000Z",id);
   assert.equal(scoped.scope,"module");assert.equal(scoped.selectedModule,id);
   assert.deepEqual(scoped.modules.map(m=>m.id),[id]);

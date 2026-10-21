@@ -181,7 +181,7 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   fingerprint.update(JSON.stringify(MODULES)+"\0");
   const environmentAudit=buildEnvironmentAudit({mode:environmentMode,moduleId,modules:MODULES});
   fingerprint.update(JSON.stringify(environmentAudit)+"\0");
-  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:FILE_PATHS,sourceVersion});
+  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:FILE_PATHS,moduleIds:MODULES.map(rule=>rule.id),sourceVersion});
   fingerprint.update(JSON.stringify(RADAR_RULES)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));

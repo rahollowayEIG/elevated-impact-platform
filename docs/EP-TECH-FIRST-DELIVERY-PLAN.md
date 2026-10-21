@@ -71,6 +71,14 @@ Official docs: https://shopify.dev/docs/storefronts/headless/overview ; https://
 6. No EIG percentage is charged or falsely recorded without an authorized payment/commission mechanism and contractual terms.
 7. Two vendors cannot modify each other's stores, products, or connection credentials.
 
+## Universal Store Engine, extended Hangar/Nonprofit/Fundraiser architecture
+
+Every verified Hangar can have a storefront; a verified nonprofit Hangar can use giving and wish-list modules; a Fundraiser Store links to a specific event/campaign and a selected beneficiary. One store engine, not separate implementations. Keep merchant-of-record seller, organization owner, nonprofit beneficiary and actual verified settlement recipient independently tracked. Self-service, EIG-managed and hybrid modes rely on explicit delegated permissions.
+
+The private owner-only Store Structures prototype now models these three types with synthetic people/organizations, events and products, and nonfunctional finance controls. Real fundraiser payout, donation ledger, tax receipt, public store and live integration remain **not built**.
+
+See [EP Universal Store Engine](EP-UNIVERSAL-STORE-ENGINE.md) for model, safety requirements and release gates.
+
 ## Delivery sequence and exit gates
 
 ### P0: Safety & confidence (finish before public launch)

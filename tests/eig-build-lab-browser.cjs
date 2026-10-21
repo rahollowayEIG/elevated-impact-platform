@@ -15,6 +15,54 @@ const fs = require("node:fs/promises");
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
     await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
+    // Shared commerce prototype runs without API calls or real profiles.
+    const discover=page.locator(".epd-root");
+    await discover.getByRole("heading",{name:/My Likes \+ Marketplace Pilot/}).waitFor();
+    assert.match(await discover.locator(".epd-safety").innerText(),/All vendors, products and prices are invented/);
+    await discover.locator(".epd-category-grid").getByRole("button",{name:/Golf/}).click();
+    const personalize=discover.getByLabel(/Use My Likes to personalize/);
+    await personalize.check();
+    await discover.locator(".epd-monthly-grid").getByLabel(/Style Club/).check();
+    await discover.getByLabel(/monthly personalized recommendations digest/).check();
+    await discover.getByRole("button",{name:"Preview monthly picks"}).click();
+    await discover.getByText(/Your monthly picks \(preview only\)/).waitFor();
+    assert.match(await discover.locator(".epd-preview").innerText(),/No subscription, email or payment/);
+    await discover.getByRole("tab",{name:/Discoveries/}).click();
+    await discover.getByRole("heading",{name:"Your Discoveries"}).waitFor();
+    await discover.getByLabel("Search products").fill("cap");
+    assert.equal(await discover.locator(".epd-offer").count(),1);
+    await discover.getByLabel("Search products").fill("");
+    await discover.locator(".epd-offer").first().getByRole("button",{name:/Save/}).click();
+    await discover.getByText(/Saved demo wish list/).waitFor();
+    await discover.locator(".epd-offer").first().getByRole("button",{name:"Add to Registry"}).click();
+    await discover.getByRole("heading",{name:/AI Registry Concierge/}).waitFor();
+    await discover.getByRole("button",{name:"Generate registry draft"}).click();
+    await discover.getByText(/draft pending organizer review/).waitFor();
+    await discover.getByRole("button",{name:"Approve draft in demo"}).click();
+    await discover.getByText(/approved in demo not published/).waitFor();
+    const registryWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Download registry concept"}).click();
+    const registryFile=await registryWait;
+    const registryData=JSON.parse(await fs.readFile(await registryFile.path(),"utf8"));
+    assert.equal(registryData.shareEnabled,false);
+    assert.equal(registryData.notificationsSent,false);
+    assert.equal(registryData.status,"approved_in_demo_not_published");
+    await discover.getByRole("tab",{name:/Event Concierge/}).click();
+    await discover.getByRole("heading",{name:/Build an event from vendor offers/}).waitFor();
+    await discover.getByLabel("Event type").selectOption("golf");
+    await discover.getByRole("button",{name:"Build vendor proposal"}).click();
+    await discover.getByText(/Over example budget/).waitFor();
+    const eventWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Download event proposal concept"}).click();
+    const eventFile=await eventWait;
+    const eventData=JSON.parse(await fs.readFile(await eventFile.path(),"utf8"));
+    assert.equal(eventData.attendees,100);
+    assert.equal(eventData.booked,false);
+    assert.equal(eventData.charged,false);
+    assert.equal(eventData.notificationsSent,false);
+    await discover.getByRole("tab",{name:/My Likes/}).click();
+    await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
+
     // Master Scanner gets its own owner-authenticated, read-only client path.
     // This fixture checks UI/search/review persistence. Separate unit tests
     // read the committed source, compare actual dated database metadata and

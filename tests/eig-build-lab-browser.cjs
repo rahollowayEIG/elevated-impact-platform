@@ -32,7 +32,7 @@ const fs = require("node:fs/promises");
     const aiTools=page.locator("#bl-panel-ai .bl-scanner-tools");
     await aiTools.getByText("Tools used",{exact:true}).click();
     await aiTools.getByText("OpenAI · gpt-4.1-mini",{exact:true}).waitFor();
-    assert.match(await aiTools.innerText(),/Manual request/);
+    assert.match(await aiTools.innerText(),/On Analyze click/);
     let aiCalls=0;
     // AI recommendations are owner-clicked, source-only proposals.
     // Mock the provider-backed endpoint: browser tests must never spend money.

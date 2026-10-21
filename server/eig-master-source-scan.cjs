@@ -26,6 +26,10 @@ const FILE_PATHS = Object.freeze([
   "tests/inception-apex-browser.cjs",
   "tests/social-media-browser.cjs",
   "tests/recovery-session.test.mjs",
+  "src/lib/epInvoiceDraft.mjs",
+  "src/components/EpInvoicePilot.jsx",
+  "src/components/SponsorBuilder.jsx",
+  "tests/ep-invoice-draft.test.mjs",
 ]);
 
 // A matched file/line proves the code or test instruction exists, NOT that a
@@ -118,12 +122,22 @@ const MODULES = Object.freeze([
     tests:[],
     tables:["event_builder_assets"],
     next:"Check maps, yardage-book output and flyovers separately. A mention of maps does not establish a working GPS or 3D flyover."},
-  {id:"invoices",title:"EIG Invoicing",priority:"high",
-    source:[["src/PlatformApp.jsx","issueInvoice("]],
-    ui:[["src/PlatformApp.jsx","<EigInvoice"]],
-    tests:[],
-    tables:["invoices","invoice_lines"],
-    next:"Confirm invoice issuing is not already implemented elsewhere before planning EIG payee, invoice numbers, terms and payments."},
+  {id:"invoices",title:"Universal Invoicing",priority:"high",
+    // Proof the *demo* exists, not proof a real invoice was issued.
+    source:[
+      ["src/lib/epInvoiceDraft.mjs","export function prepareDemoInvoice"],
+      ["src/components/SponsorBuilder.jsx","invoice_sent"],
+    ],
+    ui:[
+      ["src/components/EpInvoicePilot.jsx","function EpInvoicePilot"],
+      ["src/components/EigBuildLab.jsx","<EpInvoicePilot"],
+    ],
+    tests:[
+      ["tests/ep-invoice-draft.test.mjs","simulated partial payments"],
+      ["tests/eig-build-lab-browser.cjs","Manual Invoice Builder"],
+    ],
+    tables:["billing_accounts","eig_credit_ledger","invoices","invoice_lines"],
+    next:"Owner-only manual invoice builder is DEMO ONLY: no official numbering, database persistence, approved issuer, real send, payment or tax verification. First implement scoped invoice/line tables with RLS and server-issued immutable numbering; test save/reopen, PDF, authorized email/SMS, receipts, partial payments and Hangar boundaries in Sandbox. Snapshot gaps remain until independently verified."},
   {id:"contracts",title:"Event Contracts",priority:"medium",
     source:[["src/PlatformApp.jsx","contract"]],
     ui:[["src/PlatformApp.jsx","<EventContract"]],

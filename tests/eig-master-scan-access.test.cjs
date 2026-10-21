@@ -79,7 +79,7 @@ test("valid single-module scan requires existing owner grant and narrows report"
  assert.equal(r.body.report.scope,"module");
  assert.equal(r.body.report.selectedModule,"inception");
  assert.deepEqual(r.body.report.modules.map(m=>m.id),["inception"]);
- assert.equal(r.body.report.files.length,21);
+ assert.equal(r.body.report.files.length,25);
  assert.equal(f.state.sourceReads,1);assert.equal(f.state.scans,1);
 });
 

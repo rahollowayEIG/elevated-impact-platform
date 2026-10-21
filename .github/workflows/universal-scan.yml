@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - "api/eig-build-lab-ai-probe.js"
+      - "api/eig-build-lab-ai-review.js"
+      - "server/eig-build-lab-ai-review.cjs"
+      - "src/components/BuildLabAiConnection.jsx"
+      - "tests/eig-build-lab-ai-review.test.cjs"
+      - "src/lib/epCommerceContractReadiness.mjs"
+      - "tests/ep-commerce-contract-readiness.test.mjs"
+      - "docs/EP-POS-AGREEMENT-TAX-INVENTORY-BENCHMARK.md"
       - "tests/eig-build-lab-ai-probe.test.cjs"
       - "src/lib/researchTargetDraft.mjs"
       - "src/components/ResearchTargetPlanner.jsx"
@@ -235,6 +242,8 @@ jobs:
       - run: node --test tests/ep-unified-store.test.mjs
       - run: node --test tests/ep-invoice-draft.test.mjs
       - run: node --test tests/ep-product-capture.test.mjs
+      - run: node --test tests/ep-commerce-contract-readiness.test.mjs
+      - run: node --test tests/eig-build-lab-ai-review.test.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

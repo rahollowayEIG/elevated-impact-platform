@@ -129,6 +129,64 @@ const fs = require("node:fs/promises");
     await stores.getByRole("button",{name:"Create store demo draft"}).click();
     await stores.locator(".epu-preview").getByText("ordinary Hangar commerce").waitFor();
     assert.equal(await stores.locator(".epu-catalog-row").filter({hasText:"One-time Contribution Intent"}).count(),0);
+    // Product Capture reuses the seller's catalog identity. It never imports
+    // copyrighted merchant data or uploads camera images or mutates live stock.
+    await discover.getByRole("tab",{name:/Product Capture/}).click();
+    const capture=discover.locator(".epc-root");
+    await capture.getByRole("heading",{name:/Smart Product Capture/}).waitFor();
+    await capture.getByRole("button",{name:"Find online / product link"}).click();
+    await capture.getByLabel(/public HTTPS product listing link/)
+      .fill("https://synthetic-store.example.org/products/cap?ref=secret-token");
+    await capture.getByRole("button",{name:"Review product for duplicates"}).click();
+    await capture.getByText(/Matching SKU found in this Hangar/).waitFor();
+    const captureReview=capture.locator(".epc-capture-result");
+    const productExportReady=page.waitForEvent("download");
+    await capture.getByRole("button",{name:"Export product draft JSON"}).click();
+    const captureDownload=await productExportReady;
+    const captureData=JSON.parse(await fs.readFile(await captureDownload.path(),"utf8"));
+    assert.equal(captureData.draft.externalUrl,"https://synthetic-store.example.org/products/cap");
+    assert.equal(captureData.draft.catalogProductCreated,false);
+    assert.equal(captureData.draft.inventoryPosted,false);
+    assert.equal(captureData.photosIncluded,false);
+    assert.deepEqual(captureData.match.exactSkuIds,["demo-product-golf-cap"]);
+    await captureReview.getByRole("button",{name:/Link this existing item/}).click();
+    await captureReview.getByText(/second catalog product was NOT created/).waitFor();
+    await capture.getByRole("button",{name:"Photo / phone camera"}).click();
+    const onePixel=Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO/aZ9sAAAAASUVORK5CYII=",
+      "base64");
+    await capture.getByLabel("Choose product photos").setInputFiles([
+      {name:"cap-from-phone.png",mimeType:"image/png",buffer:onePixel}
+    ]);
+    await capture.getByRole("button",{name:"Review product for duplicates"}).click();
+    await capture.locator(".epc-capture-result").getByText(/1 local photo/).waitFor();
+    const phoneExportWait=page.waitForEvent("download");
+    await capture.getByRole("button",{name:"Export product draft JSON"}).click();
+    const phoneExport=JSON.parse(await fs.readFile((await phoneExportWait).path(),"utf8"));
+    assert.equal(phoneExport.draft.photoInfos[0].fileName,"cap-from-phone.png");
+    assert.equal(phoneExport.draft.photoInfos[0].uploaded,false);
+    assert.equal(phoneExport.photosIncluded,false);
+    assert.equal(phoneExport.realInventoryChanged,false);
+    // Double Sync: an already-accounted Shopify sale must never deduct again.
+    const sync=capture.locator(".epc-double-sync");
+    const syncRow=sync.locator(".epc-sale").filter({hasText:"invoice 107"});
+    await syncRow.getByRole("button",{name:"Approve sample deduction"}).click();
+    await sync.getByText(/Current illustrative on-hand/).waitFor();
+    const doubleSyncWait=page.waitForEvent("download");
+    await sync.getByRole("button",{name:"Export reconciliation preview"}).click();
+    const syncFile=await doubleSyncWait;
+    const syncData=JSON.parse(await fs.readFile(await syncFile.path(),"utf8"));
+    assert.equal(syncData.stockActualChange,0);
+    assert.equal(syncData.ledger.length,2);
+    assert.equal(syncData.ledger.at(-1).delta,-2);
+    assert.equal(syncData.preview.pendingCount,0);
+    assert.equal(syncData.preview.proposals.find(x=>x.saleId==="demo-sale-shopify-209").decision,
+      "already_accounted_no_double_deduction");
+    assert.equal(syncData.preview.proposals.find(x=>x.saleId==="demo-sale-invoice-107").decision,
+      "already_accounted_no_double_deduction");
+    await capture.locator(".epc-sale").filter({hasText:"invoice 107"})
+      .getByText("No new stock deduction").waitFor();
+    await page.screenshot({path:"test-results/eig-build-lab/product-capture-desktop.png",fullPage:true});
     await discover.getByRole("tab",{name:/My Likes/}).click();
     await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
 

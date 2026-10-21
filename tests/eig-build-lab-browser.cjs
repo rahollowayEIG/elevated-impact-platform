@@ -90,6 +90,45 @@ const fs = require("node:fs/promises");
     assert.equal(storesData.paymentCollection,false);
     assert.equal(storesData.stores.length,2);
     assert.ok(storesData.stores.every(x=>x.ownerVerified===false&&x.apiConnected===false&&x.productsImported===0));
+    // One commerce shell serves ordinary Hangar commerce, nonprofit, and event fundraising.
+    // A beneficiary can be distinct from the proposed merchandise seller. No payments.
+    await discover.getByRole("tab",{name:/Store Structures/}).click();
+    await discover.getByRole("heading",{name:/Universal Stores · Hangars, Nonprofits & Fundraisers/}).waitFor();
+    const stores=discover.locator(".epu-root");
+    await stores.getByRole("button",{name:/Fundraiser Store/}).click();
+    await stores.getByLabel("Store name").fill("Fictional Golf Benefit Store");
+    await stores.getByLabel("Nonprofit beneficiary").selectOption("demo-education-fund");
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("Fictional Golf Benefit Store").waitFor();
+    await stores.locator(".epu-preview").getByText("Bright Futures Fund (fictional demo)").waitFor();
+    await stores.locator(".epu-preview").getByText("Not established").waitFor();
+    await stores.locator(".epu-catalog-row").filter({hasText:"One-time Contribution Intent"})
+      .getByRole("button",{name:"Add to store"}).click();
+    await stores.locator(".epu-draft-list").getByText("One-time Contribution Intent").waitFor();
+    await stores.locator(".epu-catalog-row").filter({hasText:"Embroidered Golf Cap"})
+      .getByRole("button",{name:"Add to store"}).click();
+    await stores.getByRole("button",{name:"Approve draft in demo"}).click();
+    await stores.locator(".epu-preview").getByText("approved in demo not published").waitFor();
+    const commonStoreDownload=page.waitForEvent("download");
+    await stores.getByRole("button",{name:"Download store concept JSON"}).click();
+    const unifiedStoreFile=await commonStoreDownload;
+    const unifiedStore=JSON.parse(await fs.readFile(await unifiedStoreFile.path(),"utf8"));
+    assert.equal(unifiedStore.demo.type,"fundraiser");
+    assert.equal(unifiedStore.draft.ownerOrganizationId,"demo-fairway-hangar");
+    assert.equal(unifiedStore.draft.beneficiaryOrganizationId,"demo-education-fund");
+    assert.equal(unifiedStore.draft.items.length,2);
+    assert.equal(unifiedStore.draft.customerFundsTransferred,false);
+    assert.equal(unifiedStore.draft.liveCheckoutEnabled,false);
+    assert.equal(unifiedStore.draft.taxReceiptsEnabled,false);
+    assert.equal(unifiedStore.draft.moneyRules.settlementRecipientOrganizationId,null);
+    await stores.getByRole("button",{name:/Nonprofit Store/}).click();
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("Nonprofit Store").waitFor();
+    assert.equal(await stores.getByLabel("Organization / Hangar owner").inputValue(),"demo-community-cause");
+    await stores.getByRole("button",{name:/Hangar Store/}).click();
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("ordinary Hangar commerce").waitFor();
+    assert.equal(await stores.locator(".epu-catalog-row").filter({hasText:"One-time Contribution Intent"}).count(),0);
     await discover.getByRole("tab",{name:/My Likes/}).click();
     await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
 

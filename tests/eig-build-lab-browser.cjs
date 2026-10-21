@@ -152,7 +152,7 @@ const fs = require("node:fs/promises");
     await invoice.getByRole("button",{name:"Copy sample email wording"}).click();
     assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/DEMO ONLY/);
     await invoice.getByRole("button",{name:"Copy sample text wording"}).click();
-    assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/Not issued, payable or sent/);
+    await page.waitForFunction(() => document.querySelector(".epi-sharing textarea")?.value.includes("Not issued, payable or sent"));
     await invoice.getByRole("button",{name:"Approve preview in demo"}).click();
     await invoice.getByLabel(/Example payment amount/).fill("31.66");
     await invoice.getByRole("button",{name:"Simulate payment"}).click();

@@ -66,6 +66,64 @@ function assertEnvironmentAudit(a,report){
        throw Error("Invalid function comparison.");
  }
 }
+const RADAR_LANES=new Set(["essential","wow"]);
+const RADAR_STATUSES=new Set(["preview_signals_found","partial_preview_signals","not_observed_in_sample"]);
+const RADAR_PRIORITIES=new Set(["critical","high","medium","low"]);
+const RADAR_SIZES=new Set(["high","medium","low"]);
+function validString(value,limit){return typeof value==="string"&&value.length>0&&value.length<=limit;}
+export function validateImprovementRadar(radar,files,sourceVersion,selectedScope){
+ if(!radar||radar.kind!=="eig_build_lab_improvement_radar"||radar.schemaVersion!==1||
+    radar.scope!==selectedScope||radar.sourceVersion!==sourceVersion||
+    radar.origin!=="protected_preview_source_heuristics"||
+    !validString(radar.benchmark,450)||
+    !Array.isArray(radar.references)||radar.references.length<1||radar.references.length>8||
+    !Array.isArray(radar.suggestions)||radar.suggestions.length<1||radar.suggestions.length>35||
+    !Array.isArray(radar.limitations)||radar.limitations.length<3||radar.limitations.length>8||
+    radar.safety?.readOnly!==true||radar.safety?.externalsVisited!==false||
+    radar.safety?.aiCalled!==false||radar.safety?.autoBuilt!==false||
+    radar.safety?.liveChanges!==false||radar.safety?.approvalRequired!==true)
+    throw Error("Invalid Upgrade Radar report.");
+ const allowed=new Set(files);
+ for(const ref of radar.references)
+   if(!validString(ref?.id,70)||!validString(ref?.name,140)||
+      !/^https:\/\/(?:www\.w3\.org|www\.nngroup\.com|asvs\.owasp\.org|web\.dev)\/[a-zA-Z0-9/._-]+\/?$/.test(ref.url||""))
+     throw Error("Invalid Upgrade Radar benchmark reference.");
+ const seen=new Set();
+ for(const item of radar.suggestions){
+   if(!ID.test(item?.id||"")||seen.has(item.id)||
+      !RADAR_LANES.has(item.lane)||!RADAR_PRIORITIES.has(item.priority)||
+      !RADAR_SIZES.has(item.impact)||!RADAR_SIZES.has(item.effort)||
+      !RADAR_STATUSES.has(item.status)||item.claim!=="product_upgrade_candidate_not_verified"||
+      item.ownerReview!=="pending"||
+      !validString(item.title,140)||!validString(item.why,650)||
+      !validString(item.proposal,950)||!validString(item.verify,950)||
+      !Array.isArray(item.scope)||item.scope.length<1||item.scope.length>18||
+      item.scope.some(x=>x!=="*"&&!ID.test(x))||
+      !Array.isArray(item.dependencies)||item.dependencies.length>9||
+      item.dependencies.some(x=>!validString(x,140))||
+      !Array.isArray(item.evidence)||item.evidence.length>8||
+      !Number.isInteger(item.signalsChecked)||item.signalsChecked<1||item.signalsChecked>8||
+      item.signalCount!==item.evidence.length||item.signalCount>item.signalsChecked||
+      (item.status==="preview_signals_found"&&item.signalCount!==item.signalsChecked)||
+      (item.status==="partial_preview_signals"&&(item.signalCount===0||item.signalCount===item.signalsChecked))||
+      (item.status==="not_observed_in_sample"&&item.signalCount!==0)||
+      !radar.references.some(x=>x.id===item.standard))
+     throw Error("Invalid Upgrade Radar opportunity.");
+   seen.add(item.id);
+   for(const ev of item.evidence)
+     if(!allowed.has(ev?.path)||!Number.isInteger(ev?.line)||ev.line<1||ev.line>25000||
+       !validString(ev.excerpt,150))throw Error("Invalid Upgrade Radar source evidence.");
+ }
+ const summary=radar.summary;
+ if(!summary||summary.essential!==radar.suggestions.filter(x=>x.lane==="essential").length||
+    summary.wow!==radar.suggestions.filter(x=>x.lane==="wow").length||
+    summary.signalsFound!==radar.suggestions.filter(x=>x.status==="preview_signals_found").length||
+    summary.partial!==radar.suggestions.filter(x=>x.status==="partial_preview_signals").length||
+    summary.notObserved!==radar.suggestions.filter(x=>x.status==="not_observed_in_sample").length)
+   throw Error("Invalid Upgrade Radar counts.");
+ return radar;
+}
+
 export function validateMasterScanReport(report) {
   if(!report||typeof report!=="object"||report.kind!=="eig_build_lab_master_scan"||
     report.schemaVersion!==1||report.target!=="elevationpilot"||
@@ -103,6 +161,8 @@ export function validateMasterScanReport(report) {
     }
   }
   assertEnvironmentAudit(report.environmentAudit,report);
+  if(report.improvementAudit!==undefined)
+    validateImprovementRadar(report.improvementAudit,files,report.sourceVersion,scope==="full"?"all":report.selectedModule);
   const db=report.database;
   if(!db||db.freshLiveQuery!==false||typeof db.capturedOn!=="string"||
     !/^\d{4}-\d{2}-\d{2}$/.test(db.capturedOn)||
@@ -139,4 +199,13 @@ export async function requestMasterScan(supabase,http=fetch,moduleId=null,enviro
   if(report.environmentAudit.selected!==environmentMode)
     throw Error("Master Scanner returned evidence for a different environment.");
   return report;
+}
+
+export async function requestImprovementRadar(supabase,http=fetch,moduleId=null){
+ const report=await requestMasterScan(supabase,http,moduleId,"compare");
+ if(!report.improvementAudit)
+   throw Error("Upgrade Radar is not included in this preview yet. Refresh Build Lab and try again.");
+ return {radar:validateImprovementRadar(report.improvementAudit,
+   report.files.map(f=>f.path),report.sourceVersion,report.scope==="module"?report.selectedModule:"all"),
+   fingerprint:report.sourceFingerprint,inspectedAt:report.inspectedAt};
 }

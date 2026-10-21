@@ -10,10 +10,10 @@
       "includeFiles": "{src/components/InceptionApex.jsx,src/components/FlyerEditor.jsx,src/components/inception-apex.css,tests/inception-apex-browser.cjs}"
     },
     "api/eig-build-lab-master-scan.js": {
-      "includeFiles": "{src/PlatformApp.jsx,src/EieEventSetupSteps.jsx,src/ElevationAirport.jsx,src/SquawkCenter.jsx,src/EieRosterMaintenance.jsx,src/components/EventPacketStudio.jsx,src/components/EventBudget.jsx,src/components/InceptionApex.jsx,src/components/SocialMediaApp.jsx,src/components/EigBuildLab.jsx,tests/event-builder-browser.cjs,tests/team-payment-cart.test.mjs,tests/roster-numbering.test.mjs,tests/eig-build-lab-browser.cjs,tests/inception-apex-browser.cjs,tests/social-media-browser.cjs,tests/recovery-session.test.mjs,src/lib/epInvoiceDraft.mjs,src/components/EpInvoicePilot.jsx,src/components/SponsorBuilder.jsx,tests/ep-invoice-draft.test.mjs,src/lib/epProductCapture.mjs,src/components/EpProductCapturePilot.jsx,src/components/EpDiscoveryPilot.jsx,tests/ep-product-capture.test.mjs,src/lib/epCommerceContractReadiness.mjs,tests/ep-commerce-contract-readiness.test.mjs}"
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,src/lib/ep*.mjs,tests/*browser.cjs,tests/*payment*.test.mjs,tests/*numbering*.test.mjs,tests/*recovery*.test.mjs,tests/ep-*.test.mjs}"
     },
     "api/eig-build-lab-ai-review.js": {
-      "includeFiles": "{src/PlatformApp.jsx,src/EieEventSetupSteps.jsx,src/ElevationAirport.jsx,src/SquawkCenter.jsx,src/EieRosterMaintenance.jsx,src/components/EventPacketStudio.jsx,src/components/EventBudget.jsx,src/components/InceptionApex.jsx,src/components/SocialMediaApp.jsx,src/components/EigBuildLab.jsx,tests/event-builder-browser.cjs,tests/team-payment-cart.test.mjs,tests/roster-numbering.test.mjs,tests/eig-build-lab-browser.cjs,tests/inception-apex-browser.cjs,tests/social-media-browser.cjs,tests/recovery-session.test.mjs,src/lib/epInvoiceDraft.mjs,src/components/EpInvoicePilot.jsx,src/components/SponsorBuilder.jsx,tests/ep-invoice-draft.test.mjs,src/lib/epProductCapture.mjs,src/components/EpProductCapturePilot.jsx,src/components/EpDiscoveryPilot.jsx,tests/ep-product-capture.test.mjs,src/lib/epCommerceContractReadiness.mjs,tests/ep-commerce-contract-readiness.test.mjs}"
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,src/lib/ep*.mjs,tests/*browser.cjs,tests/*payment*.test.mjs,tests/*numbering*.test.mjs,tests/*recovery*.test.mjs,tests/ep-*.test.mjs}"
     }
   },
   "rewrites": [

@@ -60,6 +60,36 @@ const fs = require("node:fs/promises");
     assert.equal(eventData.booked,false);
     assert.equal(eventData.charged,false);
     assert.equal(eventData.notificationsSent,false);
+    // Connect My Store is a link-only, fictional browser preview. It must
+    // never crawl or import the example merchant's catalog.
+    await discover.getByRole("tab",{name:/Connect My Store/}).click();
+    await discover.getByRole("heading",{name:/Connect My Store · Vendor Hub/}).waitFor();
+    await discover.getByLabel("E-commerce platform").selectOption("shopify");
+    await discover.getByLabel("Store display name").fill("Fictional Demo Shopify");
+    await discover.getByLabel("Public HTTPS store or product URL")
+      .fill("https://synthetic-catalog.myshopify.com/products/polo?private=untrusted");
+    await discover.getByRole("button",{name:"Add storefront link draft"}).click();
+    await discover.getByText(/Storefront link added to this demo only/).waitFor();
+    await discover.locator(".ep-store-card").getByText("Fictional Demo Shopify").waitFor();
+    assert.equal(await discover.locator(".ep-store-card").count(),1);
+    assert.equal((await discover.locator(".ep-store-card").innerText()).includes("private=untrusted"),false);
+    await discover.getByLabel("E-commerce platform").selectOption("etsy");
+    await discover.getByLabel("Store display name").fill("Fictional Gift Vendor");
+    await discover.getByLabel("Public HTTPS store or product URL").fill("https://www.etsy.com/shop/syntheticgifts");
+    await discover.getByRole("button",{name:"Add storefront link draft"}).click();
+    assert.equal(await discover.locator(".ep-store-card").count(),2);
+    await discover.getByLabel("Search linked stores").fill("shopify");
+    assert.equal(await discover.locator(".ep-store-card").count(),1);
+    await discover.getByLabel("Search linked stores").fill("");
+    await discover.getByLabel("Sort stores").selectOption("platform");
+    const storesWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Export store link drafts"}).click();
+    const storesFile=await storesWait;
+    const storesData=JSON.parse(await fs.readFile(await storesFile.path(),"utf8"));
+    assert.equal(storesData.realConnections,false);
+    assert.equal(storesData.paymentCollection,false);
+    assert.equal(storesData.stores.length,2);
+    assert.ok(storesData.stores.every(x=>x.ownerVerified===false&&x.apiConnected===false&&x.productsImported===0));
     await discover.getByRole("tab",{name:/My Likes/}).click();
     await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
 

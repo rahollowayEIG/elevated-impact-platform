@@ -34,6 +34,8 @@ const FILE_PATHS = Object.freeze([
   "src/components/EpProductCapturePilot.jsx",
   "src/components/EpDiscoveryPilot.jsx",
   "tests/ep-product-capture.test.mjs",
+  "src/lib/epCommerceContractReadiness.mjs",
+  "tests/ep-commerce-contract-readiness.test.mjs",
 ]);
 
 // A matched file/line proves the code or test instruction exists, NOT that a
@@ -157,12 +159,24 @@ const MODULES = Object.freeze([
     ],
     tables:["catalog_items","inventory_movements","invoice_lines"],
     next:"Product Capture is a fictional owner-only demo. No online product import, AI photo analysis, customer image upload, real invoice association or inventory adjustment exists. Existing products represent platform entitlements, NOT confirmed merchant stock. Require verified catalog, variant/location balances, per-source order-line keys, external POS synchronization, historical stock reconciliation audit and cross-Hangar test coverage before release."},
-  {id:"contracts",title:"Event Contracts",priority:"medium",
-    source:[["src/PlatformApp.jsx","contract"]],
+  {id:"contracts",title:"Agreements & DocuSign",priority:"high",
+    source:[["src/lib/epCommerceContractReadiness.mjs","export function agreementRequirementsForSale"]],
     ui:[["src/PlatformApp.jsx","<EventContract"]],
-    tests:[],
-    tables:["contracts"],
-    next:"Inspect Event Builder contract UI, agreement versioning and signature workflow before creating a new module."},
+    tests:[["tests/ep-commerce-contract-readiness.test.mjs","venue rental, vendor and sale-level contract policies"]],
+    tables:["contracts","agreement_template_versions","agreement_line_links","signature_envelopes"],
+    next:"Line-level agreement obligation planner exists in protected source but is not yet an implemented UI or signed-contract system. Two connected CHGC DocuSign templates remain drafts requiring policy/legal review. Build tenant-owned agreement/version/line joins and signed-envelope lifecycle with validated webhook before authentic use."},
+  {id:"pos-tax",title:"POS, Catalog & Tax Hierarchy",priority:"high",
+    source:[
+      ["src/lib/epCommerceContractReadiness.mjs","export function taxReadiness"],
+      ["src/lib/epCommerceContractReadiness.mjs","export function validateCatalogHierarchy"],
+    ],
+    ui:[],
+    tests:[
+      ["tests/ep-commerce-contract-readiness.test.mjs","tax hierarchy inheritance is scoped"],
+      ["tests/ep-commerce-contract-readiness.test.mjs","verified customer exemption still needs certificate"],
+    ],
+    tables:["catalog_items","catalog_categories","tax_profiles","order_lines","inventory_movements"],
+    next:"POS/tax category hierarchy is a blueprint only; no real products, tax determination, calculation, sale posting or external POS inventory authority implemented. Compare Square, Shopify, Lightspeed, Toast, foreUP and Clover with cited provider evidence, then build mixed-tax sample sale/contract/stock tests and verified location-specific tax rules in Sandbox."},
 ]);
 
 function readAllowlistedMasterSource() {

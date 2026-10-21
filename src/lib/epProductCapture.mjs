@@ -57,23 +57,26 @@ export function safePhotoFile({name:fileName="",type="",size=0}={}){
 }
 export function makeProductCaptureDraft({
  organizationId="demo-fairway-hangar",captureType="manual",title,sku="",externalUrl="",
- photoInfo=null,note=""
+ photoInfo=null,photoInfos=[],note=""
 }={}){
  if(!ORGS.has(organizationId))throw Error("Select an allowed fictional organization.");
  if(!TYPES.has(captureType))throw Error("Choose a supported source for the product.");
  const cleanTitle=name(title);
  if(cleanTitle.length<2)throw Error("Enter at least two characters of a product or service name.");
  if(typeof note!=="string"||note.length>500)throw Error("Product notes must be 500 characters or fewer.");
+ if(typeof externalUrl!=="string"||externalUrl.length>2048)throw Error("Invalid public product URL.");
  const url=externalUrl.trim()?normalizeMerchantUrl(externalUrl):null;
  if(captureType==="online_link"&&!url)
   throw Error("Provide a valid public HTTPS product link.");
- if(captureType==="phone_photo"&&!photoInfo)
+ const images=photoInfos.length?photoInfos:photoInfo?[photoInfo]:[];
+ if(!Array.isArray(images)||images.length>5)throw Error("Choose at most five product photos.");
+ if(captureType==="phone_photo"&&!images.length)
   throw Error("Choose a photo for the phone-photo draft.");
- if(photoInfo)photoInfo=safePhotoFile({name:photoInfo.fileName,type:photoInfo.mimeType,size:photoInfo.sizeBytes});
+ const safeImages=images.map(x=>safePhotoFile({name:x.fileName,type:x.mimeType,size:x.sizeBytes}));
  return {
   kind:"ep_product_capture_demo",schemaVersion:1,id:uniqueId("demo-capture-"),
   organizationId,captureType,title:cleanTitle,sku:compactSku(sku),
-  externalUrl:url,photoInfo,note:name(note),
+  externalUrl:url,photoInfos:safeImages,note:note.trim(),
   candidateSource:"operator_supplied_unverified",status:"pending_owner_review",
   linkedProductId:null,catalogProductCreated:false,inventoryPosted:false,
   referenceOnly:true,priceVerified:false,photoUploaded:false,ownershipRightsConfirmed:false,
@@ -95,6 +98,13 @@ export function checkExistingProducts(draft,products=EP_CAPTURE_SAMPLE_PRODUCTS)
   matchStatus:state,exactSkuMatches:exactSku.map(p=>({...p})),
   nameCandidates:possibleTitle.map(p=>({...p})),
   autoMergePerformed:false,inventoryChanged:false,duplicatesRemoved:false};
+}
+export function linkCaptureToExistingDemoProduct(draft,productId){
+ const matches=checkExistingProducts(draft);
+ const candidate=[...matches.exactSkuMatches,...matches.nameCandidates].find(p=>p.id===productId);
+ if(!candidate)throw Error("The selected product is not an approved same-organization match candidate.");
+ return {...draft,linkedProductId:productId,status:"linked_existing_in_demo_only",
+  catalogProductCreated:false,inventoryPosted:false,referenceOnly:true};
 }
 export function proposalForSale({product,sale,ledger=EP_CAPTURE_SAMPLE_LEDGER}={}){
  if(!product||!sale||product.organizationId!==sale.organizationId)

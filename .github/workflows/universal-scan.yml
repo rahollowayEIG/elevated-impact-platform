@@ -44,6 +44,9 @@ on:
       - "tests/eig-build-lab-scan-access.test.cjs"
       - "tests/eig-inception-source-scan.test.cjs"
       - "tests/inception-apex-browser.cjs"
+      - "src/components/InceptionApex.jsx"
+      - "src/components/FlyerEditor.jsx"
+      - "src/components/inception-apex.css"
       - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
@@ -167,6 +170,9 @@ on:
       - "tests/eig-build-lab-scan-access.test.cjs"
       - "tests/eig-inception-source-scan.test.cjs"
       - "tests/inception-apex-browser.cjs"
+      - "src/components/InceptionApex.jsx"
+      - "src/components/FlyerEditor.jsx"
+      - "src/components/inception-apex.css"
       - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
@@ -292,5 +298,35 @@ jobs:
             test-results/inception-apex/
             test-results/event-inquiry/
             test-results/eig-improvement-radar/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  ia-browser-compatibility:
+    name: IA compatibility / ${{ matrix.browser }}
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run IA desktop, tablet and mobile viewport checks
+        run: node tests/inception-apex-browser.cjs
+        env:
+          IA_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ia-${{ matrix.browser }}-browser-evidence
+          path: test-results/inception-apex/${{ matrix.browser }}/
           retention-days: 7
           if-no-files-found: ignore

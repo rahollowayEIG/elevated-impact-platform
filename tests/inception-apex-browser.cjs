@@ -1,4 +1,8 @@
-const { chromium } = require("playwright");
+const { chromium, firefox, webkit } = require("playwright");
+const browserName = process.env.IA_BROWSER || "chromium";
+const engines = { chromium, firefox, webkit };
+if (!Object.hasOwn(engines, browserName)) throw new Error("IA_BROWSER must be chromium, firefox or webkit");
+const artifactDir = "test-results/inception-apex/" + browserName;
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const { PNG } = require("pngjs");
@@ -11,12 +15,12 @@ const jsQR = require("jsqr");
   await server.listen();
   let browser;
   try {
-    browser = await chromium.launch({
+    browser = await engines[browserName].launch({
       headless: true,
-      ...(process.env.CHROME_PATH
+      ...(browserName === "chromium" && process.env.CHROME_PATH
         ? { executablePath: process.env.CHROME_PATH }
         : {}),
-      ...(process.env.CHROME_HEADLESS_SHELL === "1"
+      ...(browserName === "chromium" && process.env.CHROME_HEADLESS_SHELL === "1"
         ? { args: ["--no-sandbox", "--disable-gpu", "--single-process"] }
         : {}),
     });
@@ -26,14 +30,14 @@ const jsQR = require("jsqr");
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("dialog", (d) => d.accept());
-    await fs.mkdir("test-results/inception-apex", { recursive: true });
+    await fs.mkdir(artifactDir, { recursive: true });
     await page.goto("http://127.0.0.1:4191/tests/inception-apex.html");
     await page
       .getByText("Your next idea starts here.", { exact: true })
       .waitFor();
     assert.equal(await page.locator("vite-error-overlay").count(), 0);
     await page.screenshot({
-      path: "test-results/inception-apex/dashboard-desktop.png",
+      path: artifactDir + "/dashboard-desktop.png",
       fullPage: true,
     });
     await page.locator(".ia-material-flyer").click();
@@ -122,7 +126,7 @@ const jsQR = require("jsqr");
       true,
     );
     await page.screenshot({
-      path: "test-results/inception-apex/expanded-preview-desktop.png",
+      path: artifactDir + "/expanded-preview-desktop.png",
       fullPage: true,
     });
     await page.keyboard.press("Escape");
@@ -250,7 +254,7 @@ const jsQR = require("jsqr");
       destination,
     );
     await page.screenshot({
-      path: "test-results/inception-apex/approved-proof-desktop.png",
+      path: artifactDir + "/approved-proof-desktop.png",
       fullPage: true,
     });
     await page
@@ -301,7 +305,7 @@ const jsQR = require("jsqr");
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), label + " page must not overflow horizontally");
       for (const name of ["Design", "Details & creative direction", "Preview & approve"])
         assert.ok(await page.getByRole("button", { name, exact: true }).isVisible(), label + " must retain " + name);
-      await page.screenshot({ path: "test-results/inception-apex/editor-tablet-" + label + ".png", fullPage: true });
+      await page.screenshot({ path: artifactDir + "/editor-tablet-" + label + ".png", fullPage: true });
     }
     await page.setViewportSize({ width: 949, height: 900 });
     await checkTabletEditor("949");
@@ -312,7 +316,7 @@ const jsQR = require("jsqr");
     await page.getByRole("button", { name: "My Designs", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({
-      path: "test-results/inception-apex/dashboard-mobile.png",
+      path: artifactDir + "/dashboard-mobile.png",
       fullPage: true,
     });
     assert.ok(
@@ -328,7 +332,7 @@ const jsQR = require("jsqr");
       })
       .click();
     await page.screenshot({
-      path: "test-results/inception-apex/details-mobile.png",
+      path: artifactDir + "/details-mobile.png",
       fullPage: true,
     });
     assert.ok(
@@ -377,7 +381,7 @@ const jsQR = require("jsqr");
       );
     }
     await page.screenshot({
-      path: "test-results/inception-apex/products-mobile.png",
+      path: artifactDir + "/products-mobile.png",
       fullPage: true,
     });
     assert.ok(
@@ -501,12 +505,18 @@ const jsQR = require("jsqr");
     );
     await page.setViewportSize({ width: 1360, height: 950 });
     await page.screenshot({
-      path: "test-results/inception-apex/products-desktop.png",
+      path: artifactDir + "/products-desktop.png",
       fullPage: true,
     });
     assert.deepEqual(errors, []);
+    await fs.writeFile(artifactDir + "/coverage.json", JSON.stringify({
+      browserEngine: browserName, browserVersion: browser.version(), platform: process.platform,
+      status: "passed", tabletWidths: [949, 950, 951],
+      realDevice: false, actualSafariTested: false,
+      scope: "Synthetic InceptionApex browser regression; resized desktop viewport, not a physical device",
+    }, null, 2));
     process.stdout.write(
-      "InceptionApex desktop/mobile, logo editing, saved projects, approval, handoff, conflict recovery, custom product starters/save/reopen/handoff and backups passed.\n",
+      browserName + " " + browser.version() + ": InceptionApex desktop/tablet/mobile viewport checks (not physical devices), logo editing, saved projects, approval, handoff, conflict recovery, custom product starters/save/reopen/handoff and backups passed.\n",
     );
   } finally {
     if (browser) await browser.close();

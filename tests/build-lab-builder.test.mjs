@@ -38,6 +38,7 @@ test('owner-reviewed source -> bounded provider call -> signed untested candidat
  try{for(const p of FILE_PATHS){mkdirSync(path.dirname(path.join(root,p)),{recursive:true});writeFileSync(path.join(root,p),sources[p]);}
   const scans=applyCandidate(c,root,version);
   assert.notEqual(scans.before.sourceFingerprint,scans.after.sourceFingerprint);
+  assert.equal(scans.after.sourceVersion,'local-unversioned');
   assert.equal(readFileSync(path.join(root,css),'utf8').startsWith('/* bounded test fixture */'),true);
   assert.equal(readFileSync(path.join(root,'tests/inception-apex-browser.cjs'),'utf8'),sources['tests/inception-apex-browser.cjs']);
  }finally{rmSync(root,{recursive:true,force:true});}

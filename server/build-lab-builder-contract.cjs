@@ -38,7 +38,9 @@ function sealCandidate(candidate,key){
  if(typeof key!=='string'||Buffer.byteLength(key)<32)throw Error('Signing key unavailable.');
  const payload=JSON.stringify(candidate);
  if(Buffer.byteLength(payload)>55000)throw Error('Candidate exceeds handoff limit.');
- return {payload,signature:createHmac('sha256',key).update(payload).digest('hex')};
+ const bundle={payload,signature:createHmac('sha256',key).update(payload).digest('hex')};
+ if(Buffer.byteLength(JSON.stringify(bundle))>60000)throw Error('Signed handoff exceeds workflow input limit.');
+ return bundle;
 }
 function openCandidate(bundle,key,now=Date.now()){
  if(!keys(bundle,['payload','signature'])||typeof bundle.payload!=='string'||Buffer.byteLength(bundle.payload)>55000||!/^[a-f0-9]{64}$/.test(bundle.signature||'')||typeof key!=='string'||Buffer.byteLength(key)<32)throw Error('Invalid signed candidate.');

@@ -12,7 +12,7 @@ function readSources(root){return Object.fromEntries(FILE_PATHS.map(p=>{
 function applyCandidate(candidate,root,version){
  const before=readSources(root),after=verifySources(candidate,before,version);
  for(const p of FILE_PATHS)if(after[p]!==before[p])fs.writeFileSync(path.join(root,p),after[p]);
- return {before:scanInceptionSource(before,version),after:scanInceptionSource(after,version)};
+ return {before:scanInceptionSource(before,version),after:scanInceptionSource(after,'local-unversioned')};
 }
 function main(){
  const mode=process.argv[2];
@@ -42,13 +42,13 @@ function main(){
  if(mode==='report'){
   const status=process.env.BUILDER_TEST_STATUS;
   const comparison=JSON.parse(fs.readFileSync('test-results/build-lab-builder/source-comparison.json','utf8'));
-  const after=scanInceptionSource(readSources(process.cwd()),version);
+  const after=scanInceptionSource(readSources(process.cwd()),'local-unversioned');
   const currentHashes=Object.entries(comparison.generatedSourceHashes).every(([p,h])=>sha(fs.readFileSync(p,'utf8'))===h);
   const runtimePassed=status==='success'&&currentHashes;
   const selectedStillPresent=after.findings.some(f=>f.id===candidate.findingId);
   const outcome=runtimePassed?'tests_passed_owner_review_required':'verification_failed';
   fs.writeFileSync('test-results/build-lab-builder/result.json',JSON.stringify({
-   status:outcome,sourceVersion:version,findingId:candidate.findingId,summary:candidate.summary,
+   status:outcome,baseCommit:version,candidateSourceVersion:'local-unversioned',findingId:candidate.findingId,summary:candidate.summary,
    testsPassed:runtimePassed,selectedFindingStillPresent:selectedStillPresent,
    browserResults:Object.fromEntries(['chromium','firefox','webkit'].map(name=>[name,process.env['BUILDER_'+name.toUpperCase()+'_RESULT']||'not_run'])),actualSafariTested:false,realDevicesTested:false,
    autoMerged:false,autoDeployed:false,runId:process.env.GITHUB_RUN_ID||null,

@@ -1,0 +1,43 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "advertising-starter",
+  "app": "advertising-studio",
+  "title": "Design One Practice Ad",
+  "description": "One original fictional advertisement and one unpublished campaign.",
+  "steps": [
+    "Load the sample creative and campaign.",
+    "Change the artwork dimensions, copy and proposed placement.",
+    "Preview without publishing or scheduling live inventory."
+  ],
+  "records": [
+    {
+      "key": "sample-creative",
+      "kind": "ad_creative",
+      "data": {
+        "name": "Practice Market Cafe - Lunch",
+        "headline": "Your Neighborhood Lunch Break",
+        "body": "Fresh sandwiches and friendly smiles at the fictional Practice Market Cafe.",
+        "format": "vertical_1080x1920",
+        "status": "draft"
+      }
+    },
+    {
+      "key": "sample-campaign",
+      "kind": "ad_campaign",
+      "data": {
+        "name": "Practice Lunch Promotion",
+        "creative_ref": "sample-creative",
+        "channels": [
+          "practice-tv"
+        ],
+        "budget": 0,
+        "status": "draft",
+        "publication_enabled": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "event-builder-starter",
+  "app": "event-builder",
+  "title": "Create a Practice Event",
+  "description": "One unpublished event to explore Event Builder.",
+  "steps": [
+    "Load the sample event into this practice workspace.",
+    "Change the event name, itinerary or registration settings.",
+    "Keep it in Draft until you are ready to reset the practice workspace."
+  ],
+  "records": [
+    {
+      "key": "demo-event",
+      "kind": "event",
+      "data": {
+        "name": "Practice Community Golf Outing",
+        "slug": "practice-community-golf-outing",
+        "description": "Fictional practice outing. Not open to public registrations.",
+        "event_type": "Golf Outing",
+        "location": "Fictional Fairways Practice Course",
+        "event_date": "2027-05-15",
+        "max_golfers": 20,
+        "registration_status": "draft",
+        "is_published": false,
+        "status": "pending_review"
+      }
+    }
+  ]
+}

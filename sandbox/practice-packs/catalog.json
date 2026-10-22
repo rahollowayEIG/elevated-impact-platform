@@ -1,0 +1,74 @@
+{
+  "schema": "elevationpilot.practice-catalog.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "defaultWorkspace": "empty",
+  "description": "Small, opt-in, entirely fictional examples; no automatic imports, publishing, payment or delivery.",
+  "packs": [
+    {
+      "id": "event-builder-starter",
+      "app": "event-builder",
+      "title": "Create a Practice Event",
+      "file": "event-builder-starter.json",
+      "recordCount": 1,
+      "recordKinds": [
+        "event"
+      ]
+    },
+    {
+      "id": "golf-foursome-starter",
+      "app": "golf-registration",
+      "title": "Manage One Practice Foursome",
+      "file": "golf-foursome-starter.json",
+      "recordCount": 5,
+      "recordKinds": [
+        "golf_event",
+        "golf_player"
+      ]
+    },
+    {
+      "id": "advertising-starter",
+      "app": "advertising-studio",
+      "title": "Design One Practice Ad",
+      "file": "advertising-starter.json",
+      "recordCount": 2,
+      "recordKinds": [
+        "ad_creative",
+        "ad_campaign"
+      ]
+    },
+    {
+      "id": "sponsors-starter",
+      "app": "sponsors",
+      "title": "Try One Event Sponsor",
+      "file": "sponsors-starter.json",
+      "recordCount": 3,
+      "recordKinds": [
+        "event",
+        "sponsor_package",
+        "sponsor"
+      ]
+    },
+    {
+      "id": "coupon-starter",
+      "app": "coupons",
+      "title": "Try One Practice Coupon",
+      "file": "coupon-starter.json",
+      "recordCount": 1,
+      "recordKinds": [
+        "coupon_offer"
+      ]
+    },
+    {
+      "id": "vendor-starter",
+      "app": "vendors",
+      "title": "Try One Practice Vendor",
+      "file": "vendor-starter.json",
+      "recordCount": 2,
+      "recordKinds": [
+        "vendor",
+        "vendor_service"
+      ]
+    }
+  ]
+}

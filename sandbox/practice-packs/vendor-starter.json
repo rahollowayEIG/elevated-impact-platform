@@ -1,0 +1,40 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "vendor-starter",
+  "app": "vendors",
+  "title": "Try One Practice Vendor",
+  "description": "One fictional supplier and one draft product/service.",
+  "steps": [
+    "Load a sample vendor and product.",
+    "Practice editing service details and quoted prices.",
+    "Keep checkout, fulfillment and messaging disabled."
+  ],
+  "records": [
+    {
+      "key": "sample-vendor",
+      "kind": "vendor",
+      "data": {
+        "name": "Fictional Trophy Workshop",
+        "contact_email": "vendor@practice.example",
+        "status": "draft"
+      }
+    },
+    {
+      "key": "sample-service",
+      "kind": "vendor_service",
+      "data": {
+        "vendor_ref": "sample-vendor",
+        "name": "Practice Engraved Trophy",
+        "description": "A fictional sample award for exploring vendor listings.",
+        "unit_price": 25,
+        "currency": "USD",
+        "status": "draft",
+        "checkout_enabled": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "coupon-starter",
+  "app": "coupons",
+  "title": "Try One Practice Coupon",
+  "description": "One draft coupon for testing offer creation and preview.",
+  "steps": [
+    "Load one fictional offer.",
+    "Change the discount and restrictions.",
+    "Preview without activating the voucher or accepting redemption."
+  ],
+  "records": [
+    {
+      "key": "lunch-coupon",
+      "kind": "coupon_offer",
+      "data": {
+        "merchant_name": "Practice Market Cafe",
+        "name": "Sample 10% Lunch Discount",
+        "code": "SANDBOX-LUNCH10",
+        "discount_type": "percent",
+        "discount_value": 10,
+        "terms": "Sandbox training only. Not valid for real purchases.",
+        "max_redemptions": 1,
+        "claim_enabled": false,
+        "redemption_enabled": false,
+        "status": "draft"
+      }
+    }
+  ]
+}

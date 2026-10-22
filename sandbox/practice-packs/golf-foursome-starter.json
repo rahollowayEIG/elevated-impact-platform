@@ -1,0 +1,119 @@
+{
+  "schema": "elevationpilot.practice-pack.v1",
+  "version": 1,
+  "sandboxOnly": true,
+  "autoImport": false,
+  "requiresExplicitSelection": true,
+  "id": "golf-foursome-starter",
+  "app": "golf-registration",
+  "title": "Manage One Practice Foursome",
+  "description": "One fictional golf event and exactly four fictional players.",
+  "steps": [
+    "Load one draft golf event and four players.",
+    "Practice changing the captain, replacing a player and checking payment statuses.",
+    "Use only simulated invitations; never send messages to the fictional emails."
+  ],
+  "records": [
+    {
+      "key": "golf-event",
+      "kind": "golf_event",
+      "data": {
+        "event_key": "practice-pack-foursome",
+        "name": "Practice Four-Player Scramble",
+        "course": "Fictional Fairways Practice Course",
+        "event_dates": [
+          {
+            "date": "2027-05-15"
+          }
+        ],
+        "member_price": 120,
+        "non_member_price": 120,
+        "field_settings": {
+          "team_size": 4,
+          "sandbox_demo": true
+        },
+        "status": "draft"
+      }
+    },
+    {
+      "key": "golfer-avery",
+      "kind": "golf_player",
+      "data": {
+        "event_ref": "golf-event",
+        "team_id": "PRACTICE-TEAM-01",
+        "first_name": "Avery",
+        "last_name": "Practice",
+        "email": "avery@practice.example",
+        "date_of_birth": "1990-04-15",
+        "gender": "Male",
+        "price": 120,
+        "payment_status": "unpaid",
+        "registration_status": "pending",
+        "custom_fields": {
+          "sandbox_demo": true,
+          "is_captain": true
+        }
+      }
+    },
+    {
+      "key": "golfer-blair",
+      "kind": "golf_player",
+      "data": {
+        "event_ref": "golf-event",
+        "team_id": "PRACTICE-TEAM-01",
+        "first_name": "Blair",
+        "last_name": "Practice",
+        "email": "blair@practice.example",
+        "date_of_birth": "1991-06-22",
+        "gender": "Female",
+        "price": 120,
+        "payment_status": "unpaid",
+        "registration_status": "pending",
+        "custom_fields": {
+          "sandbox_demo": true,
+          "is_captain": false
+        }
+      }
+    },
+    {
+      "key": "golfer-cameron",
+      "kind": "golf_player",
+      "data": {
+        "event_ref": "golf-event",
+        "team_id": "PRACTICE-TEAM-01",
+        "first_name": "Cameron",
+        "last_name": "Practice",
+        "email": "cameron@practice.example",
+        "date_of_birth": "1992-03-09",
+        "gender": "Prefer not to say",
+        "price": 120,
+        "payment_status": "unpaid",
+        "registration_status": "pending",
+        "custom_fields": {
+          "sandbox_demo": true,
+          "is_captain": false
+        }
+      }
+    },
+    {
+      "key": "golfer-drew",
+      "kind": "golf_player",
+      "data": {
+        "event_ref": "golf-event",
+        "team_id": "PRACTICE-TEAM-01",
+        "first_name": "Drew",
+        "last_name": "Practice",
+        "email": "drew@practice.example",
+        "date_of_birth": "1993-09-17",
+        "gender": "Male",
+        "price": 120,
+        "payment_status": "unpaid",
+        "registration_status": "pending",
+        "custom_fields": {
+          "sandbox_demo": true,
+          "is_captain": false
+        }
+      }
+    }
+  ]
+}

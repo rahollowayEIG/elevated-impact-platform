@@ -1,3 +1,4 @@
+import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestImprovementRadar,validateImprovementRadar} from "../lib/eigMasterScanClient.mjs";
@@ -80,6 +81,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
    setSaveError(false);
   }catch{setSaveError(true);}
  },[ownerUserId,result,choices]);
+ const history=useBuildLabScanHistory(ownerUserId,"radar",result?{...result,choices}:null,result?.scope||"all",result?.sourceVersion||result?.fingerprint);
  async function run(){
   if(running)return;
   setRunning(true);setError("");setNotice("");
@@ -94,7 +96,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
    validateImprovementRadar(audit,files,audit.sourceVersion,scope);
    const same=result?.fingerprint===response.fingerprint;
    setChoices(current=>same?current:{});
-   setResult({audit,files,sourceVersion:audit.sourceVersion,scope,
+   history.begin(scope);setResult({audit,files,sourceVersion:audit.sourceVersion,scope,
      fingerprint:response.fingerprint,inspectedAt:response.inspectedAt,choices:{}});
    setEditing("");
    setNotice((same?"Existing decisions preserved. ":"New source or rubric evidence: review decisions reset. ")+
@@ -162,6 +164,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
   <p className="blr-disclosure">This uses the <strong>same owner-authorized, read-only source scanner</strong>, with a fixed product-quality rubric.
    It proposes areas to investigate; it cannot prove a capability is missing or implemented.
    No live browsers, external competitors, AI calls, records, payments or deployments are involved.</p>
+  {history.error&&<p role="alert" className="platform-error">{history.error}</p>}
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blr-notice" role="status">{notice}</p>}
   {saveError&&<p className="platform-error">Browser autosave is unavailable. Export your reviewed backlog to keep it.</p>}

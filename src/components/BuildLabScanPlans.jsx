@@ -1,0 +1,16 @@
+import React,{useState} from "react";
+import {historyKey} from "../lib/buildLabScanHistory.mjs";
+import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
+const DEFAULTS=[
+ {id:"daily",name:"Daily",purpose:"Focused source checks on the app currently being built.",target:"invoices",scanner:"master"},
+ {id:"weekly",name:"Weekly",purpose:"Review platform coverage and improvement opportunities.",target:"all",scanner:"radar"},
+ {id:"monthly",name:"Monthly",purpose:"Broader platform evidence review before deeper research and planning.",target:"all",scanner:"master"},
+ {id:"targeted",name:"Targeted / On demand",purpose:"Inspect a specific app or feature after a change or reported problem.",target:"invoices",scanner:"master"},
+];
+export default function BuildLabScanPlans({ownerUserId}) {
+ const key=historyKey(ownerUserId)?.replace("scan-history","scan-plans");
+ const [plans,setPlans]=useState(()=>{try{const raw=localStorage.getItem(key);if(!raw||raw.length>10000)return DEFAULTS;const value=JSON.parse(raw);return DEFAULTS.map(p=>{const v=value.find?.(x=>x.id===p.id);return v&&["all",...MASTER_SCAN_TARGETS.map(x=>x.id)].includes(v.target)&&["master","radar","ai","inspector"].includes(v.scanner)?{...p,target:v.target,scanner:v.scanner}:p;});}catch{return DEFAULTS;}});
+ const [notice,setNotice]=useState("");
+ function update(id,field,value){const next=plans.map(p=>p.id===id?{...p,[field]:value,...(field==="scanner"&&value==="ai"&&p.target==="all"?{target:"invoices"}:{})}:p);setPlans(next);try{if(!key)throw Error();localStorage.setItem(key,JSON.stringify(next));setNotice("Plan preferences saved in this browser. Automatic scheduling is not active.");}catch{setNotice("Plan preferences could not be saved in this browser.");}}
+ return <section className="platform-section-card" aria-labelledby="bl-plans-title"><h2 id="bl-plans-title">Scan Plans</h2><p>Choose the intended frequency, scanner and target. These are saved planning preferences; no scheduled jobs or background AI requests are active. Run scans manually from Scanners or AI &amp; Research.</p><p>Daily, weekly and monthly describe frequency. Targeted describes scope and can also be used with any frequency.</p>{notice&&<p role="status">{notice}</p>}{plans.map(p=><article className="bl-plan" key={p.id}><h3>{p.name}</h3><p>{p.purpose}</p><div className="bl-input-pair"><label>{p.name} scanner<select value={p.scanner} onChange={e=>update(p.id,"scanner",e.target.value)}><option value="master">Master Scanner</option><option value="radar">Upgrade Radar</option><option value="ai">AI Review · paid manual request</option><option value="inspector">IA Inspector · InceptionApex only</option></select></label><label>{p.name} target<select value={p.scanner==="inspector"?"inception-apex":p.target} disabled={p.scanner==="inspector"} onChange={e=>update(p.id,"target",e.target.value)}>{p.scanner==="inspector"?<option value="inception-apex">InceptionApex</option>:<><option value="all" disabled={p.scanner==="ai"}>Entire platform {p.scanner==="ai"?"· choose one module for AI":""}</option>{MASTER_SCAN_TARGETS.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</>}</select></label></div><p className="bl-quiet">Status: planning only · Run manually</p></article>)}</section>;
+}

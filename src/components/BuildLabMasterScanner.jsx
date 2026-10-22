@@ -1,3 +1,4 @@
+import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
@@ -79,6 +80,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
   } catch {setSaveError(true);}
  },[report,reviews,ownerUserId]);
 
+ const history=useBuildLabScanHistory(ownerUserId,"master",report?{report,reviews}:null,report?.scope==="module"?report.selectedModule:"all",report?.sourceVersion||report?.sourceFingerprint);
  const rows=useMemo(()=>{
   if(!report)return[];
   const needle=query.trim().toLowerCase();
@@ -106,7 +108,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
    const identical=report?.sourceFingerprint===next.sourceFingerprint;
    setReviews(current=>identical?current:{});
    setEditing("");setNote("");
-   setReport(next);
+   history.begin(selectedScope);setReport(next);
    const label=selectedScope==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(t=>t.id===selectedScope)?.label||"Selected module";
    const modeLabel={live:"Live (read-only)",sandbox:"Sandbox (read-only)",compare:"Compare Both"}[selectedEnvironment];
    setNotice((identical?"Existing decisions were preserved. ":"Evidence or scope changed; prior decisions were reset. ")+
@@ -127,6 +129,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
  const reportSelection=report?.scope==="module"?report.selectedModule:"all";
  const reportMatchesSelection=!report||(reportSelection===selectedScope&&report.environmentAudit?.selected===selectedEnvironment);
  return <section className="platform-section-card blm-root" aria-labelledby="blm-heading">
+  {history.error&&<p role="alert" className="platform-error">{history.error}</p>}
   <div className="blm-head">
    <div>
     <p className="platform-eyebrow">EIG BUILD LAB / MASTER SCANNER</p>

@@ -1,3 +1,5 @@
+import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
+import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useState} from "react";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
@@ -14,12 +16,17 @@ function validateReview(payload,moduleId){
    Array.isArray(x.evidenceFiles)))throw Error("AI review failed safety validation.");
  return r;
 }
-export default function BuildLabAiConnection({supabaseClient}) {
+function restoreAI(uid){
+ try {return readScanHistory(window.localStorage,uid).filter(x=>x.type==="ai").map(x=>validateReview({ok:true,review:x.snapshot.review},x.scope));}catch{return [];}
+}
+export default function BuildLabAiConnection({supabaseClient,ownerUserId}) {
+ const [saved]=useState(()=>restoreAI(ownerUserId));
  const [busy,setBusy]=useState(false),[result,setResult]=useState(null);
  const [error,setError]=useState("");
  const [reviewRunning,setReviewRunning]=useState(false);
- const [moduleId,setModuleId]=useState("invoices");
- const [review,setReview]=useState(null);
+ const [moduleId,setModuleId]=useState(()=>saved[0]?.moduleId||"invoices");
+ const [review,setReview]=useState(()=>saved[0]||null);
+ const history=useBuildLabScanHistory(ownerUserId,"ai",review?{review}:null,review?.moduleId||"invoices",review?.sourceVersion);
  const [reviewError,setReviewError]=useState("");
  async function ownerToken(){
   if(!supabaseClient)throw Error("Sign in to EIG before testing.");
@@ -46,7 +53,7 @@ export default function BuildLabAiConnection({supabaseClient}) {
  }
  async function reviewScan(){
   if(reviewRunning)return;
-  setReviewRunning(true);setReviewError("");setReview(null);
+  setReviewRunning(true);setReviewError("");
   try{
    const token=await ownerToken();
    const res=await fetch("/api/eig-build-lab-ai-review",{
@@ -56,7 +63,7 @@ export default function BuildLabAiConnection({supabaseClient}) {
    });
    const data=await res.json().catch(()=>({}));
    if(!res.ok)throw Error(data.message||"Review connection unavailable.");
-   setReview(validateReview(data,moduleId));
+   history.begin(moduleId);setReview(validateReview(data,moduleId));
   }catch(e){setReviewError(e.message||"AI review unavailable.");}
   finally{setReviewRunning(false);}
  }
@@ -71,7 +78,7 @@ export default function BuildLabAiConnection({supabaseClient}) {
     <p>Select one module. AI will summarize read-only code/test/database snapshot findings and suggest improvements to review before implementation. No public-site or competitor scan is performed.</p>
     <label htmlFor="bl-ai-scope" style={{display:"grid",gap:7,fontSize:13,fontWeight:700,margin:"10px 0"}}>
      Which module should AI review?
-     <select id="bl-ai-scope" value={moduleId} onChange={e=>{setModuleId(e.target.value);setReview(null);setReviewError("");}}
+     <select id="bl-ai-scope" value={moduleId} onChange={e=>{setModuleId(e.target.value);setReview(restoreAI(ownerUserId).find(x=>x.moduleId===e.target.value)||null);setReviewError("");}}
       disabled={reviewRunning} style={{minHeight:40,padding:8,borderRadius:7}}>
       {MASTER_SCAN_TARGETS.map(x=><option value={x.id} key={x.id}>{x.label}</option>)}
      </select>
@@ -80,8 +87,11 @@ export default function BuildLabAiConnection({supabaseClient}) {
      {reviewRunning?"Requesting bounded AI review…":"Analyze this scanner module with AI"}
     </button>
     <p style={{fontSize:12,color:"#c2d9e7"}}>Each click makes one limited, potentially billable OpenAI API request. No continuous scanning or provider-independent usage budget is configured. Findings must be reviewed by the owner.</p>
+    {history.error&&<p role="alert" className="platform-error">{history.error}</p>}
+    {review&&<p className="bl-quiet">Saved AI result for this module. Scan History keeps earlier runs in this browser.</p>}
     {reviewError&&<p role="alert" className="platform-error">{reviewError}</p>}
     {review&&<div className="bl-ai-scan-results" aria-label="AI module review">
+     <button type="button" className="platform-secondary-button" onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="build-lab-ai-review.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Download AI review JSON</button>
      <p><strong>AI proposal · Not verified:</strong> {review.summary}</p>
      <p style={{fontSize:12,color:"#c3d7e6"}}>Source version: {review.sourceVersion?.slice(0,12)||"unversioned"} · Model: {review.model} · Tokens in/out: {review.usage?.input_tokens}/{review.usage?.output_tokens}</p>
      {review.recommendations.length?review.recommendations.map(x=><article key={x.id}

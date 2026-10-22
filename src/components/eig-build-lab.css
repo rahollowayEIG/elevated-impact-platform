@@ -117,3 +117,8 @@
 .bl-about{margin:12px 0 18px;color:#c7dbea;font-size:.85rem}
 .bl-about summary{cursor:pointer;padding:8px 0}
 @media(max-width:570px){.bl-tool-nav{gap:6px;padding:8px;top:4px}.bl-tool-nav button{flex:1 1 calc(50% - 6px);padding:9px 8px;font-size:.8rem}}
+
+.bl-history-table{overflow-x:auto}.bl-history table,.bl-manager table{width:100%;border-collapse:collapse}.bl-history th,.bl-history td,.bl-manager th,.bl-manager td{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid #567a91}.bl-history th button,.bl-manager th button{color:inherit;background:transparent;border:0;font:inherit;cursor:pointer}.bl-history pre{max-width:650px;max-height:400px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.bl-history article{border-bottom:1px solid #567a91;padding:8px 0}.bl-history details{min-width:180px}
+.bl-tool-nav button[hidden]{display:none}.bl-tool-subnav{position:static;margin-top:-8px;background:#1b354d;box-shadow:none}.bl-plan{padding:12px 0;border-top:1px solid #567a91}.bl-history,.bl-plan{overflow-wrap:anywhere}
+
+.bl-manager{overflow-wrap:anywhere}.bl-manager>label{display:grid;gap:8px;margin:12px 0}.bl-manager input[type="checkbox"]{width:auto;min-height:20px;min-width:20px}.bl-manager select{max-width:100%}

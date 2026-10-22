@@ -1,0 +1,59 @@
+/* Owner-only Manual Invoice Pilot. Sample issuers, no real payments or communications. */
+.epi-root{color:#e3edf8;min-width:0}
+.epi-root *{box-sizing:border-box}
+.epi-root h3{color:#fff;font-size:1.05rem;margin:0 0 6px}
+.epi-root h4{color:#fff;margin:0;font-size:.97rem}
+.epi-warning{border:1px solid #75674e;background:#382f25;padding:12px;border-radius:10px;color:#f4e9d5;font-size:.8rem;line-height:1.55;margin:12px 0}
+.epi-form{padding:15px;background:#123249;border:1px solid #44677a;border-radius:12px}
+.epi-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.epi-fields label,.epi-input-line label,.epi-notes,.epi-pay-test label,.epi-sharing label{display:grid;gap:6px;font-size:.79rem;font-weight:700;color:#d7e9f4}
+.epi-fields input,.epi-fields select,.epi-input-line input,.epi-notes textarea,.epi-sharing textarea,.epi-pay-test input{width:100%;background:#f6fbff;color:#19384a;border:1px solid #769aaf;border-radius:8px;padding:10px 11px;font-size:.85rem;font-family:inherit;min-width:0}
+.epi-lines-heading{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin:18px 0 10px}
+.epi-lines-heading button{font-size:.76rem}
+.epi-input-lines{display:grid;gap:9px}
+.epi-input-line{display:grid;grid-template-columns:minmax(0,3fr) minmax(76px,.65fr) minmax(100px,1fr) auto;gap:9px;align-items:end;border:1px solid #34556c;border-radius:10px;background:#1c394e;padding:11px}
+.epi-input-line>button{cursor:pointer;border:1px solid #96777b;color:#ffeef1;background:#633e49;padding:10px;border-radius:8px;font-size:.75rem}
+.epi-input-line>button:disabled{cursor:default;opacity:.45}
+.epi-notes{margin-top:13px}
+.epi-total-line{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:15px;background:#24465a;border:1px solid #516f82;border-radius:9px;padding:12px;color:#fff}
+.epi-preview-wrap{display:grid;gap:15px;margin-top:17px}
+.epi-print-preview{background:#fff;color:#152f41;padding:28px;border:1px solid #b4c7d4;border-radius:11px;font-family:Arial,sans-serif}
+.epi-invoice-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.epi-invoice-top h4{font-size:1.55rem;color:#153e57;margin:0 0 6px}
+.epi-invoice-top p{color:#1e3f56;margin:0;font-size:.85rem}
+.epi-invoice-top>span{font-size:.71rem;line-height:1.5;color:#803f42;font-weight:800;border:2px solid #b78188;padding:8px 12px;transform:rotate(-2deg)}
+.epi-demo-label{font-size:.71rem!important;letter-spacing:.09em;font-weight:800;color:#607b8a!important;margin-bottom:8px!important}
+.epi-invoice-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:25px 0;border-top:1px solid #dae4ec;border-bottom:1px solid #dae4ec;padding:18px 0}
+.epi-invoice-details>div{display:grid;gap:5px;overflow-wrap:anywhere}
+.epi-invoice-details small{font-size:.7rem;color:#506d7b}
+.epi-invoice-details strong{font-size:.87rem;color:#14384b}
+.epi-invoice-details span{font-size:.77rem;color:#385e70}
+.epi-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.epi-table th{color:#234b63;text-align:left;padding:10px 6px;border-bottom:2px solid #8bb2c3}
+.epi-table td{color:#173c51;padding:11px 6px;border-bottom:1px solid #e1eaf0;vertical-align:top}
+.epi-table th:not(:first-child),.epi-table td:not(:first-child){text-align:right}
+.epi-summary{width:min(100%,410px);margin:18px 0 10px auto;display:grid;gap:8px}
+.epi-summary>div{display:flex;gap:12px;justify-content:space-between;font-size:.77rem;color:#355465}
+.epi-summary .epi-grand{font-size:1rem;color:#103447;border-top:1px solid #7299ad;border-bottom:1px solid #7299ad;padding:12px 0;margin:2px 0}
+.epi-preview-terms{font-size:.76rem;color:#466679;line-height:1.5;white-space:pre-wrap}
+.epi-watermark{text-align:center;margin-top:22px;font-size:.78rem;font-weight:800;letter-spacing:.045em;color:#994e52}
+.epi-actions{border:1px solid #49708a;background:#17374a;border-radius:10px;padding:16px}
+.epi-actions>p{font-size:.82rem;color:#d0e3ef;line-height:1.6;margin:10px 0}
+.epi-sharing{border-top:1px solid #3f687d;padding-top:13px;margin-top:15px}
+.epi-sharing>div{display:flex;gap:8px;flex-wrap:wrap}
+.epi-sharing label{margin-top:11px}
+.epi-sharing textarea{line-height:1.5}
+.epi-pay-test{border-top:1px solid #3e6882;margin-top:15px;padding-top:15px;display:flex;align-items:end;flex-wrap:wrap;gap:9px}
+.epi-pay-test label{min-width:170px;flex:1}
+.epi-foot{color:#b5cbd8;font-size:.75rem;line-height:1.5;border-top:1px solid #41667c;padding-top:12px;margin:18px 0 0}
+@media(max-width:780px){.epi-input-line{grid-template-columns:repeat(2,minmax(0,1fr))}.epi-input-line label:first-child{grid-column:span 2}}
+@media(max-width:570px){.epi-fields,.epi-input-line,.epi-invoice-details{grid-template-columns:1fr}.epi-input-line label:first-child{grid-column:auto}.epi-print-preview{padding:17px}.epi-invoice-top{flex-wrap:wrap}}
+@media print{
+ body *{visibility:hidden!important}
+ .epi-print-preview,.epi-print-preview *{visibility:visible!important}
+ .epi-print-preview{position:absolute!important;top:0!important;left:0!important;width:100%!important;
+  max-width:100%!important;padding:18px!important;border:0!important;background:#fff!important;
+  border-radius:0!important;box-shadow:none!important;color:#152f41!important}
+ .epi-invoice-details,.epi-table tr,.epi-summary{break-inside:avoid}
+ @page{size:auto;margin:13mm}
+}

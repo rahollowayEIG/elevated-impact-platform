@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - "api/eig-build-lab-ai-probe.js"
+      - "api/eig-build-lab-ai-review.js"
+      - "server/eig-build-lab-ai-review.cjs"
+      - "src/components/BuildLabAiConnection.jsx"
+      - "tests/eig-build-lab-ai-review.test.cjs"
+      - "src/lib/epCommerceContractReadiness.mjs"
+      - "tests/ep-commerce-contract-readiness.test.mjs"
+      - "docs/EP-POS-AGREEMENT-TAX-INVENTORY-BENCHMARK.md"
       - "tests/eig-build-lab-ai-probe.test.cjs"
       - "src/lib/researchTargetDraft.mjs"
       - "src/components/ResearchTargetPlanner.jsx"
@@ -12,6 +19,34 @@ on:
       - "tests/build-change-impact.test.mjs"
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabInceptionPilot.mjs"
+      - "src/lib/buildLabScannerDirections.json"
+      - "src/lib/buildLabFindingStandards.mjs"
+      - "src/components/ScannerDirectionsDisclosure.jsx"
+      - "tests/build-lab-inception-pilot.test.mjs"
+      - "server/build-lab-builder-contract.cjs"
+      - "server/eig-build-lab-builder.cjs"
+      - "api/eig-build-lab-builder.js"
+      - "src/components/BuildLabBuilder.jsx"
+      - "src/lib/buildLabBuilderClient.mjs"
+      - "scripts/build-lab-builder-worker.cjs"
+      - "tests/build-lab-builder.test.mjs"
+      - ".github/workflows/build-lab-builder.yml"
+      - "src/lib/buildLabWorkBuckets.mjs"
+      - "src/components/BuildLabWorkBuckets.jsx"
+      - "src/components/BuildLabScanDestination.jsx"
+      - "src/components/build-lab-work-buckets.css"
+      - "tests/build-lab-work-buckets.test.mjs"
+      - "tests/build-lab-work-buckets-browser.cjs"
+      - "src/lib/buildLabManagerBlueprint.mjs"
+      - "src/components/BuildLabManager.jsx"
+      - "tests/build-lab-manager-blueprint.test.mjs"
+      - "tests/build-lab-manager-render.cjs"
+      - "src/lib/buildLabScanHistory.mjs"
+      - "src/components/useBuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanPlans.jsx"
+      - "tests/build-lab-scan-history.test.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
@@ -23,6 +58,10 @@ on:
       - "tests/eig-build-lab-scan-client.test.mjs"
       - "tests/eig-build-lab-scan-access.test.cjs"
       - "tests/eig-inception-source-scan.test.cjs"
+      - "tests/inception-apex-browser.cjs"
+      - "src/components/InceptionApex.jsx"
+      - "src/components/FlyerEditor.jsx"
+      - "src/components/inception-apex.css"
       - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
@@ -30,8 +69,83 @@ on:
       - "api/eig-build-lab-access.js"
       - "server/eig-build-lab-preview-access.cjs"
       - "src/components/EigBuildLab.jsx"
+      - "server/eig-essential-wow-scan.cjs"
+      - "src/components/BuildLabImprovementRadar.jsx"
+      - "src/lib/epDiscoveryEngine.mjs"
+      - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epProductCapture.mjs"
+      - "src/components/EpProductCapturePilot.jsx"
+      - "src/components/ep-product-capture-pilot.css"
+      - "tests/ep-product-capture.test.mjs"
+      - "docs/EP-SMART-PRODUCT-CAPTURE-DOUBLE-SYNC.md"
+      - "src/lib/epInvoiceDraft.mjs"
+      - "src/components/EpInvoicePilot.jsx"
+      - "src/components/ep-invoice-pilot.css"
+      - "tests/ep-invoice-draft.test.mjs"
+      - "docs/EP-MANUAL-INVOICE-READINESS.md"
+      - "src/lib/epUnifiedStore.mjs"
+      - "src/components/EpUnifiedStorePilot.jsx"
+      - "src/components/ep-unified-store-pilot.css"
+      - "tests/ep-unified-store.test.mjs"
+      - "docs/EP-UNIVERSAL-STORE-ENGINE.md"
+      - "src/lib/epStorefrontSources.mjs"
+      - "src/components/VendorStoreConnectionsPilot.jsx"
+      - "src/components/vendor-store-connections-pilot.css"
+      - "tests/ep-storefront-sources.test.mjs"
+      - "src/components/ep-discovery-pilot.css"
+      - "tests/ep-discovery-engine.test.mjs"
+      - "docs/EP-TECH-FIRST-DELIVERY-PLAN.md"
+      - "src/components/build-lab-improvement-radar.css"
+      - "tests/eig-essential-wow-scan.test.cjs"
+      - "tests/eig-improvement-radar-client.test.mjs"
+      - "tests/eig-improvement-radar-browser.cjs"
+      - "tests/eig-improvement-radar-harness.jsx"
+      - "tests/eig-improvement-radar.html"
+      - "docs/EIG-ESSENTIALS-WOW-RADAR.md"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "src/lib/eventInquiryLifecycle.mjs"
+      - "src/lib/eventInquiryPortalClient.mjs"
+      - "src/components/EventInquiryAccountPrompt.jsx"
+      - "src/components/event-inquiry-account-prompt.css"
+      - "src/components/EventInquiryDashboard.jsx"
+      - "src/components/event-inquiry-dashboard.css"
+      - "supabase/functions/event-inquiry-portal/**"
+      - "tests/event-inquiry-lifecycle.test.mjs"
+      - "tests/event-inquiry-portal-client.test.mjs"
+      - "tests/event-inquiry-browser.cjs"
+      - "tests/event-inquiry-harness.jsx"
+      - "tests/event-inquiry.html"
+      - "docs/EIE-INQUIRY-PORTAL-BLUEPRINT.md"
+      - "server/eig-master-schema-snapshot.json"
+      - "server/eig-master-environment-baseline.json"
+      - "server/eig-master-deployment-baseline.json"
+      - "server/eig-master-environment-compare.cjs"
+      - "tests/eig-master-environment-compare.test.cjs"
+      - "src/components/BuildLabEnvironmentPanel.jsx"
+      - "src/components/build-lab-environment-panel.css"
+      - "docs/EIG-BUILD-LAB-ENVIRONMENT-AUDIT.md"
+      - "server/eig-master-source-scan.cjs"
+      - "server/build-lab-source-patterns.cjs"
+      - "server/eig-master-scan-handler.cjs"
+      - "api/eig-build-lab-master-scan.js"
+      - "src/lib/eigMasterScanClient.mjs"
+      - "src/lib/eigMasterScanTargets.mjs"
+      - "src/components/BuildLabMasterScanner.jsx"
+      - "src/components/ScannerToolsDisclosure.jsx"
+      - "src/components/scanner-tools-disclosure.css"
+      - "src/components/build-lab-master-scanner.css"
+      - "tests/eig-master-source-scan.test.cjs"
+      - "tests/eig-master-scan-access.test.cjs"
+      - "tests/eig-master-scan-client.test.mjs"
+      - "src/main.jsx"
+      - "src/styles.css"
+      - "src/lib/desktopAppMode.mjs"
+      - "public/build-lab.webmanifest"
+      - "public/build-lab-icon.svg"
+      - "tests/build-lab-pwa.test.mjs"
+      - "src/lib/buildLabMissionOrchestrator.mjs"
+      - "tests/build-lab-mission-orchestrator.test.mjs"
       - "tests/eig-build-architect.test.mjs"
       - "tests/eig-build-lab.html"
       - "tests/eig-build-lab-harness.jsx"
@@ -47,6 +161,34 @@ on:
     paths:
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabInceptionPilot.mjs"
+      - "src/lib/buildLabScannerDirections.json"
+      - "src/lib/buildLabFindingStandards.mjs"
+      - "src/components/ScannerDirectionsDisclosure.jsx"
+      - "tests/build-lab-inception-pilot.test.mjs"
+      - "server/build-lab-builder-contract.cjs"
+      - "server/eig-build-lab-builder.cjs"
+      - "api/eig-build-lab-builder.js"
+      - "src/components/BuildLabBuilder.jsx"
+      - "src/lib/buildLabBuilderClient.mjs"
+      - "scripts/build-lab-builder-worker.cjs"
+      - "tests/build-lab-builder.test.mjs"
+      - ".github/workflows/build-lab-builder.yml"
+      - "src/lib/buildLabWorkBuckets.mjs"
+      - "src/components/BuildLabWorkBuckets.jsx"
+      - "src/components/BuildLabScanDestination.jsx"
+      - "src/components/build-lab-work-buckets.css"
+      - "tests/build-lab-work-buckets.test.mjs"
+      - "tests/build-lab-work-buckets-browser.cjs"
+      - "src/lib/buildLabManagerBlueprint.mjs"
+      - "src/components/BuildLabManager.jsx"
+      - "tests/build-lab-manager-blueprint.test.mjs"
+      - "tests/build-lab-manager-render.cjs"
+      - "src/lib/buildLabScanHistory.mjs"
+      - "src/components/useBuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanPlans.jsx"
+      - "tests/build-lab-scan-history.test.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
@@ -58,12 +200,91 @@ on:
       - "tests/eig-build-lab-scan-client.test.mjs"
       - "tests/eig-build-lab-scan-access.test.cjs"
       - "tests/eig-inception-source-scan.test.cjs"
+      - "tests/inception-apex-browser.cjs"
+      - "src/components/InceptionApex.jsx"
+      - "src/components/FlyerEditor.jsx"
+      - "src/components/inception-apex.css"
       - "vercel.json"
       - "supabase/functions/eig-build-lab-access/**"
       - "tests/eig-build-lab-access.test.mjs"
       - "src/components/EigBuildLab.jsx"
+      - "server/eig-essential-wow-scan.cjs"
+      - "src/components/BuildLabImprovementRadar.jsx"
+      - "src/lib/epDiscoveryEngine.mjs"
+      - "src/components/EpDiscoveryPilot.jsx"
+      - "src/lib/epProductCapture.mjs"
+      - "src/components/EpProductCapturePilot.jsx"
+      - "src/components/ep-product-capture-pilot.css"
+      - "tests/ep-product-capture.test.mjs"
+      - "docs/EP-SMART-PRODUCT-CAPTURE-DOUBLE-SYNC.md"
+      - "src/lib/epInvoiceDraft.mjs"
+      - "src/components/EpInvoicePilot.jsx"
+      - "src/components/ep-invoice-pilot.css"
+      - "tests/ep-invoice-draft.test.mjs"
+      - "docs/EP-MANUAL-INVOICE-READINESS.md"
+      - "src/lib/epUnifiedStore.mjs"
+      - "src/components/EpUnifiedStorePilot.jsx"
+      - "src/components/ep-unified-store-pilot.css"
+      - "tests/ep-unified-store.test.mjs"
+      - "docs/EP-UNIVERSAL-STORE-ENGINE.md"
+      - "src/lib/epStorefrontSources.mjs"
+      - "src/components/VendorStoreConnectionsPilot.jsx"
+      - "src/components/vendor-store-connections-pilot.css"
+      - "tests/ep-storefront-sources.test.mjs"
+      - "src/components/ep-discovery-pilot.css"
+      - "tests/ep-discovery-engine.test.mjs"
+      - "docs/EP-TECH-FIRST-DELIVERY-PLAN.md"
+      - "src/components/build-lab-improvement-radar.css"
+      - "tests/eig-essential-wow-scan.test.cjs"
+      - "tests/eig-improvement-radar-client.test.mjs"
+      - "tests/eig-improvement-radar-browser.cjs"
+      - "tests/eig-improvement-radar-harness.jsx"
+      - "tests/eig-improvement-radar.html"
+      - "docs/EIG-ESSENTIALS-WOW-RADAR.md"
       - "src/components/eig-build-lab.css"
       - "src/PlatformApp.jsx"
+      - "src/lib/eventInquiryLifecycle.mjs"
+      - "src/lib/eventInquiryPortalClient.mjs"
+      - "src/components/EventInquiryAccountPrompt.jsx"
+      - "src/components/event-inquiry-account-prompt.css"
+      - "src/components/EventInquiryDashboard.jsx"
+      - "src/components/event-inquiry-dashboard.css"
+      - "supabase/functions/event-inquiry-portal/**"
+      - "tests/event-inquiry-lifecycle.test.mjs"
+      - "tests/event-inquiry-portal-client.test.mjs"
+      - "tests/event-inquiry-browser.cjs"
+      - "tests/event-inquiry-harness.jsx"
+      - "tests/event-inquiry.html"
+      - "docs/EIE-INQUIRY-PORTAL-BLUEPRINT.md"
+      - "server/eig-master-schema-snapshot.json"
+      - "server/eig-master-environment-baseline.json"
+      - "server/eig-master-deployment-baseline.json"
+      - "server/eig-master-environment-compare.cjs"
+      - "tests/eig-master-environment-compare.test.cjs"
+      - "src/components/BuildLabEnvironmentPanel.jsx"
+      - "src/components/build-lab-environment-panel.css"
+      - "docs/EIG-BUILD-LAB-ENVIRONMENT-AUDIT.md"
+      - "server/eig-master-source-scan.cjs"
+      - "server/build-lab-source-patterns.cjs"
+      - "server/eig-master-scan-handler.cjs"
+      - "api/eig-build-lab-master-scan.js"
+      - "src/lib/eigMasterScanClient.mjs"
+      - "src/lib/eigMasterScanTargets.mjs"
+      - "src/components/BuildLabMasterScanner.jsx"
+      - "src/components/ScannerToolsDisclosure.jsx"
+      - "src/components/scanner-tools-disclosure.css"
+      - "src/components/build-lab-master-scanner.css"
+      - "tests/eig-master-source-scan.test.cjs"
+      - "tests/eig-master-scan-access.test.cjs"
+      - "tests/eig-master-scan-client.test.mjs"
+      - "src/main.jsx"
+      - "src/styles.css"
+      - "src/lib/desktopAppMode.mjs"
+      - "public/build-lab.webmanifest"
+      - "public/build-lab-icon.svg"
+      - "tests/build-lab-pwa.test.mjs"
+      - "src/lib/buildLabMissionOrchestrator.mjs"
+      - "tests/build-lab-mission-orchestrator.test.mjs"
       - "tests/eig-build-architect.test.mjs"
       - "tests/eig-build-lab.html"
       - "tests/eig-build-lab-harness.jsx"
@@ -85,14 +306,60 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs
+      - run: node --test tests/build-lab-work-buckets.test.mjs tests/build-lab-builder.test.mjs tests/build-lab-inception-pilot.test.mjs tests/build-lab-manager-blueprint.test.mjs tests/build-lab-scan-history.test.mjs tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
+      - run: node --test tests/ep-discovery-engine.test.mjs
+      - run: node --test tests/ep-storefront-sources.test.mjs
+      - run: node --test tests/ep-unified-store.test.mjs
+      - run: node --test tests/ep-invoice-draft.test.mjs
+      - run: node --test tests/ep-product-capture.test.mjs
+      - run: node --test tests/ep-commerce-contract-readiness.test.mjs
+      - run: node --test tests/eig-build-lab-ai-review.test.cjs
+      - run: node tests/build-lab-manager-render.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs
+      - run: node tests/build-lab-work-buckets-browser.cjs
+      - run: node tests/inception-apex-browser.cjs
+      - run: node tests/event-inquiry-browser.cjs
+      - run: node tests/eig-improvement-radar-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: eig-build-lab-browser-evidence
-          path: test-results/eig-build-lab/
+          path: |
+            test-results/eig-build-lab/
+            test-results/inception-apex/
+            test-results/event-inquiry/
+            test-results/eig-improvement-radar/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  ia-browser-compatibility:
+    name: IA compatibility / ${{ matrix.browser }}
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run IA desktop, tablet and mobile viewport checks
+        run: node tests/inception-apex-browser.cjs
+        env:
+          IA_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ia-${{ matrix.browser }}-browser-evidence
+          path: test-results/inception-apex/${{ matrix.browser }}/
           retention-days: 7
           if-no-files-found: ignore

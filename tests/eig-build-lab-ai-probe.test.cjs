@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {createBuildLabAiProbe}=require('../api/eig-build-lab-ai-probe.js');
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(data){this.body=data;return this;}};}
 const owner='11111111-1111-4111-8111-111111111111';
-const envs={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'feature/build-intelligence-impact-20261017',EIG_BUILD_LAB_PREVIEW_BRANCH:'feature/build-intelligence-impact-20261017',EIG_BUILD_LAB_ACCESS_ENABLED:'true',EIG_BUILD_LAB_OWNER_USER_ID:owner,EIG_BUILD_LAB_AI_TEST_ENABLED:'true',OPENAI_API_KEY:'test-placeholder'};
+const envs={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'feature/build-lab-orchestrator-20261020',EIG_BUILD_LAB_PREVIEW_BRANCH:'feature/build-lab-orchestrator-20261020',EIG_BUILD_LAB_ACCESS_ENABLED:'true',EIG_BUILD_LAB_OWNER_USER_ID:owner,EIG_BUILD_LAB_AI_TEST_ENABLED:'true',OPENAI_API_KEY:'test-placeholder'};
 const make=({values={}, user=owner,http=()=>{throw Error('must not invoke provider')}}={})=>createBuildLabAiProbe({
   env:k=>({...envs,...values})[k],
   verifyUser:async()=>({id:user}),

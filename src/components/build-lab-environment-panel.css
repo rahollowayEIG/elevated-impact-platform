@@ -1,0 +1,32 @@
+/* Scope: Master Scanner environment evidence. Never alters platform-level design. */
+.blm-env{margin:18px 0;padding:18px;border:1px solid #3a5c70;background:#0d2436;border-radius:14px;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden}
+.blm-env-head{display:flex;align-items:start;justify-content:space-between;gap:13px;flex-wrap:wrap}
+.blm-env-head h3{font-size:1.12rem;margin:0 0 5px;color:#f0f7ff;line-height:1.3}
+.blm-env-head p{color:#bdcedf;font-size:.85rem;margin:0}
+.blm-env-captured{color:#ffe5b7;font-size:.78rem;background:#41341c;border:1px solid #65512c;border-radius:7px;padding:6px 9px;font-weight:650}
+.blm-env-projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0}
+.blm-env-project{padding:14px 16px;background:#102c43;border:1px solid #2c4d66;border-radius:11px;min-width:0;overflow:hidden;box-sizing:border-box}
+.blm-env-project-heading{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.blm-env-project-heading strong{color:#c9e0ff;font-size:.75rem;letter-spacing:.1em}
+.blm-env-project-heading span{font-size:.72rem;color:#b5cada}
+.blm-env-project h4{margin:5px 0 8px;color:#fff;font-size:.98rem}
+.blm-env-project p,.blm-env-delta p{font-size:.82rem;color:#d1deeb;line-height:1.5;margin:6px 0;overflow-wrap:anywhere}
+.blm-env-project code,.blm-env-delta code{color:#dcf0ff;font-size:.78rem;white-space:normal;overflow-wrap:anywhere}
+.blm-env-numbers{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 14px}
+.blm-env-numbers span{padding:7px 9px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.07);border-radius:8px;font-size:.79rem;color:#cfdeec}
+.blm-env-numbers strong{color:#fff}
+.blm-env-project details,.blm-env-delta details{border:1px solid #284a62;border-radius:8px;margin:8px 0 0;background:rgba(0,0,0,.1);min-width:0}
+.blm-env-project summary,.blm-env-delta summary{padding:9px 11px;cursor:pointer;color:#ecf4ff;font-weight:700;font-size:.82rem}
+.blm-env-project summary:hover,.blm-env-delta summary:hover{background:rgba(255,255,255,.045)}
+.blm-env-compact-list{padding:4px 13px 11px;max-height:360px;overflow:auto;min-width:0}
+.blm-env-compact-list p{padding:6px 0;border-top:1px solid rgba(255,255,255,.06);margin:0!important}
+.blm-env-compact-list .blm-env-change{border-top:1px solid #36526a;padding:7px 0}
+.blm-env-change strong{color:#fff}
+.blm-env-change strong code{font-size:.85rem}
+.blm-env-attention{color:#ffd4ba!important}
+.blm-env-delta{margin-top:14px;border-top:1px solid #38556b;padding-top:13px}
+.blm-env-delta h4{margin:0 0 8px;color:#f5f9ff;font-size:.94rem}
+.blm-env-context{max-width:880px}
+.blm-env-verification{padding:11px 12px;border-radius:9px;background:#2e291d;border:1px solid #6c582e;color:#f5e7c7;font-size:.84rem;line-height:1.5;margin-top:14px}
+.blm-env-safety{font-size:.78rem;color:#bad5ca;margin:11px 0 0;line-height:1.5}
+@media(max-width:650px){.blm-env{padding:14px}.blm-env-projects{grid-template-columns:minmax(0,1fr)}.blm-env-numbers span{font-size:.76rem}}

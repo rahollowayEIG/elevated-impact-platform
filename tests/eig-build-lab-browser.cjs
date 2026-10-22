@@ -8,13 +8,564 @@ const fs = require("node:fs/promises");
   await server.listen();
   let browser;
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {}) });
     const page = await browser.newPage({ viewport: { width: 1280, height: 950 }, acceptDownloads: true });
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await fs.mkdir("test-results/eig-build-lab", { recursive: true });
     await page.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
-    await page.getByRole("heading", { name: /Build Lab Project Architect/ }).waitFor();
+    const toolNav=page.getByRole("navigation",{name:"Build Lab tools"});
+    const groups=page.getByRole("navigation",{name:"Build Lab groups"});
+    const groupForName=name=>["Master Scanner","Upgrade Radar","IA Inspector","Impact Review"].includes(name)?"Scanners":["AI Review","Research"].includes(name)?"AI & Research":["Manager","Scan Plans","Project Architect"].includes(name)?"Planning":["Discoveries","Invoices"].includes(name)?"Prototypes":"History";
+    const advancedNames=["Manager","Scan Plans","Project Architect","Research","Discoveries","Invoices"];
+    const openAdvanced=async()=>{const d=page.locator('.bl-advanced-tools');if(!await d.evaluate(el=>el.open))await d.locator('summary').first().click();return d;};
+    const legacy=async enabled=>{await openAdvanced();await page.getByLabel('Show legacy scanner review controls',{exact:true}).setChecked(enabled);};
+    const chooseTool=async name=>{if(advancedNames.includes(name)){const d=await openAdvanced();await d.getByRole('button',{name,exact:true}).click();}else{await groups.getByRole("button",{name:groupForName(name),exact:true}).click();await toolNav.getByRole("button",{name,exact:true}).click();}};
+    assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
+    assert.equal(await toolNav.getByRole("button",{name:"Master Scanner",exact:true}).getAttribute("aria-pressed"),"true");
+    for(const name of ["Upgrade Radar","AI Review","Scan History","IA Inspector","Research","Impact Review","Discoveries","Invoices","Manager","Project Architect"]){
+      await chooseTool(name);
+      if(["Upgrade Radar","AI Review","IA Inspector","Impact Review"].includes(name)){
+        const direction=page.locator('.bl-tool-panel:not([hidden]) .bl-scanner-directions');
+        await direction.getByText('Scanner directions',{exact:true}).click();
+        assert.match(await direction.innerText(),/Shared evidence rules/);
+        assert.match(await direction.innerText(),/Before handoff:/);
+        await direction.getByText('Scanner directions',{exact:true}).click();
+      }
+      assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
+      assert.equal(await (advancedNames.includes(name)?page.getByRole("navigation",{name:"Advanced Build Lab tools"}):toolNav).getByRole("button",{name,exact:true}).getAttribute("aria-pressed"),"true");
+    }
+    await legacy(true);
+    await chooseTool("Master Scanner");
+    const masterDirections=page.locator('#bl-panel-master .bl-scanner-directions');await masterDirections.getByText('Scanner directions',{exact:true}).click();assert.match(await masterDirections.innerText(),/dated Live\/Sandbox metadata/);await masterDirections.getByText('Scanner directions',{exact:true}).click();
+    const sourceTools=page.locator("#bl-panel-master .bl-scanner-tools");
+    await sourceTools.getByText("Tools used",{exact:true}).click();
+    await sourceTools.getByText("ElevationPilot Source Scanner",{exact:true}).waitFor();
+    assert.match(await sourceTools.innerText(),/does not make a fresh database or GitHub query/);
+    await chooseTool("AI Review");
+    assert.equal(await page.getByRole("button",{name:"Test OpenAI Connection",exact:true}).count(),0,"Connection diagnostics are optional, not a required scan step");
+    const aiTools=page.locator("#bl-panel-ai .bl-scanner-tools");
+    await aiTools.getByText("Tools used",{exact:true}).click();
+    await aiTools.getByText("OpenAI · gpt-4.1-mini",{exact:true}).waitFor();
+    assert.match(await aiTools.innerText(),/On Analyze click/);
+    let aiCalls=0;
+    // AI recommendations are owner-clicked, source-only proposals.
+    // Mock the provider-backed endpoint: browser tests must never spend money.
+    await page.route("**/api/eig-build-lab-ai-review",async route=>{
+      aiCalls++;
+      const request=route.request();
+      assert.deepEqual(request.postDataJSON(),{moduleId:"invoices"});
+      assert.ok((request.headers().authorization||"").startsWith("Bearer "));
+      await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+       ok:true,review:{kind:"eig_build_lab_ai_review",schemaVersion:1,moduleId:"invoices",
+       sourceVersion:"a".repeat(40),summary:"Invoice data and signature gates require owner review.",
+       model:"gpt-4.1-mini",usage:{input_tokens:100,output_tokens:60},
+       recommendations:[{id:"ai-review-invoices-1",title:"Keep invoice snapshots immutable",
+        why:"Invoice line database records are not yet verified.",
+        nextAction:"Test authorized order line snapshots in isolated Sandbox.",
+        evidenceFiles:["src/lib/epInvoiceDraft.mjs"],
+        status:"unverified_proposal",ownerReview:"pending"}],
+       safety:{ownerOnly:true,previewOnly:true,customerDataUploaded:false,rawSourceUploaded:false,
+        externalResearch:false,readOnly:true,autoBuilt:false,autoApproved:false,autoDeployed:false}
+       }})});
+    });
+    const aiPanel=page.locator("#bl-panel-ai > .platform-section-card");
+    await aiPanel.getByLabel("Which module should AI review?").selectOption("invoices");
+    await aiPanel.getByRole("button",{name:"Analyze this scanner module with AI"}).click();
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    assert.match(await aiPanel.innerText(),/Review in Work Buckets/);
+    assert.match(await aiPanel.innerText(),/No changes applied/);
+    assert.equal(aiCalls,1);
+    await aiTools.getByText("Response received",{exact:true}).waitFor();
+    await chooseTool("Master Scanner");
+    await chooseTool("AI Review");
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    assert.equal(aiCalls,1);
+    await page.reload();
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    assert.equal(aiCalls,1,"Restoring AI results must not call OpenAI");
+    await chooseTool("Scan History");
+    const historyPanel=page.locator("#bl-panel-history");
+    // Group sections use their accessible labels without changing scanner panels.
+    await historyPanel.getByRole("heading",{name:"AI Review (1)",exact:true}).waitFor();
+    await historyPanel.getByText("View saved scan (1 items)").click();
+    await historyPanel.getByRole("heading",{name:"Keep invoice snapshots immutable"}).waitFor();
+    await historyPanel.getByLabel("Search scan history").fill("not-present-anywhere");
+    await historyPanel.getByText("Showing 0 of 1 saved scans.",{exact:true}).waitFor();
+    await historyPanel.getByLabel("Search scan history").fill("");
+    await historyPanel.getByRole("button",{name:/Date/}).click();
+    assert.equal(await historyPanel.locator("th[aria-sort=ascending]").count(),1);
+    await chooseTool("AI Review");
+    await aiPanel.getByRole("button",{name:"Analyze this scanner module with AI"}).click();
+    await aiPanel.getByText("Keep invoice snapshots immutable").waitFor();
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem("eig:scan-history:v1:11111111-1111-4111-8111-111111111111")||"{}").entries?.filter(x=>x.type==="ai").length===2);
+    assert.equal(aiCalls,2);
+    await chooseTool("Scan History");
+    await historyPanel.getByRole("heading",{name:"AI Review (2)",exact:true}).waitFor();
+    await page.reload();
+    await historyPanel.getByRole("heading",{name:"AI Review (2)",exact:true}).waitFor();
+    assert.equal(aiCalls,2);
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:"test-results/eig-build-lab/scan-history-desktop.png",fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:"test-results/eig-build-lab/scan-history-mobile.png",fullPage:true});
+    await page.setViewportSize({width:1280,height:950});
+    await chooseTool("AI Review");
+    await page.screenshot({path:"test-results/eig-build-lab/tool-navigation-desktop.png",fullPage:true});
+    await chooseTool("Manager");
+    const manager=page.locator("#bl-panel-manager");
+    await manager.getByRole("heading",{name:"The Manager · Blueprint Review"}).waitFor();
+    assert.equal(await manager.locator("tbody input[type=checkbox]").count(),2);
+    for(const checkbox of await manager.locator("tbody input[type=checkbox]").all())await checkbox.check();
+    await manager.getByLabel("New blueprint title",{exact:true}).fill("Invoice repair pilot");
+    await manager.getByRole("button",{name:"Create blueprint from selected scans",exact:true}).click();
+    await manager.getByText(/1 exact duplicates combined/).waitFor();
+    await manager.getByRole("button",{name:"Approve blueprint for handoff",exact:true}).click();
+    await manager.getByRole("alert").filter({hasText:/Review each recommendation/}).waitFor();
+    await manager.getByRole("button",{name:"Accept",exact:true}).click();
+    await manager.getByLabel("Specialist for Keep invoice snapshots immutable",{exact:true}).selectOption("fixer");
+    await manager.getByRole("button",{name:"Approve blueprint for handoff",exact:true}).click();
+    await manager.getByText(/Ready for handoff · Revision/).waitFor();
+    await manager.getByText("3 of 3 proposed tasks shown",{exact:true}).waitFor();
+    const planDownload=page.waitForEvent("download");
+    await manager.getByRole("button",{name:"Download Manager blueprint JSON",exact:true}).click();
+    const exportedPlan=JSON.parse(await fs.readFile(await (await planDownload).path(),"utf8"));
+    assert.equal(exportedPlan.execution,"not_connected");
+    assert.equal(exportedPlan.tasks.length,3);
+    assert.equal(exportedPlan.tasks[1].agent,"fixer");
+    await page.reload();
+    await manager.getByText(/Ready for handoff · Revision/).waitFor();
+    assert.equal(aiCalls,2,"Manager must not call OpenAI while reviewing or restoring plans");
+    await manager.getByLabel("Search Manager tasks",{exact:true}).fill("does-not-exist");
+    await manager.getByText("0 of 3 proposed tasks shown",{exact:true}).waitFor();
+    await manager.getByLabel("Search Manager tasks",{exact:true}).fill("");
+    await manager.getByLabel("Specialist for Keep invoice snapshots immutable",{exact:true}).selectOption("scientist");
+    await manager.getByText("Awaiting owner review · No tasks dispatched",{exact:true}).waitFor();
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:"test-results/eig-build-lab/manager-review-desktop.png",fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:"test-results/eig-build-lab/manager-review-mobile.png",fullPage:true});
+    await page.setViewportSize({width:1280,height:950});
+    await chooseTool("Scan Plans");
+    await page.getByLabel("Daily target",{exact:true}).selectOption("event-builder");
+    await page.reload();
+    assert.equal(await page.getByLabel("Daily target",{exact:true}).inputValue(),"event-builder");
+    await page.getByText(/no scheduled jobs or background AI requests are active/).waitFor();
+    await chooseTool("Impact Review");
+    const impactPanel=page.locator("#bl-panel-impact");
+    await impactPanel.getByLabel("Changed file paths, one per line",{exact:true}).fill("src/components/Invoice.jsx");
+    await impactPanel.getByRole("button",{name:"Assess change risk",exact:true}).click();
+    await impactPanel.getByRole("button",{name:"Download review JSON",exact:true}).waitFor();
+    await legacy(false);assert.equal(await impactPanel.getByLabel("Owner decision",{exact:true}).count(),0);await legacy(true);
+    await impactPanel.getByLabel("Owner decision",{exact:true}).first().selectOption("accept");
+    await page.reload();
+    await impactPanel.getByRole("button",{name:"Download review JSON",exact:true}).waitFor();
+    assert.equal(await impactPanel.getByLabel("Owner decision",{exact:true}).first().inputValue(),"accept");
+    await chooseTool("Discoveries");
+    await page.getByRole("heading", { name: /Build Lab Scanners & Tools/ }).waitFor();
+    // Shared commerce prototype runs without API calls or real profiles.
+    const discover=page.locator(".epd-root");
+    await discover.getByRole("heading",{name:/My Likes \+ Marketplace Pilot/}).waitFor();
+    assert.match(await discover.locator(".epd-safety").innerText(),/All vendors, products and prices are invented/);
+    await discover.locator(".epd-category-grid").getByRole("button",{name:/Golf/}).click();
+    const personalize=discover.getByLabel(/Use My Likes to personalize/);
+    await personalize.check();
+    await discover.locator(".epd-monthly-grid").getByLabel(/Style Club/).check();
+    await discover.getByLabel(/monthly personalized recommendations digest/).check();
+    await discover.getByRole("button",{name:"Preview monthly picks"}).click();
+    await discover.getByText(/Your monthly picks \(preview only\)/).waitFor();
+    assert.match(await discover.locator(".epd-preview").innerText(),/No subscription, email or payment/);
+    await discover.getByRole("tab",{name:/Discoveries/}).click();
+    await discover.getByRole("heading",{name:"Your Discoveries"}).waitFor();
+    await discover.getByLabel("Search products").fill("cap");
+    assert.equal(await discover.locator(".epd-offer").count(),1);
+    await discover.getByLabel("Search products").fill("");
+    await discover.locator(".epd-offer").first().getByRole("button",{name:/Save/}).click();
+    await discover.getByText(/Saved demo wish list/).waitFor();
+    await discover.locator(".epd-offer").first().getByRole("button",{name:"Add to Registry"}).click();
+    await discover.getByRole("heading",{name:/AI Registry Concierge/}).waitFor();
+    await discover.getByRole("button",{name:"Generate registry draft"}).click();
+    await discover.getByText(/draft pending organizer review/).waitFor();
+    await discover.getByRole("button",{name:"Approve draft in demo"}).click();
+    await discover.getByText(/approved in demo not published/).waitFor();
+    const registryWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Download registry concept"}).click();
+    const registryFile=await registryWait;
+    const registryData=JSON.parse(await fs.readFile(await registryFile.path(),"utf8"));
+    assert.equal(registryData.shareEnabled,false);
+    assert.equal(registryData.notificationsSent,false);
+    assert.equal(registryData.status,"approved_in_demo_not_published");
+    await discover.getByRole("tab",{name:/Event Concierge/}).click();
+    await discover.getByRole("heading",{name:/Build an event from vendor offers/}).waitFor();
+    await discover.getByLabel("Event type").selectOption("golf");
+    await discover.getByRole("button",{name:"Build vendor proposal"}).click();
+    await discover.getByText(/Over example budget/).waitFor();
+    const eventWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Download event proposal concept"}).click();
+    const eventFile=await eventWait;
+    const eventData=JSON.parse(await fs.readFile(await eventFile.path(),"utf8"));
+    assert.equal(eventData.attendees,100);
+    assert.equal(eventData.booked,false);
+    assert.equal(eventData.charged,false);
+    assert.equal(eventData.notificationsSent,false);
+    // Connect My Store is a link-only, fictional browser preview. It must
+    // never crawl or import the example merchant's catalog.
+    await discover.getByRole("tab",{name:/Connect My Store/}).click();
+    await discover.getByRole("heading",{name:/Connect My Store · Vendor Hub/}).waitFor();
+    await discover.getByLabel("E-commerce platform").selectOption("shopify");
+    await discover.getByLabel("Store display name").fill("Fictional Demo Shopify");
+    await discover.getByLabel("Public HTTPS store or product URL")
+      .fill("https://synthetic-catalog.myshopify.com/products/polo?private=untrusted");
+    await discover.getByRole("button",{name:"Add storefront link draft"}).click();
+    await discover.getByText(/Storefront link added to this demo only/).waitFor();
+    await discover.locator(".ep-store-card").getByText("Fictional Demo Shopify").waitFor();
+    assert.equal(await discover.locator(".ep-store-card").count(),1);
+    assert.equal((await discover.locator(".ep-store-card").innerText()).includes("private=untrusted"),false);
+    await discover.getByLabel("E-commerce platform").selectOption("etsy");
+    await discover.getByLabel("Store display name").fill("Fictional Gift Vendor");
+    await discover.getByLabel("Public HTTPS store or product URL").fill("https://www.etsy.com/shop/syntheticgifts");
+    await discover.getByRole("button",{name:"Add storefront link draft"}).click();
+    assert.equal(await discover.locator(".ep-store-card").count(),2);
+    await discover.getByLabel("Search linked stores").fill("shopify");
+    assert.equal(await discover.locator(".ep-store-card").count(),1);
+    await discover.getByLabel("Search linked stores").fill("");
+    await discover.getByLabel("Sort stores").selectOption("platform");
+    const storesWait=page.waitForEvent("download");
+    await discover.getByRole("button",{name:"Export store link drafts"}).click();
+    const storesFile=await storesWait;
+    const storesData=JSON.parse(await fs.readFile(await storesFile.path(),"utf8"));
+    assert.equal(storesData.realConnections,false);
+    assert.equal(storesData.paymentCollection,false);
+    assert.equal(storesData.stores.length,2);
+    assert.ok(storesData.stores.every(x=>x.ownerVerified===false&&x.apiConnected===false&&x.productsImported===0));
+    // One commerce shell serves ordinary Hangar commerce, nonprofit, and event fundraising.
+    // A beneficiary can be distinct from the proposed merchandise seller. No payments.
+    await discover.getByRole("tab",{name:/Store Structures/}).click();
+    await discover.getByRole("heading",{name:/Universal Stores · Hangars, Nonprofits & Fundraisers/}).waitFor();
+    const stores=discover.locator(".epu-root");
+    await stores.getByRole("button",{name:/Fundraiser Store/}).click();
+    await stores.getByLabel("Store name").fill("Fictional Golf Benefit Store");
+    await stores.getByLabel("Nonprofit beneficiary").selectOption("demo-education-fund");
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("Fictional Golf Benefit Store").waitFor();
+    await stores.locator(".epu-preview").getByText("Bright Futures Fund (fictional demo)").waitFor();
+    await stores.locator(".epu-preview").getByText("Not established").waitFor();
+    await stores.locator(".epu-catalog-row").filter({hasText:"One-time Contribution Intent"})
+      .getByRole("button",{name:"Add to store"}).click();
+    await stores.locator(".epu-draft-list").getByText("One-time Contribution Intent").waitFor();
+    await stores.locator(".epu-catalog-row").filter({hasText:"Embroidered Golf Cap"})
+      .getByRole("button",{name:"Add to store"}).click();
+    await stores.getByRole("button",{name:"Approve draft in demo"}).click();
+    await stores.locator(".epu-preview").getByText("approved in demo not published").waitFor();
+    const commonStoreDownload=page.waitForEvent("download");
+    await stores.getByRole("button",{name:"Download store concept JSON"}).click();
+    const unifiedStoreFile=await commonStoreDownload;
+    const unifiedStore=JSON.parse(await fs.readFile(await unifiedStoreFile.path(),"utf8"));
+    assert.equal(unifiedStore.demo.type,"fundraiser");
+    assert.equal(unifiedStore.draft.ownerOrganizationId,"demo-fairway-hangar");
+    assert.equal(unifiedStore.draft.beneficiaryOrganizationId,"demo-education-fund");
+    assert.equal(unifiedStore.draft.items.length,2);
+    assert.equal(unifiedStore.draft.customerFundsTransferred,false);
+    assert.equal(unifiedStore.draft.liveCheckoutEnabled,false);
+    assert.equal(unifiedStore.draft.taxReceiptsEnabled,false);
+    assert.equal(unifiedStore.draft.moneyRules.settlementRecipientOrganizationId,null);
+    await stores.getByRole("button",{name:/Nonprofit Store/}).click();
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("Nonprofit Store").waitFor();
+    assert.equal(await stores.getByLabel("Organization / Hangar owner").inputValue(),"demo-community-cause");
+    await stores.getByRole("button",{name:/Hangar Store/}).click();
+    await stores.getByRole("button",{name:"Create store demo draft"}).click();
+    await stores.locator(".epu-preview").getByText("ordinary Hangar commerce").waitFor();
+    assert.equal(await stores.locator(".epu-catalog-row").filter({hasText:"One-time Contribution Intent"}).count(),0);
+    // Product Capture reuses the seller's catalog identity. It never imports
+    // copyrighted merchant data or uploads camera images or mutates live stock.
+    await discover.getByRole("tab",{name:/Product Capture/}).click();
+    const capture=discover.locator(".epc-root");
+    await capture.getByRole("heading",{name:/Smart Product Capture/}).waitFor();
+    await capture.getByRole("button",{name:"Find online / product link"}).click();
+    await capture.getByLabel(/public HTTPS product listing link/)
+      .fill("https://synthetic-store.example.org/products/cap?ref=secret-token");
+    await capture.getByRole("button",{name:"Review product for duplicates"}).click();
+    await capture.getByText(/Matching SKU found in this Hangar/).waitFor();
+    const captureReview=capture.locator(".epc-capture-result");
+    const productExportReady=page.waitForEvent("download");
+    await capture.getByRole("button",{name:"Export product draft JSON"}).click();
+    const captureDownload=await productExportReady;
+    const captureData=JSON.parse(await fs.readFile(await captureDownload.path(),"utf8"));
+    assert.equal(captureData.draft.externalUrl,"https://synthetic-store.example.org/products/cap");
+    assert.equal(captureData.draft.catalogProductCreated,false);
+    assert.equal(captureData.draft.inventoryPosted,false);
+    assert.equal(captureData.photosIncluded,false);
+    assert.deepEqual(captureData.match.exactSkuIds,["demo-product-golf-cap"]);
+    await captureReview.getByRole("button",{name:/Link this existing item/}).click();
+    await captureReview.getByText(/second catalog product was NOT created/).waitFor();
+    await capture.getByRole("button",{name:"Photo / phone camera"}).click();
+    const onePixel=Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO/aZ9sAAAAASUVORK5CYII=",
+      "base64");
+    await capture.getByLabel("Choose product photos").setInputFiles([
+      {name:"cap-from-phone.png",mimeType:"image/png",buffer:onePixel}
+    ]);
+    await capture.getByRole("button",{name:"Review product for duplicates"}).click();
+    await capture.locator(".epc-capture-result").getByText(/1 local photo/).waitFor();
+    const phoneExportWait=page.waitForEvent("download");
+    await capture.getByRole("button",{name:"Export product draft JSON"}).click();
+    const phoneFile=await phoneExportWait;
+    const phoneExport=JSON.parse(await fs.readFile(await phoneFile.path(),"utf8"));
+    assert.equal(phoneExport.draft.photoInfos[0].fileName,"cap-from-phone.png");
+    assert.equal(phoneExport.draft.photoInfos[0].uploaded,false);
+    assert.equal(phoneExport.photosIncluded,false);
+    assert.equal(phoneExport.realInventoryChanged,false);
+    // Double Sync: an already-accounted Shopify sale must never deduct again.
+    const sync=capture.locator(".epc-double-sync");
+    const syncRow=sync.locator(".epc-sale").filter({hasText:"invoice 107"});
+    await syncRow.getByRole("button",{name:"Approve sample deduction"}).click();
+    await sync.getByText(/Current illustrative on-hand/).waitFor();
+    const doubleSyncWait=page.waitForEvent("download");
+    await sync.getByRole("button",{name:"Export reconciliation preview"}).click();
+    const syncFile=await doubleSyncWait;
+    const syncData=JSON.parse(await fs.readFile(await syncFile.path(),"utf8"));
+    assert.equal(syncData.stockActualChange,0);
+    assert.equal(syncData.ledger.length,2);
+    assert.equal(syncData.ledger.at(-1).delta,-2);
+    assert.equal(syncData.preview.pendingCount,0);
+    assert.equal(syncData.preview.proposals.find(x=>x.saleId==="demo-sale-shopify-209").decision,
+      "already_accounted_no_double_deduction");
+    assert.equal(syncData.preview.proposals.find(x=>x.saleId==="demo-sale-invoice-107").decision,
+      "already_accounted_no_double_deduction");
+    await capture.locator(".epc-sale").filter({hasText:"invoice 107"})
+      .getByText("No new stock deduction").waitFor();
+    await page.screenshot({path:"test-results/eig-build-lab/product-capture-desktop.png",fullPage:true});
+    await discover.getByRole("tab",{name:/My Likes/}).click();
+    await page.screenshot({path:"test-results/eig-build-lab/commerce-pilot-desktop.png",fullPage:true});
+
+    // Manual Invoice Builder is a protected preview, not an issued invoice.
+    // A realistic business invoice must still pass server-side numbering/RLS and delivery gates.
+    await chooseTool("Invoices");
+    const invoice=page.locator(".epi-root");
+    await invoice.getByRole("heading",{name:/Manual Invoice Builder/}).waitFor();
+    await invoice.getByLabel("Invoice issuer / Hangar").selectOption("demo-hangar");
+    await invoice.getByLabel("Source / business activity").selectOption("sponsorship");
+    await invoice.getByLabel("Customer / billed organization").fill("Fictional Golf Sponsor");
+    await invoice.getByLabel("Reference / event").fill("Example Charity Golf Event");
+    await invoice.getByLabel("Illustrative tax rate (%), not verified").fill("7");
+    await invoice.getByRole("button",{name:/Add line/}).click();
+    const second=invoice.locator(".epi-input-line").nth(1);
+    await second.getByLabel(/description/).fill("Extra tee sign");
+    await second.getByLabel("Quantity").fill("2");
+    await second.getByLabel("Unit price ($)").fill("45.75");
+    await invoice.getByRole("button",{name:"Create manual invoice preview"}).click();
+    await invoice.locator(".epi-print-preview").getByText("Fictional Golf Sponsor").waitFor();
+    await invoice.locator(".epi-grand").getByText("$231.66").waitFor();
+    await invoice.getByRole("button",{name:"Copy sample email wording"}).click();
+    assert.match(await invoice.locator(".epi-sharing textarea").inputValue(),/DEMO ONLY/);
+    await invoice.getByRole("button",{name:"Copy sample text wording"}).click();
+    await page.waitForFunction(() => document.querySelector(".epi-sharing textarea")?.value.includes("Not issued, payable or sent"));
+    await invoice.getByRole("button",{name:"Approve preview in demo"}).click();
+    await invoice.getByLabel(/Example payment amount/).fill("31.66");
+    await invoice.getByRole("button",{name:"Simulate payment"}).click();
+    await invoice.locator(".epi-print-preview").getByText("$200.00").waitFor();
+    const invoiceWait=page.waitForEvent("download");
+    await invoice.getByRole("button",{name:"Export draft JSON"}).click();
+    const invoiceFile=await invoiceWait;
+    const invoiceData=JSON.parse(await fs.readFile(await invoiceFile.path(),"utf8")).invoice;
+    assert.equal(invoiceData.issuerId,"demo-hangar");
+    assert.equal(invoiceData.status,"approved_in_demo_not_issued");
+    assert.equal(invoiceData.totalCents,23166);
+    assert.equal(invoiceData.simulatedPaymentCents,3166);
+    assert.equal(invoiceData.balanceExampleCents,20000);
+    assert.equal(invoiceData.actualInvoiceIssued,false);
+    assert.equal(invoiceData.realCustomerContacted,false);
+    assert.equal(invoiceData.publicPaymentUrl,null);
+    assert.equal(invoiceData.verifiedPaidCents,0);
+    await page.screenshot({path:"test-results/eig-build-lab/invoice-pilot-desktop.png",fullPage:true});
+    await chooseTool("AI Review");
+    await chooseTool("Invoices");
+    assert.equal(await invoice.getByLabel("Customer / billed organization").inputValue(),"Fictional Golf Sponsor");
+    await invoice.locator(".epi-print-preview").getByText("$200.00").waitFor();
+    await chooseTool("Master Scanner");
+    // Master Scanner gets its own owner-authenticated, read-only client path.
+    // This fixture checks UI/search/review persistence. Separate unit tests
+    // read the committed source, compare actual dated database metadata and
+    // test server-side authorization before any files are read.
+    const demoLive={
+      label:"ElevationPilot Live",vercelProject:"elevated-impact-platform",
+      gitRef:"main",deployedCommit:"a".repeat(40),
+      deploymentHost:"elevated-impact-platform-preview.vercel.app",
+      tables:71,functions:38,rlsDisabled:[],
+      relevantTables:[{table:"events",columns:26,policies:4,indexes:3,rlsEnabled:true}],
+      missingRelevantTables:[],
+    };
+    const demoSandbox={...demoLive,label:"ElevationPilot Sandbox",
+      vercelProject:"elevationpilot-sandbox",gitRef:"feature/sandbox-readonly-live-ui-20261019",
+      deployedCommit:"b".repeat(40),deploymentHost:"elevationpilot-sandbox-preview.vercel.app",
+      functions:42,relevantTables:[{table:"events",columns:26,policies:5,indexes:3,rlsEnabled:true}],
+    };
+    function demoAudit(mode,selected){
+      const full=mode==="compare";
+      return {version:1,selected:mode,scope:selected?"event-builder":"all",capturedOn:"2026-10-20",
+        freshDatabaseQuery:false,freshDeploymentQuery:false,sourceInspection:"preview_reference_only",
+        live:mode==="sandbox"?null:demoLive,sandbox:mode==="live"?null:demoSandbox,
+        compare:full?{
+          source:{githubStatus:"ahead",commitsAhead:161,commitsBehind:0,totalChangedFiles:78,
+            relevantChangedFiles:[{path:"src/EieEventSetupSteps.jsx",status:"modified",additions:160,deletions:0}]},
+          database:{totalDifferentTables:2,totalDifferentFunctions:4,
+            selectedDifferentTables:[{table:"events",kind:"structure_diff",
+              liveColumnCount:26,sandboxColumnCount:26,liveOnlyColumns:[],
+              sandboxOnlyColumns:[],changedColumns:[],rlsDifferent:false,
+              liveRls:true,sandboxRls:true,policyDifferent:true,livePolicyCount:4,
+              sandboxPolicyCount:5,indexDifferent:false,liveIndexCount:3,sandboxIndexCount:3}],
+            functionDifferences:[{signature:"sandbox_practice_role_status()",status:"sandbox_only"}]},
+        }:null,
+        functionalTests:{live:"not_run",sandbox:"not_run"},
+        safety:{readOnly:true,liveModified:false,sandboxModified:false,
+          paymentsAttempted:false,automaticRepairsEnabled:false},
+        notes:["These are dated snapshots, not live browser tests.",
+          "Review code differs by deployed commit; reference source is preview only."],
+      };
+    }
+    function demoUpgrade(selected){
+      const suggestion={
+        id:"identity-for-actions",title:"Account-first for every trackable action",
+        lane:"essential",scope:["*"],priority:"critical",impact:"high",effort:"medium",
+        why:"Every trackable action needs a verified account.",proposal:"Use one account gateway for requests and forms.",
+        verify:"Verify ownership and account continuation in an isolated Sandbox.",
+        dependencies:["Verified accounts"],standard:"owasp-asvs",
+        status:"partial_preview_signals",signalCount:1,signalsChecked:2,
+        evidence:[{path:"src/PlatformApp.jsx",line:4,excerpt:"EventInquiryAccountPrompt"}],
+        claim:"product_upgrade_candidate_not_verified",ownerReview:"pending",
+      };
+      return {
+        kind:"eig_build_lab_improvement_radar",schemaVersion:1,
+        scope:selected?"event-builder":"all",sourceVersion:"a".repeat(40),
+        origin:"protected_preview_source_heuristics",
+        benchmark:"Static product quality rubric, not a live external comparison.",
+        references:[{id:"owasp-asvs",name:"OWASP ASVS",url:"https://asvs.owasp.org/"}],
+        suggestions:[suggestion],
+        summary:{essential:1,wow:0,signalsFound:0,partial:1,notObserved:0},
+        safety:{readOnly:true,externalsVisited:false,aiCalled:false,
+          autoBuilt:false,liveChanges:false,approvalRequired:true},
+        limitations:["Upgrade candidates, not confirmed missing features.",
+          "Preview source markers are not runtime tests.",
+          "No AI and no external websites accessed."],
+      };
+    }
+    const masterFixture = {
+      schemaVersion: 1, kind: "eig_build_lab_master_scan", target: "elevationpilot",
+      scannerVersion: "source-plus-dated-schema-v1", sourceVersion: "a".repeat(40),
+      inspectedAt: "2026-10-20T22:00:00.000Z",
+      sourceFingerprint: "d".repeat(64),
+      files: [{ path: "src/PlatformApp.jsx", lines: 1000, kind: "source" },{path:'src/EieEventSetupSteps.jsx',lines:1000,kind:'source'},{path:'tests/event-builder-browser.cjs',lines:200,kind:'test'}],
+      modules: [
+        { id: "event-builder", title: "Event Builder", priority: "high",
+          status: "review_needed", sourceStatus: "partial_source_markers",
+          uiStatus: "ui_marker_found", testStatus: "not_observed_in_sample", dbStatus: "tables_in_dated_snapshot",
+          evidence: [{ kind: "source", path: "src/EieEventSetupSteps.jsx", line: 7, excerpt: "function EieEventSetupSteps" },{ kind: "ui", path: "src/PlatformApp.jsx", line: 8, excerpt: "<EieEventSetupSteps" }],
+          coverage:{source:{expected:2,observed:1,runtimeVerified:false,checks:[{path:'src/EieEventSetupSteps.jsx',marker:'function EieEventSetupSteps',observed:true},{path:'src/EieEventSetupSteps.jsx',marker:'saveEventDetails',observed:false}]},ui:{expected:1,observed:1,runtimeVerified:false,checks:[{path:'src/PlatformApp.jsx',marker:'<EieEventSetupSteps',observed:true}]},test:{expected:3,observed:0,runtimeVerified:false,checks:['Save Event Details','Save Registration','Players per team'].map(marker=>({path:'tests/event-builder-browser.cjs',marker,observed:false}))}},
+          verify:'Save and reopen isolated Event Details and Registration settings, then attach exact-commit regression results.',
+          testScope:'Event Details and Registration locator markers only; execution remains unverified.',
+          observation:'Source 1/2, UI 1/1 and test 0/3 configured markers observed.',
+
+          tables: [{ table: "events", production: true, sandbox: true }],
+          nextCheck: "Run an authorized Sandbox event-creation and save/reopen browser test." },
+        { id: "invoices", title: "EIG Invoicing", priority: "high",
+          status: "not_observed_in_sample", sourceStatus: "not_observed_in_sample",
+          uiStatus: "not_observed_in_sample", testStatus: "not_sampled", dbStatus: "snapshot_gap",
+          evidence: [], tables: [{ table: "invoices", production: false, sandbox: false }],
+          nextCheck: "Check full repository before designing an invoice issuer." },
+      ],
+      summary: { modulesReviewed: 2, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 1 },
+      database: {
+        capturedOn: "2026-10-20", freshLiveQuery: false, productionTables: 71, sandboxTables: 71,
+        missingInSandbox: [], missingInProduction: [],
+        policyDifferences: [{ table: "events", productionPolicies: 4, sandboxPolicies: 5,
+          productionRls: true, sandboxRls: true }],
+        rlsDisabled: { production: [], sandbox: [] },
+      },
+      limitations: ["Static source inspection only.", "Dated schema metadata snapshot only."],
+      safety: { readOnly: true, liveChanges: false, customerRowsRead: false,
+        autoApproved: false, autoDeployed: false },
+    };
+    await page.route("**/api/eig-build-lab-master-scan", async (route) => {
+      assert.equal(route.request().method(), "POST");
+      const request = route.request().postDataJSON();
+      assert.equal(request.target, "elevationpilot");
+      assert.ok(["live","sandbox","compare"].includes(request.environmentMode));
+      assert.ok(!request.moduleId || request.moduleId === "event-builder");
+      assert.match(route.request().headers().authorization || "", /Bearer synthetic-browser-test-token/);
+      const selected = request.moduleId === "event-builder";
+      const responseReport = { ...masterFixture,
+        scope: selected ? "module" : "full", selectedModule: selected ? "event-builder" : null,
+        modules: selected ? [masterFixture.modules[0]] : masterFixture.modules,
+        summary: selected ? { modulesReviewed: 1, evidencePresent: 0, reviewNeeded: 1, notObservedInSample: 0 } : masterFixture.summary,
+        environmentAudit:demoAudit(request.environmentMode,selected),
+        improvementAudit:demoUpgrade(selected),
+      };
+      await route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ok: true, report: responseReport }) });
+    });
+    await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
+    await page.locator(".blm-table").getByText("Event Builder", { exact: true }).waitFor();
+    await page.locator(".blm-upgrade-teaser").getByText("What should we improve next?").waitFor();
+    await page.locator(".blm-upgrade-teaser").getByText("Account-first for every trackable action").waitFor();
+    await page.getByRole("heading", { name: /Environment Evidence: Compare Live/ }).waitFor();
+    await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).waitFor();
+    await page.locator(".blm-env-delta").getByText(/Database differences for all public tables/).click();
+    await page.locator(".blm-env-delta").getByText(/security policies differ/i).first().waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
+    await page.getByLabel("Search Master Scanner modules").fill("invoice");
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
+    await page.getByLabel("Search Master Scanner modules").fill("");
+    const masterRow = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
+    await masterRow.locator('td:first-child > details > summary').click();
+    assert.match(await masterRow.innerText(),/Partial source markers · 1\/2/);
+    assert.match(await masterRow.innerText(),/Sampled test scope:/);
+    await masterRow.getByText('Configured evidence checks',{exact:true}).click();assert.match(await masterRow.innerText(),/saveEventDetails/);assert.match(await masterRow.innerText(),/0\/3 markers observed/);
+    await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/eig-build-lab/master-evidence-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/eig-build-lab/master-evidence-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+    await page.getByLabel('Search Master Scanner modules').fill('saveEventDetails');assert.equal(await page.locator('.blm-table tbody tr').count(),1);await page.getByLabel('Search Master Scanner modules').fill('');
+    await legacy(false);assert.equal(await masterRow.getByRole("button",{name:"Accept for follow-up",exact:true}).count(),0);await legacy(true);
+    await masterRow.getByRole("button", { name: "Accept for follow-up" }).click();
+    await page.waitForFunction(() => {
+      const data = window.localStorage.getItem("eig:master-scan:v1:11111111-1111-4111-8111-111111111111");
+      return data && JSON.parse(data).reviews["event-builder"]?.review === "accept";
+    });
+    await page.reload();
+    const masterRestored = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
+    await masterRestored.locator("td:first-child > details > summary").click();
+    assert.match(await masterRestored.innerText(), /Review: accept/);
+    assert.equal(await page.locator(".blm-root").getByRole("button", { name: "Export JSON" }).count(), 1);
+    // The original IA-only Source Inspector remains separate. Master Scanner
+    // supports a real server-scoped review for any approved module target.
+    await page.getByLabel("What should Build Lab scan?").selectOption("event-builder");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.locator(".blm-report-scope").getByText(/Event Builder/).waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
+    await page.locator(".blm-table tbody tr").getByText("Needs verification").waitFor();
+    // Live and Sandbox selectors affect the actual authenticated request,
+    // the rendered environment identity, and the report scope.
+    await page.getByLabel("Which environment?").selectOption("live");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Live \(read-only\)/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 1);
+    await page.getByLabel("Which environment?").selectOption("sandbox");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Sandbox \(read-only\)/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 1);
+    await page.getByLabel("Which environment?").selectOption("compare");
+    await page.getByRole("button", { name: /Scan Selected Module/ }).click();
+    await page.getByRole("heading", { name: /Environment Evidence: Compare Live \+ Sandbox/ }).waitFor();
+    assert.equal(await page.locator(".blm-env-project").count(), 2);
+    await page.getByLabel("What should Build Lab scan?").selectOption("all");
+    await page.getByRole("button", { name: /Scan Entire Platform/ }).click();
+    await page.locator(".blm-report-scope").getByText(/Entire ElevationPilot platform/).waitFor();
+    assert.equal(await page.locator(".blm-table tbody tr").count(), 2);
+
+
     // The scanner is mocked here to exercise authenticated UI and local
     // review persistence; separate server tests read actual first-party files.
     const scanFixture = {
@@ -26,12 +577,14 @@ const fs = require("node:fs/promises");
         { path: "src/components/InceptionApex.jsx", lines: 1361 },
         { path: "src/components/inception-apex.css", lines: 623 },
       ],
+      ruleChecks:[{id:'ia-native-confirm',title:'Review confirmation callers',status:'source_pattern_found',findingType:'verification_needed',runtimeVerified:false,nextCheck:'Verify cancel and continue with synthetic designs.',evidence:[{path:'src/components/InceptionApex.jsx',line:232,excerpt:'window.confirm('}]}],
       findings: [
         {
           id: "ia-native-confirm", category: "Workflow", priority: "medium",
           title: "Review native confirmation dialogs",
           observation: "First-party source calls window.confirm during navigation.",
           recommendation: "Consider a reusable confirmation component.",
+          verify: "Verify cancel and continue with synthetic designs.",
           provenance: "observed_in_first_party_source", review: "pending",
           evidence: [{ path: "src/components/InceptionApex.jsx", line: 232, excerpt: "window.confirm(" }],
         },
@@ -54,27 +607,135 @@ const fs = require("node:fs/promises");
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ ok: true, report: scanFixture }) });
     });
+    await chooseTool("Upgrade Radar");
+    const radarPanel=page.locator("#bl-panel-radar");
+    await radarPanel.getByRole("button",{name:"Scan for Essentials & Upgrades →",exact:true}).click();
+    await legacy(false);assert.equal(await radarPanel.getByRole("button",{name:"Accept for blueprint",exact:true}).count(),0);assert.equal(await radarPanel.getByRole("button",{name:"Download Upgrade Brief",exact:true}).count(),0);await legacy(true);
+    await radarPanel.getByRole("button",{name:"Accept for blueprint",exact:true}).first().click();
+    await page.reload();
+    await radarPanel.getByRole("button",{name:"Export Upgrade Backlog JSON",exact:true}).waitFor();
+    await chooseTool("IA Inspector");
     await page.getByRole("button", { name: /Inspect InceptionApex source/ }).click();
-    await page.getByText("Review native confirmation dialogs").waitFor();
+    await page.locator("#bl-panel-inspector").getByRole("heading",{name:"Review native confirmation dialogs",exact:true}).waitFor();
     await page.getByRole("button", { name: "Download source report JSON" }).waitFor();
-    const firstScanFinding = page.locator(".bl-scan-finding").filter({ hasText: "Review native confirmation dialogs" });
+    const firstScanFinding = page.locator("#bl-panel-inspector .bl-scan-finding").filter({ hasText: "Review native confirmation dialogs" });
+    const ruleChecks=page.locator('#bl-panel-inspector .bl-rule-checks');await ruleChecks.getByText('What the scanner checked (1)',{exact:true}).click();assert.match(await ruleChecks.innerText(),/Source pattern found/);assert.match(await ruleChecks.innerText(),/not test results/);
+    assert.match(await firstScanFinding.innerText(),/Verification required:/);
     await firstScanFinding.locator("summary").click();
     await firstScanFinding.getByText(/src\/components\/InceptionApex.jsx:232/).waitFor();
+    await legacy(false);
+    for(const name of ['Accept','Revise','Reject','Create blueprint for this finding'])assert.equal(await firstScanFinding.getByRole('button',{name,exact:true}).count(),0);
+    await page.locator('#bl-panel-inspector').getByRole('button',{name:'View Work Buckets →',exact:true}).click();await page.locator('#bl-panel-buckets').getByRole('heading',{name:'Work Buckets',exact:true}).waitFor();
+    const bucketNative=page.locator('#bl-panel-buckets tbody tr').filter({hasText:'Review native confirmation dialogs'});await bucketNative.getByText('Requirement & evidence',{exact:true}).click();assert.match(await bucketNative.innerText(),/Complete when:.*Verify cancel and continue with synthetic designs/);
+    await chooseTool('IA Inspector');await legacy(true);
     await firstScanFinding.getByRole("button", { name: "Accept" }).click();
     assert.equal(await firstScanFinding.locator(".state-accept").count(), 1);
     await page.getByRole("button", { name: /EIG Command Center/ }).click();
     await page.getByRole("button", { name: "Return to Build Lab" }).click();
-    await page.getByText("Review native confirmation dialogs").waitFor();
-    assert.equal(await page.locator(".bl-scan-finding .state-accept").count(), 1);
+    await page.locator("#bl-panel-inspector").getByRole("heading",{name:"Review native confirmation dialogs",exact:true}).waitFor();
+    assert.equal(await page.locator("#bl-panel-inspector .bl-scan-finding .state-accept").count(), 1);
     await page.reload();
-    await page.getByText("Review native confirmation dialogs").waitFor();
-    assert.equal(await page.locator(".bl-scan-finding .state-accept").count(), 1);
+    await page.locator("#bl-panel-inspector").getByRole("heading",{name:"Review native confirmation dialogs",exact:true}).waitFor();
+    assert.equal(await page.locator("#bl-panel-inspector .bl-scan-finding .state-accept").count(), 1);
     assert.equal(await page.getByRole("button", { name: "Download reusable JSON" }).count(), 0);
+    await chooseTool("Scan History");
+    for(const type of ["Master Scanner","Upgrade Radar","IA Inspector","AI Review","Impact Review"]){
+      const group=historyPanel.locator("section").filter({has:page.getByRole("heading",{name:new RegExp("^"+type+" ")})});
+      assert.ok(await group.locator("tbody tr").count()>0,type+" must have saved history");
+    }
+    await historyPanel.getByLabel("Scan type").selectOption("inspector");
+    await historyPanel.getByText(/View saved scan/).first().click();
+    await historyPanel.getByText(/Saved decision:.*accept/).waitFor();
+    await historyPanel.getByLabel("Scan type").selectOption("all");
+    await chooseTool("IA Inspector");
+    const inspectorPanel=page.locator("#bl-panel-inspector");
+    await inspectorPanel.getByText("Scanner directions",{exact:true}).click();
+    await inspectorPanel.getByText(/Identify specific InceptionApex source patterns/).waitFor();
+    page.once("dialog",dialog=>dialog.accept());
+    await firstScanFinding.getByRole("button",{name:"Create blueprint for this finding",exact:true}).click();
+    await manager.getByText("One-scanner pilot · Implementation after owner approval",{exact:true}).waitFor();
+    assert.equal(await manager.locator(".bl-scan-finding").count(),1);
+    await manager.getByRole("button",{name:"Accept",exact:true}).click();
+    await manager.getByRole("button",{name:"Approve blueprint for handoff",exact:true}).click();
+    await manager.getByText(/Ready for handoff · Revision/).waitFor();
+    const pilotWait=page.waitForEvent("download");
+    await manager.getByRole("button",{name:"Download Manager blueprint JSON",exact:true}).click();
+    const pilot=JSON.parse(await fs.readFile(await (await pilotWait).path(),"utf8"));
+    assert.equal(pilot.proposals.length,1);
+    assert.equal(pilot.pilot.findingId,"ia-native-confirm");
+    assert.equal(pilot.execution,"not_connected");
+    await manager.getByLabel(/Specialist for/).selectOption("fixer");
+    const revisedBuilderRequirement="Build a complete accessible in-app confirmation with cancellation and continuation.";
+    await manager.getByRole("button",{name:"Revise",exact:true}).click();
+    await manager.getByLabel("Revised Manager requirement").fill(revisedBuilderRequirement);
+    await manager.getByRole("button",{name:"Save Manager revision",exact:true}).click();
+    await manager.getByRole("button",{name:"Accept",exact:true}).click();
+    await manager.getByRole("button",{name:"Approve blueprint for handoff",exact:true}).click();
+    let builderCalls=0;
+    let builderError='';
+    let builderResult={status:"blocked",summary:"A focused browser reproduction is needed before changing this behavior."};
+    await page.route("**/api/eig-build-lab-builder",async route=>{
+      builderCalls++;
+      const body=route.request().postDataJSON();
+      assert.equal(body.shareSourceWithOpenAI,true);
+      assert.equal(body.blueprint.status,"reviewed_for_handoff");
+      const activeWork=body.blueprint.proposals.filter(p=>['accept','revise'].includes(p.decision));
+      assert.equal(activeWork.length,1);assert.equal(activeWork[0].revision,revisedBuilderRequirement);
+      await route.fulfill({status:builderError?502:200,contentType:"application/json",body:JSON.stringify(builderError?{ok:false,message:builderError}:{ok:true,result:builderResult})});
+    });
+    const generateCandidate=manager.getByRole("button",{name:"Generate IA implementation candidate",exact:true});
+    assert.equal(await generateCandidate.isDisabled(),true);
+    await manager.getByLabel(/Send the four allowlisted IA source/).check();
+    await generateCandidate.click();
+    await manager.getByText("Needs investigation",{exact:true}).waitFor();
+    assert.equal(builderCalls,1);
+    assert.equal(await manager.getByRole("button",{name:"Download candidate for verification"}).count(),0);
+    await page.screenshot({path:"test-results/eig-build-lab/builder-blocked-desktop.png",fullPage:true});
+    builderResult={status:"unverified_candidate",summary:"Synthetic source-review UI fixture; no real edits or provider call.",sourceReview:{verdict:"pass",summary:"Synthetic review evidence for display testing.",requirements:[{requirement:"Preserve cancellation",evidence:"Synthetic InceptionApex.jsx dialog cancellation evidence.",met:true}],unresolved:[]},testsRun:false,files:["src/components/InceptionApex.jsx"],expiresAt:Date.now()+1800000,bundle:{payload:'{"syntheticUiFixture":true}',signature:"a".repeat(64)}};
+    await generateCandidate.click();
+    await manager.getByText("Candidate prepared · Source review passed · Not tested",{exact:true}).waitFor();
+    await manager.getByText(/Synthetic InceptionApex.jsx dialog cancellation evidence/).waitFor();
+    const candidateDownload=page.waitForEvent("download");
+    await manager.getByRole("button",{name:"Download candidate for verification",exact:true}).click();
+    assert.deepEqual(JSON.parse(await fs.readFile(await (await candidateDownload).path(),"utf8")),builderResult.bundle);
+    await manager.getByRole("heading",{name:"4. Prepare an implementation candidate"}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:"test-results/eig-build-lab/builder-reviewed-desktop.png"});
+    await page.setViewportSize({width:390,height:844});
+    await manager.getByRole("heading",{name:"4. Prepare an implementation candidate"}).scrollIntoViewIfNeeded();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    await page.screenshot({path:"test-results/eig-build-lab/builder-reviewed-mobile.png"});
+    await page.setViewportSize({width:1280,height:950});
+
+    // Regression: a normal scan stack has no pilot marker and can retain held findings.
+    const {approveManagerBlueprint,managerStorageKey}=await import('../src/lib/buildLabManagerBlueprint.mjs');
+    const stacked=structuredClone(pilot);delete stacked.pilot;
+    const selectedWork={...stacked.proposals[0],assignedTo:'fixer',decision:'revise',revision:revisedBuilderRequirement};
+    const heldWork=(id,itemId)=>({...structuredClone(selectedWork),id,title:'Held '+itemId,decision:'hold',revision:'',sourceRefs:selectedWork.sourceRefs.map(r=>({...r,itemId}))});
+    stacked.proposals=[heldWork('held-focus','ia-form-focus'),selectedWork,heldWork('held-tabs','ia-design-tabs')];
+    const approvedStack=approveManagerBlueprint(stacked);
+    await page.evaluate(({key,plan})=>localStorage.setItem(key,JSON.stringify(plan)),{key:managerStorageKey('11111111-1111-4111-8111-111111111111'),plan:approvedStack});
+    await page.reload();
+    await manager.getByText(/Ready for handoff · Revision/).waitFor();
+    assert.equal(await manager.locator('.bl-scan-finding').count(),3);
+    await manager.getByText('Requirement to implement:',{exact:true}).waitFor();
+    assert.match(await manager.locator('[aria-label="Bounded IA builder"]').innerText(),new RegExp(revisedBuilderRequirement));
+    assert.equal(await manager.getByRole('button',{name:'Generate IA implementation candidate',exact:true}).isDisabled(),true);
+    await manager.getByLabel(/Send the four allowlisted IA source/).check();
+    await manager.getByRole('button',{name:'Generate IA implementation candidate',exact:true}).click();
+    await manager.getByText('Candidate prepared · Source review passed · Not tested',{exact:true}).waitFor();
+    await manager.getByRole('heading',{name:'4. Prepare an implementation candidate'}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:'test-results/eig-build-lab/builder-held-eligibility-desktop.png'});
+    builderError='OpenAI reached its response-length limit before completing the result. This happened during source review. No files were changed. Reference: synthetic-diagnostic-fixture.';
+    await manager.getByRole('button',{name:'Generate IA implementation candidate',exact:true}).click();
+    await manager.getByRole('alert').filter({hasText:'synthetic-diagnostic-fixture'}).waitFor();
+    assert.equal(await manager.getByRole('button',{name:'Download candidate for verification'}).count(),0);
+    await page.screenshot({path:'test-results/eig-build-lab/builder-diagnostic-desktop.png'});
+    await chooseTool("Project Architect");
     await page.getByRole("button", { name: "Load InceptionApex pilot" }).click();
     assert.equal(await page.getByLabel("What are we doing?").inputValue(), "ui_review");
     await page.getByRole("button", { name: /Create draft blueprint/ }).click();
     await page.getByText("Evaluate a reusable tool first").waitFor();
-    await page.getByText("InceptionApex creative studio", { exact: false }).waitFor();
+    await page.locator(".bl-chip").filter({ hasText: "InceptionApex creative studio" }).waitFor();
     const proposals = page.locator(".bl-suggestion");
     assert.equal(await proposals.count(), 6);
     await proposals.first().getByRole("button", { name: /Accept/ }).click();
@@ -145,6 +806,12 @@ const fs = require("node:fs/promises");
     assert.equal(await page.locator(".bl-suggestions .state-reject").count(), 1);
     // The same browser cannot restore a different owner's saved work.
     await page.evaluate(() => window.buildLabHarness.setOwner("22222222-2222-4222-8222-222222222222"));
+    await chooseTool("Scan History");
+    await historyPanel.getByText("Showing 0 of 0 saved scans.",{exact:true}).waitFor();
+    await chooseTool("Manager");
+    assert.equal(await manager.getByRole("heading",{name:/2. Review/}).count(),0);
+
+    await chooseTool("Project Architect");
     await page.getByText("Your blueprint appears here").waitFor();
     assert.equal(await page.getByLabel("Project name").inputValue(), "");
     await page.evaluate(() => window.buildLabHarness.setOwner("11111111-1111-4111-8111-111111111111"));
@@ -157,6 +824,8 @@ const fs = require("node:fs/promises");
     // Also preserve a partially typed mission before Generate is clicked.
     const partial = await browser.newPage({ viewport: { width: 950, height: 850 } });
     await partial.goto("http://127.0.0.1:4198/tests/eig-build-lab.html");
+    await partial.locator(".bl-advanced-tools > summary").click();
+    await partial.getByRole("navigation",{name:"Advanced Build Lab tools"}).getByRole("button",{name:"Project Architect",exact:true}).click();
     await partial.getByLabel("Project name").fill("Draft without a blueprint");
     await partial.getByLabel("Goal and definition of success").fill("Save this unfinished idea too.");
     await partial.getByRole("button", { name: /EIG Command Center/ }).click();

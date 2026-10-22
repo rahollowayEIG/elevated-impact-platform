@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
+const {maskSource:maskTestCommentsAndStrings,SOURCE_RECOGNIZER_VERSION}=require("./build-lab-source-patterns.cjs");
 
 const FILE_PATHS = Object.freeze([
   "src/components/InceptionApex.jsx",
@@ -19,7 +20,8 @@ const RULES = Object.freeze([
     id: "ia-native-confirm", category: "Workflow", priority: "medium",
     title: "Review native confirmation dialogs for consistency",
     observation: "The InceptionApex component invokes the browser's native confirmation dialog before at least one navigation action.",
-    recommendation: "Compare this with shared EIG confirmation UX; if a consistent accessible in-app confirmation is useful, prototype and regression-test it without weakening unsaved-change protection.",
+    recommendation: "Compare every observed confirmation call with shared EIG confirmation UX. If an in-app replacement is approved, cover all affected callers, cancellation and continuation, Escape, visible keyboard focus and focus restoration; preserve unsaved-change and deletion protection. A native dialog alone is not a defect.",
+    verify: "Walk through every listed confirmation caller using synthetic designs. Record cancel and continue behavior, keyboard access and preserved unsaved data. If replacing dialogs, regression-test all affected callers and retain the exact-commit browser results.",
     checks: [{ file: "src/components/InceptionApex.jsx", needle: "window.confirm(" }],
   },
   {
@@ -27,6 +29,7 @@ const RULES = Object.freeze([
     title: "Check keyboard focus indicators for editor fields",
     observation: "The InceptionApex stylesheet explicitly defines button focus-visible styling and separate input/textarea/select styling.",
     recommendation: "Use an authorized browser walkthrough to check visible focus states on fields, buttons, dialogs and editing tools. Site-wide styles may already cover inputs; do not call this a defect without testing.",
+    verify: "Tab and Shift+Tab through editor fields, buttons, dialogs and editing tools with synthetic data. Record visible focus, clipping and focus restoration. Include inherited/site-wide styles before deciding whether a change is needed; an unobserved local selector is not a defect.",
     checks: [
       { file: "src/components/inception-apex.css", needle: ".ia-app button:focus-visible" },
       { file: "src/components/inception-apex.css", needle: ".ia-app input:not([type=" },
@@ -37,6 +40,7 @@ const RULES = Object.freeze([
     title: "Verify editor step navigation and screen-reader clarity",
     observation: "The design workflow renders custom tab-like buttons and uses aria-pressed to reflect the selected editor panel.",
     recommendation: "Check that Design, Details, and Preview & approve remain clear using keyboard and assistive technology; decide whether a navigation-button group or formal tab semantics best reflects the observed behavior.",
+    verify: "Verify keyboard reachability, selected-panel announcements and panel changes for Design, Details and Preview & approve. Choose semantics matching the observed interaction; aria-pressed on navigation buttons is not automatically incorrect. Preserve the design while moving between panels.",
     checks: [
       { file: "src/components/InceptionApex.jsx", needle: 'className="ia-editor-tabs"' },
       { file: "src/components/InceptionApex.jsx", needle: "aria-pressed={panel === id}" },
@@ -44,9 +48,10 @@ const RULES = Object.freeze([
   },
   {
     id: "ia-responsive-coverage", category: "Responsive UI", priority: "low",
-    title: "Expand responsive checks around tablet breakpoints",
-    observation: "InceptionApex defines a 950px responsive breakpoint, and its browser test switches viewport sizes.",
-    recommendation: "Add intermediate tablet/breakpoint screenshots and check text, form control targets and navigation. Existing mobile/desktop tests are evidence of test code, not a guarantee that every layout passes.",
+    title: "Verify tablet-breakpoint regression coverage",
+    observation: "InceptionApex defines a 950px breakpoint, but the sampled script does not contain all recognized viewport and assertion markers. Equivalent tests may exist outside this bounded recognizer.",
+    recommendation: "Locate equivalent existing tablet tests first. If this gap is confirmed, add explicit synthetic viewport checks at 949, 950 and 951px, asserting no horizontal page overflow and that editor controls remain reachable. Run the browser test and rescan; source markers alone do not prove a passing test.",
+    verify: "Find equivalent coverage first. Confirm overflow and editor-control reachability are asserted at 949, 950 and 951px; run the affected test on the exact commit and attach its results. Source definitions and marker matches never establish a passing run.",
     checks: [
       { file: "src/components/inception-apex.css", needle: "@media (max-width: 950px)" },
       { file: "tests/inception-apex-browser.cjs", needle: "setViewportSize(" },
@@ -57,6 +62,7 @@ const RULES = Object.freeze([
     title: "Preserve keyboard artwork positioning across shared editors",
     observation: "The flyer editor includes keyboard-driven image positioning, and the browser test sends an ArrowRight key to a selected image.",
     recommendation: "Treat keyboard artwork movement as an existing reusable pattern to preserve in new creative editors; recheck its behavior on supported browsers and after future canvas changes.",
+    verify: "Preserve keyboard positioning and run the synthetic artwork-movement regression on the exact changed commit. A defined key handler and key press do not prove the resulting position was verified.",
     checks: [
       { file: "src/components/FlyerEditor.jsx", needle: "ArrowRight: [5, 0]" },
       { file: "tests/inception-apex-browser.cjs", needle: 'press("ArrowRight")' },
@@ -65,14 +71,56 @@ const RULES = Object.freeze([
   {
     id: "ia-review-test-coverage", category: "Regression", priority: "low",
     title: "Keep save, reopen, and approval flows in regression coverage",
-    observation: "The InceptionApex browser test contains explicit steps for saving designs and approving artwork.",
+    observation: "The InceptionApex browser test contains save and approval button references and a page reload call. These definitions do not prove persistence, reopening or approval passed.",
     recommendation: "Keep these protected workflows in regression tests when changing project storage, approval states, versions or product handoffs. Check current CI results separately before asserting tests have passed.",
+    verify: "Retain assertions for saved content after reload/reopen, version state and approval. Run the exact-commit synthetic tests and attach the results separately from this source scan.",
     checks: [
       { file: "tests/inception-apex-browser.cjs", needle: '"Save to My Designs"' },
       { file: "tests/inception-apex-browser.cjs", needle: '"Save & approve design"' },
+      { file: "tests/inception-apex-browser.cjs", needle: "page.reload(" },
     ],
   },
 ]);
+
+const TABLET_WIDTHS=Object.freeze([949,950,951]);
+function tabletViewportSignals(source){
+ // Recognize explicit, standalone Playwright viewport calls, not numbers in prose.
+ // This bounded recognizer is not a JavaScript parser or proof tests executed.
+ const widths=[];
+ const code=maskTestCommentsAndStrings(source);
+ const pattern=/\bawait\s+page\.setViewportSize\(\s*\{[^{}]*\bwidth\s*:\s*(949|950|951)\b[^{}]*\}\s*\)/g;
+ for(const match of code.matchAll(pattern))widths.push(Number(match[1]));
+ // A deliberately bounded equivalent form: literal integer array, directly
+ // iterated by a for-of loop with an awaited viewport call. No evaluation.
+ const loop=/\bfor\s*\(\s*const\s+(\w+)\s+of\s+\[([\d,\s]+)\]\s*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g;
+ for(const match of code.matchAll(loop)){
+  const values=match[2].split(',').map(x=>x.trim()).filter(Boolean).map(Number);
+  const escaped=match[1].replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const viewport=new RegExp('\\bawait\\s+page\\.setViewportSize\\(\\s*\\{[^{}]*\\bwidth\\s*(?::\\s*'+escaped+'\\s*)?(?=[,}])[^{}]*\\}\\s*\\)');
+  // Shorthand is recognized only when the actual loop variable is width.
+  const explicit=new RegExp('\\bwidth\\s*:\\s*'+escaped+'\\b');
+  if(viewport.test(match[3])&&(match[1]==='width'||explicit.test(match[3])))widths.push(...values.filter(x=>TABLET_WIDTHS.includes(x)));
+ }
+ return [...new Set(widths)].sort((a,b)=>a-b);
+}
+
+function evidenceForMatch(contents,position,sourcePath){
+ const line=contents.slice(0,position).split('\n').length;
+ return {path:sourcePath,line,excerpt:contents.split('\n')[line-1].trim().slice(0,160)};
+}
+
+function callStringEvidence(contents,sourcePath,literals,method='getByRole'){
+ const code=maskTestCommentsAndStrings(contents),text=maskTestCommentsAndStrings(contents,{keepStrings:true});
+ for(const match of code.matchAll(/\.\s*(?:getByRole|press)\s*\(/g)){
+  if(!match[0].includes(method))continue;
+  const start=match.index+match[0].length;let depth=1,end=start;
+  for(;end<code.length&&end-start<1000&&depth;end++){if(code[end]==='(')depth++;else if(code[end]===')')depth--;}
+  if(depth)continue;
+  const args=text.slice(start,end-1);
+  if(literals.every(value=>args.includes('"'+value+'"')||args.includes("'"+value+"'")))return evidenceForMatch(contents,match.index,sourcePath);
+ }
+ return null;
+}
 
 function readAllowlistedInceptionSource() {
   const result = {};
@@ -90,15 +138,35 @@ function readAllowlistedInceptionSource() {
 
 function evidenceAt(contents, needle, sourcePath) {
   if (typeof contents !== "string") return null;
-  const position = contents.indexOf(needle);
+  if(needle.startsWith('"Save '))return callStringEvidence(contents,sourcePath,['button',needle.slice(1,-1)]);
+  if(needle==='press("ArrowRight")')return callStringEvidence(contents,sourcePath,['ArrowRight'],'press');
+  const css=sourcePath.endsWith('.css');
+  const text=maskTestCommentsAndStrings(contents,{keepStrings:true,lineComments:!css});
+  const code=maskTestCommentsAndStrings(contents,{lineComments:!css});
+  let position=text.indexOf(needle);
+  // Non-CSS source anchors must begin outside a quoted example.
+  while(position>=0&&!css&&code[position]===' ')position=text.indexOf(needle,position+needle.length);
   if (position < 0) return null;
-  const before = contents.slice(0, position);
-  const line = before.split("\n").length;
-  const actualLine = contents.split("\n")[line - 1].trim();
-  return {
-    path: sourcePath, line, // 1-based, original committed source line
-    excerpt: actualLine.slice(0, 160),
-  };
+  return evidenceForMatch(contents,position,sourcePath);
+}
+
+function navigationEvidence(contents){
+ const file='src/components/InceptionApex.jsx',text=maskTestCommentsAndStrings(contents,{keepStrings:true}),code=maskTestCommentsAndStrings(contents);
+ for(const match of text.matchAll(/<nav\b[^>]*className=["']ia-editor-tabs["'][^>]*>[\s\S]*?<\/nav>/g)){
+  if(code[match.index]!=='<')continue;
+  let pressed=match[0].indexOf('aria-pressed={panel === id}');
+  while(pressed>=0&&code[match.index+pressed]===' ')pressed=match[0].indexOf('aria-pressed={panel === id}',pressed+1);
+  return [evidenceForMatch(contents,match.index,file),pressed<0?null:evidenceForMatch(contents,match.index+pressed,file)];
+ }
+ return [null,null];
+}
+
+function tabletAssertionSignals(source){
+ const code=maskTestCommentsAndStrings(source);
+ return {
+  overflow:/\bassert\.ok\(\s*await\s+page\.evaluate\(\s*\(\)\s*=>\s*document\.documentElement\.scrollWidth\s*<=\s*(?:window\.)?innerWidth\b/.test(code),
+  controls:/\bassert\.ok\(\s*await\s+page\.getByRole\([\s\S]{0,250}?\)\.isVisible\(\)/.test(code),
+ };
 }
 
 function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", inspectedAt = new Date().toISOString()) {
@@ -119,16 +187,30 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     sourceFingerprint.update(file + "\0");
     sourceFingerprint.update(sourceMap[file] + "\0");
   }
-  const findings = [];
+  sourceFingerprint.update(JSON.stringify(RULES)+"\0inception-bounded-rules-v4\0"+SOURCE_RECOGNIZER_VERSION+'\0');
+  const tabletWidths=tabletViewportSignals(sourceMap["tests/inception-apex-browser.cjs"]);
+  const tabletAssertions=tabletAssertionSignals(sourceMap['tests/inception-apex-browser.cjs']);
+  const tabletMarkersComplete=TABLET_WIDTHS.every(width=>tabletWidths.includes(width))&&tabletAssertions.overflow&&tabletAssertions.controls;
+  const confirmFile='src/components/InceptionApex.jsx';
+  const nativeCalls=[...maskTestCommentsAndStrings(sourceMap[confirmFile]).matchAll(/\bwindow\s*\.\s*confirm\s*\(/g)];
+  const findings = [],ruleChecks=[];
   for (const rule of RULES) {
-    const evidence = rule.checks.map((check) =>
+    let evidence = rule.checks.map((check) =>
       evidenceAt(sourceMap[check.file], check.needle, check.file));
+    if(rule.id==='ia-native-confirm')evidence=nativeCalls.slice(0,4).map(m=>evidenceForMatch(sourceMap[confirmFile],m.index,confirmFile));
+    if(rule.id==='ia-design-tabs')evidence=navigationEvidence(sourceMap[confirmFile]);
+    const matched=evidence.filter(Boolean),complete=matched.length>0&&evidence.every(Boolean);
+    const findingType=['ia-image-keyboard','ia-review-test-coverage'].includes(rule.id)?'preserve_existing':rule.id==='ia-responsive-coverage'?'coverage_gap':'verification_needed';
+    ruleChecks.push({id:rule.id,title:rule.title,status:rule.id==='ia-responsive-coverage'&&tabletMarkersComplete?'coverage_markers_found':complete?'source_pattern_found':matched.length?'partial_pattern':'not_observed_in_sample',findingType,runtimeVerified:false,evidence:matched,
+      nextCheck:rule.verify});
+    if(rule.id==='ia-responsive-coverage'&&tabletMarkersComplete)continue;
     // Never claim an observation unless EVERY required source match exists.
-    if (evidence.some((item) => item === null)) continue;
+    if (!complete) continue;
     findings.push({
       id: rule.id, category: rule.category, priority: rule.priority,
-      title: rule.title, observation: rule.observation,
-      recommendation: rule.recommendation, evidence,
+      findingType,
+      title: rule.title, observation: rule.id==='ia-native-confirm'?`The sampled component contains ${nativeCalls.length} window.confirm call sites. Evidence lists up to four locations; their runtime behavior and the need for replacement have not been verified.`:rule.id==='ia-responsive-coverage'?`Recognized tablet widths: ${tabletWidths.join(', ')||'none'}. Overflow assertion marker: ${tabletAssertions.overflow?'found':'not observed'}. Editor-control visibility assertion marker: ${tabletAssertions.controls?'found':'not observed'}. Equivalent tests may exist outside this bounded recognizer.`:rule.observation,
+      recommendation: rule.recommendation, verify:rule.verify, evidence:matched,
       provenance: "observed_in_first_party_source", review: "pending",
     });
   }
@@ -136,14 +218,16 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     schemaVersion: 1, kind: "eig_build_lab_code_scan",
     target: "inception_apex", targetLabel: "InceptionApex",
     sourceVersion, sourceFingerprint: sourceFingerprint.digest("hex"), inspectedAt,
-    scannerVersion: "inception-code-v1",
+    scannerVersion: "inception-directed-pilot-v4",
+    ruleChecks,
+    coverageChecks:[{id:"ia-tablet-breakpoints",requiredWidths:[...TABLET_WIDTHS],observedWidths:tabletWidths,assertionSignals:tabletAssertions,status:tabletMarkersComplete?"markers_found":"not_observed_in_sample",runtimeVerified:false}],
     files,
     findings,
-    limitations: "First-party static source and test-script inspection only. Findings are not proof of live UI defects, test results or user behavior. No third-party app, private customer record, screenshot, runtime session or external AI model was scanned.",
+    limitations: "First-party static source and test-script inspection only, using bounded pattern recognizers rather than a complete syntax, control-flow or CSS-cascade analysis. Comments and quoted examples are excluded from code-call checks; unsupported syntax and tests elsewhere may be missed. Findings are not proof of live UI defects, test results or user behavior. No third-party app, private customer record, screenshot, runtime session or external AI model was scanned.",
     safety: { readOnly: true, liveChanges: false, autoApproved: false },
   };
 }
 
 module.exports = {
-  readAllowlistedInceptionSource, scanInceptionSource, FILE_PATHS,
+  readAllowlistedInceptionSource, scanInceptionSource, FILE_PATHS, tabletViewportSignals,
 };

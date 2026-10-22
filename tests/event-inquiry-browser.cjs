@@ -1,0 +1,66 @@
+const {chromium}=require("playwright");
+const assert=require("node:assert/strict");
+const fs=require("node:fs/promises");
+(async()=>{
+ const {createServer}=await import("vite");
+ const server=await createServer({server:{host:"127.0.0.1",port:4199,strictPort:true}});
+ await server.listen();
+ let browser;
+ try {
+  browser=await chromium.launch({headless:true});
+  const errors=[];
+  await fs.mkdir("test-results/event-inquiry",{recursive:true});
+  const page=await browser.newPage({viewport:{width:1100,height:940}});
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("http://127.0.0.1:4199/tests/event-inquiry.html");
+  await page.getByRole("heading",{name:"EIE Event Request Account Pilot"}).waitFor();
+  await page.getByRole("button",{name:"Submit Mock Event Request"}).click();
+  await page.getByRole("dialog").waitFor();
+  await page.getByText(/has not been sent yet/).waitFor();
+  await page.getByRole("button",{name:"Create an Account"}).click();
+  await page.getByRole("heading",{name:"Create Your ElevationPilot Account"}).waitFor();
+  await page.getByLabel("Choose @username").fill("demorequester");
+  await page.getByLabel("Create password").fill("A strong fake test password 1234");
+  await page.getByLabel("Confirm password").fill("A strong fake test password 1234");
+  await page.getByRole("button",{name:"Send Six-Digit Verification Code"}).click();
+  await page.getByRole("heading",{name:"Verify Your Email"}).waitFor();
+  await page.getByLabel("Six-digit email code").fill("000000");
+  await page.getByRole("button",{name:"Verify & Submit Request"}).click();
+  await page.getByRole("alert").getByText("That code is not correct.").waitFor();
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.submissions),0);
+  await page.getByLabel("Six-digit email code").fill("123456");
+  await page.getByRole("button",{name:"Verify & Submit Request"}).click();
+  await page.getByRole("heading",{name:"My Event Requests"}).waitFor();
+  await page.getByText("Sample Fundraiser").waitFor();
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.verified),1);
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.submissions),1);
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.anonymousTableCalls),0);
+  await page.locator(".eir-dashboard-open").click();
+  await page.getByText("Current status").waitFor();
+  await page.getByLabel("Search my requests").fill("not-found");
+  await page.getByText("No event requests match this search.").waitFor();
+  await page.getByLabel("Search my requests").fill("");
+  await page.screenshot({path:"test-results/event-inquiry/verified-dashboard.png",fullPage:true});
+  await page.reload();
+  await page.getByRole("button",{name:"Submit Mock Event Request"}).click();
+  await page.getByRole("button",{name:"I Already Have an Account"}).click();
+  await page.getByRole("heading",{name:"Sign In to Finish"}).waitFor();
+  await page.getByLabel("Password",{exact:true}).fill("fake-password");
+  await page.getByRole("button",{name:"Sign In & Submit Request"}).click();
+  await page.getByRole("heading",{name:"My Event Requests"}).waitFor();
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.submissions),1);
+  assert.equal(await page.evaluate(()=>window.inquiryHarness.stats.anonymousTableCalls),0);
+  const mobile=await browser.newPage({viewport:{width:390,height:844}});
+  mobile.on("pageerror",e=>errors.push(e.message));
+  await mobile.goto("http://127.0.0.1:4199/tests/event-inquiry.html");
+  await mobile.getByRole("button",{name:"Submit Mock Event Request"}).click();
+  await mobile.getByRole("dialog").waitFor();
+  const measure=await mobile.evaluate(()=>({
+   width:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth,
+  }));
+  assert.ok(measure.width<=measure.viewport+2,JSON.stringify(measure));
+  await mobile.screenshot({path:"test-results/event-inquiry/mobile-account-prompt.png",fullPage:true});
+  assert.deepEqual(errors,[],errors.join("\n"));
+  console.log("Event inquiry onboarding browser pilot passed: verified OTP, login, protected submit, dashboard, mobile.");
+ }finally{await browser?.close();await server.close();}
+})().catch(err=>{console.error(err);process.exitCode=1;});

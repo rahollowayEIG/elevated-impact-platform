@@ -8,6 +8,16 @@
     },
     "api/eig-build-lab-scan.js": {
       "includeFiles": "{src/components/InceptionApex.jsx,src/components/FlyerEditor.jsx,src/components/inception-apex.css,tests/inception-apex-browser.cjs}"
+    },
+    "api/eig-build-lab-master-scan.js": {
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,src/lib/ep*.mjs,tests/*browser.cjs,tests/*payment*.test.mjs,tests/*numbering*.test.mjs,tests/*recovery*.test.mjs,tests/ep-*.test.mjs}"
+    },
+    "api/eig-build-lab-ai-review.js": {
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,src/lib/ep*.mjs,tests/*browser.cjs,tests/*payment*.test.mjs,tests/*numbering*.test.mjs,tests/*recovery*.test.mjs,tests/ep-*.test.mjs}"
+    },
+    "api/eig-build-lab-builder.js": {
+      "includeFiles": "{src/components/InceptionApex.jsx,src/components/FlyerEditor.jsx,src/components/inception-apex.css,tests/inception-apex-browser.cjs,src/lib/buildLabManagerBlueprint.mjs,src/lib/buildLabScanHistory.mjs}",
+      "maxDuration": 60
     }
   },
   "rewrites": [

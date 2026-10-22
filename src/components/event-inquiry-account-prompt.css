@@ -1,0 +1,17 @@
+/* Event request account continuation. Scoped, accessible and responsive. */
+.eir-account-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(5,15,29,.84);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;overflow-y:auto}
+.eir-account-dialog{width:min(510px,100%);max-height:calc(100vh - 36px);overflow-y:auto;border:1px solid #6683a2;background:#0e1d34;color:#f8fbff;border-radius:19px;box-shadow:0 26px 70px rgba(0,0,0,.55);padding:25px;box-sizing:border-box}
+.eir-account-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.eir-account-head h2{font-size:1.45rem;margin:5px 0 12px;line-height:1.2;color:#fff}
+.eir-account-head .platform-eyebrow{margin:0;color:#aac6e3}
+.eir-account-close{width:34px;height:34px;border:1px solid #658099;border-radius:8px;background:#223852;color:white;font-size:1.4rem;cursor:pointer;flex:none}
+.eir-account-dialog>p{font-size:.89rem;line-height:1.6;color:#d0deeb;margin:12px 0}
+.eir-account-email{border:1px solid #3b6683;padding:11px 12px;border-radius:10px;overflow-wrap:anywhere;background:#142c44}
+.eir-account-form,.eir-account-actions{display:grid;gap:13px;margin-top:18px}
+.eir-account-form label{display:grid;gap:6px;font-size:.85rem;color:#e1efff;font-weight:650}
+.eir-account-form input{width:100%;min-width:0;box-sizing:border-box;border-radius:8px;padding:10px 11px;border:1px solid #7699b8;background:#fff;color:#15283c;font-size:1rem}
+.eir-account-name-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.eir-account-dialog .platform-primary-button,.eir-account-dialog .platform-secondary-button{width:100%;text-align:center}
+.eir-account-dialog .platform-error{border:1px solid #d57f8d;border-radius:9px;background:#542a35;padding:10px 12px;color:#ffe4e8;line-height:1.5}
+.eir-account-dialog .eir-account-footnote{color:#c6d5e5;font-size:.81rem;margin:0;line-height:1.5}
+@media(max-width:490px){.eir-account-dialog{padding:18px}.eir-account-name-row{grid-template-columns:1fr}}

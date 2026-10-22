@@ -5,6 +5,10 @@ import { accountDisplayName } from './lib/accountDisplayName.mjs';
 import { createSessionVerifier } from './lib/sessionValidity.mjs';
 import AccountStateControls, { AccountStateBadges } from './components/AccountStateControls.jsx';
 import PasswordField from './components/PasswordField.jsx';
+import EventInquiryAccountPrompt from './components/EventInquiryAccountPrompt.jsx';
+import EventInquiryDashboard from './components/EventInquiryDashboard.jsx';
+import { validateInquirySubmission,isVerifiedInquiryAccount } from './lib/eventInquiryLifecycle.mjs';
+import { sendVerifiedEventInquiry } from './lib/eventInquiryPortalClient.mjs';
 import { ACCOUNT_GENDERS, validateAccountIdentity } from './lib/accountIdentity.mjs';
 import GolfTeamInvitation from './GolfTeamInvitation.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,10 +21,17 @@ import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
+import { desktopAppFromLaunch, shouldFocusBuildLab, buildLabLaunchStep } from './lib/desktopAppMode.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
+// Deliberately off in Live. Enable only on an isolated Sandbox preview after
+// deploying and verifying the server-owned event-inquiry-portal Edge Function.
+const EVENT_INQUIRY_PORTAL_ENABLED = import.meta.env.VITE_EIE_INQUIRY_PORTAL_ENABLED === 'true' &&
+  import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true';
+const IS_STANDALONE_WINDOW = window.matchMedia?.('(display-mode: standalone)')?.matches === true || window.matchMedia?.('(display-mode: minimal-ui)')?.matches === true || window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches === true;
+const IS_INSTALLED_BUILD_LAB = desktopAppFromLaunch({ standalone: IS_STANDALONE_WINDOW, search: window.location.search, previewEnabled: EIG_BUILD_LAB_PREVIEW_ENABLED }) === 'build_lab';
 const SocialMediaApp = React.lazy(() => import('./components/SocialMediaApp.jsx'));
 const EIG_SLUG = 'elevated-impact-group';
 const GOLF_REGISTRATION_URL = 'https://golf-event-registrations-eig.vercel.app';
@@ -478,6 +489,9 @@ function PublicInquiryPage({ slug }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [accountPromptOpen,setAccountPromptOpen] = useState(false);
+  const [requestReceiptId,setRequestReceiptId] = useState('');
+  const [requestId,setRequestId] = useState(()=>window.crypto?.randomUUID?.()||'');
   const [form, setForm] = useState({
     contact_full_name: '', group_name: '', contact_phone: '', contact_email: '', preferred_date: '', alternate_date: '', second_alternate_date: '', unavailable_date_notes: '', estimated_participants: '', preferred_start_type: 'Not Sure', preferred_start_time: '', event_type: 'Charity / Fundraiser', golf_format: 'Not Sure', food_needed: 'Not Sure', special_requests: '',
   });
@@ -495,9 +509,39 @@ function PublicInquiryPage({ slug }) {
 
   function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
 
+  async function finishVerifiedInquiry(verifiedUser) {
+    if(!EVENT_INQUIRY_PORTAL_ENABLED) throw Error('Account request tracking is not enabled.');
+    if(!requestId)throw Error('Could not generate a safe request reference. Refresh and try again.');
+    setBusy(true);setError('');
+    try {
+      const receipt=await sendVerifiedEventInquiry(supabase,{
+        form,verifiedUser,organizationId:organization.id,requestId,
+      });
+      setRequestReceiptId(receipt.id);
+      setSubmitted(true);
+      setAccountPromptOpen(false);
+    } catch(e) {
+      setError(e?.message||'Your request could not be submitted.');
+      throw e;
+    } finally {setBusy(false);}
+  }
+
   async function submit(event) {
     event.preventDefault(); setError('');
     if (!organization?.id) return;
+    if (EVENT_INQUIRY_PORTAL_ENABLED) {
+      const invalid=validateInquirySubmission(form);
+      if(invalid){setError(invalid);return;}
+      setBusy(true);
+      try {
+        const {data}=await supabase.auth.getUser();
+        if(isVerifiedInquiryAccount(data?.user,form.contact_email)){
+          await finishVerifiedInquiry(data.user);
+        } else setAccountPromptOpen(true);
+      } catch(e) {setError(e?.message||'Could not verify your account.');setAccountPromptOpen(true);}
+      finally{setBusy(false);}
+      return;
+    }
     if (!form.preferred_date) { setError('Please select a first-choice date.'); return; }
     setBusy(true);
     const { error: insertError } = await supabase.from('event_requests').insert({
@@ -510,6 +554,18 @@ function PublicInquiryPage({ slug }) {
 
   if (loading) return <LoadingScreen message="Loading outing inquiry..." />;
   if (!organization) return <div className="platform-auth-screen"><div className="platform-login-card"><div className="platform-logo-mark">EIG</div><h1>Venue not found.</h1><p>This inquiry link is not connected to an active EIG venue.</p>{error && <div className="platform-error">{error}</div>}</div></div>;
+  if (submitted && EVENT_INQUIRY_PORTAL_ENABLED)
+    return <div className="inquiry-public-shell">
+      <div className="inquiry-public-card success-card">
+        <div className="platform-logo-mark">EIG</div>
+        <p className="platform-eyebrow">{organization.name} · Verified Request</p>
+        <h1>Your event request was submitted.</h1>
+        <p>Your account is now linked to request <code>{requestReceiptId.slice(0,8)}</code>.
+          The venue will review your dates and details before confirming any reservation.</p>
+        <EventInquiryDashboard supabaseClient={supabase}
+          onNewRequest={()=>{setSubmitted(false);setRequestId(window.crypto?.randomUUID?.()||'');}} />
+      </div>
+    </div>;
   if (submitted) return <div className="inquiry-public-shell"><div className="inquiry-public-card success-card"><div className="platform-logo-mark">EIG</div><p className="platform-eyebrow">{organization.name}</p><h1>Your outing request was submitted.</h1><p>The venue will review your requested dates and outing details and follow up with you. Your selected dates are requests until the venue confirms one.</p><button className="platform-secondary-button" onClick={() => window.location.reload()}>Submit another request</button></div></div>;
 
   return (
@@ -522,6 +578,11 @@ function PublicInquiryPage({ slug }) {
         {error && <div className="platform-error">{error}</div>}
         <div className="form-submit-row"><p>Submitting this form does not reserve or confirm a date.</p><button className="platform-primary-button" disabled={busy} type="submit">{busy ? 'Submitting...' : 'Submit Outing Request'}</button></div>
       </form>
+      {accountPromptOpen && EVENT_INQUIRY_PORTAL_ENABLED &&
+        <EventInquiryAccountPrompt contactEmail={form.contact_email}
+          contactFullName={form.contact_full_name} supabaseClient={supabase}
+          onCancel={()=>setAccountPromptOpen(false)}
+          onAuthenticated={finishVerifiedInquiry} />}
     </div></div>
   );
 }
@@ -530,11 +591,20 @@ function WorkspaceSwitcher({ memberships, activeOrganizationId, onSelect }) {
   return <select className="platform-workspace-select" value={activeOrganizationId || ''} onChange={(e) => onSelect(e.target.value)} aria-label="Choose workspace">{memberships.map((membership) => <option key={membership.organization_id} value={membership.organization_id}>{membership.organization?.name || 'Workspace'}</option>)}</select>;
 }
 
-function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception, onSocial }) {
+function PlatformShell({ user, memberships, activeOrganizationId, children, onSignOut, onAirport, onRoleHome, roleHomeLabel = '', isAirport = false, contextOrganization = null, onInception, onSocial, compactBuildLab = false }) {
   const active = memberships.find((m) => m.organization_id === activeOrganizationId);
   const context = contextOrganization || active?.organization || null;
   const { unreadCount, openInbox } = useSquawk();
-  return <div className="platform-shell"><header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onSocial && <button className="platform-secondary-button" type="button" onClick={onSocial}>Social Media & Ads</button>}{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header><main className="platform-main-content">{children}</main></div>;
+  useEffect(() => {
+    const originalTitle = document.title;
+    if (compactBuildLab) document.title = 'EIG Build Lab';
+    return () => { document.title = originalTitle; };
+  }, [compactBuildLab]);
+  return <div className={`platform-shell${compactBuildLab ? ' platform-standalone-build-lab' : ''}`}>
+    {compactBuildLab ? <header className="platform-topbar bl-standalone-bar">
+      <div className="bl-standalone-brand"><img src="/build-lab-icon.svg" alt="" width="38" height="38" /><div><strong>EIG Build Lab</strong><span>Online workspace · Owner only</span></div></div>
+      <div className="bl-standalone-controls"><a className="platform-secondary-button" href="/" target="_blank" rel="noopener noreferrer">Open EIG Command Center ↗</a><div className="platform-user-block"><span>{user?.email}</span><button type="button" onClick={onSignOut}>Sign out</button></div></div>
+    </header> : <header className="platform-topbar"><div className="platform-brand-wrap"><div className="platform-logo-mark small">EIG</div><div><strong>Elevated Impact Group</strong><span>{isAirport ? 'ElevationPilot Airport' : context?.name || roleHomeLabel || 'ElevationPilot'}</span></div></div><div className="platform-topbar-actions">{onSocial && <button className="platform-secondary-button" type="button" onClick={onSocial}>Social Media & Ads</button>}{onInception && <button className="platform-secondary-button" type="button" onClick={onInception}>InceptionApex</button>}<button className={`platform-secondary-button airport-home-button ${isAirport ? 'active' : ''}`} type="button" onClick={onAirport}>Airport</button>{roleHomeLabel && <button className="platform-secondary-button" type="button" onClick={onRoleHome}>{roleHomeLabel}</button>}<button className="global-squawk-trigger" type="button" onClick={openInbox} aria-label={`Open Squawk Box${unreadCount ? `, ${unreadCount} unread` : ''}`}><span className="global-squawk-trigger-icon">SB</span><span className="global-squawk-trigger-label">Squawk Box</span>{unreadCount > 0 && <b>{unreadCount > 99 ? '99+' : unreadCount}</b>}</button><div className="platform-user-block"><span>{user?.email}</span><button onClick={onSignOut}>Sign out</button></div></div></header>}<main className="platform-main-content">{children}</main></div>;
 }
 
 function StatCard({ label, value, detail }) { return <div className="platform-stat-card"><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>; }
@@ -2818,6 +2888,13 @@ export default function App() {
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [buildLabDirty, setBuildLabDirty] = useState(false);
   const [buildLabOwnerGrant, setBuildLabOwnerGrant] = useState(null);
+  const [buildLabFocusPreference, setBuildLabFocusPreference] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('eig-build-lab-focus-v1');
+      return saved === 'on' ? true : saved === 'off' ? false : null;
+    } catch { return null; }
+  });
+  const buildLabLaunchStarted = useRef(false);
   const [socialDirty, setSocialDirty] = useState(false);
   const socialReturn = useRef('chooser');
   const [eventStudioDirty, setEventStudioDirty] = useState(false);
@@ -3437,7 +3514,7 @@ export default function App() {
 
   function canLeaveInception() { return !(inceptionDirty || eventStudioDirty || socialDirty || buildLabDirty) || window.confirm('Leave without exporting your Build Lab blueprint or saving your campaign, design, event packet or budget changes?'); }
   async function openBuildLab() {
-    if (!buildLabAllowed || !canLeaveInception()) return;
+    if (!buildLabAllowed || !canLeaveInception()) return false;
     const accountId = session?.user?.id || '';
     // Require a fresh server decision for each entry, including after
     // a role/session change. A frontend flag or fabricated response is not
@@ -3445,18 +3522,57 @@ export default function App() {
     const allowed = await requestOwnerBuildLabAccess(supabase);
     if (!allowed || currentAuthSession.current?.user?.id !== accountId) {
       setBuildLabOwnerGrant(null);
-      return;
+      return false;
     }
     const eigOrg = organizations.find((org) => org.slug === EIG_SLUG);
-    if (!eigOrg?.id) return;
+    if (!eigOrg?.id) return false;
     setBuildLabDirty(false);
     setActiveOrganizationId(eigOrg.id);
     setPortalView('workspace');
     setCockpitApp('');
     setEieInitialEventId('');
     setAdminView('build_lab');
+    return true;
   }
-  function closeBuildLab() { if (!canLeaveInception()) return; setBuildLabDirty(false); setAdminView('command'); }
+  function closeBuildLab() { if (!canLeaveInception()) return; buildLabLaunchStarted.current = true; setBuildLabDirty(false); setAdminView('command'); }
+  function toggleBuildLabFocus() {
+    setBuildLabFocusPreference((current) => {
+      const next = !shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: current });
+      try { window.localStorage.setItem('eig-build-lab-focus-v1', next ? 'on' : 'off'); } catch { /* Optional display preference. */ }
+      return next;
+    });
+  }
+  // Vercel-protected previews sometimes install as a Chrome shortcut to "/",
+  // without the manifest's ?buildlab=1 start URL. Standalone root windows on
+  // this Build Lab-only preview must still launch Build Lab, but an ordinary
+  // browser's homepage remains untouched. An explicit query also works.
+  // Owner authorization is checked by the server before switching workspaces.
+  useEffect(() => {
+    const userId = session?.user?.id || '';
+    if (!userId) { buildLabLaunchStarted.current = false; return; }
+    if (buildLabLaunchStarted.current) return;
+    const eigOrganizationId = organizations.find((org) => org.slug === EIG_SLUG)?.id || '';
+    const ready = authReady && !recoveryMode && inviteCheckUserId === userId &&
+      pendingInvitations.length === 0 && canUseAutoResizer(memberships) &&
+      !(loadingData && !memberships.length);
+    const step = buildLabLaunchStep({
+      requested: IS_INSTALLED_BUILD_LAB, ready, userId, grant: buildLabOwnerGrant,
+      eigOrganizationId, activeOrganizationId, portalView, adminView,
+    });
+    if (step === 'enter_eig_workspace') {
+      openWorkspace(eigOrganizationId);
+      return;
+    }
+    if (step === 'complete') { buildLabLaunchStarted.current = true; return; }
+    if (step !== 'open_build_lab' || !buildLabAllowed) return;
+    buildLabLaunchStarted.current = true;
+    void openBuildLab().then((opened) => {
+      if (!opened) buildLabLaunchStarted.current = false;
+    }).catch(() => { buildLabLaunchStarted.current = false; });
+  }, [session?.user?.id, authReady, recoveryMode, inviteCheckUserId, pendingInvitations.length,
+      loadingData, buildLabOwnerGrant, activeOrganizationId, organizations, memberships,
+      portalView, adminView]);
+
   function openInception(event) {
     if (portalView === 'inception' || !canLeaveInception()) return;
     if (portalView !== 'inception') inceptionReturn.current = portalView;
@@ -3501,6 +3617,8 @@ export default function App() {
     userId: session.user.id,
     serverGrant: buildLabOwnerGrant,
   });
+  const focusedBuildLab = shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: buildLabFocusPreference }) &&
+    adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace;
   const isAirport = portalView === 'airport';
   const isProfile = portalView === 'profile';
   const isMainCabin = portalView === 'main_cabin';
@@ -3513,7 +3631,7 @@ export default function App() {
 
 
   return <SquawkProvider user={session.user} organization={contextOrganization || null} role={contextRole} events={contextEvents}>
-    <PlatformShell user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
+    <PlatformShell compactBuildLab={focusedBuildLab} user={session.user} memberships={memberships} activeOrganizationId={activeOrganizationId} onSignOut={() => { if (canLeaveInception()) signOut(); }} onAirport={() => { if (canLeaveInception()) { closeInception(); openAirport(); } }} onRoleHome={() => { if (canLeaveInception()) { closeInception(); openRoleLanding(); } }} onInception={() => openInception()} onSocial={openSocial} roleHomeLabel={roleHomeLabel} isAirport={isAirport} contextOrganization={contextOrganization}>
       {dataError && <div className="platform-error banner">{dataError}</div>}
       {portalView === 'social'
         ? <React.Suspense fallback={<LoadingScreen message="Opening Social Media & Ads…" />}><SocialMediaApp key={session.user.id} onBack={closeSocial} onArtwork={() => openInception()} onDirtyChange={setSocialDirty} /></React.Suspense>
@@ -3540,7 +3658,7 @@ export default function App() {
             : isEigAdminWorkspace
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} />
                 : adminView === 'build_lab' && buildLabAllowed
-                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} /></React.Suspense>
+                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} focusedMode={focusedBuildLab} onToggleFocus={toggleBuildLabFocus} /></React.Suspense>
                   : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : null} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />

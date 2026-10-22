@@ -6,6 +6,18 @@ const clone=value=>JSON.parse(JSON.stringify(value));
 const text=(value,max=3000)=>typeof value==='string'?value.trim().slice(0,max):'';
 const normalized=value=>text(value).toLowerCase().replace(/\s+/g,' ');
 const runnable=p=>['accept','revise'].includes(p.decision);
+// Shared UI/server selection rule. Held/rejected proposals are not work requests.
+export function selectBuilderProposal(plan){
+ if(plan?.status!=='reviewed_for_handoff'||!Array.isArray(plan.proposals))return null;
+ const active=plan.proposals.filter(runnable);
+ if(active.length!==1||plan.proposals.some(p=>p.decision==='pending'))return null;
+ const p=active[0],refs=p.sourceRefs;
+ if(!['builder','fixer'].includes(p.assignedTo)||!Array.isArray(refs)||!refs.length)return null;
+ const first=refs[0];
+ if(!first||typeof first.itemId!=='string'||!first.itemId||!/^[a-f0-9]{40}$/.test(first.sourceVersion||'')||refs.some(r=>r.type!=='inspector'||r.itemId!==first.itemId||r.sourceVersion!==first.sourceVersion))return null;
+ if(plan.pilot&&(plan.pilot.findingId!==first.itemId||plan.pilot.sourceVersion!==first.sourceVersion))return null;
+ return p;
+}
 export function managerStorageKey(uid){return historyKey(uid)?.replace('scan-history','manager-blueprint')||null;}
 function suggestedAgent(title,detail){
  const value=title+' '+detail;

@@ -364,8 +364,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <section className="platform-section-card bl-source-scanner" aria-labelledby="bl-source-title">
       <div className="bl-scan-heading">
         <div>
-          <div className="bl-scanner-title"><h2 id="bl-source-title">Original IA Pilot · Source Inspector</h2><ScannerToolsDisclosure kind="inspector" /></div>
-          <p>Original InceptionApex-only test scanner, kept for comparison. To scan any other module, use the Master Scanner above.</p>
+          <div className="bl-scanner-title"><h2 id="bl-source-title">InceptionApex Source Inspector</h2><ScannerToolsDisclosure kind="inspector" /></div>
+          <p>Inspect specific source patterns and declared test coverage in InceptionApex. To inspect other modules, use Master Scanner.</p>
         </div>
         <button type="button" className="platform-primary-button" disabled={scanRunning}
           onClick={runSourceScan}>
@@ -385,6 +385,10 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           <span>Source fingerprint: <code>{scanReport.sourceFingerprint.slice(0, 12)}</code></span>
           <span>Inspected: {new Date(scanReport.inspectedAt).toLocaleString()}</span>
         </div>
+        {scanReport.ruleChecks&&<details className="bl-rule-checks"><summary>What the scanner checked ({scanReport.ruleChecks.length})</summary>
+          <p>These are source signals, not test results. An unobserved pattern may use unsupported syntax or exist elsewhere; it does not mark earlier work fixed.</p>
+          <ul>{scanReport.ruleChecks.map(check=><li key={check.id}><strong>{check.title}</strong> · {{source_pattern_found:'Source pattern found',coverage_markers_found:'Coverage markers found · execution unverified',partial_pattern:'Partial pattern · investigate',not_observed_in_sample:'Not observed in sample'}[check.status]}<p>{check.nextCheck}</p></li>)}</ul>
+        </details>}
         <div className="bl-scan-controls">
           <label>Search findings
             <input type="search" value={scanQuery} onChange={(e) => setScanQuery(e.target.value)}
@@ -415,6 +419,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
               {finding.findingType&&<p><strong>Finding type:</strong> {finding.findingType.replaceAll("_"," ")}</p>}
               <p><strong>Observed in source:</strong> {finding.observation}</p>
               <p><strong>Suggested check:</strong> {review?.editedDetail || finding.recommendation}</p>
+              {finding.verify&&<p><strong>Verification required:</strong> {finding.verify}</p>}
               <details className="bl-evidence">
                 <summary>View code evidence ({finding.evidence.length})</summary>
                 <ul>{finding.evidence.map((evidence, index) =>

@@ -1,0 +1,37 @@
+name: Master Scanner - foundation
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '15 12 * * 1'
+permissions:
+  contents: read
+concurrency:
+  group: master-scanner-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  platform-safety:
+    name: Platform build and offline tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: https://sandbox.invalid
+      VITE_SUPABASE_ANON_KEY: scanner-offline-placeholder-not-a-live-key
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Offline unit, integration and build checks
+        run: npm run build
+      - name: Summarize scanner result
+        if: always()
+        run: |
+          echo '## ElevationPilot Master Scanner (foundation)' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Scope: repository tests and build only' >> "$GITHUB_STEP_SUMMARY"
+          echo '- No live Supabase, payment, email, or customer account access' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Full user-journey testing begins after sandbox isolation is configured' >> "$GITHUB_STEP_SUMMARY"

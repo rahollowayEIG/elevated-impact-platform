@@ -1,3 +1,7 @@
+import {prepareInceptionPilotBlueprint} from "../lib/buildLabInceptionPilot.mjs";
+import {managerStorageKey} from "../lib/buildLabMissionOrchestrator.mjs";
+import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
+import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
 import BuildLabManager from "./BuildLabManager.jsx";
 import BuildLabScanPlans from "./BuildLabScanPlans.jsx";
 import BuildLabScanHistory from "./BuildLabScanHistory.jsx";
@@ -71,6 +75,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       return LAB_TOOLS.some(([id]) => id === saved) ? saved : "master";
     } catch { return "master"; }
   });
+  const [managerVersion,setManagerVersion]=useState(0);
   const [activeGroup, setActiveGroup] = useState(() => groupForTool(activeTool));
   useEffect(() => {
     try { window.sessionStorage.setItem(viewKey, activeTool); } catch { /* Navigation works without storage. */ }
@@ -206,6 +211,18 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       setError(""); setNotice("Blueprint reopened. It will now be saved automatically in this browser.");
     } catch (e) { setError(e.message || "Unable to reopen this file."); setNotice(""); }
   }
+  function createPilotBlueprint(findingId){
+    try {
+      const key=managerStorageKey(ownerUserId);if(!key)throw Error("Owner account required.");
+      if(window.localStorage.getItem(key)&&!window.confirm("Replace the current Manager blueprint with this one-finding pilot? Download the current blueprint first to keep it."))return;
+      const archive=readScanHistory(window.localStorage,ownerUserId).find(x=>x.type==="inspector"&&x.snapshot?.report?.sourceFingerprint===scanReport?.sourceFingerprint&&x.snapshot.report.inspectedAt===scanReport.inspectedAt);
+      if(!archive)throw Error("Save the scan to history before preparing its blueprint. Check browser storage and retry.");
+      const plan=prepareInceptionPilotBlueprint(archive,findingId);
+      window.localStorage.setItem(key,JSON.stringify(plan));
+      setManagerVersion(n=>n+1);setActiveGroup("planning");setActiveTool("manager");setScanError("");
+    }catch(e){setScanError(e.message||"Unable to prepare the pilot blueprint.");}
+  }
+
   async function runSourceScan() {
     if (scanRunning) return;
     setScanRunning(true); setScanError(""); setScanNotice("");
@@ -318,7 +335,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
 
     <div className="bl-tool-panel" id="bl-panel-plans" role="region" aria-labelledby="bl-tool-plans" hidden={activeTool !== "plans"}><BuildLabScanPlans ownerUserId={ownerUserId} /></div>
 
-    <div className="bl-tool-panel" id="bl-panel-manager" role="region" aria-labelledby="bl-tool-manager" hidden={activeTool !== "manager"}><BuildLabManager ownerUserId={ownerUserId} /></div>
+    <div className="bl-tool-panel" id="bl-panel-manager" role="region" aria-labelledby="bl-tool-manager" hidden={activeTool !== "manager"}><BuildLabManager key={managerVersion} ownerUserId={ownerUserId} /></div>
 
     {/* Keep panels mounted so switching tools preserves forms, results and in-flight requests. */}
     <div className="bl-tool-panel" id="bl-panel-master" role="region" aria-labelledby="bl-tool-master" hidden={activeTool !== "master"}><BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
@@ -339,6 +356,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           {scanRunning ? "Inspecting source…" : scanReport ? "Scan this source version again" : "Inspect InceptionApex source →"}
         </button>
       </div>
+      <ScannerDirectionsDisclosure kind="inspector" moduleId="inception" />
       <p className="bl-quiet">The scanner examines code from this deployed preview. It does not visit your live app, scan customer designs, or run an AI model.</p>
       {scanHistory.error && <p role="alert" className="platform-error">{scanHistory.error}</p>}
       {scanError && <p className="platform-error" role="alert">{scanError}</p>}
@@ -377,6 +395,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
                 </span>
               </div>
               <h3>{finding.title}</h3>
+              {finding.findingType&&<p><strong>Finding type:</strong> {finding.findingType.replaceAll("_"," ")}</p>}
               <p><strong>Observed in source:</strong> {finding.observation}</p>
               <p><strong>Suggested check:</strong> {review?.editedDetail || finding.recommendation}</p>
               <details className="bl-evidence">
@@ -388,6 +407,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
                   </li>)}</ul>
               </details>
               <div className="bl-review-actions">
+                {finding.findingType!=="preserve_existing"&&<button type="button" className="platform-primary-button" onClick={()=>createPilotBlueprint(finding.id)}>Create blueprint for this finding</button>}
                 <button type="button" className="platform-secondary-button"
                   onClick={() => decideScan(finding.id, "accept")}>Accept</button>
                 <button type="button" className="platform-secondary-button"

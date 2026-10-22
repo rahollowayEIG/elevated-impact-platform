@@ -44,9 +44,9 @@ const RULES = Object.freeze([
   },
   {
     id: "ia-responsive-coverage", category: "Responsive UI", priority: "low",
-    title: "Expand responsive checks around tablet breakpoints",
-    observation: "InceptionApex defines a 950px responsive breakpoint, and its browser test switches viewport sizes.",
-    recommendation: "Add intermediate tablet/breakpoint screenshots and check text, form control targets and navigation. Existing mobile/desktop tests are evidence of test code, not a guarantee that every layout passes.",
+    title: "Add explicit tablet-breakpoint regression checks",
+    observation: "InceptionApex defines a 950px breakpoint, but explicit viewport calls at 949, 950 and 951px were not all observed in the sampled test script. Equivalent parameterized tests may exist elsewhere.",
+    recommendation: "Locate equivalent existing tablet tests first. If this gap is confirmed, add explicit synthetic viewport checks at 949, 950 and 951px, asserting no horizontal page overflow and that editor controls remain reachable. Run the browser test and rescan; source markers alone do not prove a passing test.",
     checks: [
       { file: "src/components/inception-apex.css", needle: "@media (max-width: 950px)" },
       { file: "tests/inception-apex-browser.cjs", needle: "setViewportSize(" },
@@ -73,6 +73,30 @@ const RULES = Object.freeze([
     ],
   },
 ]);
+
+const TABLET_WIDTHS=Object.freeze([949,950,951]);
+function maskTestCommentsAndStrings(source){
+ let state="code",quote="",out="";
+ for(let i=0;i<source.length;i++){
+  const c=source[i],n=source[i+1];
+  if(state==="line"){if(c==="\n"){state="code";out+="\n";}else out+=" ";continue;}
+  if(state==="block"){if(c==="*"&&n==="/"){out+="  ";i++;state="code";}else out+=c==="\n"?"\n":" ";continue;}
+  if(state==="string"){if(c==="\\"){out+="  ";i++;}else{out+=c==="\n"?"\n":" ";if(c===quote)state="code";}continue;}
+  if(c==="/"&&n==="/"){state="line";out+="  ";i++;}
+  else if(c==="/"&&n==="*"){state="block";out+="  ";i++;}
+  else if(c==='"'||c==="'"||c==='`'){state="string";quote=c;out+=" ";}
+  else out+=c;
+ }
+ return out;
+}
+function tabletViewportSignals(source){
+ // Recognize explicit, standalone Playwright viewport calls, not numbers in prose.
+ // This bounded recognizer is not a JavaScript parser or proof tests executed.
+ const widths=[];
+ const pattern=/^\s*await\s+page\.setViewportSize\(\{\s*width:\s*(949|950|951)\s*,[^}]*\}\);?/gm;
+ for(const match of maskTestCommentsAndStrings(source).matchAll(pattern))widths.push(Number(match[1]));
+ return [...new Set(widths)].sort((a,b)=>a-b);
+}
 
 function readAllowlistedInceptionSource() {
   const result = {};
@@ -119,14 +143,18 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     sourceFingerprint.update(file + "\0");
     sourceFingerprint.update(sourceMap[file] + "\0");
   }
+  sourceFingerprint.update(JSON.stringify(RULES)+"\0tablet-literal-check-v1\0");
+  const tabletWidths=tabletViewportSignals(sourceMap["tests/inception-apex-browser.cjs"]);
   const findings = [];
   for (const rule of RULES) {
+    if(rule.id==="ia-responsive-coverage"&&TABLET_WIDTHS.every(width=>tabletWidths.includes(width)))continue;
     const evidence = rule.checks.map((check) =>
       evidenceAt(sourceMap[check.file], check.needle, check.file));
     // Never claim an observation unless EVERY required source match exists.
     if (evidence.some((item) => item === null)) continue;
     findings.push({
       id: rule.id, category: rule.category, priority: rule.priority,
+      findingType:["ia-image-keyboard","ia-review-test-coverage"].includes(rule.id)?"preserve_existing":rule.id==="ia-responsive-coverage"?"coverage_gap":"verification_needed",
       title: rule.title, observation: rule.observation,
       recommendation: rule.recommendation, evidence,
       provenance: "observed_in_first_party_source", review: "pending",
@@ -136,7 +164,8 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     schemaVersion: 1, kind: "eig_build_lab_code_scan",
     target: "inception_apex", targetLabel: "InceptionApex",
     sourceVersion, sourceFingerprint: sourceFingerprint.digest("hex"), inspectedAt,
-    scannerVersion: "inception-code-v1",
+    scannerVersion: "inception-directed-pilot-v2",
+    coverageChecks:[{id:"ia-tablet-breakpoints",requiredWidths:[...TABLET_WIDTHS],observedWidths:tabletWidths,status:TABLET_WIDTHS.every(width=>tabletWidths.includes(width))?"markers_found":"not_observed_in_sample",runtimeVerified:false}],
     files,
     findings,
     limitations: "First-party static source and test-script inspection only. Findings are not proof of live UI defects, test results or user behavior. No third-party app, private customer record, screenshot, runtime session or external AI model was scanned.",
@@ -145,5 +174,5 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
 }
 
 module.exports = {
-  readAllowlistedInceptionSource, scanInceptionSource, FILE_PATHS,
+  readAllowlistedInceptionSource, scanInceptionSource, FILE_PATHS, tabletViewportSignals,
 };

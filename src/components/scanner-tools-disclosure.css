@@ -14,3 +14,4 @@
 .bl-scanner-title>.bl-scanner-tools{margin:0;padding:0;border:0;background:transparent}
 .bl-scanner-title>.bl-scanner-tools[open]{flex:1 1 100%;padding:10px 14px;border:1px solid #55758d;background:#122d43}
 .bl-scanner-title .bl-scanner-tools summary{color:#c2e4fa;font-size:.8rem;min-height:30px;padding:4px}
+.bl-scanner-directions{margin:12px 0;padding:12px;border:1px solid #56748e;border-radius:9px;font-size:.9rem}.bl-scanner-directions summary{cursor:pointer;font-weight:700}.bl-scanner-directions li{margin:6px 0}.bl-scanner-directions h4{margin:14px 0 6px}

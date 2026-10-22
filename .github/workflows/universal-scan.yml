@@ -19,6 +19,10 @@ on:
       - "tests/build-change-impact.test.mjs"
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabInceptionPilot.mjs"
+      - "src/lib/buildLabScannerDirections.json"
+      - "src/components/ScannerDirectionsDisclosure.jsx"
+      - "tests/build-lab-inception-pilot.test.mjs"
       - "src/lib/buildLabManagerBlueprint.mjs"
       - "src/components/BuildLabManager.jsx"
       - "tests/build-lab-manager-blueprint.test.mjs"
@@ -137,6 +141,10 @@ on:
     paths:
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabInceptionPilot.mjs"
+      - "src/lib/buildLabScannerDirections.json"
+      - "src/components/ScannerDirectionsDisclosure.jsx"
+      - "tests/build-lab-inception-pilot.test.mjs"
       - "src/lib/buildLabManagerBlueprint.mjs"
       - "src/components/BuildLabManager.jsx"
       - "tests/build-lab-manager-blueprint.test.mjs"
@@ -258,7 +266,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/build-lab-manager-blueprint.test.mjs tests/build-lab-scan-history.test.mjs tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
+      - run: node --test tests/build-lab-inception-pilot.test.mjs tests/build-lab-manager-blueprint.test.mjs tests/build-lab-scan-history.test.mjs tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
       - run: node --test tests/ep-discovery-engine.test.mjs
       - run: node --test tests/ep-storefront-sources.test.mjs
       - run: node --test tests/ep-unified-store.test.mjs
@@ -270,6 +278,7 @@ jobs:
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs
+      - run: node tests/inception-apex-browser.cjs
       - run: node tests/event-inquiry-browser.cjs
       - run: node tests/eig-improvement-radar-browser.cjs
       - uses: actions/upload-artifact@v4
@@ -278,6 +287,7 @@ jobs:
           name: eig-build-lab-browser-evidence
           path: |
             test-results/eig-build-lab/
+            test-results/inception-apex/
             test-results/event-inquiry/
             test-results/eig-improvement-radar/
           retention-days: 7

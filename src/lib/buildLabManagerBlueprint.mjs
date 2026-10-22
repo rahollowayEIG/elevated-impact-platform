@@ -27,13 +27,14 @@ function itemsFor(entry){
 export function stackScanBlueprint(entries,{title='Build Lab improvement blueprint',now=new Date().toISOString()}={}){
  if(!Array.isArray(entries)||!entries.length||entries.length>10)throw Error('Select between 1 and 10 completed scans.');
  if(!text(title,120)||!Number.isFinite(Date.parse(now)))throw Error('A blueprint title and valid date are required.');
- const proposals=[],seen=new Map(),inputs=[];let omitted=0,total=0;
+ const proposals=[],seen=new Map(),inputs=[];let omitted=0,preserved=0,total=0;
  for(const entry of entries){
   if(!Object.hasOwn(SCAN_TYPES,entry?.type)||!text(entry.id,200)||!entry.snapshot||typeof entry.snapshot!=='object'||!text(entry.source,150)||!Number.isFinite(Date.parse(entry.savedAt)))throw Error('A selected scan is invalid.');
   const scanKey=entry.type+':'+entry.id;
   if(inputs.some(x=>x.key===scanKey))throw Error('The same scan was selected twice.');
   inputs.push({key:scanKey,type:entry.type,id:entry.id,source:entry.source,savedAt:entry.savedAt,scope:entry.scope});
   for(const {item,decision,revisedDetail} of itemsFor(entry)){
+   if(item.findingType==='preserve_existing'){preserved++;continue;}
    if(['reject','park','hold'].includes(decision)){omitted++;continue;}
    const title=text(item.title||item.path||item.category,180);
    const detail=text(revisedDetail||item.nextAction||item.recommendation||item.proposal||item.nextCheck||item.reason);
@@ -56,7 +57,7 @@ export function stackScanBlueprint(entries,{title='Build Lab improvement bluepri
   if(new Set(group.flatMap(x=>x.sourceRefs.map(r=>r.sourceVersion))).size>1)warnings.push('Multiple source versions for '+module+'. Verify against the current branch before implementation.');
   for(const title of new Set(group.map(x=>normalized(x.title))))if(group.filter(x=>normalized(x.title)===title).length>1)warnings.push('Different recommendations share a title in '+module+'. Review both; no approach was chosen automatically.');
  }
- return {kind:'eig_build_lab_manager_blueprint',schemaVersion:1,title:text(title,120),createdAt:now,revision:1,status:'owner_review_required',inputs,proposals,warnings,omitted,merged:total-proposals.length,tasks:[],approval:null,execution:'not_connected',safety:{localPlanningOnly:true,autoBuilt:false,autoDeployed:false}};
+ return {kind:'eig_build_lab_manager_blueprint',schemaVersion:1,title:text(title,120),createdAt:now,revision:1,status:'owner_review_required',inputs,proposals,warnings,omitted,preserved,merged:total-proposals.length,tasks:[],approval:null,execution:'not_connected',safety:{localPlanningOnly:true,autoBuilt:false,autoDeployed:false}};
 }
 function changed(plan){const next=clone(validateManagerBlueprint(plan));next.revision++;next.approval=null;next.status='owner_review_required';next.tasks=[];return next;}
 export function reviewManagerProposal(plan,id,decision,revision=''){
@@ -88,6 +89,7 @@ export function approveManagerBlueprint(plan,{acknowledgeWarnings=false,now=new 
 }
 export function validateManagerBlueprint(plan){
  if(!plan||JSON.stringify(plan).length>600000||plan.kind!=='eig_build_lab_manager_blueprint'||plan.schemaVersion!==1||!Number.isInteger(plan.revision)||plan.revision<1||typeof plan.title!=='string'||!Array.isArray(plan.inputs)||!plan.inputs.length||plan.inputs.length>10||!Array.isArray(plan.proposals)||!plan.proposals.length||plan.proposals.length>100||!Array.isArray(plan.warnings)||!Array.isArray(plan.tasks)||!['owner_review_required','reviewed_for_handoff'].includes(plan.status)||plan.execution!=='not_connected'||plan.safety?.localPlanningOnly!==true||plan.safety?.autoBuilt!==false||plan.safety?.autoDeployed!==false)throw Error('Saved Manager blueprint is invalid.');
+ if(plan.pilot!==undefined&&(!plan.pilot||plan.pilot.scanner!=="inspector"||!/^[a-f0-9]{64}$/i.test(plan.pilot.sourceFingerprint||"")||typeof plan.pilot.findingId!=="string"||!Array.isArray(plan.pilot.verification)||plan.pilot.verification.length!==3||plan.pilot.verification.some(x=>typeof x!=="string"||x.length>300)||plan.pilot.execution!=="manual_approved_implementation"||plan.pilot.status!=="awaiting_owner_review"))throw Error("Invalid scanner pilot metadata.");
  const ids=new Set();
  for(const p of plan.proposals){
   if(!text(p.id)||ids.has(p.id)||!text(p.title)||!text(p.detail)||typeof p.revision!=='string'||p.revision.length>3000||!DECISIONS.has(p.decision)||!Object.hasOwn(MANAGER_AGENTS,p.assignedTo)||p.requiresVerification!==true||!Array.isArray(p.sourceRefs)||!p.sourceRefs.length||!p.sourceRefs.every(x=>typeof x.scanKey==='string'&&typeof x.sourceVersion==='string'&&Array.isArray(x.files)&&x.files.every(f=>typeof f==='string')))throw Error('Saved Manager recommendation is invalid.');

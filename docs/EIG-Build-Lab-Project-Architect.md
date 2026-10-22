@@ -179,3 +179,30 @@ For each substantial proposed capability:
 The Researcher gathers evidence; the Scientist can propose a bounded compatibility experiment; the Manager incorporates the reviewed recommendation, dependencies and verification criteria into the blueprint; Bob the Builder or Mr. Fixit implements only approved scope; the Inspector checks the result. These are intended responsibilities, not a claim that automatic agent dispatch is connected. Research does not approve subscriptions, spend, vendor contact, account connections, data sharing or implementation.
 
 Assess a technology choice when a new build or material capability change makes it relevant. Broader opportunity reviews may be included in future owner-selected weekly/monthly scan plans; this note creates no recurring job. Save research by scan type with its date and sources when the adapter is implemented, and link the selected assessment into its blueprint so later reviewers can understand why EIG built, integrated or partnered.
+
+## Launch Runway (owner direction, October 22, 2026)
+
+Once a product reaches an agreed maturity level, guide it from tested build to controlled launch. Define the target audience, release scope, required workflows, supported browsers/devices and launch criteria in its approved blueprint. The default delivery target is one shared responsive application for phone/tablet/desktop browsers, with an installable PWA where appropriate. App Store/Google Play packages are optional, separately scoped deliverables with their own builds, device tests and distribution requirements; they are not automatic consequences of a web-app pass.
+
+**Status:** planned workflow and product area, not an implemented release service. Preserve the current priority: prove the one-scanner cycle, strengthen builder/Manager, then extend scanners and release automation. This plan starts no agents, deployments, subscriptions or scheduled monitoring.
+
+| Stage | Evidence required to advance |
+| --- | --- |
+| Working build | Approved scope implemented; core acceptance criteria pass on the identified version. |
+| Verified candidate | Independent checks cover required user journeys, applicable permissions/data handling, save/recovery behavior, accessibility and the declared compatibility matrix. Blocking defects have owners and are resolved; unknown or untested requirements stay visible. |
+| Private pilot / beta | Selected authorized users complete realistic workflows in an isolated or deliberately approved pilot environment; feedback, failures and fixes are recorded against the candidate. |
+| Launch ready | Owner reviews the exact candidate, evidence, known limitations, audience, operating costs, support/onboarding, monitoring, rollback/recovery plan and required release configuration. Payments, communications, migrations, third-party rights and store requirements are checked where applicable. |
+| Approved release | Explicit owner approval identifies the version, environment, audience and rollout scope. The authorized release process performs a limited rollout and confirms launch health. |
+| Live improvement | Observe failures, feedback and usage against agreed success/rollback thresholds; route new findings into reviewed blueprints and repeat verification for updates. |
+
+A readiness percentage may summarize progress but cannot override a blocking gate. Readiness is scoped to a specific release and audience: internal pilot readiness does not imply public readiness. Every gate records its responsible reviewer, dated evidence and passed/failed/not-tested/not-applicable state; not-applicable needs a reason. Build changes invalidate affected evidence and approval; releasing a different build requires revalidation. Source inspection, executed tests, browser engines, mobile viewport emulation and actual-device/Safari runs must remain distinct.
+
+The Manager coordinates dependencies and presents one launch packet with the release candidate, acceptance results, browser/device matrix, unresolved risks, release notes, support owner and rollback instructions. Builder/Fixit resolve approved work; Inspector independently verifies it; the owner provides the final green light. A failed check returns the candidate to the affected work stage. Approved rollout and post-launch operations require separately implemented execution and observability; a browser-local blueprint approval cannot authorize or trigger them.
+
+### Build Meter
+
+Show a Build Meter for each product/release alongside its Launch Runway. Keep **Build progress** (implemented acceptance criteria / approved applicable criteria) separate from **Verification progress** (criteria with current passing evidence / approved applicable criteria). Display the numerator and denominator, scope/version and last checked date. Unknown or untested items do not count as passes; zero/undefined scope displays “Scope not defined” rather than a percentage. Scope changes can lower progress and must explain why; optional future ideas do not silently expand the current release denominator.
+
+Alongside both meters, show the current stage, blocking issues, untested requirements, next concrete action and responsible specialist/reviewer. Break verification down into core functionality, persistence/integrations, applicable identity/permissions, accessibility, browser/device coverage and operational launch readiness, using passed/failed/not-tested/not-applicable states with evidence links. Browser engine checks and physical devices have separate rows. This is a planned reporting contract, not a new scanner score or an implemented dashboard.
+
+A fully built product can still be blocked from launch. “Ready for owner review” requires every mandatory gate for the declared release scope to be satisfied; “Approved for launch” additionally requires the owner's current explicit release approval. Neither percentage nor an agent's confidence grants release permission. Failed or stale evidence returns the affected criterion to an unresolved state. The Manager computes status from recorded criteria/evidence rather than inventing an AI completion estimate.

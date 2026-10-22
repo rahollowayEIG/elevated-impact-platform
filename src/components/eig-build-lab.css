@@ -122,3 +122,4 @@
 .bl-tool-nav button[hidden]{display:none}.bl-tool-subnav{position:static;margin-top:-8px;background:#1b354d;box-shadow:none}.bl-plan{padding:12px 0;border-top:1px solid #567a91}.bl-history,.bl-plan{overflow-wrap:anywhere}
 
 .bl-manager{overflow-wrap:anywhere}.bl-manager>label{display:grid;gap:8px;margin:12px 0}.bl-manager input[type="checkbox"]{width:auto;min-height:20px;min-width:20px}.bl-manager select{max-width:100%}
+.bl-manager table{min-width:640px}.bl-history table{min-width:620px}.bl-manager label{display:grid;gap:6px;margin:10px 0}.bl-manager input:not([type="checkbox"]),.bl-manager select,.bl-manager textarea,.bl-plan select{width:100%;min-height:42px;border:1px solid #647e94;border-radius:8px;padding:9px;box-sizing:border-box;font:inherit}.bl-history-table{max-width:100%}

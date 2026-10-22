@@ -132,7 +132,11 @@ export function workBatchPlan(ledger,id){
  const jobs=batch.items.map(i=>ledger.jobs.find(j=>j.id===i.id));
  const inputs=[...new Map(jobs.flatMap(j=>[j.refs[0]]).map(r=>[r.scanKey,{key:r.scanKey,type:r.type,id:r.scanKey,source:r.sourceVersion,savedAt:r.savedAt||batch.createdAt,scope:'batch'}])).values()];
  if(inputs.length>10)throw Error('This legacy implementation review accepts at most 10 source scans. Split the batch or use assisted implementation from its saved scope.');
- const proposals=jobs.map((j,i)=>({id:'proposal-'+(i+1),module:j.apps.join(', '),title:j.title,detail:j.detail,revision:j.detail,priority:j.priority,assignedTo:j.intent==='repair'?'fixer':'builder',decision:'revise',requiresVerification:true,sourceRefs:[j.refs[0]]}));
+ const proposals=jobs.map((j,i)=>{
+  const requirement=j.detail+'\n\nComplete when: '+j.completion;
+  if(requirement.length>3000)throw Error('The requirement and completion criteria for '+j.title+' exceed the implementation review limit of 3,000 characters. Shorten the work item and prepare a fresh batch.');
+  return {id:'proposal-'+(i+1),module:j.apps.join(', '),title:j.title,detail:requirement,revision:requirement,priority:j.priority,assignedTo:j.intent==='repair'?'fixer':'builder',decision:'revise',requiresVerification:true,sourceRefs:[j.refs[0]]};
+ });
  const plan=validateManagerBlueprint({kind:'eig_build_lab_manager_blueprint',schemaVersion:1,title:batch.title,createdAt:batch.createdAt,revision:1,status:'owner_review_required',inputs,proposals,
  warnings:['Batch scope approval does not authorize execution or release. Verify the exact current branch, dependencies and affected apps before implementation.'],tasks:[],approval:null,execution:'not_connected',safety:{localPlanningOnly:true,autoBuilt:false,autoDeployed:false}});
  return approveManagerBlueprint(plan,{acknowledgeWarnings:true,now:batch.approvedAt});

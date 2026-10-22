@@ -38,7 +38,7 @@ test('repair, upgrade and new-build jobs can span apps but cannot silently mix i
  let ledger=addBuildBrief(initial(),{id:'goal',title:'Shared product registry',detail:'Reuse products across invoices and contracts.',completion:'One product can be used by both apps.',apps:['invoices','contracts']});
  assert.equal(ledger.jobs[1].intent,'build');assert.equal(ledger.jobs[1].scope,'multi_app');assert.equal(workRoute(ledger.jobs[1]).label,'Needs manual fix');
  assert.throws(()=>createWorkBatch(ledger,{id:'mixed',title:'Mixed work',jobIds:ledger.jobs.map(j=>j.id)}),/separate/);
- ledger=createWorkBatch(ledger,{id:'build',title:'Product registry build',jobIds:['goal']});ledger=approveWorkBatch(ledger,'build');assert.equal(workBatchPlan(ledger,'build').proposals[0].detail,ledger.jobs[1].detail);
+ ledger=createWorkBatch(ledger,{id:'build',title:'Product registry build',jobIds:['goal']});ledger=approveWorkBatch(ledger,'build');assert.equal(workBatchPlan(ledger,'build').proposals[0].detail,ledger.jobs[1].detail+'\n\nComplete when: '+ledger.jobs[1].completion);
 });
 test('all existing scanner formats collect evidence and retain reject/hold dispositions',()=>{
  const entries=[
@@ -62,4 +62,11 @@ test('multi-app or platform IA scope never advertises the bounded single-app rou
  const ledger=initial(),job=ledger.jobs[0];assert.equal(workRoute(job).label,'Bounded IA candidate review');
  assert.equal(workRoute({...job,scope:'platform'}).label,'Needs manual fix');
  assert.equal(workRoute({...job,scope:'multi_app',apps:['inception','events']}).label,'Needs manual fix');
+});
+
+test('implementation handoff carries completion criteria and refuses to truncate lengthy requirements',()=>{
+ let ledger=initial();ledger=createWorkBatch(ledger,{id:'b',title:'Upgrade',jobIds:ledger.jobs.map(j=>j.id)});ledger=approveWorkBatch(ledger,'b');
+ assert.match(workBatchPlan(ledger,'b').tasks.find(t=>t.phase==='work').instruction,/Complete when:/);
+ ledger=reviseWorkItem(ledger,ledger.jobs[0].id,{detail:'x'.repeat(3000)});ledger=createWorkBatch(ledger,{id:'long',title:'Long requirement',jobIds:ledger.jobs.map(j=>j.id)});ledger=approveWorkBatch(ledger,'long');
+ assert.throws(()=>workBatchPlan(ledger,'long'),/Shorten/);
 });

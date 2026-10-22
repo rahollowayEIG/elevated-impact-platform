@@ -1,3 +1,4 @@
+import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
@@ -57,7 +58,7 @@ function draftFor(item,choice,metadata){
   limitation:"This is a proposed improvement from static heuristics, not a confirmed missing feature, successful test or external competitor scan.",
  };
 }
-export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,runScanner=requestImprovementRadar}){
+export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,legacyReview=false,onViewBuckets,runScanner=requestImprovementRadar}){
  const [restored]=useState(()=>restore(ownerUserId));
  const [scope,setScope]=useState(()=>restored?.scope||"all");
  const [result,setResult]=useState(restored||null);
@@ -170,11 +171,12 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
   {saveError&&<p className="platform-error">Browser autosave is unavailable. Export your reviewed backlog to keep it.</p>}
   {stale&&<p className="blr-notice">The report below is for a different target. Run the radar to refresh recommendations for this selection.</p>}
   {result&&<div className="blr-report">
+   <BuildLabScanDestination onViewBuckets={onViewBuckets} />
    <div className="blr-stats">
     <div><strong>{result.audit.summary.essential}</strong><span>Essential capability checks</span></div>
     <div><strong>{result.audit.summary.wow}</strong><span>Standout opportunity ideas</span></div>
     <div><strong>{result.audit.summary.notObserved}</strong><span>No signal in sampled source</span></div>
-    <div><strong>{reviewed}</strong><span>Accepted or revised</span></div>
+    {legacyReview&&<div><strong>{reviewed}</strong><span>Accepted or revised</span></div>}
    </div>
    <div className="blr-controls">
     <label>Show
@@ -196,7 +198,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
       <option value="evidence">Least evidence first</option>
      </select>
     </label>
-    <button type="button" className="platform-secondary-button" onClick={exportBacklog}>Export Upgrade Backlog JSON</button>
+    <BuildLabReportBackup legacyReview={legacyReview}><button type="button" className="platform-secondary-button" onClick={exportBacklog}>Export Upgrade Backlog JSON</button></BuildLabReportBackup>
    </div>
    <p className="blr-count">Showing {filtered.length} of {result.audit.suggestions.length} product capability candidates. Each requires verification before building.</p>
    <div className="blr-items">
@@ -211,7 +213,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
        <span><strong>Impact</strong> {item.impact}</span>
        <span><strong>Effort</strong> {item.effort}</span>
        <span><strong>Preview evidence</strong> {item.signalCount}/{item.signalsChecked} signals</span>
-       <span><strong>Review</strong> {choices[item.id]?.review||"pending"}</span>
+       {legacyReview&&<span><strong>Review</strong> {choices[item.id]?.review||"pending"}</span>}
       </div>
       <p className="blr-evidence-state">{PROGRESS_LABELS[item.status]}</p>
       <p><strong>Why it matters:</strong> {item.why}</p>
@@ -228,13 +230,13 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
          </li>)}</ul>:<p>No matching source markers in the approved sample. This does not establish the feature is absent.</p>}
        </div>
       </details>
-      <div className="blr-actions">
+      {legacyReview&&<div className="blr-actions">
        <button type="button" onClick={()=>decide(item,"accept")}>Accept for blueprint</button>
        <button type="button" onClick={()=>{setEditing(item.id);setNote(choices[item.id]?.note||item.proposal);}}>Revise</button>
        <button type="button" onClick={()=>decide(item,"park")}>Park idea</button>
        <button type="button" onClick={()=>buildBrief(item)}>Download Upgrade Brief</button>
-      </div>
-      {editing===item.id&&<div className="blr-revise">
+      </div>}
+      {legacyReview&&editing===item.id&&<div className="blr-revise">
        <label>Revised upgrade suggestion
         <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} maxLength={1300}/>
        </label>
@@ -245,7 +247,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,run
    </div>
    {!filtered.length&&<p>No upgrade ideas match that search.</p>}
    <p className="blr-footer">Source version: <code>{result.sourceVersion.slice(0,12)}</code> · Rulebook scan: {result.inspectedAt?new Date(result.inspectedAt).toLocaleString():"saved"}.
-   Decisions save in this browser only. Downloaded briefs are proposals requiring owner review.</p>
+   Results save in this browser. Review the collected work in Work Buckets.</p>
   </div>}
  </section>;
 }

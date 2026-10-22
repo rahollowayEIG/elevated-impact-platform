@@ -1,3 +1,4 @@
+import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
@@ -55,7 +56,7 @@ const COLS=[
  {key:"testStatus",name:"Preview tests"},
  {key:"dbStatus",name:"DB snapshot"},
 ];
-export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
+export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacyReview=false,onViewBuckets}) {
  const [restored] = useState(()=>restoreDraft(ownerUserId));
  const [selectedScope,setSelectedScope] = useState(()=>restored?.report?.scope==="module"?restored.report.selectedModule:"all");
  const [selectedEnvironment,setSelectedEnvironment] = useState(()=>restored?.report?.environmentAudit?.selected||"compare");
@@ -178,6 +179,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
       <li key={item.id}><strong>{item.title}</strong><span>{item.priority} · {item.status==="not_observed_in_sample"?"No source signal found":"Preview source signals found; functionality unverified"}</span></li>
     )}</ul>
    </section>}
+   <BuildLabScanDestination onViewBuckets={onViewBuckets} />
    <BuildLabEnvironmentPanel audit={report.environmentAudit} />
    <div className="blm-toolbar">
     <label>Search modules
@@ -186,7 +188,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
     </label>
     <div className="blm-toolbar-end">
      <small>Showing {rows.length} of {report.modules.length} modules</small>
-     <button type="button" className="platform-secondary-button" onClick={()=>downloadJson({report,reviews},"eig-build-lab-master-scan.json")}>Export JSON</button>
+     <BuildLabReportBackup legacyReview={legacyReview}><button type="button" className="platform-secondary-button" onClick={()=>downloadJson({report,reviews},"eig-build-lab-master-scan.json")}>Export JSON</button></BuildLabReportBackup>
     </div>
    </div>
    <div className="blm-table-wrap"><table className="blm-table">
@@ -203,14 +205,14 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient}) {
        {row.evidence.length?<ul>{row.evidence.map((ev,i)=><li key={ev.path+ev.kind+i}>
         <code>{ev.path}:{ev.line}</code> ({ev.kind}) <span>{ev.excerpt}</span>
        </li>)}</ul>:<p>No matching evidence in approved source sample. This does not prove the feature is absent.</p>}
-       <div className="blm-reviews">
+       {legacyReview&&<div className="blm-reviews">
         <span>Review: <strong>{reviews[row.id]?.review||"pending"}</strong></span>
         <button type="button" onClick={()=>decide(row.id,"accept")}>Accept for follow-up</button>
         <button type="button" onClick={()=>{setEditing(row.id);setNote(reviews[row.id]?.note||row.nextCheck);}}>Revise</button>
         <button type="button" onClick={()=>decide(row.id,"reject")}>Dismiss</button>
-       </div>
-       {reviews[row.id]?.review==="revise"&&<p>Saved revision: {reviews[row.id].note}</p>}
-       {editing===row.id&&<div className="blm-revision">
+       </div>}
+       {legacyReview&&reviews[row.id]?.review==="revise"&&<p>Saved revision: {reviews[row.id].note}</p>}
+       {legacyReview&&editing===row.id&&<div className="blm-revision">
         <label>Revised next step<textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} /></label>
         <button type="button" onClick={()=>decide(row.id,"revise",note)}>Save revision</button>
         <button type="button" onClick={()=>setEditing("")}>Cancel</button>

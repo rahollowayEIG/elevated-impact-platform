@@ -117,7 +117,7 @@ export function createWorkBatch(ledger,{id,title,jobIds,now=new Date().toISOStri
  if(!id||next.batches.some(b=>b.id===id)||!clean(title,120)||!jobs.length||jobs.length>50||jobs.length!==new Set(jobIds).size)throw Error('Choose 1–50 work items and enter a batch title.');
  if(jobs.some(j=>j.state!=='open'))throw Error('Only open items can enter a new batch. Reopen held or manual work deliberately first.');
  if(new Set(jobs.map(j=>j.intent)).size!==1)throw Error('Keep repairs, upgrades and new builds in separate batches.');
- next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,apps:[...j.apps],scope:j.scope}))});
+ next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,apps:[...j.apps],scope:j.scope,sourceRefs:copy(j.refs),evidence:copy(j.evidence)}))});
  return validateWorkLedger(next);
 }
 export function approveWorkBatch(ledger,id,now=new Date().toISOString()){
@@ -146,4 +146,34 @@ export function workRoute(job){
  if(job.state==='manual')return {label:'Needs manual fix',reason:job.manualReason};
  if(job.scope==='app'&&latest?.type==='inspector'&&/^[a-f0-9]{40}$/.test(latest.sourceVersion)&&job.apps.every(a=>['inception','inception-apex'].includes(a)))return {label:'Bounded IA candidate review',reason:'One IA finding can use the existing candidate generator after current-source verification. Successful implementation is not guaranteed.'};
  return {label:'Needs manual fix',reason:'No verified automated implementation route exists for this scope yet. Retain the job for assisted work or a future capability.'};
+}
+
+function reviewedSelection(ledger,selection){
+ if(!Array.isArray(selection)||!selection.length||selection.length>50||new Set(selection.map(x=>x.id)).size!==selection.length)throw Error('Review between 1 and 50 findings at a time.');
+ return selection.map(s=>{const j=ledger.jobs.find(j=>j.id===s.id);if(!j||j.signature!==s.signature||j.state!=='open')throw Error('Findings changed since this review. Refresh the bucket and review the current work.');return j;});
+}
+/** One bucket approval creates reviewed batches by work intent; no provider or execution. */
+export function approveBucketSelection(ledger,{selection,idPrefix,title='Reviewed bucket',now=new Date().toISOString()}){
+ let next=copy(validateWorkLedger(ledger));const jobs=reviewedSelection(next,selection);
+ if(!clean(idPrefix,150))throw Error('A unique review ID is required.');
+ const alreadyApproved=new Set(next.batches.filter(b=>b.status==='approved'&&batchIsCurrent(next,b)).flatMap(b=>b.items.map(i=>i.id)));
+ if(jobs.some(j=>alreadyApproved.has(j.id)))throw Error('Some findings already have an approved work plan. Review the existing batch instead.');
+ for(const intent of Object.keys(WORK_INTENTS)){
+  const group=jobs.filter(j=>j.intent===intent);if(!group.length)continue;
+  const id=idPrefix+':'+intent;
+  next=createWorkBatch(next,{id,title:WORK_INTENTS[intent]+' · '+title,jobIds:group.map(j=>j.id),now});
+  next=approveWorkBatch(next,id,now);
+ }
+ return next;
+}
+export function setBucketDisposition(ledger,{selection,state}){
+ if(!['hold','dismissed'].includes(state))throw Error('Choose hold or dismiss.');
+ const jobs=reviewedSelection(validateWorkLedger(ledger),selection);
+ return jobs.reduce((next,j)=>reviseWorkItem(next,j.id,{state}),copy(ledger));
+}
+/** The approved batch snapshot is the blueprint; no separate creation action is needed. */
+export function batchWorkBlueprint(batch){
+ return {kind:'eig_work_batch_blueprint',schemaVersion:1,title:batch.title,intent:batch.intent,status:batch.status,reviewedAt:batch.approvedAt||null,
+  work:batch.items.map(i=>({title:i.title,requirement:i.detail,completion:i.completion,apps:i.apps||[],scope:i.scope||'app',sourceRefs:i.sourceRefs||[],evidence:i.evidence||[]})),
+  execution:'not_connected',deployment:'not_authorized'};
 }

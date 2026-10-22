@@ -70,3 +70,21 @@ test('implementation handoff carries completion criteria and refuses to truncate
  ledger=reviseWorkItem(ledger,ledger.jobs[0].id,{detail:'x'.repeat(3000)});ledger=createWorkBatch(ledger,{id:'long',title:'Long requirement',jobIds:ledger.jobs.map(j=>j.id)});ledger=approveWorkBatch(ledger,'long');
  assert.throws(()=>workBatchPlan(ledger,'long'),/Shorten/);
 });
+
+test('one bucket approval splits mixed intents into approved plans and captures full source evidence',async()=>{
+ const {approveBucketSelection,batchWorkBlueprint}=await import('../src/lib/buildLabWorkBuckets.mjs');
+ const ledger=addBuildBrief(initial(),{id:'goal2',title:'New catalog',detail:'Build a shared catalog.',completion:'Products are reusable.'});
+ const next=approveBucketSelection(ledger,{selection:ledger.jobs.map(j=>({id:j.id,signature:j.signature})),idPrefix:'review',title:'Platform review'});
+ assert.equal(next.batches.length,2);assert.ok(next.batches.every(b=>b.status==='approved'));
+ const upgrade=next.batches.find(b=>b.intent==='upgrade'),plan=batchWorkBlueprint(upgrade);
+ assert.equal(plan.work[0].requirement,ledger.jobs[0].detail);assert.equal(plan.work[0].completion,ledger.jobs[0].completion);assert.equal(plan.work[0].sourceRefs[0].sourceVersion,'a'.repeat(40));assert.equal(plan.execution,'not_connected');assert.equal(plan.deployment,'not_authorized');
+ assert.throws(()=>approveBucketSelection(next,{selection:[{id:next.jobs[0].id,signature:next.jobs[0].signature}],idPrefix:'again'}),/already/);
+});
+test('bucket approval rejects changed selections atomically and hold/dismiss survive rescans',async()=>{
+ const {approveBucketSelection,setBucketDisposition}=await import('../src/lib/buildLabWorkBuckets.mjs');
+ const ledger=initial(),selection=ledger.jobs.map(j=>({id:j.id,signature:j.signature}));
+ const changed=reviseWorkItem(ledger,ledger.jobs[0].id,{detail:'Changed scope'});
+ assert.throws(()=>approveBucketSelection(changed,{selection,idPrefix:'stale'}),/changed/);assert.equal(changed.batches.length,0);
+ for(const state of ['hold','dismissed']){const next=setBucketDisposition(ledger,{selection,state});assert.equal(collectScanWork(next,[scan()]).jobs[0].state,state);}
+ assert.throws(()=>setBucketDisposition(ledger,{selection,state:'fixed'}));
+});

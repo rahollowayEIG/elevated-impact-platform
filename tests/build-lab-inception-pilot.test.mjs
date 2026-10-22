@@ -5,9 +5,14 @@ import {prepareInceptionPilotBlueprint} from '../src/lib/buildLabInceptionPilot.
 import {reviewManagerProposal,approveManagerBlueprint,stackScanBlueprint} from '../src/lib/buildLabMissionOrchestrator.mjs';
 const require=createRequire(import.meta.url);
 const {readAllowlistedInceptionSource,scanInceptionSource,tabletViewportSignals}=require('../server/eig-inception-source-scan.cjs');
-const inputs=()=>readAllowlistedInceptionSource();
+// Recreate the pre-fix sample so the handoff remains tested after the real gap closes.
+const inputs=()=>{
+ const source=readAllowlistedInceptionSource();
+ source['tests/inception-apex-browser.cjs']=source['tests/inception-apex-browser.cjs'].replace(/^\s*await page\.setViewportSize\(\{ width: (?:949|950|951), height: 900 \}\);$/gm,'');
+ return source;
+};
 const entry=report=>({id:'pilot-run',type:'inspector',scope:'inception',source:report.sourceVersion,savedAt:'2026-10-21T23:00:00Z',snapshot:{report,reviews:{}}});
-test('real source scan selects one gap into an unapproved blueprint with exact provenance',()=>{
+test('pre-fix source sample selects one gap into an unapproved blueprint with exact provenance',()=>{
  const source=inputs(),report=scanInceptionSource(source,'a'.repeat(40));
  const gap=report.findings.find(x=>x.id==='ia-responsive-coverage');assert.equal(gap.findingType,'coverage_gap');
  const plan=prepareInceptionPilotBlueprint(entry(report),gap.id);

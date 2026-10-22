@@ -69,7 +69,7 @@ test("owner-only scan uses real source evidence after verifying active owner", a
   const result = await f.send();
   assert.equal(result.status, 200);
   assert.equal(result.body.ok, true);
-  assert.equal(result.body.report.findings.length, 6);
+  assert.equal(result.body.report.findings.length, 5);
   assert.equal(result.body.report.sourceVersion, "a".repeat(40));
   assert.equal(result.headers["Cache-Control"], "private, no-store, max-age=0");
   assert.equal(f.state.verifyCalls, 1);

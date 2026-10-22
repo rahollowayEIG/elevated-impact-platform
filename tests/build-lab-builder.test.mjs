@@ -210,7 +210,7 @@ test('failure diagnostics distinguish provider, deadline, output and edit-valida
   ['provider_output_limit','generation_response',()=>({ok:true,json:async()=>({status:'incomplete',incomplete_details:{reason:'max_output_tokens'},privateText})})],
   ['provider_incomplete','generation_response',()=>({ok:true,json:async()=>({status:'incomplete',privateText})})],
   ['response_json','generation_response',()=>({ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:privateText}]}]})})],
-  ['candidate_edit_count','candidate_validation',()=>completed({...model,edits:Array(5).fill(edit)})],
+  ['candidate_edit_count','candidate_validation',()=>completed({...model,edits:Array(13).fill(edit)})],
   ['candidate_edit_match','candidate_validation',()=>completed({...model,edits:[{...edit,before:privateText}]})],
   ['candidate_edit_scope','candidate_validation',()=>completed({...model,edits:[{...edit,path:'../../private.env'}]})],
   ['review_format','source_review_validation',()=>completed({...sourceReview,requirements:[]}),true],
@@ -230,5 +230,22 @@ test('failure diagnostics distinguish provider, deadline, output and edit-valida
   await assert.rejects(()=>requestBuilderCandidate(client,plan(),true,async()=>({ok:false,json:async()=>res.body})),e=>e.message===res.body.message);
  }
  const body=buildRequest(sources,report.findings[0],'Owner requirement');
- const input=JSON.parse(body.input[1].content);assert.equal(input.editLimits.maxEdits,4);assert.equal(input.editLimits.maxBeforeCharacters,12000);assert.equal(input.editLimits.maxAfterCharacters,12000);
+ const input=JSON.parse(body.input[1].content);assert.equal(input.editLimits.maxEdits,12);assert.equal(input.editLimits.maxBeforeCharacters,12000);assert.equal(input.editLimits.maxAfterCharacters,12000);
+});
+
+test('provider schema bounds small-edit count while independent server checks distinguish invalid replacements',async()=>{
+ const schema=buildRequest(sources,report.findings[0],'Complete the change.').text.format.schema.properties.edits;
+ assert.equal(schema.maxItems,12);assert.equal(schema.minItems,0);
+ assert.deepEqual(schema.items.properties.path.enum,['src/components/InceptionApex.jsx','src/components/FlyerEditor.jsx','src/components/inception-apex.css']);
+ assert.equal(schema.items.additionalProperties,false);
+ const tiny=Object.fromEntries(FILE_PATHS.map(p=>[p,sources[p]]));
+ tiny[css]=Array.from({length:12},(_,i)=>'.small-'+i+' { color: red; }').join('\n');
+ const smallEdits=Array.from({length:12},(_,i)=>({path:css,before:'.small-'+i+' { color: red; }',after:'.small-'+i+' { color: blue; }'}));
+ assert.equal((applyEdits(tiny,smallEdits)[css].match(/blue/g)||[]).length,12);
+ assert.throws(()=>applyEdits(tiny,[...smallEdits,smallEdits[0]]),/one to twelve/);
+ for(const [changed,code] of [[{...edit,before:' '},'candidate_edit_empty'],[{...edit,after:edit.before},'candidate_edit_unchanged'],[{...edit,after:'x'.repeat(12001)},'candidate_edit_size'],[{...edit,before:'x'.repeat(12001)},'candidate_edit_size'],[{...edit,path:'private.env'},'candidate_edit_scope']]){
+  const events=[],res=response();await handler({provider:{...model,edits:[changed]},log:e=>events.push(e)})(request(),res);
+  assert.equal(res.code,502);assert.equal(res.body.code,code);assert.equal(res.body.stage,'candidate_validation');assert.equal(res.body.result,undefined);assert.equal(events[0].code,code);
+  assert.equal(JSON.stringify(events).includes(changed.before),false);
+ }
 });

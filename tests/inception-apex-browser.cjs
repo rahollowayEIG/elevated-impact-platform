@@ -295,6 +295,21 @@ const jsQR = require("jsqr");
       await page.locator("th").first().getAttribute("aria-sort"),
       "ascending",
     );
+    // Approved-pilot candidate: verify both sides of the 950px editor breakpoint.
+    await page.getByRole("button", { name: /Dinner flyer.*Favorite/ }).click();
+    async function checkTabletEditor(label) {
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), label + " page must not overflow horizontally");
+      for (const name of ["Design", "Details & creative direction", "Preview & approve"])
+        assert.ok(await page.getByRole("button", { name, exact: true }).isVisible(), label + " must retain " + name);
+      await page.screenshot({ path: "test-results/inception-apex/editor-tablet-" + label + ".png", fullPage: true });
+    }
+    await page.setViewportSize({ width: 949, height: 900 });
+    await checkTabletEditor("949");
+    await page.setViewportSize({ width: 950, height: 900 });
+    await checkTabletEditor("950");
+    await page.setViewportSize({ width: 951, height: 900 });
+    await checkTabletEditor("951");
+    await page.getByRole("button", { name: "My Designs", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({
       path: "test-results/inception-apex/dashboard-mobile.png",

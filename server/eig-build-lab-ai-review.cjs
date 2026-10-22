@@ -20,6 +20,9 @@ function buildSafeAnalysisContext(report){
   sourceVersion:report.sourceVersion,
   inspectionLimits:"File markers are not functional verification. DB is a dated snapshot.",
   nextCheck:module.nextCheck.slice(0,630),
+  verification:module.verify?.slice(0,650)||'Verify the current source and actual workflow independently.',
+  sampledTestScope:module.testScope?.slice(0,350)||'Evidence scope not recorded in this older report.',
+  sampledMarkers:module.coverage?Object.fromEntries(Object.entries(module.coverage).map(([kind,c])=>[kind,{observed:c.observed,expected:c.expected,runtimeVerified:false}])):null,
   files:[...new Set(module.evidence.map(e=>e.path))].slice(0,14),
   missingTables:module.tables.filter(x=>!x.production||!x.sandbox)
    .map(x=>({table:x.table,live:x.production,sandbox:x.sandbox})).slice(0,12),

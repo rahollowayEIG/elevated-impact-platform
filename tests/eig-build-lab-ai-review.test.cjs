@@ -38,6 +38,10 @@ test("review context is a bounded, source-metadata-only report with known module
  assert.ok(c.files.every(f=>f.startsWith("src/")||f.startsWith("tests/")));
  assert.ok(c.missingTables.some(t=>t.table==="invoice_lines"));
  assert.equal(JSON.stringify(c).includes("test-key-placeholder"),false);
+ assert.equal(c.sampledMarkers.source.runtimeVerified,false);
+ assert.equal(c.sampledMarkers.source.expected,2);
+ assert.match(c.verification,/fictional issuers/);
+ assert.match(c.sampledTestScope,/preview-locator/);
  const data=buildAiReviewRequest(c);
  assert.equal(data.store,false);
  assert.deepEqual(data.tools,[]);

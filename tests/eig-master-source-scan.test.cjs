@@ -19,6 +19,8 @@ test("actually scans sampled committed source without reading customer data",()=
  assert.equal(x.safety.readOnly,true);
  assert.equal(x.safety.customerRowsRead,false);
  assert.equal(x.safety.autoDeployed,false);
+ const largestReviews=Object.fromEntries(MODULES.map(m=>[m.id,{review:"revise",note:"x".repeat(1000)}]));
+ assert.ok(JSON.stringify({report:x,reviews:largestReviews}).length<180000,"Full evidence plus every permitted review must fit local draft storage");
  assert.ok(x.modules.some(m=>m.id==="event-builder"&&m.sourceStatus==="source_marker_found"));
  const eventBuilder=x.modules.find(m=>m.id==="event-builder");
  assert.equal(eventBuilder.uiStatus,"ui_marker_found");
@@ -63,11 +65,11 @@ test("actually scans sampled committed source without reading customer data",()=
  assert.equal(contracts.testStatus,"test_code_found");
  assert.equal(contracts.uiStatus,"not_observed_in_sample");
  assert.equal(contracts.dbStatus,"snapshot_gap");
- assert.match(contracts.nextCheck,/DocuSign templates remain drafts/);
+ assert.match(contracts.nextCheck,/template status and approval must be checked independently/);
  const posTax=x.modules.find(m=>m.id==="pos-tax");
  assert.equal(posTax.sourceStatus,"source_marker_found");
  assert.equal(posTax.testStatus,"test_code_found");
- assert.equal(posTax.uiStatus,"not_observed_in_sample");
+ assert.equal(posTax.uiStatus,"not_sampled");
  assert.equal(posTax.dbStatus,"snapshot_gap");
  assert.match(posTax.nextCheck,/blueprint only/);
  assert.ok(x.limitations.some(z=>z.includes("NOT a new Supabase query")));
@@ -124,10 +126,53 @@ test("launching a browser is not evidence that event creation and registration s
  assert.equal(inspected.modules.find(x=>x.id==="event-builder").testStatus,"not_observed_in_sample");
  const verifiedSteps={...source,
   "tests/event-builder-browser.cjs":source["tests/event-builder-browser.cjs"]+
-    '\ngetByRole("button", { name: "Save Event Details" });'+
-    '\ngetByRole("button", { name: "Save Registration" });'+
-    '\ngetByLabel("Players per team");'};
+    '\nawait page.getByRole("button", { name: "Save Event Details" });'+
+    '\nawait page.getByRole("button", { name: "Save Registration" });'+
+    '\nawait page.getByLabel("Players per team");'};
  const withCoverage=scanMasterSource(verifiedSteps);
  assert.equal(withCoverage.modules.find(x=>x.id==="event-builder").testStatus,"test_code_found");
  assert.equal(withCoverage.modules.find(x=>x.id==="event-builder").status,"evidence_present");
+});
+
+test('source and UI badges distinguish one observed marker from the whole configured sample',()=>{
+ const source=readAllowlistedMasterSource();
+ source['src/lib/epInvoiceDraft.mjs']=source['src/lib/epInvoiceDraft.mjs'].replace('export function prepareDemoInvoice','export function renamedDemoInvoice')+'\n// export function prepareDemoInvoice\nconst documented = "export function prepareDemoInvoice";';
+ source['src/components/EigBuildLab.jsx']=source['src/components/EigBuildLab.jsx'].replaceAll('<EpInvoicePilot','<DifferentInvoicePilot')+'\n// <EpInvoicePilot />\nconst illustration="<EpInvoicePilot />";';
+ const report=scanMasterSource(source),invoice=report.modules.find(m=>m.id==='invoices');
+ assert.equal(invoice.sourceStatus,'partial_source_markers');assert.equal(invoice.uiStatus,'partial_ui_markers');
+ for(const kind of ['source','ui']){assert.equal(invoice.coverage[kind].observed,1);assert.equal(invoice.coverage[kind].expected,2);assert.equal(invoice.coverage[kind].checks.filter(c=>!c.observed).length,1);}
+ assert.equal(invoice.status,'review_needed');assert.match(invoice.observation,/source 1\/2, UI 1\/2/);
+});
+
+test('JSX prose and regex examples do not hide real mounts or manufacture component links',()=>{
+ const source=readAllowlistedMasterSource();
+ const examples='const example="<EpInvoicePilot />";\nconst pattern=/<EpInvoicePilot/;\n// <EpInvoicePilot />\n';
+ source['src/components/EigBuildLab.jsx']=examples+"const panel=<section>Customer's example <EpInvoicePilot /></section>;";
+ const actual=scanMasterSource(source).modules.find(m=>m.id==='invoices');
+ assert.equal(actual.uiStatus,'ui_marker_found');
+ assert.match(actual.evidence.find(e=>e.kind==='ui'&&e.path==='src/components/EigBuildLab.jsx').excerpt,/const panel=/);
+ source['src/components/EigBuildLab.jsx']=examples+'const panel=<p>Customer\'s example only</p>;';
+ assert.equal(scanMasterSource(source).modules.find(m=>m.id==='invoices').uiStatus,'partial_ui_markers');
+});
+
+test('empty configuration means not sampled and cannot become a complete module claim',()=>{
+ const report=scanMasterSource(readAllowlistedMasterSource());
+ for(const id of ['squawk','event-budget','maps','sponsors']){
+  const m=report.modules.find(m=>m.id===id);assert.equal(m.testStatus,'not_sampled');assert.equal(m.coverage.test.expected,0);assert.equal(m.status,'review_needed');
+ }
+ assert.equal(report.modules.find(m=>m.id==='pos-tax').uiStatus,'not_sampled');
+ for(const m of report.modules){assert.ok(m.verify.length>80&&m.verify.length<1000);assert.ok(m.testScope);for(const [kind,c] of Object.entries(m.coverage)){assert.equal(c.runtimeVerified,false);assert.equal(c.expected,c.checks.length);assert.equal(c.observed,m.evidence.filter(e=>e.kind===kind).length);}}
+});
+
+test('test titles in notes or comments do not establish declarations, and launch calls do not cover IA workflows',()=>{
+ const source=readAllowlistedMasterSource();
+ source['tests/roster-numbering.test.mjs']=source['tests/roster-numbering.test.mjs'].replace('confirmed-only exports preserve original Team IDs','different test title')+'\n// confirmed-only exports preserve original Team IDs\nconst note="confirmed-only exports preserve original Team IDs";';
+ const r=scanMasterSource(source);assert.equal(r.modules.find(m=>m.id==='registration').testStatus,'not_observed_in_sample');
+ source['tests/inception-apex-browser.cjs']='const sample = "Save to My Designs; Save & approve design";\nchromium.launch();\nawait page.reload();';
+ const ia=scanMasterSource(source).modules.find(m=>m.id==='inception');assert.equal(ia.testStatus,'partial_test_code');assert.equal(ia.coverage.test.observed,1);assert.equal(ia.coverage.test.expected,3);
+});
+
+test('invalid bundled syntax fails inspection instead of inventing missing evidence',()=>{
+ const source=readAllowlistedMasterSource();source['src/PlatformApp.jsx']='const invalid = <Broken';
+ assert.throws(()=>scanMasterSource(source),/syntax could not be inspected/);
 });

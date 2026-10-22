@@ -44,6 +44,6 @@ async function fakeScan(_supabase,_fetch,moduleId){
 const APP_AUTH={auth:{getSession:async()=>({data:{session:{access_token:"fake-token"}},error:null})}};
 createRoot(document.getElementById("root")).render(
  <main style={{padding:12,maxWidth:1200,margin:"auto"}}>
-  <BuildLabImprovementRadar ownerUserId={OWNER} supabaseClient={APP_AUTH} runScanner={fakeScan}/>
+  <BuildLabImprovementRadar legacyReview={true} ownerUserId={OWNER} supabaseClient={APP_AUTH} runScanner={fakeScan}/>
  </main>
 );

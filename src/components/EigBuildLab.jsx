@@ -2,6 +2,7 @@ import {prepareInceptionPilotBlueprint} from "../lib/buildLabInceptionPilot.mjs"
 import {managerStorageKey} from "../lib/buildLabMissionOrchestrator.mjs";
 import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
+import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import BuildLabWorkBuckets from "./BuildLabWorkBuckets.jsx";
 import BuildLabManager from "./BuildLabManager.jsx";
 import BuildLabScanPlans from "./BuildLabScanPlans.jsx";
@@ -39,6 +40,7 @@ const LAB_GROUPS = [
   ["prototypes", "Prototypes", ["discoveries", "invoices"]],
   ["history", "History", ["history"]],
 ];
+const ADVANCED_TOOLS = ["manager", "architect", "plans", "research", "discoveries", "invoices"];
 const groupForTool = tool => LAB_GROUPS.find(([, , tools]) => tools.includes(tool))?.[0] || "scanners";
 
 const EIG_PILOT = {
@@ -69,7 +71,7 @@ function SectionHeading({ number, title, description }) {
 }
 
 export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDirtyChange, focusedMode = false, onToggleFocus }) {
-  const viewKey = "eig-build-lab-tool:" + ownerUserId;
+  const viewKey = "eig-build-lab-tool:v2:" + ownerUserId;
   const [activeTool, setActiveTool] = useState(() => {
     try {
       const saved = window.sessionStorage.getItem(viewKey);
@@ -77,6 +79,10 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     } catch { return "master"; }
   });
   const [managerVersion,setManagerVersion]=useState(0);
+  const [advancedTools,setAdvancedTools]=useState(()=>ADVANCED_TOOLS.includes(activeTool));
+  const [legacyReview,setLegacyReview]=useState(()=>{try{return window.sessionStorage.getItem(viewKey+":legacy")==="true";}catch{return false;}});
+  useEffect(()=>{try{window.sessionStorage.setItem(viewKey+":legacy",String(legacyReview));}catch{}},[viewKey,legacyReview]);
+  function viewBuckets(){setActiveGroup("planning");setActiveTool("buckets");}
   const [activeGroup, setActiveGroup] = useState(() => groupForTool(activeTool));
   useEffect(() => {
     try { window.sessionStorage.setItem(viewKey, activeTool); } catch { /* Navigation works without storage. */ }
@@ -295,7 +301,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <header className="platform-hero bl-hero">
       <div><p className="platform-eyebrow">EIG COMMAND CENTER / PRIVATE PILOT</p>
         <h1>Build Lab <span className="bl-subtitle">Scanners &amp; Tools</span></h1>
-        <p>Choose a tool below. Switch between scanners without scrolling through every section.</p>
+        <p>Run your scanners, then review the findings together in Work Buckets.</p>
       </div>
       <div className="bl-hero-actions">
         <span className="bl-draft-tag">{saveStatus === "saved" ? "Browser autosave on" : needsBackup ? "Backup required" : "Preparing local draft"}</span>
@@ -305,15 +311,22 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     </header>
 
     <nav className="bl-tool-nav" aria-label="Build Lab groups">
-      {LAB_GROUPS.map(([id,label,tools])=><button key={id} type="button" aria-pressed={activeGroup===id}
+      {LAB_GROUPS.filter(([id])=>id!=="prototypes").map(([id,label,tools])=><button key={id} type="button" aria-pressed={activeGroup===id}
         onClick={()=>{setActiveGroup(id);if(!tools.includes(activeTool))setActiveTool(tools[0]);}}>{label}</button>)}
     </nav>
     <nav className="bl-tool-nav bl-tool-subnav" aria-label="Build Lab tools">
-      {LAB_TOOLS.map(([id, label]) => <button key={id} id={"bl-tool-" + id} type="button"
+      {LAB_TOOLS.filter(([id])=>!ADVANCED_TOOLS.includes(id)).map(([id, label]) => <button key={id} id={"bl-tool-" + id} type="button"
         hidden={groupForTool(id)!==activeGroup}
         aria-pressed={activeTool === id} aria-controls={"bl-panel-" + id}
         onClick={() => setActiveTool(id)}>{label}</button>)}
     </nav>
+
+    <details className="bl-advanced-tools" open={advancedTools} onToggle={e=>setAdvancedTools(e.currentTarget.open)}>
+      <summary>Advanced tools</summary>
+      <nav className="bl-tool-nav bl-tool-subnav" aria-label="Advanced Build Lab tools">{LAB_TOOLS.filter(([id])=>ADVANCED_TOOLS.includes(id)).map(([id,label])=><button key={id} id={"bl-tool-"+id} type="button" aria-controls={"bl-panel-"+id} aria-pressed={activeTool===id} onClick={()=>{setActiveGroup(groupForTool(id));setActiveTool(id);}}>{label}</button>)}</nav>
+      <label><input type="checkbox" checked={legacyReview} onChange={e=>setLegacyReview(e.target.checked)} /> Show legacy scanner review controls</label>
+      <p className="bl-quiet">Compatibility tools for earlier drafts. The normal workflow is run scanners, then review Work Buckets.</p>
+    </details>
 
     <details className="bl-about"><summary>About Build Lab &amp; saved work</summary>
     <p className="bl-disclosure" role="note">
@@ -336,13 +349,13 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
 
     <div className="bl-tool-panel" id="bl-panel-plans" role="region" aria-labelledby="bl-tool-plans" hidden={activeTool !== "plans"}><BuildLabScanPlans ownerUserId={ownerUserId} /></div>
 
-    <div className="bl-tool-panel" id="bl-panel-buckets" role="region" aria-labelledby="bl-tool-buckets" hidden={activeTool !== "buckets"}><BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>{setManagerVersion(n=>n+1);setActiveGroup("planning");setActiveTool("manager");}} /></div>
+    <div className="bl-tool-panel" id="bl-panel-buckets" role="region" aria-labelledby="bl-tool-buckets" hidden={activeTool !== "buckets"}><BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>{setAdvancedTools(true);setManagerVersion(n=>n+1);setActiveGroup("planning");setActiveTool("manager");}} /></div>
 
     <div className="bl-tool-panel" id="bl-panel-manager" role="region" aria-labelledby="bl-tool-manager" hidden={activeTool !== "manager"}><BuildLabManager key={managerVersion} ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
 
     {/* Keep panels mounted so switching tools preserves forms, results and in-flight requests. */}
-    <div className="bl-tool-panel" id="bl-panel-master" role="region" aria-labelledby="bl-tool-master" hidden={activeTool !== "master"}><BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
-    <div className="bl-tool-panel" id="bl-panel-radar" role="region" aria-labelledby="bl-tool-radar" hidden={activeTool !== "radar"}><BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-master" role="region" aria-labelledby="bl-tool-master" hidden={activeTool !== "master"}><BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} legacyReview={legacyReview} onViewBuckets={viewBuckets} /></div>
+    <div className="bl-tool-panel" id="bl-panel-radar" role="region" aria-labelledby="bl-tool-radar" hidden={activeTool !== "radar"}><BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} legacyReview={legacyReview} onViewBuckets={viewBuckets} /></div>
     <div className="bl-tool-panel" id="bl-panel-discoveries" role="region" aria-labelledby="bl-tool-discoveries" hidden={activeTool !== "discoveries"}><EpDiscoveryPilot /></div>
     <div className="bl-tool-panel" id="bl-panel-invoices" role="region" aria-labelledby="bl-tool-invoices" hidden={activeTool !== "invoices"}><EpInvoicePilot /></div>
 
@@ -365,6 +378,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       {scanError && <p className="platform-error" role="alert">{scanError}</p>}
       {scanNotice && <p className="bl-notice" role="status">{scanNotice}</p>}
       {scanReport && <>
+        <BuildLabScanDestination onViewBuckets={viewBuckets} />
         <div className="bl-scan-meta">
           <span><strong>{scanReport.files.length}</strong> source files</span>
           <span><strong>{scanReport.findings.length}</strong> source-backed findings</span>
@@ -383,7 +397,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
               <option value="title">Title</option>
             </select>
           </label>
-          <button type="button" className="platform-secondary-button" onClick={exportScanReport}>Download source report JSON</button>
+          <BuildLabReportBackup legacyReview={legacyReview}><button type="button" className="platform-secondary-button" onClick={exportScanReport}>Download source report JSON</button></BuildLabReportBackup>
         </div>
         <p className="bl-quiet">Showing {visibleFindings.length} of {scanReport.findings.length} findings. Evidence means the pattern was found in code, not that the suggested improvement is verified as necessary.</p>
         <div className="bl-scan-results">
@@ -392,10 +406,10 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
             return <article className="bl-scan-finding" key={finding.id}>
               <div className="bl-suggestion-top">
                 <span className="bl-phase">{finding.category} · {finding.priority} priority</span>
-                <span className={"bl-review-state state-" + (review?.review || "pending")}>
+                {legacyReview&&<span className={"bl-review-state state-" + (review?.review || "pending")}>
                   {review?.review === "accept" ? "Accepted" : review?.review === "edit" ? "Edited" :
                     review?.review === "reject" ? "Rejected" : "Not reviewed"}
-                </span>
+                </span>}
               </div>
               <h3>{finding.title}</h3>
               {finding.findingType&&<p><strong>Finding type:</strong> {finding.findingType.replaceAll("_"," ")}</p>}
@@ -409,7 +423,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
                     <code className="bl-source-excerpt">{evidence.excerpt}</code>
                   </li>)}</ul>
               </details>
-              <div className="bl-review-actions">
+              {legacyReview&&<div className="bl-review-actions">
                 {finding.findingType!=="preserve_existing"&&<button type="button" className="platform-primary-button" onClick={()=>createPilotBlueprint(finding.id)}>Create blueprint for this finding</button>}
                 <button type="button" className="platform-secondary-button"
                   onClick={() => decideScan(finding.id, "accept")}>Accept</button>
@@ -420,8 +434,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
                   }}>Revise</button>
                 <button type="button" className="platform-secondary-button"
                   onClick={() => decideScan(finding.id, "reject")}>Reject</button>
-              </div>
-              {scanEditing === finding.id && <div className="bl-revise">
+              </div>}
+              {legacyReview&&scanEditing === finding.id && <div className="bl-revise">
                 <label htmlFor={"bl-scan-edit-" + finding.id}>Revised scan recommendation</label>
                 <textarea id={"bl-scan-edit-" + finding.id} rows="3" maxLength={1500}
                   value={scanEditValue} onChange={(e) => setScanEditValue(e.target.value)} />
@@ -437,14 +451,14 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
           {visibleFindings.length === 0 && <p className="bl-quiet">No findings match this search.</p>}
         </div>
         <p className="bl-quiet">{scanReport.limitations}</p>
-        <p className="bl-quiet">Accept, revise, and reject only record your local review. No code, customer information, GitHub issue or production software changes.</p>
+        <p className="bl-quiet">Review requirements and choose work in Work Buckets. Scanning does not change application code.</p>
       </>}
     </section>
 
     </div>
-    <div className="bl-tool-panel" id="bl-panel-ai" role="region" aria-labelledby="bl-tool-ai" hidden={activeTool !== "ai"}><BuildLabAiConnection ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-ai" role="region" aria-labelledby="bl-tool-ai" hidden={activeTool !== "ai"}><BuildLabAiConnection ownerUserId={ownerUserId} supabaseClient={supabaseClient} onViewBuckets={viewBuckets} /></div>
     <div className="bl-tool-panel" id="bl-panel-research" role="region" aria-labelledby="bl-tool-research" hidden={activeTool !== "research"}><ResearchTargetPlanner /></div>
-    <div className="bl-tool-panel" id="bl-panel-impact" role="region" aria-labelledby="bl-tool-impact" hidden={activeTool !== "impact"}><BuildImpactReview ownerUserId={ownerUserId} /></div>
+    <div className="bl-tool-panel" id="bl-panel-impact" role="region" aria-labelledby="bl-tool-impact" hidden={activeTool !== "impact"}><BuildImpactReview ownerUserId={ownerUserId} legacyReview={legacyReview} onViewBuckets={viewBuckets} /></div>
 
     <div className="bl-tool-panel" id="bl-panel-architect" role="region" aria-labelledby="bl-tool-architect" hidden={activeTool !== "architect"}>
     <div className="bl-two-column">

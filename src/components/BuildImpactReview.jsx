@@ -1,3 +1,4 @@
+import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import React, { useEffect, useState } from 'react';
 import { scanBuildChangeImpact } from '../lib/buildChangeImpact.mjs';
@@ -9,7 +10,7 @@ function safeKey(ownerUserId) {
   if (!validUid.test(ownerUserId || '')) return null;
   return KEY_PREFIX + ownerUserId.toLowerCase();
 }
-export default function BuildImpactReview({ ownerUserId }) {
+export default function BuildImpactReview({ ownerUserId, legacyReview=false, onViewBuckets }) {
   const [saved]=useState(()=>{
     try {
       const raw=localStorage.getItem(safeKey(ownerUserId));
@@ -61,25 +62,26 @@ export default function BuildImpactReview({ ownerUserId }) {
     <label>Changed file paths, one per line<textarea aria-label="Changed file paths, one per line" rows={5} value={fileText} onChange={e=>{setFileText(e.target.value);setReport(null);}}/></label>
     <div className="bl-review-actions">
       <button type="button" className="platform-primary-button" onClick={run}>Assess change risk</button>
-      {report&&<button type="button" className="platform-secondary-button" onClick={exportReport}>Download review JSON</button>}
+      {report&&<BuildLabReportBackup legacyReview={legacyReview}><button type="button" className="platform-secondary-button" onClick={exportReport}>Download review JSON</button></BuildLabReportBackup>}
     </div>
     {history.error&&<p role="alert" className="platform-error">{history.error}</p>}
     {error&&<p role="alert" className="platform-error">{error}</p>}
     {saveError&&<p role="alert">{saveError}</p>}
     {report&&<div aria-live="polite">
+      <BuildLabScanDestination onViewBuckets={onViewBuckets} />
       <p><strong>Risk: {report.riskLevel.toUpperCase()}</strong> · {report.fileCount} files · {report.findings.length} flagged impacts</p>
       <p><strong>Deployment BLOCKED pending owner review and independent checks.</strong> Reviewing findings here never authorizes release.</p>
       {report.findings.map(item=><article className="bl-scan-finding" key={item.id}>
         <h3>{item.category} · {item.severity}</h3>
         <p><code>{item.path}</code> · {item.reason}</p>
-        <label>Owner decision
+        {legacyReview&&<label>Owner decision
           <select aria-label="Owner decision" value={decisions[item.id]||'pending'} onChange={e=>setDecisions(current=>({...current,[item.id]:e.target.value}))}>
             <option value="pending">Needs review</option>
             <option value="accept">Accept finding</option>
             <option value="revise">Revise / investigate</option>
             <option value="reject">Reject finding</option>
           </select>
-        </label>
+        </label>}
       </article>)}
       <h3>Release checks</h3>
       <ul>{report.requiredChecks.map(check=><li key={check}>{check}</li>)}</ul>

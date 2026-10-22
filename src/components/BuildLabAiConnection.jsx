@@ -1,3 +1,4 @@
+import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
@@ -19,7 +20,7 @@ function validateReview(payload,moduleId){
 function restoreAI(uid){
  try {return readScanHistory(window.localStorage,uid).filter(x=>x.type==="ai").map(x=>validateReview({ok:true,review:x.snapshot.review},x.scope));}catch{return [];}
 }
-export default function BuildLabAiConnection({supabaseClient,ownerUserId}) {
+export default function BuildLabAiConnection({supabaseClient,ownerUserId,onViewBuckets}) {
  const [saved]=useState(()=>restoreAI(ownerUserId));
  const [busy,setBusy]=useState(false),[result,setResult]=useState(null);
  const [error,setError]=useState("");
@@ -91,14 +92,15 @@ export default function BuildLabAiConnection({supabaseClient,ownerUserId}) {
     {review&&<p className="bl-quiet">Saved AI result for this module. Scan History keeps earlier runs in this browser.</p>}
     {reviewError&&<p role="alert" className="platform-error">{reviewError}</p>}
     {review&&<div className="bl-ai-scan-results" aria-label="AI module review">
-     <button type="button" className="platform-secondary-button" onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="build-lab-ai-review.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Download AI review JSON</button>
+     <BuildLabScanDestination onViewBuckets={onViewBuckets} />
+<BuildLabReportBackup>     <button type="button" className="platform-secondary-button" onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="build-lab-ai-review.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Download AI review JSON</button></BuildLabReportBackup>
      <p><strong>AI proposal · Not verified:</strong> {review.summary}</p>
      <p style={{fontSize:12,color:"#c3d7e6"}}>Source version: {review.sourceVersion?.slice(0,12)||"unversioned"} · Model: {review.model} · Tokens in/out: {review.usage?.input_tokens}/{review.usage?.output_tokens}</p>
      {review.recommendations.length?review.recommendations.map(x=><article key={x.id}
       style={{border:"1px solid #567a91",borderRadius:9,padding:12,margin:"9px 0",background:"#1b3f55"}}>
       <strong>{x.title}</strong><p>{x.why}</p><p><b>Proposed next action:</b> {x.nextAction}</p>
       {x.evidenceFiles.length>0&&<p style={{fontSize:12}}>First-party evidence paths: {x.evidenceFiles.join(", ")}</p>}
-      <small>Pending owner review · No changes applied</small>
+      <small>Review in Work Buckets · No changes applied</small>
      </article>):<p>No evidence-supported recommendations were returned.</p>}
     </div>}
    </div>

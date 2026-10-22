@@ -64,3 +64,17 @@ test('bounded inputs fail visibly rather than silently dropping selected recomme
  assert.throws(()=>stackScanBlueprint([scan('one')],{now:'invalid'}));
  assert.throws(()=>reviewManagerProposal(stackScanBlueprint([scan('one')]),'proposal-1','revise',''));
 });
+
+test('scan and Manager revisions survive acceptance, reassignment, hold/reaccept, approval and restore',()=>{
+ const requirement='Implement an accessible dialog with working cancellation and continuation.';
+ const entry=scan('revised');entry.snapshot.reviews={one:{review:'revise',note:requirement}};
+ let plan=stackScanBlueprint([entry]);assert.equal(plan.proposals[0].revision,requirement);assert.equal(plan.proposals[0].decision,'pending');
+ plan=reviewManagerProposal(plan,'proposal-1','accept');assert.equal(plan.proposals[0].decision,'revise');
+ plan=assignManagerProposal(plan,'proposal-1','fixer');
+ plan=reviewManagerProposal(plan,'proposal-1','hold');plan=reviewManagerProposal(plan,'proposal-1','accept');
+ plan=restoreManagerBlueprint(JSON.stringify(approveManagerBlueprint(plan)));
+ assert.equal(plan.proposals[0].revision,requirement);assert.equal(plan.tasks.find(t=>t.phase==='work').instruction,requirement);
+ plan=reviewManagerProposal(plan,'proposal-1','revise','Preserve the newer explicit requirement.');
+ plan=approveManagerBlueprint(reviewManagerProposal(plan,'proposal-1','accept'));
+ assert.equal(plan.tasks.find(t=>t.phase==='work').instruction,'Preserve the newer explicit requirement.');
+});

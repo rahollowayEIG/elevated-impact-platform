@@ -49,6 +49,7 @@ function main(){
   const outcome=runtimePassed?'tests_passed_owner_review_required':'verification_failed';
   fs.writeFileSync('test-results/build-lab-builder/result.json',JSON.stringify({
    status:outcome,baseCommit:version,candidateSourceVersion:'local-unversioned',findingId:candidate.findingId,summary:candidate.summary,
+   ownerRequirement:candidate.instruction,sourceReview:candidate.sourceReview,
    testsPassed:runtimePassed,selectedFindingStillPresent:selectedStillPresent,
    browserResults:Object.fromEntries(['chromium','firefox','webkit'].map(name=>[name,process.env['BUILDER_'+name.toUpperCase()+'_RESULT']||'not_run'])),actualSafariTested:false,realDevicesTested:false,
    autoMerged:false,autoDeployed:false,runId:process.env.GITHUB_RUN_ID||null,

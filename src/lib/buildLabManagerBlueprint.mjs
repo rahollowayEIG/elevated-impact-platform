@@ -46,7 +46,7 @@ export function stackScanBlueprint(entries,{title='Build Lab improvement bluepri
    const key=module+'|'+normalized(title)+'|'+normalized(detail);
    const existing=seen.get(key);
    if(existing){existing.sourceRefs.push(ref);continue;}
-   const proposal={id:'proposal-'+(proposals.length+1),module,title,detail,priority:['critical','high','medium','low'].includes(item.priority||item.severity)?item.priority||item.severity:'medium',assignedTo:suggestedAgent(title,detail),decision:'pending',revision:'',requiresVerification:true,sourceRefs:[ref]};
+   const proposal={id:'proposal-'+(proposals.length+1),module,title,detail,priority:['critical','high','medium','low'].includes(item.priority||item.severity)?item.priority||item.severity:'medium',assignedTo:suggestedAgent(title,detail),decision:'pending',revision:text(revisedDetail),requiresVerification:true,sourceRefs:[ref]};
    proposals.push(proposal);seen.set(key,proposal);
   }
  }
@@ -64,7 +64,9 @@ export function reviewManagerProposal(plan,id,decision,revision=''){
  if(!DECISIONS.has(decision))throw Error('Invalid review decision.');
  const next=changed(plan),p=next.proposals.find(x=>x.id===id);if(!p)throw Error('Unknown recommendation.');
  if(decision==='revise'&&(!text(revision)||revision.length>3000))throw Error('Enter a revision of 1 to 3,000 characters.');
- p.decision=decision;p.revision=decision==='revise'?revision.trim():'';return next;
+ // Accepting a revised requirement must not silently restore the scanner wording.
+ if(decision==='revise')p.revision=revision.trim();
+ p.decision=decision==='accept'&&p.revision?'revise':decision;return next;
 }
 export function assignManagerProposal(plan,id,agent){
  if(!Object.hasOwn(MANAGER_AGENTS,agent))throw Error('Unknown specialist.');

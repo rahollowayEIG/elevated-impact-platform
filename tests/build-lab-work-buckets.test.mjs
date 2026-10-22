@@ -57,3 +57,9 @@ test('account-separated bounded storage preserves corruption and exposes quota e
  assert.throws(()=>saveWorkLedger({setItem(){throw Error('quota');}},uid,initial()),/quota/);
  assert.throws(()=>validateWorkLedger({...initial(),jobs:[{...initial().jobs[0],state:'fixed'}]}));
 });
+
+test('multi-app or platform IA scope never advertises the bounded single-app route',()=>{
+ const ledger=initial(),job=ledger.jobs[0];assert.equal(workRoute(job).label,'Bounded IA candidate review');
+ assert.equal(workRoute({...job,scope:'platform'}).label,'Needs manual fix');
+ assert.equal(workRoute({...job,scope:'multi_app',apps:['inception','events']}).label,'Needs manual fix');
+});

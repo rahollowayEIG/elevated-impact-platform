@@ -117,7 +117,7 @@ export function createWorkBatch(ledger,{id,title,jobIds,now=new Date().toISOStri
  if(!id||next.batches.some(b=>b.id===id)||!clean(title,120)||!jobs.length||jobs.length>50||jobs.length!==new Set(jobIds).size)throw Error('Choose 1–50 work items and enter a batch title.');
  if(jobs.some(j=>j.state!=='open'))throw Error('Only open items can enter a new batch. Reopen held or manual work deliberately first.');
  if(new Set(jobs.map(j=>j.intent)).size!==1)throw Error('Keep repairs, upgrades and new builds in separate batches.');
- next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion}))});
+ next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,apps:[...j.apps],scope:j.scope}))});
  return validateWorkLedger(next);
 }
 export function approveWorkBatch(ledger,id,now=new Date().toISOString()){
@@ -140,6 +140,6 @@ export function workBatchPlan(ledger,id){
 export function workRoute(job){
  const latest=job.refs[0];
  if(job.state==='manual')return {label:'Needs manual fix',reason:job.manualReason};
- if(latest?.type==='inspector'&&/^[a-f0-9]{40}$/.test(latest.sourceVersion)&&job.apps.every(a=>['inception','inception-apex'].includes(a)))return {label:'Bounded IA candidate review',reason:'One IA finding can use the existing candidate generator after current-source verification. Successful implementation is not guaranteed.'};
+ if(job.scope==='app'&&latest?.type==='inspector'&&/^[a-f0-9]{40}$/.test(latest.sourceVersion)&&job.apps.every(a=>['inception','inception-apex'].includes(a)))return {label:'Bounded IA candidate review',reason:'One IA finding can use the existing candidate generator after current-source verification. Successful implementation is not guaranteed.'};
  return {label:'Needs manual fix',reason:'No verified automated implementation route exists for this scope yet. Retain the job for assisted work or a future capability.'};
 }

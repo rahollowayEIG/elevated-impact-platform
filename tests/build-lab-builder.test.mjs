@@ -27,7 +27,7 @@ function plan(){
 const envs={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'feature/build-lab-orchestrator-20261020',EIG_BUILD_LAB_PREVIEW_BRANCH:'feature/build-lab-orchestrator-20261020',EIG_BUILD_LAB_ACCESS_ENABLED:'true',EIG_BUILD_LAB_OWNER_USER_ID:owner,EIG_BUILD_LAB_BUILDER_ENABLED:'true',VERCEL_GIT_COMMIT_SHA:version,OPENAI_API_KEY:'test-key',EIG_BUILD_LAB_BUILDER_SIGNING_KEY:key};
 const request=body=>({method:'POST',headers:{origin:'https://preview.test',host:'preview.test',authorization:'Bearer fake-token'},body:body||{blueprint:plan(),shareSourceWithOpenAI:true}});
 function response(){return {setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;}};}
-function handler({values={},user=owner,memberships=[{role:'eig_admin',status:'active',organization:{slug:'elevated-impact-group'}}],provider=model,review=sourceReview,onRead=()=>{},onCall=()=>{}}={}){return createBuilder({env:k=>({...envs,...values})[k],now:()=>now,verifyUser:async()=>({id:user}),membershipsForUser:async()=>({data:memberships}),readSources:()=>{onRead();return sources;},http:async(url,options)=>{onCall(url,options);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(JSON.parse(options.body).text.format.name==='ia_builder_source_review'?review:provider)}]}]})};}});}
+function handler({values={},user=owner,memberships=[{role:'eig_admin',status:'active',organization:{slug:'elevated-impact-group'}}],provider=model,review=sourceReview,log=()=>{},onRead=()=>{},onCall=()=>{}}={}){return createBuilder({log,env:k=>({...envs,...values})[k],now:()=>now,verifyUser:async()=>({id:user}),membershipsForUser:async()=>({data:memberships}),readSources:()=>{onRead();return sources;},http:async(url,options)=>{onCall(url,options);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(JSON.parse(options.body).text.format.name==='ia_builder_source_review'?review:provider)}]}]})};}});}
 const candidate=()=>attachSourceReview(candidateFor({proposal:model,sources,sourceVersion:version,findingId:'ia-form-focus',instruction:'Verify visible field focus.',now}),sourceReview);
 test('owner-reviewed source -> bounded provider call -> signed untested candidate -> isolated apply and rescan',async()=>{
  let calls=0;
@@ -194,4 +194,41 @@ test('one approved IA item in a normal stacked blueprint can generate while held
   let touched=0;const denied=response();await handler({onCall:()=>touched++})(request({blueprint:bad,shareSourceWithOpenAI:true}),denied);
   assert.equal(denied.code,409,change);assert.equal(touched,0,change);
  }
+});
+
+test('failure diagnostics distinguish provider, deadline, output and edit-validation failures without logging private data',async()=>{
+ const privateText='PRIVATE_SOURCE_PROVIDER_BODY_DO_NOT_LOG';
+ const completed=value=>({ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})});
+ const cases=[
+  ['provider_quota','generation_provider',()=>({ok:false,status:429,json:async()=>({error:{code:'insufficient_quota',message:privateText}})})],
+  ['provider_rate_limit','generation_provider',()=>({ok:false,status:429,json:async()=>({error:{message:privateText}})})],
+  ['provider_configuration','generation_provider',()=>({ok:false,status:401,json:async()=>({error:{message:privateText}})})],
+  ['provider_unavailable','generation_provider',()=>({ok:false,status:503,json:async()=>({error:{message:privateText}})})],
+  ['provider_network','generation_provider',()=>{throw Error(privateText);}],
+  ['provider_timeout','generation_provider',()=>{const e=Error(privateText);e.name='TimeoutError';throw e;}],
+  ['provider_timeout','generation_response',()=>({ok:true,json:async()=>{const e=Error(privateText);e.name='AbortError';throw e;}})],
+  ['provider_output_limit','generation_response',()=>({ok:true,json:async()=>({status:'incomplete',incomplete_details:{reason:'max_output_tokens'},privateText})})],
+  ['provider_incomplete','generation_response',()=>({ok:true,json:async()=>({status:'incomplete',privateText})})],
+  ['response_json','generation_response',()=>({ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:privateText}]}]})})],
+  ['candidate_edit_count','candidate_validation',()=>completed({...model,edits:Array(5).fill(edit)})],
+  ['candidate_edit_match','candidate_validation',()=>completed({...model,edits:[{...edit,before:privateText}]})],
+  ['candidate_edit_scope','candidate_validation',()=>completed({...model,edits:[{...edit,path:'../../private.env'}]})],
+  ['review_format','source_review_validation',()=>completed({...sourceReview,requirements:[]}),true],
+  ['provider_output_limit','source_review_response',()=>({ok:true,json:async()=>({status:'incomplete',incomplete_details:{reason:'max_output_tokens'}})}),true],
+ ];
+ for(const [code,stage,upstream,reviewFailure] of cases){
+  const events=[];let calls=0;
+  const h=createBuilder({env:k=>envs[k],now:()=>now,verifyUser:async()=>({id:owner}),membershipsForUser:async()=>({data:[{role:'eig_admin',status:'active',organization:{slug:'elevated-impact-group'}}]}),readSources:()=>sources,log:e=>events.push(e),http:async()=>{calls++;return reviewFailure&&calls===1?completed(model):upstream();}});
+  const res=response();await h(request(),res);
+  assert.equal(res.code,502,code);assert.equal(res.body.code,code);assert.equal(res.body.stage,stage);assert.equal(res.body.result,undefined);
+  assert.equal(calls,reviewFailure?2:1);assert.match(res.body.reference,/^[a-f0-9-]{36}$/);assert.match(res.body.message,/No files were changed/);
+  assert.equal(events.length,1);assert.equal(events[0].reference,res.body.reference);
+  const serialized=JSON.stringify({body:res.body,events});
+  for(const value of [privateText,'fake-token','test-key',key,sources[css],owner])assert.equal(serialized.includes(value),false,code+' private diagnostics');
+  assert.ok(Object.keys(events[0]).every(k=>['event','reference','stage','code','providerStatus'].includes(k)));
+  const client={auth:{getSession:async()=>({data:{session:{access_token:'fake'}}})}};
+  await assert.rejects(()=>requestBuilderCandidate(client,plan(),true,async()=>({ok:false,json:async()=>res.body})),e=>e.message===res.body.message);
+ }
+ const body=buildRequest(sources,report.findings[0],'Owner requirement');
+ const input=JSON.parse(body.input[1].content);assert.equal(input.editLimits.maxEdits,4);assert.equal(input.editLimits.maxBeforeCharacters,12000);assert.equal(input.editLimits.maxAfterCharacters,12000);
 });

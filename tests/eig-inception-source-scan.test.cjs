@@ -18,9 +18,12 @@ test("actually scans allowlisted first-party InceptionApex source with traceable
   assert.equal(report.files.length, 4);
   const expected = [
     "ia-native-confirm", "ia-form-focus", "ia-design-tabs",
-    "ia-responsive-coverage", "ia-image-keyboard", "ia-review-test-coverage",
+    "ia-image-keyboard", "ia-review-test-coverage",
   ];
   assert.deepEqual(report.findings.map((item) => item.id), expected);
+  assert.deepEqual(report.coverageChecks[0].observedWidths, [949, 950, 951]);
+  assert.equal(report.coverageChecks[0].status, "markers_found");
+  assert.equal(report.coverageChecks[0].runtimeVerified, false);
   for (const finding of report.findings) {
     assert.equal(finding.provenance, "observed_in_first_party_source");
     assert.equal(finding.review, "pending");

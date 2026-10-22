@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import BuildLabBuilder from './BuildLabBuilder.jsx';
 import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from '../lib/buildLabScanHistory.mjs';
 import {MASTER_SCAN_TARGETS} from '../lib/eigMasterScanTargets.mjs';
 import {MANAGER_AGENTS,managerStorageKey,stackScanBlueprint,reviewManagerProposal,assignManagerProposal,approveManagerBlueprint,restoreManagerBlueprint} from '../lib/buildLabMissionOrchestrator.mjs';
@@ -6,7 +7,7 @@ const scopeName=id=>id==='all'?'Entire platform':MASTER_SCAN_TARGETS.find(x=>x.i
 const briefId=x=>x.type+':'+x.id;
 const AGENT_ROLES={builder:'Build approved features',fixer:'Investigate and repair defects',designer:'Improve the user experience',scientist:'Test hypotheses and prototypes',researcher:'Gather and compare evidence',inspector:'Verify findings and test results'};
 function readSaved(uid){try{const key=managerStorageKey(uid);return {plan:key?restoreManagerBlueprint(localStorage.getItem(key)):null,error:''};}catch{return {plan:null,error:'The saved Manager blueprint could not be read. Existing browser data has been preserved.'};}}
-export default function BuildLabManager({ownerUserId}){
+export default function BuildLabManager({ownerUserId,supabaseClient}){
  const [saved]=useState(()=>readSaved(ownerUserId));
  const [plan,setPlan]=useState(saved.plan),[entries,setEntries]=useState([]),[selected,setSelected]=useState([]);
  const [title,setTitle]=useState(saved.plan?.title||'Build Lab improvement blueprint');
@@ -53,6 +54,7 @@ export default function BuildLabManager({ownerUserId}){
    {plan.warnings.length>0&&<label><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)} /> I reviewed the source-version and recommendation warnings.</label>}
    <div className="bl-review-actions"><button type="button" className="platform-primary-button" onClick={()=>apply(()=>approveManagerBlueprint(plan,{acknowledgeWarnings:acknowledged}))}>Approve blueprint for handoff</button><button type="button" className="platform-secondary-button" onClick={exportPlan}>Download Manager blueprint JSON</button></div>
    <p role="status">{plan.status==='reviewed_for_handoff'?'Ready for handoff · Revision '+plan.revision+' reviewed locally · Agent execution not connected':'Awaiting owner review · No tasks dispatched'}</p>
+   <BuildLabBuilder key={plan.revision+":"+(plan.approval?.reviewedAt||"pending")} plan={plan} supabaseClient={supabaseClient} />
    {plan.tasks.length>0&&<><h3>Proposed specialist assignments</h3><div className="bl-scan-controls"><label>Search Manager tasks<input type="search" value={taskQuery} onChange={e=>setTaskQuery(e.target.value)} /></label><label>Assigned specialist<select aria-label="Assigned specialist" value={agent} onChange={e=>setAgent(e.target.value)}><option value="all">All specialists</option>{Object.entries(MANAGER_AGENTS).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label></div><p>{tasks.length} of {plan.tasks.length} proposed tasks shown</p><div className="bl-history-table"><table><thead><tr>{[['id','Task'],['agent','Specialist'],['phase','Stage']].map(([key,label])=><th key={key} aria-sort={taskOrder.key===key?(taskOrder.direction==='asc'?'ascending':'descending'):'none'}><button type="button" onClick={()=>sort(key,setTaskOrder)}>{label}{taskOrder.key===key?(taskOrder.direction==='asc'?' ↑':' ↓'):''}</button></th>)}<th>Assignment and dependencies</th></tr></thead><tbody>{tasks.map(t=><tr key={t.id}><td>{t.id}</td><td>{MANAGER_AGENTS[t.agent]}</td><td>{t.phase} · Planned</td><td><p>{t.instruction}</p><p><strong>Complete when:</strong> {t.completion}</p><p><strong>Waits for:</strong> {t.dependsOn.join(', ')||'No other tasks'}</p></td></tr>)}</tbody></table></div></>}
   </>}
  </section>;

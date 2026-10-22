@@ -628,6 +628,25 @@ const fs = require("node:fs/promises");
     assert.equal(pilot.proposals.length,1);
     assert.equal(pilot.pilot.findingId,"ia-native-confirm");
     assert.equal(pilot.execution,"not_connected");
+    await manager.getByLabel(/Specialist for/).selectOption("fixer");
+    await manager.getByRole("button",{name:"Approve blueprint for handoff",exact:true}).click();
+    let builderCalls=0;
+    await page.route("**/api/eig-build-lab-builder",async route=>{
+      builderCalls++;
+      const body=route.request().postDataJSON();
+      assert.equal(body.shareSourceWithOpenAI,true);
+      assert.equal(body.blueprint.status,"reviewed_for_handoff");
+      await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({ok:true,result:{status:"blocked",summary:"A focused browser reproduction is needed before changing this behavior."}})});
+    });
+    const generateCandidate=manager.getByRole("button",{name:"Generate IA implementation candidate",exact:true});
+    assert.equal(await generateCandidate.isDisabled(),true);
+    await manager.getByLabel(/Send the four allowlisted IA source/).check();
+    await generateCandidate.click();
+    await manager.getByText("Needs investigation",{exact:true}).waitFor();
+    assert.equal(builderCalls,1);
+    assert.equal(await manager.getByRole("button",{name:"Download candidate for verification"}).count(),0);
+    await page.screenshot({path:"test-results/eig-build-lab/builder-blocked-desktop.png",fullPage:true});
+
     await page.reload();
     await manager.getByText("One-scanner pilot · Implementation after owner approval",{exact:true}).waitFor();
     await manager.getByText(/Ready for handoff · Revision/).waitFor();

@@ -278,6 +278,7 @@ jobs:
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs
+      - run: node tests/inception-apex-browser.cjs
       - run: node tests/event-inquiry-browser.cjs
       - run: node tests/eig-improvement-radar-browser.cjs
       - uses: actions/upload-artifact@v4
@@ -286,6 +287,7 @@ jobs:
           name: eig-build-lab-browser-evidence
           path: |
             test-results/eig-build-lab/
+            test-results/inception-apex/
             test-results/event-inquiry/
             test-results/eig-improvement-radar/
           retention-days: 7

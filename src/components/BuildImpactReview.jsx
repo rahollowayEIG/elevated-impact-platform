@@ -73,7 +73,7 @@ export default function BuildImpactReview({ ownerUserId }) {
         <h3>{item.category} · {item.severity}</h3>
         <p><code>{item.path}</code> · {item.reason}</p>
         <label>Owner decision
-          <select value={decisions[item.id]||'pending'} onChange={e=>setDecisions(current=>({...current,[item.id]:e.target.value}))}>
+          <select aria-label="Owner decision" value={decisions[item.id]||'pending'} onChange={e=>setDecisions(current=>({...current,[item.id]:e.target.value}))}>
             <option value="pending">Needs review</option>
             <option value="accept">Accept finding</option>
             <option value="revise">Revise / investigate</option>

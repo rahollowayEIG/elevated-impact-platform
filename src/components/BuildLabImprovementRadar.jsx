@@ -1,3 +1,4 @@
+import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
 import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
@@ -162,6 +163,7 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,leg
     </button>
    </div>
   </div>
+  <ScannerDirectionsDisclosure kind="radar" moduleId={scope} />
   <p className="blr-disclosure">This uses the <strong>same owner-authorized, read-only source scanner</strong>, with a fixed product-quality rubric.
    It proposes areas to investigate; it cannot prove a capability is missing or implemented.
    No live browsers, external competitors, AI calls, records, payments or deployments are involved.</p>

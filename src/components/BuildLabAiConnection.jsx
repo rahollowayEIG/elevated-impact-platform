@@ -1,3 +1,4 @@
+import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
 import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
@@ -71,6 +72,7 @@ export default function BuildLabAiConnection({supabaseClient,ownerUserId,onViewB
  return <section className="platform-section-card" aria-labelledby="bl-ai-title">
    <div className="bl-scanner-title"><h2 id="bl-ai-title">OpenAI Connection &amp; Scanner Review</h2><ScannerToolsDisclosure kind="ai" completed={Boolean(review)} /></div>
    <p>Owner-only, protected-preview integration. A connection test sends fixed text. A selected scanner review sends only bounded first-party scanner metadata, never customer records or raw source code. These are proposals, not verified functionality or automatic code edits.</p>
+  <ScannerDirectionsDisclosure kind="ai" moduleId={moduleId} />
    <details><summary>Connection diagnostics</summary>
    <button type="button" className="platform-secondary-button" disabled={busy} onClick={testConnection}>{busy?"Testing connection…":"Test OpenAI Connection"}</button>
    {error&&<p role="alert" className="platform-error">{error}</p>}

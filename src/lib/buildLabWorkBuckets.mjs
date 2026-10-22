@@ -1,6 +1,7 @@
 /** Owner-local work ledger. Planning data is never execution or deployment authority. */
 import {historyKey, SCAN_TYPES} from './buildLabScanHistory.mjs';
 import {stackScanBlueprint, validateManagerBlueprint, approveManagerBlueprint} from './buildLabManagerBlueprint.mjs';
+import {scanFindingAssessment,ownerGoalAssessment,findingAssessment,validFindingAssessment} from './buildLabFindingStandards.mjs';
 export const WORK_BUCKETS = {investigation:'Investigation',interface:'Interface & accessibility',behavior:'Application behavior',data:'Data & integrations',security:'Security & permissions',development:'Research & development'};
 export const WORK_INTENTS = {repair:'Repair',upgrade:'Upgrade',build:'New build'};
 export const WORK_STATES = {open:'Open',hold:'On hold',manual:'Needs manual fix',dismissed:'Dismissed'};
@@ -18,11 +19,13 @@ export function validateWorkLedger(value){
  for(const j of value.jobs){
   if(!j||typeof j.id!=='string'||!j.id||j.id.length>700||ids.has(j.id)||!clean(j.title,180)||typeof j.detail!=='string'||j.detail.length>3000||!Object.hasOwn(WORK_BUCKETS,j.bucket)||!Object.hasOwn(WORK_INTENTS,j.intent)||!Object.hasOwn(WORK_STATES,j.state)||typeof j.manualReason!=='string'||j.manualReason.length>1000||typeof j.completion!=='string'||j.completion.length>3000||!Array.isArray(j.apps)||!j.apps.length||j.apps.length>30||!j.apps.every(a=>typeof a==='string'&&a.length<=150)||!['app','multi_app','platform'].includes(j.scope)||!date(j.firstSeen)||!date(j.lastSeen)||typeof j.signature!=='string'||j.signature.length>30000||!Array.isArray(j.refs)||!j.refs.length||j.refs.length>20||!j.refs.every(r=>Object.hasOwn(SCAN_TYPES,r.type)&&typeof r.scanKey==='string'&&typeof r.sourceVersion==='string'&&Array.isArray(r.files)&&r.files.every(validPath))||!Array.isArray(j.evidence)||j.evidence.length>30||!j.evidence.every(e=>typeof e==='string'&&e.length<=1000)||!['critical','high','medium','low'].includes(j.priority)||typeof j.observation!=='string'||j.observation.length>3000||typeof j.classificationReason!=='string'||typeof j.ownerEdited!=='boolean')throw Error('Saved work item is invalid. Existing data has been preserved.');
   ids.add(j.id);
+  if(j.assessment!==undefined&&!validFindingAssessment(j.assessment))throw Error('Saved finding assessment is invalid. Existing data has been preserved.');
  }
  const batchIds=new Set();
  for(const b of value.batches){
   if(!b||typeof b.id!=='string'||!b.id||batchIds.has(b.id)||!clean(b.title,120)||!Object.hasOwn(WORK_INTENTS,b.intent)||!['draft','approved'].includes(b.status)||!date(b.createdAt)||!Array.isArray(b.items)||!b.items.length||b.items.length>50||new Set(b.items.map(i=>i.id)).size!==b.items.length||!b.items.every(i=>ids.has(i.id)&&typeof i.signature==='string'&&typeof i.detail==='string'&&typeof i.completion==='string')||(b.status==='approved'&&!date(b.approvedAt)))throw Error('Saved batch is invalid. Existing data has been preserved.');
   batchIds.add(b.id);
+  if(b.items.some(i=>i.assessment!==undefined&&!validFindingAssessment(i.assessment)))throw Error('Saved batch assessment is invalid. Existing data has been preserved.');
  }
  return value;
 }
@@ -53,7 +56,7 @@ function extract(entry){
  const s=entry.snapshot,r=s.review||s.report||s.audit||s;
  return r.recommendations||r.findings||r.suggestions||r.modules||[];
 }
-function signature(j){return JSON.stringify([j.title,j.detail,j.completion,j.bucket,j.intent,j.scope,j.apps,[...new Set(j.refs.map(r=>r.type+':'+r.sourceVersion))].sort()]);}
+function signature(j){return JSON.stringify([j.title,j.detail,j.completion,j.bucket,j.intent,j.scope,j.apps,[...new Set(j.refs.map(r=>r.type+':'+r.sourceVersion))].sort(),j.assessment]);}
 export function collectScanWork(ledger,entries){
  const next=copy(validateWorkLedger(ledger));
  // Oldest first: latest observation wins, without deleting jobs absent from a later scan.
@@ -78,7 +81,8 @@ export function collectScanWork(ledger,entries){
    const ref=proposal.sourceRefs[0];
    const refs=[ref,...(prior?.refs||[]).filter(r=>r.scanKey!==ref.scanKey)].slice(0,20);
    const recommendation=['edit','revise'].includes(decision)&&revised?revised:proposal.detail;
-   const j={id,title:proposal.title,detail:recommendation,completion:clean(item.verify||item.completion)||'Verify the need against the current source, implement the approved scope, and attach relevant regression and rescan evidence.',
+   const assessment=scanFindingAssessment(entry.type,item);
+   const j={id,title:proposal.title,detail:recommendation,assessment,completion:clean(item.verify||item.completion)||assessment.nextCheck,
     ...classify({...item,detail:recommendation},entry.type),scope:entry.scope==='all'?'platform':'app',apps:[entry.type==='master'?proposal.module:entry.scope],
     priority:proposal.priority,state:decision==='reject'?'dismissed':['hold','park'].includes(decision)?'hold':'open',manualReason:'',
     firstSeen:prior?.firstSeen||entry.savedAt,lastSeen:entry.savedAt,observation:clean(item.observation||item.why||item.reason),
@@ -105,7 +109,7 @@ export function reviseWorkItem(ledger,id,patch){
 export function addBuildBrief(ledger,{id,title,detail,completion,apps=['platform'],now=new Date().toISOString()}){
  const next=copy(validateWorkLedger(ledger));if(!id||next.jobs.some(j=>j.id===id))throw Error('Unique work ID required.');
  const j={id,title:clean(title,180),detail:clean(detail),completion:clean(completion),bucket:'development',intent:'build',scope:apps.includes('platform')?'platform':apps.length>1?'multi_app':'app',apps,
- state:'open',manualReason:'',priority:'medium',firstSeen:now,lastSeen:now,observation:'Owner-defined goal; implementation and existing capabilities require verification.',evidence:[],refs:[{scanKey:'owner:'+id,type:'master',sourceVersion:'owner-brief',files:[]}],ownerEdited:true,classificationReason:'Owner-defined new build.',signature:''};
+ state:'open',manualReason:'',assessment:ownerGoalAssessment(),priority:'medium',firstSeen:now,lastSeen:now,observation:'Owner-defined goal; implementation and existing capabilities require verification.',evidence:[],refs:[{scanKey:'owner:'+id,type:'master',sourceVersion:'owner-brief',files:[]}],ownerEdited:true,classificationReason:'Owner-defined new build.',signature:''};
  if(!j.title||!j.detail||!j.completion)throw Error('Enter a title, requirement and completion criteria.');
  j.signature=signature(j);next.jobs.push(j);return validateWorkLedger(next);
 }
@@ -117,7 +121,7 @@ export function createWorkBatch(ledger,{id,title,jobIds,now=new Date().toISOStri
  if(!id||next.batches.some(b=>b.id===id)||!clean(title,120)||!jobs.length||jobs.length>50||jobs.length!==new Set(jobIds).size)throw Error('Choose 1–50 work items and enter a batch title.');
  if(jobs.some(j=>j.state!=='open'))throw Error('Only open items can enter a new batch. Reopen held or manual work deliberately first.');
  if(new Set(jobs.map(j=>j.intent)).size!==1)throw Error('Keep repairs, upgrades and new builds in separate batches.');
- next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,apps:[...j.apps],scope:j.scope,sourceRefs:copy(j.refs),evidence:copy(j.evidence)}))});
+ next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,assessment:copy(findingAssessment(j)),apps:[...j.apps],scope:j.scope,sourceRefs:copy(j.refs),evidence:copy(j.evidence)}))});
  return validateWorkLedger(next);
 }
 export function approveWorkBatch(ledger,id,now=new Date().toISOString()){
@@ -145,7 +149,7 @@ export function workRoute(job){
  const latest=job.refs[0];
  if(job.state==='manual')return {label:'Needs manual fix',reason:job.manualReason};
  if(job.scope==='app'&&latest?.type==='inspector'&&/^[a-f0-9]{40}$/.test(latest.sourceVersion)&&job.apps.every(a=>['inception','inception-apex'].includes(a)))return {label:'Bounded IA candidate review',reason:'One IA finding can use the existing candidate generator after current-source verification. Successful implementation is not guaranteed.'};
- return {label:'Needs manual fix',reason:'No verified automated implementation route exists for this scope yet. Retain the job for assisted work or a future capability.'};
+ return {label:'Capability not assessed',reason:'An implementation route has not been established for this scope. Assess the tools, permissions and tests needed before choosing assisted work or an agent. This does not establish a defect or an agent limitation.'};
 }
 
 function reviewedSelection(ledger,selection){
@@ -174,6 +178,6 @@ export function setBucketDisposition(ledger,{selection,state}){
 /** The approved batch snapshot is the blueprint; no separate creation action is needed. */
 export function batchWorkBlueprint(batch){
  return {kind:'eig_work_batch_blueprint',schemaVersion:1,title:batch.title,intent:batch.intent,status:batch.status,reviewedAt:batch.approvedAt||null,
-  work:batch.items.map(i=>({title:i.title,requirement:i.detail,completion:i.completion,apps:i.apps||[],scope:i.scope||'app',sourceRefs:i.sourceRefs||[],evidence:i.evidence||[]})),
+  work:batch.items.map(i=>({title:i.title,requirement:i.detail,completion:i.completion,assessment:copy(findingAssessment(i)),apps:i.apps||[],scope:i.scope||'app',sourceRefs:i.sourceRefs||[],evidence:i.evidence||[]})),
   execution:'not_connected',deployment:'not_authorized'};
 }

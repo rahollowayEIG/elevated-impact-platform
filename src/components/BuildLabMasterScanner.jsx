@@ -1,3 +1,4 @@
+import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
 import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
@@ -156,6 +157,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
     </button>
    </div>
   </div>
+  <ScannerDirectionsDisclosure kind="master" moduleId={selectedScope} />
   <p className="blm-disclaimer">Owner-only. Choose an approved module or the entire platform, then select Live, Sandbox or Compare Both. Environment evidence uses actual deployment commit metadata and independent Supabase schema snapshots, not a live connection every time you click. Source/UI/test badges below are from this protected <strong>Build Lab preview code</strong>, not proof of behavior in either deployment. No browser automation or write operations are performed.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}
   {notice&&<p className="blm-message" role="status">{notice}</p>}
@@ -173,7 +175,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
     <div>
       <h3>What should we improve next?</h3>
       <p>The same protected scan also identified <strong>{report.improvementAudit.summary.essential} essential capability checks</strong> and <strong>{report.improvementAudit.summary.wow} standout ideas</strong>.</p>
-      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review evidence and create upgrade briefs in <strong>Essentials &amp; Wow Radar</strong> using the Upgrade Radar button at the top.</p>
+      <p>These are upgrade candidates, <strong>not confirmed missing features</strong>. Review suggestions in <strong>Essentials &amp; Wow Radar</strong> and review the collected work in Work Buckets.</p>
     </div>
     <ul>{report.improvementAudit.suggestions.filter(x=>x.lane==="essential").slice(0,3).map(item=>
       <li key={item.id}><strong>{item.title}</strong><span>{item.priority} · {item.status==="not_observed_in_sample"?"No source signal found":"Preview source signals found; functionality unverified"}</span></li>

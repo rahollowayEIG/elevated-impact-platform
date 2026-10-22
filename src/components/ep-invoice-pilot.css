@@ -57,3 +57,21 @@
  .epi-invoice-details,.epi-table tr,.epi-summary{break-inside:avoid}
  @page{size:auto;margin:13mm}
 }
+
+.epi-actions[aria-label="Sandbox invoice records"] fieldset { display: grid; gap: 12px; min-width: 0; border: 0; padding: 0; }
+.epi-actions[aria-label="Sandbox invoice records"] label { display: grid; gap: 5px; }
+.epi-actions[aria-label="Sandbox invoice records"] input,
+.epi-actions[aria-label="Sandbox invoice records"] select,
+.epi-actions[aria-label="Sandbox invoice records"] textarea { max-width: 100%; box-sizing: border-box; }
+.epi-actions[aria-label="Sandbox invoice records"] button { white-space: normal; overflow-wrap: anywhere; }
+.epi-records-scroll { max-width:100%; overflow-x:auto; border:1px solid #49708a; border-radius:8px; }
+.epi-records-scroll .epi-table { min-width:650px; }
+.epi-records-scroll caption { text-align:left; padding:10px; color:#d7e9f4; }
+.epi-records-scroll .epi-table th,.epi-records-scroll .epi-table td { color:#e3edf8; text-align:left; border-color:#49708a; }
+.epi-records-scroll .epi-table tr[aria-current="true"] { background:#285572; box-shadow:inset 3px 0 #8ac7ed; }
+.epi-records-scroll button { background:#254d66; color:#fff; border:1px solid #769aaf; border-radius:6px; padding:8px; }
+.epi-records-scroll :focus-visible { outline:2px solid #a4dfff; outline-offset:2px; }
+.epi-snapshot-details { display:grid; grid-template-columns:minmax(100px,1fr) minmax(0,2fr); gap:8px 14px; font-size:.84rem; }
+.epi-snapshot-details dt { color:#b5cbd8; }
+.epi-snapshot-details dd { margin:0; overflow-wrap:anywhere; }
+@media(max-width:570px){.epi-snapshot-details{grid-template-columns:1fr;gap:5px}.epi-snapshot-details dd{margin-bottom:8px}}

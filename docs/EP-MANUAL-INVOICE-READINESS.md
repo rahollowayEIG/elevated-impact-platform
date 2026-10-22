@@ -38,3 +38,7 @@ Read-only inspection of Live and Sandbox public schemas on October 21, 2026 foun
 Only the protected development branch is modified. The invoice Master Scanner is read-only and uses dated metadata snapshots, not live customer rows. No existing Live/Sandbox schema was migrated, and no real messages or payments were attempted.
 
 Initial launch milestone: one EIG/Hangar operator creates a real invoice with accurate issuer details, saves it, gets an official invoice number, explicitly sends one email or text, reopens the invoice, and sees a verified balance. Expand to automation and external storefronts afterwards.
+
+## Follow-up foundation (21 October 2026)
+
+An isolated opt-in Sandbox snapshot/product-review implementation is documented in [EP-INVOICE-PERSISTENCE-FOUNDATION.md](./EP-INVOICE-PERSISTENCE-FOUNDATION.md). The original preview remains browser-only by default; a separately gated save can persist immutable fictional snapshots after approved Sandbox installation. This is not issued-invoice readiness or proof of hosted persistence. No hosted installation or Live schema change has been performed.

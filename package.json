@@ -5,7 +5,7 @@
     "test:recovery": "node --test tests/recovery-session.test.mjs",
     "test:account-security-handler": "node --test tests/account-security-handler.test.mjs",
     "test:session-validity": "node --test tests/session-validity.test.mjs",
-    "build": "node --test tests/checkin-sheet.test.mjs && node --test tests/account-identity.test.mjs && node --test tests/roster-numbering.test.mjs && node --test tests/success-notice.test.mjs && npm run test:team-payment-cart && npm run test:event-budget && npm run test:social-campaign && npm run test:inception-apex && npm run test:auto-resizer && npm run test:inception-drive && npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && npm run test:event-inquiry && npm run test:discoveries && npm run test:store-connections && npm run test:unified-store && npm run test:invoice-draft && npm run test:product-capture && npm run test:commerce-contracts && npm run test:ai-review && vite build",
+    "build": "node --test tests/checkin-sheet.test.mjs && node --test tests/account-identity.test.mjs && node --test tests/roster-numbering.test.mjs && node --test tests/success-notice.test.mjs && npm run test:team-payment-cart && npm run test:event-budget && npm run test:social-campaign && npm run test:inception-apex && npm run test:auto-resizer && npm run test:inception-drive && npm run test:session-validity && node --test tests/account-display-name.test.mjs && npm run test:account-states && npm run test:recovery && npm run test:password-visibility && npm run test:roster-list-controls && npm run test:event-inquiry && npm run test:discoveries && npm run test:store-connections && npm run test:unified-store && npm run test:invoice-draft && npm run test:invoice-persistence && npm run test:product-capture && npm run test:commerce-contracts && npm run test:ai-review && vite build",
     "preview": "vite preview",
     "test:account-states": "node --test tests/account-state.test.mjs",
     "test:password-visibility": "node --test tests/password-visibility-source.test.mjs",
@@ -30,7 +30,9 @@
     "test:invoice-draft": "node --test tests/ep-invoice-draft.test.mjs",
     "test:product-capture": "node --test tests/ep-product-capture.test.mjs",
     "test:commerce-contracts": "node --test tests/ep-commerce-contract-readiness.test.mjs",
-    "test:ai-review": "node --test tests/eig-build-lab-ai-review.test.cjs"
+    "test:ai-review": "node --test tests/eig-build-lab-ai-review.test.cjs",
+    "test:invoice-persistence": "node --test tests/ep-invoice-persistence.test.mjs",
+    "test:invoice-persistence-browser": "node tests/ep-invoice-persistence-browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

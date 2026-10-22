@@ -71,9 +71,11 @@ export default function BuildLabAiConnection({supabaseClient,ownerUserId,onViewB
  return <section className="platform-section-card" aria-labelledby="bl-ai-title">
    <div className="bl-scanner-title"><h2 id="bl-ai-title">OpenAI Connection &amp; Scanner Review</h2><ScannerToolsDisclosure kind="ai" completed={Boolean(review)} /></div>
    <p>Owner-only, protected-preview integration. A connection test sends fixed text. A selected scanner review sends only bounded first-party scanner metadata, never customer records or raw source code. These are proposals, not verified functionality or automatic code edits.</p>
-   <button type="button" className="platform-primary-button" disabled={busy} onClick={testConnection}>{busy?"Testing connection…":"Test OpenAI Connection"}</button>
+   <details><summary>Connection diagnostics</summary>
+   <button type="button" className="platform-secondary-button" disabled={busy} onClick={testConnection}>{busy?"Testing connection…":"Test OpenAI Connection"}</button>
    {error&&<p role="alert" className="platform-error">{error}</p>}
    {result&&<p role="status">Connected successfully · {result.model} · Input tokens: {result.input} · Output tokens: {result.output}. No application changes were made.</p>}
+   </details>
    <div style={{borderTop:"1px solid #55728b",marginTop:18,paddingTop:14}}>
     <h3 style={{margin:"0 0 8px",color:"#fff"}}>AI analysis of Master Scanner findings</h3>
     <p>Select one module. AI will summarize read-only code/test/database snapshot findings and suggest improvements to review before implementation. No public-site or competitor scan is performed.</p>
@@ -84,7 +86,7 @@ export default function BuildLabAiConnection({supabaseClient,ownerUserId,onViewB
       {MASTER_SCAN_TARGETS.map(x=><option value={x.id} key={x.id}>{x.label}</option>)}
      </select>
     </label>
-    <button type="button" className="platform-secondary-button" onClick={reviewScan} disabled={reviewRunning}>
+    <button type="button" className="platform-primary-button" onClick={reviewScan} disabled={reviewRunning}>
      {reviewRunning?"Requesting bounded AI review…":"Analyze this scanner module with AI"}
     </button>
     <p style={{fontSize:12,color:"#c2d9e7"}}>Each click makes one limited, potentially billable OpenAI API request. No continuous scanning or provider-independent usage budget is configured. Findings must be reviewed by the owner.</p>

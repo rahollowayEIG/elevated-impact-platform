@@ -35,6 +35,7 @@ const fs = require("node:fs/promises");
     await sourceTools.getByText("ElevationPilot Source Scanner",{exact:true}).waitFor();
     assert.match(await sourceTools.innerText(),/does not make a fresh database or GitHub query/);
     await chooseTool("AI Review");
+    assert.equal(await page.getByRole("button",{name:"Test OpenAI Connection",exact:true}).count(),0,"Connection diagnostics are optional, not a required scan step");
     const aiTools=page.locator("#bl-panel-ai .bl-scanner-tools");
     await aiTools.getByText("Tools used",{exact:true}).click();
     await aiTools.getByText("OpenAI · gpt-4.1-mini",{exact:true}).waitFor();

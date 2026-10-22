@@ -2,6 +2,7 @@ import {prepareInceptionPilotBlueprint} from "../lib/buildLabInceptionPilot.mjs"
 import {managerStorageKey} from "../lib/buildLabMissionOrchestrator.mjs";
 import {readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
+import BuildLabWorkBuckets from "./BuildLabWorkBuckets.jsx";
 import BuildLabManager from "./BuildLabManager.jsx";
 import BuildLabScanPlans from "./BuildLabScanPlans.jsx";
 import BuildLabScanHistory from "./BuildLabScanHistory.jsx";
@@ -28,13 +29,13 @@ const LAB_TOOLS = [
   ["ai", "AI Review"], ["history", "Scan History"], ["inspector", "IA Inspector"],
   ["research", "Research"], ["impact", "Impact Review"],
   ["discoveries", "Discoveries"], ["invoices", "Invoices"],
-  ["manager", "Manager"], ["architect", "Project Architect"], ["plans", "Scan Plans"],
+  ["buckets", "Work Buckets"], ["manager", "Manager"], ["architect", "Project Architect"], ["plans", "Scan Plans"],
 ];
 
 const LAB_GROUPS = [
   ["scanners", "Scanners", ["master", "radar", "inspector", "impact"]],
   ["intelligence", "AI & Research", ["ai", "research"]],
-  ["planning", "Planning", ["manager", "plans", "architect"]],
+  ["planning", "Planning", ["buckets", "manager", "plans", "architect"]],
   ["prototypes", "Prototypes", ["discoveries", "invoices"]],
   ["history", "History", ["history"]],
 ];
@@ -334,6 +335,8 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     <div className="bl-tool-panel" id="bl-panel-history" role="region" aria-labelledby="bl-tool-history" hidden={activeTool !== "history"}><BuildLabScanHistory ownerUserId={ownerUserId} /></div>
 
     <div className="bl-tool-panel" id="bl-panel-plans" role="region" aria-labelledby="bl-tool-plans" hidden={activeTool !== "plans"}><BuildLabScanPlans ownerUserId={ownerUserId} /></div>
+
+    <div className="bl-tool-panel" id="bl-panel-buckets" role="region" aria-labelledby="bl-tool-buckets" hidden={activeTool !== "buckets"}><BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>{setManagerVersion(n=>n+1);setActiveGroup("planning");setActiveTool("manager");}} /></div>
 
     <div className="bl-tool-panel" id="bl-panel-manager" role="region" aria-labelledby="bl-tool-manager" hidden={activeTool !== "manager"}><BuildLabManager key={managerVersion} ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
 

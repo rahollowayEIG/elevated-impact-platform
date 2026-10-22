@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "principles": [
+    "Separate observations, coverage questions, improvement ideas and independently confirmed defects.",
+    "Preserve useful existing behavior; search the shared platform before building duplicates.",
+    "State the source version, evidence limits and next verification step.",
+    "Never treat sampled absence, a dated snapshot, a test definition or a permitted file reference as runtime proof."
+  ],
+  "scanners": {
+    "inspector": {
+      "mission": "Identify specific InceptionApex source patterns for workflow and usability review and recognize useful existing behavior to preserve.",
+      "identifies": [
+        "Source-backed usability review questions",
+        "Existing save/approve and keyboard patterns to preserve"
+      ],
+      "limits": [
+        "Four approved files only; no screenshot, keyboard execution or live design assessment.",
+        "A source pattern is not proof of a runtime defect or accessibility conformance."
+      ],
+      "handoff": "Reproduce the experience with synthetic designs and record actual versus expected behavior before changing it."
+    }
+  },
+  "modules": {
+    "inception": [
+      "Save, reopen, approve and version artwork",
+      "Keyboard, mobile, labels and print/export constraints",
+      "Preserve shared designs, approved masters and event/product handoffs"
+    ]
+  }
+}

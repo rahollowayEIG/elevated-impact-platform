@@ -38,7 +38,8 @@ export default function BuildLabManager({ownerUserId}){
   <label>New blueprint title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)} /></label>
   <button type="button" className="platform-primary-button" disabled={!selected.length||selected.length>10||!title.trim()} onClick={generate}>{plan?'Replace blueprint from selected scans':'Create blueprint from selected scans'}</button>
   {plan&&<>
-   <h3>2. Review · {plan.title}</h3><p>Revision {plan.revision} · {plan.inputs.length} scans · {plan.merged} exact duplicates combined · {plan.omitted} rejected/held/parked findings omitted</p>
+   {plan.pilot&&<div className="bl-notice"><strong>One-scanner pilot · Implementation after owner approval</strong><p>Automatic dispatch is not connected. Export the approved blueprint for the implementation step, then attach the resulting branch, test run and rescan to the review.</p><ul>{plan.pilot.verification.map(x=><li key={x}>{x}</li>)}</ul></div>}
+   <h3>2. Review · {plan.title}</h3><p>Revision {plan.revision} · {plan.inputs.length} scans · {plan.merged} exact duplicates combined · {plan.omitted} rejected/held/parked findings omitted · {plan.preserved||0} existing patterns preserved</p>
    <p>All recommendations still require evidence verification. Accepting a proposal does not establish that it is a verified defect.</p>
    {plan.warnings.length>0&&<div className="bl-notice"><strong>Evidence review needed</strong><ul>{plan.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></div>}
    {plan.proposals.map(p=><article className="bl-scan-finding" key={p.id}>

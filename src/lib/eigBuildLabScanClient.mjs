@@ -1,5 +1,6 @@
 // Unprivileged browser scanner client. The Vercel server independently
 // verifies current owner, active session, scoped EIG membership and branch.
+const ALLOWED_PATHS=new Set(["src/components/InceptionApex.jsx","src/components/FlyerEditor.jsx","src/components/inception-apex.css","tests/inception-apex-browser.cjs"]);
 const SHA = /^[a-f0-9]{64}$/i;
 export function validateInceptionSourceReport(value) {
   if (!value || typeof value !== "object" ||
@@ -10,7 +11,9 @@ export function validateInceptionSourceReport(value) {
       !Array.isArray(value.findings) || value.findings.length > 25)
     throw new Error("The source scanner returned an unsupported report.");
   const sourcePaths = new Set(value.files.map((file) => file.path));
+  if(sourcePaths.size!==value.files.length||value.files.some(f=>!ALLOWED_PATHS.has(f.path)||!Number.isInteger(f.lines)||f.lines<1))throw Error("Invalid source file list.");
   for (const item of value.findings) {
+    if(item.findingType!==undefined&&!["preserve_existing","coverage_gap","verification_needed"].includes(item.findingType))throw Error("Invalid finding classification.");
     if (!/^[a-z0-9-]{3,80}$/.test(item?.id || "") ||
         typeof item.title !== "string" || item.title.length > 200 ||
         typeof item.observation !== "string" || item.observation.length > 1000 ||

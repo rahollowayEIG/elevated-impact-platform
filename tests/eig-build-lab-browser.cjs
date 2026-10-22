@@ -25,11 +25,19 @@ const fs = require("node:fs/promises");
     assert.equal(await toolNav.getByRole("button",{name:"Master Scanner",exact:true}).getAttribute("aria-pressed"),"true");
     for(const name of ["Upgrade Radar","AI Review","Scan History","IA Inspector","Research","Impact Review","Discoveries","Invoices","Manager","Project Architect"]){
       await chooseTool(name);
+      if(["Upgrade Radar","AI Review","IA Inspector","Impact Review"].includes(name)){
+        const direction=page.locator('.bl-tool-panel:not([hidden]) .bl-scanner-directions');
+        await direction.getByText('Scanner directions',{exact:true}).click();
+        assert.match(await direction.innerText(),/Shared evidence rules/);
+        assert.match(await direction.innerText(),/Before handoff:/);
+        await direction.getByText('Scanner directions',{exact:true}).click();
+      }
       assert.equal(await page.locator(".bl-tool-panel:visible").count(),1);
       assert.equal(await (advancedNames.includes(name)?page.getByRole("navigation",{name:"Advanced Build Lab tools"}):toolNav).getByRole("button",{name,exact:true}).getAttribute("aria-pressed"),"true");
     }
     await legacy(true);
     await chooseTool("Master Scanner");
+    const masterDirections=page.locator('#bl-panel-master .bl-scanner-directions');await masterDirections.getByText('Scanner directions',{exact:true}).click();assert.match(await masterDirections.innerText(),/dated Live\/Sandbox metadata/);await masterDirections.getByText('Scanner directions',{exact:true}).click();
     const sourceTools=page.locator("#bl-panel-master .bl-scanner-tools");
     await sourceTools.getByText("Tools used",{exact:true}).click();
     await sourceTools.getByText("ElevationPilot Source Scanner",{exact:true}).waitFor();

@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {scanFindingAssessment,findingAssessment} from '../src/lib/buildLabFindingStandards.mjs';
 import {emptyWorkLedger,collectScanWork,reviseWorkItem,createWorkBatch,approveWorkBatch,batchIsCurrent,workBatchPlan,workRoute,addBuildBrief,readWorkLedger,saveWorkLedger,workStorageKey,validateWorkLedger} from '../src/lib/buildLabWorkBuckets.mjs';
 const uid='11111111-1111-4111-8111-111111111111';
 const scan=(id='run1',source='a'.repeat(40),savedAt='2026-10-22T12:00:00Z')=>({id,type:'inspector',scope:'inception-apex',source,savedAt,snapshot:{report:{findings:[{id:'dialog',title:'Review confirmation dialogs',recommendation:'Replace native confirmations with an accessible in-app dialog.',findingType:'verification_needed',evidence:[{path:'src/components/InceptionApex.jsx',line:232,excerpt:'window.confirm(message)'}]},{id:'preserve',title:'Keep existing save',findingType:'preserve_existing'}]}}});
@@ -36,7 +38,7 @@ test('same-source observations do not invalidate a batch but a revised source re
 });
 test('repair, upgrade and new-build jobs can span apps but cannot silently mix intent in a batch',()=>{
  let ledger=addBuildBrief(initial(),{id:'goal',title:'Shared product registry',detail:'Reuse products across invoices and contracts.',completion:'One product can be used by both apps.',apps:['invoices','contracts']});
- assert.equal(ledger.jobs[1].intent,'build');assert.equal(ledger.jobs[1].scope,'multi_app');assert.equal(workRoute(ledger.jobs[1]).label,'Needs manual fix');
+ assert.equal(ledger.jobs[1].intent,'build');assert.equal(ledger.jobs[1].scope,'multi_app');assert.equal(workRoute(ledger.jobs[1]).label,'Capability not assessed');
  assert.throws(()=>createWorkBatch(ledger,{id:'mixed',title:'Mixed work',jobIds:ledger.jobs.map(j=>j.id)}),/separate/);
  ledger=createWorkBatch(ledger,{id:'build',title:'Product registry build',jobIds:['goal']});ledger=approveWorkBatch(ledger,'build');assert.equal(workBatchPlan(ledger,'build').proposals[0].detail,ledger.jobs[1].detail+'\n\nComplete when: '+ledger.jobs[1].completion);
 });
@@ -60,8 +62,8 @@ test('account-separated bounded storage preserves corruption and exposes quota e
 
 test('multi-app or platform IA scope never advertises the bounded single-app route',()=>{
  const ledger=initial(),job=ledger.jobs[0];assert.equal(workRoute(job).label,'Bounded IA candidate review');
- assert.equal(workRoute({...job,scope:'platform'}).label,'Needs manual fix');
- assert.equal(workRoute({...job,scope:'multi_app',apps:['inception','events']}).label,'Needs manual fix');
+ assert.equal(workRoute({...job,scope:'platform'}).label,'Capability not assessed');
+ assert.equal(workRoute({...job,scope:'multi_app',apps:['inception','events']}).label,'Capability not assessed');
 });
 
 test('implementation handoff carries completion criteria and refuses to truncate lengthy requirements',()=>{
@@ -87,4 +89,47 @@ test('bucket approval rejects changed selections atomically and hold/dismiss sur
  assert.throws(()=>approveBucketSelection(changed,{selection,idPrefix:'stale'}),/changed/);assert.equal(changed.batches.length,0);
  for(const state of ['hold','dismissed']){const next=setBucketDisposition(ledger,{selection,state});assert.equal(collectScanWork(next,[scan()]).jobs[0].state,state);}
  assert.throws(()=>setBucketDisposition(ledger,{selection,state:'fixed'}));
+});
+
+test('all five scanner assessments retain evidence limits without promoting proposals to confirmed defects',()=>{
+ const expected={inspector:'investigation',master:'investigation',radar:'improvement',ai:'improvement',impact:'impact'};
+ for(const [type,kind] of Object.entries(expected)){
+  const assessment=scanFindingAssessment(type,{findingType:'confirmed_defect',status:'verified',title:'Repair broken access'});
+  assert.equal(assessment.kind,kind);assert.ok(assessment.limitation);assert.ok(assessment.nextCheck);
+ }
+ assert.equal(scanFindingAssessment('inspector',{findingType:'coverage_gap'}).kind,'coverage');
+ assert.equal(scanFindingAssessment('ai',{}).basis,'scanner_metadata');
+ assert.equal(scanFindingAssessment('impact',{}).basis,'path_list');
+ const directions=JSON.parse(readFileSync(new URL('../src/lib/buildLabScannerDirections.json',import.meta.url),'utf8'));
+ assert.deepEqual(Object.keys(directions.scanners).sort(),Object.keys(expected).sort());
+ for(const d of Object.values(directions.scanners)){assert.ok(d.mission&&d.handoff);assert.ok(d.identifies.length&&d.limits.length);}
+});
+
+test('assessment remains separate from domain grouping and explicit manual capability decisions',()=>{
+ const entry=scan();entry.snapshot.report.findings[0].findingType='coverage_gap';
+ let ledger=collectScanWork(emptyWorkLedger(),[entry]);
+ assert.equal(ledger.jobs[0].bucket,'interface');assert.equal(ledger.jobs[0].assessment.kind,'coverage');
+ const module={id:'m',type:'master',scope:'all',source:'b',savedAt:entry.savedAt,snapshot:{report:{modules:[{id:'events',title:'Event database',nextCheck:'Verify persistent saves.'}]}}};
+ ledger=collectScanWork(ledger,[module]);const job=ledger.jobs.find(j=>j.refs[0].type==='master');
+ assert.equal(job.bucket,'data');assert.equal(job.assessment.kind,'investigation');assert.equal(workRoute(job).label,'Capability not assessed');
+ ledger=reviseWorkItem(ledger,job.id,{state:'manual',manualReason:'Requires a separately authorized database test setup.'});
+ assert.equal(workRoute(ledger.jobs.find(j=>j.id===job.id)).label,'Needs manual fix');
+ assert.equal(ledger.jobs.find(j=>j.id===job.id).assessment.kind,'investigation');
+});
+
+test('assessment is captured in plans and a changed assessment invalidates prior scope without erasing it',async()=>{
+ const {approveBucketSelection,batchWorkBlueprint}=await import('../src/lib/buildLabWorkBuckets.mjs');
+ let ledger=initial();ledger=approveBucketSelection(ledger,{selection:ledger.jobs.map(j=>({id:j.id,signature:j.signature})),idPrefix:'assessed'});
+ assert.equal(batchWorkBlueprint(ledger.batches[0]).work[0].assessment.kind,'investigation');
+ const entry=scan('changed','a'.repeat(40),'2026-10-22T14:00:00Z');entry.snapshot.report.findings[0].findingType='coverage_gap';
+ ledger=collectScanWork(ledger,[entry]);assert.equal(batchIsCurrent(ledger,ledger.batches[0]),false);
+ assert.equal(ledger.batches[0].items[0].assessment.kind,'investigation');assert.equal(ledger.jobs[0].assessment.kind,'coverage');
+});
+
+test('older work restores without invented verification and rejects malformed new assessments',()=>{
+ const legacy=initial();delete legacy.jobs[0].assessment;
+ assert.equal(validateWorkLedger(legacy),legacy);assert.equal(findingAssessment(legacy.jobs[0]).basis,'legacy_unknown');
+ const malformed=initial();malformed.jobs[0].assessment.kind='confirmed_defect';assert.throws(()=>validateWorkLedger(malformed),/assessment/);
+ const brief=addBuildBrief(legacy,{id:'owner',title:'New app',detail:'Build the reviewed app.',completion:'The goal passes review.'});
+ assert.equal(brief.jobs[1].assessment.kind,'goal');assert.equal(brief.jobs[1].assessment.basis,'owner_brief');
 });

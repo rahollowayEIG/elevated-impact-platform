@@ -1,3 +1,4 @@
+import ScannerDirectionsDisclosure from "./ScannerDirectionsDisclosure.jsx";
 import BuildLabScanDestination, {BuildLabReportBackup} from "./BuildLabScanDestination.jsx";
 import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import React, { useEffect, useState } from 'react';
@@ -55,6 +56,7 @@ export default function BuildImpactReview({ ownerUserId, legacyReview=false, onV
   return <section className="platform-section-card" aria-labelledby="build-impact-title">
     <h2 id="build-impact-title">Live System Change Impact</h2>
     <p>Owner-only planning tool. Paste reviewed paths from a proposed GitHub diff. No GitHub fetch, production access, deployment, or database write occurs. File names alone cannot prove safety.</p>
+  <ScannerDirectionsDisclosure kind="impact" />
     <div className="bl-input-pair">
       <label>Base ref<input value={baseRef} maxLength={120} onChange={e=>{setBaseRef(e.target.value);setReport(null);}}/></label>
       <label>Proposed ref<input value={headRef} maxLength={120} onChange={e=>{setHeadRef(e.target.value);setReport(null);}}/></label>

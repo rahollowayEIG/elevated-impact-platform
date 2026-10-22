@@ -98,3 +98,24 @@ test('revoked owner membership during generation prevents a signed handoff',asyn
  const h=createBuilder({env:k=>envs[k],now:()=>now,verifyUser:async()=>({id:owner}),membershipsForUser:async()=>({data:++checks===1?[{role:'eig_admin',status:'active',organization:{slug:'elevated-impact-group'}}]:[]}),readSources:()=>sources,http:async()=>({ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(model)}]}]})})});
  const res=response();await h(request(),res);assert.equal(res.code,403);assert.equal(res.body.result,undefined);
 });
+test('worker CLI validates a signed packet, applies it, and records failed/skipped verification honestly',async()=>{
+ const {execFileSync}=await import('node:child_process');
+ const root=mkdtempSync(path.join(tmpdir(),'builder-cli-'));
+ const script=path.resolve('scripts/build-lab-builder-worker.cjs');
+ try{
+  for(const p of FILE_PATHS){mkdirSync(path.dirname(path.join(root,p)),{recursive:true});writeFileSync(path.join(root,p),sources[p]);}
+  execFileSync('git',['init','-q'],{cwd:root});
+  execFileSync('git',['add','.'],{cwd:root});
+  execFileSync('git',['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','Synthetic source fixture'],{cwd:root});
+  const fixtureVersion=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+  const c=candidateFor({proposal:model,sources,sourceVersion:fixtureVersion,findingId:'ia-form-focus',instruction:'Synthetic worker lifecycle fixture.',now:Date.now()});
+  const output=path.join(root,'github-output');
+  execFileSync(process.execPath,[script,'validate'],{cwd:root,env:{...process.env,BUILDER_CANDIDATE:JSON.stringify(sealCandidate(c,key)),BUILDER_SIGNING_KEY:key,GITHUB_OUTPUT:output}});
+  assert.match(readFileSync(output,'utf8'),new RegExp('source_version='+fixtureVersion));
+  execFileSync(process.execPath,[script,'apply'],{cwd:root});
+  assert.match(readFileSync(path.join(root,'test-results/build-lab-builder/candidate.patch'),'utf8'),/bounded test fixture/);
+  assert.throws(()=>execFileSync(process.execPath,[script,'report'],{cwd:root,env:{...process.env,BUILDER_TEST_STATUS:'failure',BUILDER_CHROMIUM_RESULT:'failure',BUILDER_FIREFOX_RESULT:'skipped',BUILDER_WEBKIT_RESULT:'skipped'},stdio:'pipe'}));
+  const result=JSON.parse(readFileSync(path.join(root,'test-results/build-lab-builder/result.json'),'utf8'));
+  assert.equal(result.status,'verification_failed');assert.equal(result.testsPassed,false);assert.equal(result.browserResults.firefox,'skipped');assert.equal(result.selectedFindingStillPresent,true);assert.equal(result.autoMerged,false);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

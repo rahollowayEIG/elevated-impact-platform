@@ -5,10 +5,13 @@ const WRITABLE=FILE_PATHS.filter(p=>p.startsWith('src/components/'));
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const keys=(x,wanted)=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).sort().join(',')===[...wanted].sort().join(',');
 function applyEdits(sources,edits){
- if(!Array.isArray(edits)||!edits.length||edits.length>4)throw Error('Expected one to four edits.');
+ if(!Array.isArray(edits)||!edits.length||edits.length>12)throw Error('Expected one to twelve edits.');
  const result={...sources};
  for(const e of edits){
-  if(!keys(e,['path','before','after'])||!WRITABLE.includes(e.path)||typeof e.before!=='string'||!e.before.trim()||e.before.length>12000||typeof e.after!=='string'||e.after.length>12000||e.before===e.after)throw Error('Unsupported candidate edit.');
+  if(!keys(e,['path','before','after'])||!WRITABLE.includes(e.path)||typeof e.before!=='string'||typeof e.after!=='string')throw Error('Unsupported candidate edit.');
+  if(!e.before.trim())throw Error('Empty candidate search text.');
+  if(e.before.length>12000||e.after.length>12000)throw Error('Oversized candidate replacement.');
+  if(e.before===e.after)throw Error('Unchanged candidate replacement.');
   const original=result[e.path];
   const at=original.indexOf(e.before);
   if(at<0||original.indexOf(e.before,at+1)>=0)throw Error('Edit must match exactly once.');

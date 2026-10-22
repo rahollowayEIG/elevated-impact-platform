@@ -137,12 +137,33 @@ test("deployed scanner and AI routes explicitly package every allowlisted eviden
    fs.mkdirSync(path.join(bundle,"server"));
    for(const name of fs.readdirSync(path.join(root,"server")))
     if(/\.(cjs|json)$/.test(name))fs.copyFileSync(path.join(root,"server",name),path.join(bundle,"server",name));
+   // Model traced npm dependencies too, without letting NODE_PATH hide a
+   // missing dependency in this isolated deployment fixture.
+   const copied=new Set();
+   function copyDependency(name,resolveFrom){
+    if(copied.has(name))return;
+    copied.add(name);
+    const manifest=resolveFrom.resolve(name+"/package.json");
+    const metadata=JSON.parse(fs.readFileSync(manifest,"utf8"));
+    fs.cpSync(path.dirname(manifest),path.join(bundle,"node_modules",name),{recursive:true});
+    const resolveChild=require("node:module").createRequire(manifest);
+    for(const dependency of Object.keys(metadata.dependencies||{}))copyDependency(dependency,resolveChild);
+   }
+   assert.equal(require("../package.json").dependencies["@babel/parser"],require("@babel/parser/package.json").version);
+   copyDependency("@babel/parser",require);
    for(const file of included){
     fs.mkdirSync(path.dirname(path.join(bundle,file)),{recursive:true});
     fs.copyFileSync(path.join(root,file),path.join(bundle,file));
    }
+   const bundledCheck=require("node:child_process").spawnSync(process.execPath,["-e",`
+    const assert=require("node:assert/strict");
+    const reader=require("./server/eig-master-source-scan.cjs");
+    const sources=reader.readAllowlistedMasterSource();
+    assert.deepEqual(Object.keys(sources).sort(),[...reader.FILE_PATHS].sort());
+    assert.ok(reader.scanMasterSource(sources,"a".repeat(40)).modules.length>0);
+   `],{cwd:bundle,env:{...process.env,NODE_PATH:""},encoding:"utf8"});
+   assert.equal(bundledCheck.status,0,bundledCheck.stderr);
    const reader=require(path.join(bundle,"server/eig-master-source-scan.cjs"));
-   assert.deepEqual(Object.keys(reader.readAllowlistedMasterSource()).sort(),[...FILE_PATHS].sort());
    fs.unlinkSync(path.join(bundle,FILE_PATHS[0]));
    assert.throws(()=>reader.readAllowlistedMasterSource(),/ENOENT/);
   }finally{fs.rmSync(bundle,{recursive:true,force:true});}

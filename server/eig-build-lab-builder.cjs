@@ -25,15 +25,15 @@ function createBuilder({env,verifyUser,membershipsForUser,readSources,http=fetch
  if(!env('OPENAI_API_KEY')||(env('EIG_BUILD_LAB_BUILDER_SIGNING_KEY')||'').length<32)return response(res,503,{ok:false,message:'Builder provider and signed-handoff configuration are required.'});
  let sources,report,proposal,instruction;
  try{
-  const {restoreManagerBlueprint}=await import('../src/lib/buildLabManagerBlueprint.mjs');
+  const {restoreManagerBlueprint,selectBuilderProposal}=await import('../src/lib/buildLabManagerBlueprint.mjs');
   const plan=restoreManagerBlueprint(JSON.stringify(body.blueprint));
-  if(plan?.status!=='reviewed_for_handoff'||plan.proposals.length!==1||!plan.pilot||!['accept','revise'].includes(plan.proposals[0].decision)||!['builder','fixer'].includes(plan.proposals[0].assignedTo))throw Error();
+  const selected=selectBuilderProposal(plan);if(!selected)throw Error();
   sources=await readSources();report=scanInceptionSource(sources,env('VERCEL_GIT_COMMIT_SHA'));
-  if(!/^[a-f0-9]{40}$/.test(report.sourceVersion)||plan.pilot.sourceVersion!==report.sourceVersion||plan.pilot.sourceFingerprint!==report.sourceFingerprint)throw Error();
-  const finding=report.findings.find(f=>f.id===plan.pilot.findingId&&f.findingType!=='preserve_existing');
-  const refs=plan.proposals[0].sourceRefs;
+  if(!/^[a-f0-9]{40}$/.test(report.sourceVersion)||(plan.pilot&&(plan.pilot.sourceVersion!==report.sourceVersion||plan.pilot.sourceFingerprint!==report.sourceFingerprint)))throw Error();
+  const refs=selected.sourceRefs;
+  const finding=report.findings.find(f=>f.id===refs[0].itemId&&f.findingType!=='preserve_existing');
   if(!finding||refs.some(r=>r.sourceVersion!==report.sourceVersion)||!refs.length)throw Error();
-  proposal=finding;instruction=plan.proposals[0].revision||plan.proposals[0].detail;
+  proposal=finding;instruction=selected.revision||selected.detail;
  }catch{return response(res,409,{ok:false,message:'Choose one current IA finding, review it, and approve its blueprint. Source or scope may have changed.'});}
  try{
   const signal=AbortSignal.timeout(45000); // Shared total provider budget within the 60s function limit.

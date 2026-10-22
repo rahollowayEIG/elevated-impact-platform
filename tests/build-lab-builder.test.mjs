@@ -167,3 +167,31 @@ test('review provider failure and membership revocation after review fail closed
   const res=response();await h(request(),res);assert.equal(calls,2);assert.equal(res.code,scenario==='review-failure'?502:403);assert.equal(res.body.result,undefined);
  }
 });
+
+test('one approved IA item in a normal stacked blueprint can generate while held items remain untouched',async()=>{
+ const {stackScanBlueprint,selectBuilderProposal}=await import('../src/lib/buildLabManagerBlueprint.mjs');
+ const entry={id:'stacked-ia',type:'inspector',scope:'inception-apex',source:version,savedAt:new Date(now).toISOString(),snapshot:{report,reviews:{}}};
+ let blueprint=stackScanBlueprint([entry]);
+ const selectedId=blueprint.proposals.find(p=>p.sourceRefs[0].itemId==='ia-form-focus').id;
+ for(const p of blueprint.proposals)blueprint=reviewManagerProposal(blueprint,p.id,p.id===selectedId?'revise':'hold',p.id===selectedId?'Investigate visible field focus without touching held work.':'');
+ blueprint=assignManagerProposal(blueprint,selectedId,'fixer');
+ // Ensure neither UI nor server accidentally selects the first proposal.
+ blueprint.proposals.sort((a,b)=>Number(a.id===selectedId)-Number(b.id===selectedId));
+ blueprint=approveManagerBlueprint(blueprint);
+ assert.equal(blueprint.pilot,undefined);assert.ok(blueprint.proposals.length>1);
+ assert.equal(selectBuilderProposal(blueprint).id,selectedId);
+ let calls=0;const res=response();await handler({onCall:(url,options)=>{calls++;const input=JSON.parse(JSON.parse(options.body).input[1].content);assert.equal(input.finding.id,'ia-form-focus');assert.equal(input.ownerRequirement,'Investigate visible field focus without touching held work.');}})(request({blueprint,shareSourceWithOpenAI:true}),res);
+ assert.equal(res.code,200);assert.equal(calls,2);assert.equal(openCandidate(res.body.result.bundle,key,now).findingId,'ia-form-focus');
+ assert.equal(blueprint.proposals.filter(p=>p.decision==='hold').length,blueprint.proposals.length-1);
+ for(const change of ['two-active','non-IA','mixed-id','stale','invented','preserved']){
+  const bad=structuredClone(blueprint),p=bad.proposals.find(p=>p.id===selectedId);
+  if(change==='two-active')bad.proposals.find(p=>p.id!==selectedId).decision='accept';
+  if(change==='non-IA')p.sourceRefs[0].type='master';
+  if(change==='mixed-id')p.sourceRefs.push({...p.sourceRefs[0],itemId:'ia-native-confirm'});
+  if(change==='stale')p.sourceRefs[0].sourceVersion='b'.repeat(40);
+  if(change==='invented')p.sourceRefs[0].itemId='invented';
+  if(change==='preserved')p.sourceRefs[0].itemId=report.findings.find(f=>f.findingType==='preserve_existing').id;
+  let touched=0;const denied=response();await handler({onCall:()=>touched++})(request({blueprint:bad,shareSourceWithOpenAI:true}),denied);
+  assert.equal(denied.code,409,change);assert.equal(touched,0,change);
+ }
+});

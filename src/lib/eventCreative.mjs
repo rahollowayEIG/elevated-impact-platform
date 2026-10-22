@@ -98,6 +98,8 @@ export function eventFlyerFacts(event, origin = "") {
   };
 }
 
+export const FLYER_FONTS = ["Arial", "Georgia", "Times New Roman", "Verdana", "Trebuchet MS", "Courier New", "Impact"];
+
 export function newFlyer(theme = "classic") {
   const palettes = {
     classic: ["#10213b", "#ffffff", "#e02f41"],
@@ -113,6 +115,7 @@ export function newFlyer(theme = "classic") {
     width,
     height,
     fontSize,
+    fontFamily: "Arial",
     color: ink,
     align: "left",
     bold: source === "name",
@@ -185,6 +188,7 @@ export function sanitizeFlyer(value) {
         width: number(b.width, 30, width - x),
         height: number(b.height, 30, height - y),
         fontSize: number(b.fontSize, 8, 160, 24),
+        fontFamily: FLYER_FONTS.includes(b.fontFamily) ? b.fontFamily : "Arial",
         color: color(b.color),
         align: ["left", "center", "right"].includes(b.align) ? b.align : "left",
         bold: b.bold === true,
@@ -263,7 +267,7 @@ export function flyerSvg(
             ? b.x + b.width
             : b.x;
       const anchor = { left: "start", center: "middle", right: "end" }[b.align];
-      return `<text font-family="Arial,sans-serif" font-size="${b.fontSize}" font-weight="${b.bold ? "700" : "400"}" fill="${b.color}" text-anchor="${anchor}">${wrapText(
+      return `<text font-family="${b.fontFamily},sans-serif" font-size="${b.fontSize}" font-weight="${b.bold ? "700" : "400"}" fill="${b.color}" text-anchor="${anchor}">${wrapText(
         value,
         b,
       )

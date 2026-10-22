@@ -23,6 +23,7 @@ const GROUPS = [...new Set(RESIZE_PRESETS.map((p) => p.group))];
 export default function AutoResizer({
   allowed = false,
   drive = saveResizeToDrive,
+  initialPresetId = "shopify-product",
 }) {
   const [images, setImages] = useState([]),
     [selectedId, setSelectedId] = useState("");
@@ -30,7 +31,7 @@ export default function AutoResizer({
     [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState(""),
     [sort, setSort] = useState(null);
-  const [presetId, setPresetId] = useState("shopify-product"),
+  const [presetId, setPresetId] = useState(RESIZE_PRESETS.some((p) => p.id === initialPresetId) ? initialPresetId : "shopify-product"),
     [customWidth, setCustomWidth] = useState("1200"),
     [customHeight, setCustomHeight] = useState("1200");
   const [mode, setMode] = useState("fit"),

@@ -58,7 +58,7 @@ export default function BuildImpactReview({ ownerUserId }) {
       <label>Base ref<input value={baseRef} maxLength={120} onChange={e=>{setBaseRef(e.target.value);setReport(null);}}/></label>
       <label>Proposed ref<input value={headRef} maxLength={120} onChange={e=>{setHeadRef(e.target.value);setReport(null);}}/></label>
     </div>
-    <label>Changed file paths, one per line<textarea rows={5} value={fileText} onChange={e=>{setFileText(e.target.value);setReport(null);}}/></label>
+    <label>Changed file paths, one per line<textarea aria-label="Changed file paths, one per line" rows={5} value={fileText} onChange={e=>{setFileText(e.target.value);setReport(null);}}/></label>
     <div className="bl-review-actions">
       <button type="button" className="platform-primary-button" onClick={run}>Assess change risk</button>
       {report&&<button type="button" className="platform-secondary-button" onClick={exportReport}>Download review JSON</button>}

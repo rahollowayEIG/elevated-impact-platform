@@ -9,10 +9,11 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  const selectionKey='eig:work-selection:v1:'+ownerUserId;
  const editorRef=useRef(null);
  const [batchQuery,setBatchQuery]=useState('');
+ const [selectionError,setSelectionError]=useState('');
  const [ledger,setLedger]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [query,setQuery]=useState(''),[bucket,setBucket]=useState('all'),[intent,setIntent]=useState('all'),[state,setState]=useState('all'),[order,setOrder]=useState({key:'lastSeen',direction:'desc'});
  const [selected,setSelected]=useState(()=>{try{const x=JSON.parse(localStorage.getItem(selectionKey)||'[]');return Array.isArray(x)&&x.every(v=>typeof v==='string')?x:[];}catch{return [];}}),[batchTitle,setBatchTitle]=useState(''),[editing,setEditing]=useState(''),[draft,setDraft]=useState(null),[brief,setBrief]=useState(blank);
- useEffect(()=>{try{localStorage.setItem(selectionKey,JSON.stringify(selected));}catch{setError('Work selection could not be saved in this browser.');}},[selectionKey,selected]);
+ useEffect(()=>{try{localStorage.setItem(selectionKey,JSON.stringify(selected));setSelectionError('');}catch{setSelectionError('Work selection could not be saved in this browser.');}},[selectionKey,selected]);
  useEffect(()=>{if(editing){editorRef.current?.scrollIntoView({block:'nearest'});editorRef.current?.querySelector('input')?.focus();}},[editing]);
  useEffect(()=>{
   function load(){try{const prior=readWorkLedger(localStorage,ownerUserId),next=collectScanWork(prior,readScanHistory(localStorage,ownerUserId));if(JSON.stringify(prior)!==JSON.stringify(next))saveWorkLedger(localStorage,ownerUserId,next);setLedger(next);setError('');}catch(e){setError(e.message+' Work buckets could not be saved or restored. Existing browser data has been preserved.');}}
@@ -35,7 +36,7 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
   <h2 id="bl-work-title">Work Buckets</h2>
   <p>Saved scans collect here automatically. Group related jobs into repairs, upgrades or new builds, then review the batch before implementation.</p>
   <p className="bl-quiet">Saved in this browser and preview address only. Batch approval records scope; it does not run agents or deploy changes.</p>
-  {error&&<p className="platform-error" role="alert">{error}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
+  {error&&<p className="platform-error" role="alert">{error}</p>}{selectionError&&<p className="platform-error" role="alert">{selectionError}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
   {ledger&&<>
    <div className="bl-work-summary">{Object.entries(WORK_INTENTS).map(([id,label])=><button type="button" key={id} aria-pressed={intent===id} onClick={()=>setIntent(intent===id?'all':id)}><strong>{jobs.filter(j=>j.intent===id&&!['dismissed'].includes(j.state)).length}</strong>{label}</button>)}<button type="button" aria-pressed={state==='manual'} onClick={()=>setState(state==='manual'?'all':'manual')}><strong>{jobs.filter(j=>j.state!=='dismissed'&&workRoute(j).label==='Needs manual fix').length}</strong>Needs manual fix</button></div>
    <div className="bl-scan-controls">

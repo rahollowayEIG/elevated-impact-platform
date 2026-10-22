@@ -1,0 +1,38 @@
+name: Installable desktop PWA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vite.config.js'
+      - 'package.json'
+      - 'index.html'
+      - 'public/pwa/**'
+      - 'src/pwa/**'
+      - 'scripts/*pwa*.mjs'
+      - 'tests/pwa-installability.test.mjs'
+      - '.github/workflows/installable-desktop-pwa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dual-pwa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:pwa
+      - name: Build live desktop PWA
+        run: npm run build
+      - run: node scripts/verify-pwa-build.mjs live
+      - name: Build isolated sandbox desktop PWA
+        env:
+          VITE_ELEVATIONPILOT_SANDBOX: 'true'
+          VITE_SUPABASE_URL: 'https://publruuuyvpggogrrgwp.supabase.co'
+          VITE_SUPABASE_ANON_KEY: 'sb_publishable_ci_placeholder'
+        run: npm run build
+      - run: node scripts/verify-pwa-build.mjs sandbox

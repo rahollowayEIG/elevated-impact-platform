@@ -21,7 +21,11 @@
     "test:design-product-browser": "node tests/design-product-catalog-browser.cjs",
     "test:event-budget": "node --test tests/event-budget.test.mjs",
     "test:event-budget-browser": "node tests/event-budget-browser.cjs",
-    "test:social-schedule-browser": "node tests/social-schedule-browser.cjs"
+    "test:social-schedule-browser": "node tests/social-schedule-browser.cjs",
+    "predev": "node scripts/generate-pwa-icons.mjs",
+    "prebuild": "node scripts/generate-pwa-icons.mjs",
+    "prepreview": "node scripts/generate-pwa-icons.mjs",
+    "test:pwa": "node --test tests/pwa-installability.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

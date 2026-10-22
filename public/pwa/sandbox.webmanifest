@@ -1,0 +1,31 @@
+{
+  "id": "/?app=elevationpilot-sandbox",
+  "name": "ElevationPilot Sandbox",
+  "short_name": "EP Sandbox",
+  "description": "ElevationPilot practice and training environment. Fictional events only.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1D245D",
+  "lang": "en-US",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa/sandbox-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa/sandbox-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

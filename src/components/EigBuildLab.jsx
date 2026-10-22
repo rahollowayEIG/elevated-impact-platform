@@ -1,3 +1,7 @@
+import BuildLabManager from "./BuildLabManager.jsx";
+import BuildLabScanPlans from "./BuildLabScanPlans.jsx";
+import BuildLabScanHistory from "./BuildLabScanHistory.jsx";
+import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,11 +21,20 @@ import ResearchTargetPlanner from "./ResearchTargetPlanner.jsx";
 
 const LAB_TOOLS = [
   ["master", "Master Scanner"], ["radar", "Upgrade Radar"],
-  ["ai", "AI Review"], ["inspector", "IA Inspector"],
+  ["ai", "AI Review"], ["history", "Scan History"], ["inspector", "IA Inspector"],
   ["research", "Research"], ["impact", "Impact Review"],
   ["discoveries", "Discoveries"], ["invoices", "Invoices"],
-  ["architect", "Project Architect"],
+  ["manager", "Manager"], ["architect", "Project Architect"], ["plans", "Scan Plans"],
 ];
+
+const LAB_GROUPS = [
+  ["scanners", "Scanners", ["master", "radar", "inspector", "impact"]],
+  ["intelligence", "AI & Research", ["ai", "research"]],
+  ["planning", "Planning", ["manager", "plans", "architect"]],
+  ["prototypes", "Prototypes", ["discoveries", "invoices"]],
+  ["history", "History", ["history"]],
+];
+const groupForTool = tool => LAB_GROUPS.find(([, , tools]) => tools.includes(tool))?.[0] || "scanners";
 
 const EIG_PILOT = {
   name: "InceptionApex UI & Workflow Improvement",
@@ -58,6 +71,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       return LAB_TOOLS.some(([id]) => id === saved) ? saved : "master";
     } catch { return "master"; }
   });
+  const [activeGroup, setActiveGroup] = useState(() => groupForTool(activeTool));
   useEffect(() => {
     try { window.sessionStorage.setItem(viewKey, activeTool); } catch { /* Navigation works without storage. */ }
   }, [viewKey, activeTool]);
@@ -82,6 +96,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
   const [scanQuery, setScanQuery] = useState("");
   const [scanSort, setScanSort] = useState("priority");
   const [saveStatus, setSaveStatus] = useState("pending");
+  const scanHistory=useBuildLabScanHistory(ownerUserId,"inspector",scanReport?{report:scanReport,reviews:scanReviews}:null,"inception-apex",scanReport?.sourceVersion||scanReport?.sourceFingerprint);
   const uploadRef = useRef(null);
   const needsBackup = saveStatus === "error";
 
@@ -197,7 +212,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     try {
       const report = await requestInceptionSourceScan(supabaseClient);
       const changed = scanReport?.sourceFingerprint !== report.sourceFingerprint;
-      setScanReport(report);
+      scanHistory.begin();setScanReport(report);
       if (changed) {
         setScanReviews({}); setScanEditing(""); setScanEditValue("");
       }
@@ -271,8 +286,13 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
       </div>
     </header>
 
-    <nav className="bl-tool-nav" aria-label="Build Lab tools">
+    <nav className="bl-tool-nav" aria-label="Build Lab groups">
+      {LAB_GROUPS.map(([id,label,tools])=><button key={id} type="button" aria-pressed={activeGroup===id}
+        onClick={()=>{setActiveGroup(id);if(!tools.includes(activeTool))setActiveTool(tools[0]);}}>{label}</button>)}
+    </nav>
+    <nav className="bl-tool-nav bl-tool-subnav" aria-label="Build Lab tools">
       {LAB_TOOLS.map(([id, label]) => <button key={id} id={"bl-tool-" + id} type="button"
+        hidden={groupForTool(id)!==activeGroup}
         aria-pressed={activeTool === id} aria-controls={"bl-panel-" + id}
         onClick={() => setActiveTool(id)}>{label}</button>)}
     </nav>
@@ -294,6 +314,12 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
 
+    <div className="bl-tool-panel" id="bl-panel-history" role="region" aria-labelledby="bl-tool-history" hidden={activeTool !== "history"}><BuildLabScanHistory ownerUserId={ownerUserId} /></div>
+
+    <div className="bl-tool-panel" id="bl-panel-plans" role="region" aria-labelledby="bl-tool-plans" hidden={activeTool !== "plans"}><BuildLabScanPlans ownerUserId={ownerUserId} /></div>
+
+    <div className="bl-tool-panel" id="bl-panel-manager" role="region" aria-labelledby="bl-tool-manager" hidden={activeTool !== "manager"}><BuildLabManager ownerUserId={ownerUserId} /></div>
+
     {/* Keep panels mounted so switching tools preserves forms, results and in-flight requests. */}
     <div className="bl-tool-panel" id="bl-panel-master" role="region" aria-labelledby="bl-tool-master" hidden={activeTool !== "master"}><BuildLabMasterScanner ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
     <div className="bl-tool-panel" id="bl-panel-radar" role="region" aria-labelledby="bl-tool-radar" hidden={activeTool !== "radar"}><BuildLabImprovementRadar ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
@@ -314,6 +340,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         </button>
       </div>
       <p className="bl-quiet">The scanner examines code from this deployed preview. It does not visit your live app, scan customer designs, or run an AI model.</p>
+      {scanHistory.error && <p role="alert" className="platform-error">{scanHistory.error}</p>}
       {scanError && <p className="platform-error" role="alert">{scanError}</p>}
       {scanNotice && <p className="bl-notice" role="status">{scanNotice}</p>}
       {scanReport && <>
@@ -392,7 +419,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     </section>
 
     </div>
-    <div className="bl-tool-panel" id="bl-panel-ai" role="region" aria-labelledby="bl-tool-ai" hidden={activeTool !== "ai"}><BuildLabAiConnection supabaseClient={supabaseClient} /></div>
+    <div className="bl-tool-panel" id="bl-panel-ai" role="region" aria-labelledby="bl-tool-ai" hidden={activeTool !== "ai"}><BuildLabAiConnection ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
     <div className="bl-tool-panel" id="bl-panel-research" role="region" aria-labelledby="bl-tool-research" hidden={activeTool !== "research"}><ResearchTargetPlanner /></div>
     <div className="bl-tool-panel" id="bl-panel-impact" role="region" aria-labelledby="bl-tool-impact" hidden={activeTool !== "impact"}><BuildImpactReview ownerUserId={ownerUserId} /></div>
 

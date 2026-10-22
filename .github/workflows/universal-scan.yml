@@ -19,6 +19,15 @@ on:
       - "tests/build-change-impact.test.mjs"
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabManagerBlueprint.mjs"
+      - "src/components/BuildLabManager.jsx"
+      - "tests/build-lab-manager-blueprint.test.mjs"
+      - "tests/build-lab-manager-render.cjs"
+      - "src/lib/buildLabScanHistory.mjs"
+      - "src/components/useBuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanPlans.jsx"
+      - "tests/build-lab-scan-history.test.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
@@ -128,6 +137,15 @@ on:
     paths:
       - "src/lib/universalScan.mjs"
       - "src/lib/eigBuildArchitect.mjs"
+      - "src/lib/buildLabManagerBlueprint.mjs"
+      - "src/components/BuildLabManager.jsx"
+      - "tests/build-lab-manager-blueprint.test.mjs"
+      - "tests/build-lab-manager-render.cjs"
+      - "src/lib/buildLabScanHistory.mjs"
+      - "src/components/useBuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "src/components/BuildLabScanPlans.jsx"
+      - "tests/build-lab-scan-history.test.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
       - "tests/eig-build-lab-draft.test.mjs"
       - "src/lib/eigBuildLabGate.mjs"
@@ -240,7 +258,7 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: node --test tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
+      - run: node --test tests/build-lab-manager-blueprint.test.mjs tests/build-lab-scan-history.test.mjs tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
       - run: node --test tests/ep-discovery-engine.test.mjs
       - run: node --test tests/ep-storefront-sources.test.mjs
       - run: node --test tests/ep-unified-store.test.mjs
@@ -248,6 +266,7 @@ jobs:
       - run: node --test tests/ep-product-capture.test.mjs
       - run: node --test tests/ep-commerce-contract-readiness.test.mjs
       - run: node --test tests/eig-build-lab-ai-review.test.cjs
+      - run: node tests/build-lab-manager-render.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

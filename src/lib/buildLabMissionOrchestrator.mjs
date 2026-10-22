@@ -18,3 +18,5 @@ export function prepareBuildLabMission({ brief, repository, baseRef, headRef, fi
     ],
   };
 }
+
+export {MANAGER_AGENTS,managerStorageKey,stackScanBlueprint,reviewManagerProposal,assignManagerProposal,approveManagerBlueprint,validateManagerBlueprint,restoreManagerBlueprint} from './buildLabManagerBlueprint.mjs';

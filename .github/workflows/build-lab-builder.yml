@@ -1,0 +1,92 @@
+name: Build Lab bounded IA builder
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Signed candidate JSON downloaded after owner-verified generation (expires in 30 minutes)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: build-lab-builder-owner
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'rahollowayEIG/elevated-impact-platform' && github.actor == 'rahollowayEIG' && github.ref == 'refs/heads/feature/build-lab-orchestrator-20261020' && vars.EIG_BUILD_LAB_BUILDER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      source_version: ${{ steps.validate.outputs.source_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: validate
+        run: node scripts/build-lab-builder-worker.cjs validate
+        env:
+          BUILDER_CANDIDATE: ${{ inputs.candidate }}
+          BUILDER_SIGNING_KEY: ${{ secrets.EIG_BUILD_LAB_BUILDER_SIGNING_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builder-validated
+          path: builder-validated/candidate.json
+          retention-days: 1
+  verify:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.source_version }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: builder-validated
+          path: builder-validated
+      - id: apply
+        run: node scripts/build-lab-builder-worker.cjs apply
+      - run: node --test tests/inception-apex.test.mjs tests/creative-link.test.mjs tests/design-product-catalog.test.mjs
+      - run: npx vite build
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - id: chromium
+        if: ${{ !cancelled() && steps.apply.outcome == 'success' }}
+        run: node tests/inception-apex-browser.cjs
+        env:
+          IA_BROWSER: chromium
+      - id: firefox
+        if: ${{ !cancelled() && steps.apply.outcome == 'success' }}
+        run: node tests/inception-apex-browser.cjs
+        env:
+          IA_BROWSER: firefox
+      - id: webkit
+        if: ${{ !cancelled() && steps.apply.outcome == 'success' }}
+        run: node tests/inception-apex-browser.cjs
+        env:
+          IA_BROWSER: webkit
+      - name: Record actual verification outcome
+        if: always()
+        run: node scripts/build-lab-builder-worker.cjs report
+        env:
+          BUILDER_TEST_STATUS: ${{ job.status }}
+          BUILDER_CHROMIUM_RESULT: ${{ steps.chromium.outcome }}
+          BUILDER_FIREFOX_RESULT: ${{ steps.firefox.outcome }}
+          BUILDER_WEBKIT_RESULT: ${{ steps.webkit.outcome }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-lab-builder-review
+          path: |
+            test-results/build-lab-builder/
+            test-results/inception-apex/
+          retention-days: 7
+          if-no-files-found: error

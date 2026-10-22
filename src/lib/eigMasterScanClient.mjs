@@ -146,9 +146,24 @@ export function validateMasterScanReport(report) {
   for(const item of report.modules) {
     if(!ID.test(item.id||"")||typeof item.title!=="string"||item.title.length>110||
       !STATES.has(item.status)||typeof item.nextCheck!=="string"||item.nextCheck.length>650||
-      !Array.isArray(item.evidence)||item.evidence.length>6||
+      !Array.isArray(item.evidence)||item.evidence.length>12||
       !Array.isArray(item.tables)||item.tables.length>8)
       throw Error("Invalid Master Scanner module.");
+    for(const [field,limit] of [['verify',1000],['observation',1000],['testScope',400]])if(item[field]!==undefined&&!validString(item[field],limit))throw Error('Invalid Master Scanner verification context.');
+    if(item.coverage!==undefined){
+      if(!item.coverage||Object.keys(item.coverage).sort().join(',')!=='source,test,ui')throw Error('Invalid Master Scanner coverage categories.');
+      const states={source:['source_marker_found','partial_source_markers'],ui:['ui_marker_found','partial_ui_markers'],test:['test_code_found','partial_test_code']};
+      for(const [kind,[complete,partial]] of Object.entries(states)){
+        const c=item.coverage?.[kind];
+        if(!c||!Number.isInteger(c.expected)||c.expected<0||c.expected>6||!Number.isInteger(c.observed)||c.observed<0||c.observed>c.expected||
+          c.runtimeVerified!==false||!Array.isArray(c.checks)||c.checks.length!==c.expected||
+          c.checks.some(x=>!files.has(x?.path)||!validString(x.marker,200)||typeof x.observed!=='boolean')||
+          c.checks.filter(x=>x.observed).length!==c.observed||item.evidence.filter(e=>e.kind===kind).length!==c.observed)throw Error('Invalid Master Scanner coverage counts.');
+        const expectedStatus=!c.expected?'not_sampled':!c.observed?'not_observed_in_sample':c.observed===c.expected?complete:partial;
+        if(item[kind==='test'?'testStatus':kind+'Status']!==expectedStatus)throw Error('Invalid Master Scanner coverage status.');
+      }
+      if(item.status==='evidence_present'&&Object.values(item.coverage).some(c=>!c.expected||c.observed!==c.expected))throw Error('Invalid complete sample claim.');
+    }
     for(const e of item.evidence) {
       if(!SOURCES.has(e?.kind)||!files.has(e?.path)||!Number.isInteger(e?.line)||
         e.line<1||e.line>25000||typeof e.excerpt!=="string"||e.excerpt.length>160)

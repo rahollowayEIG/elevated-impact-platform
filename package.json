@@ -33,6 +33,7 @@
     "test:ai-review": "node --test tests/eig-build-lab-ai-review.test.cjs"
   },
   "dependencies": {
+    "@babel/parser": "7.29.9",
     "@supabase/supabase-js": "latest",
     "@vercel/og": "0.8.6",
     "@vitejs/plugin-react": "latest",

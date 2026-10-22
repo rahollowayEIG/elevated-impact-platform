@@ -85,3 +85,18 @@ test("module picker remains aligned with the server allowlist",()=>{
  assert.deepEqual(ids,MODULES.map(x=>x.id));
  assert.deepEqual(MASTER_SCAN_TARGETS.map(x=>x.label),MODULES.map(x=>x.title));
 });
+
+test('coverage counts, partial status and runtime limits are validated while legacy reports still restore',()=>{
+ const base=fixture(),row=base.modules[0],empty=()=>({expected:0,observed:0,checks:[],runtimeVerified:false});
+ row.sourceStatus='not_sampled';row.uiStatus='partial_ui_markers';row.testStatus='not_sampled';
+ row.coverage={source:empty(),test:empty(),ui:{expected:2,observed:1,runtimeVerified:false,checks:[{path:'src/PlatformApp.jsx',marker:'<EieEventSetupSteps',observed:true},{path:'src/PlatformApp.jsx',marker:'second linkage',observed:false}]}};
+ row.verify='Verify save/reopen with isolated events and attach exact-commit results.';
+ row.testScope='No tests configured in this synthetic fixture.';
+ assert.equal(validateMasterScanReport(base).modules[0].coverage.ui.observed,1);
+ assert.ok(validateMasterScanReport(fixture()));
+ for(const change of [
+  m=>{m.coverage.ui.observed=2;},m=>{m.coverage.ui.runtimeVerified=true;},m=>{m.uiStatus='ui_marker_found';},
+  m=>{m.status='evidence_present';},m=>{m.coverage.ui.checks[0].path='../../.env';},m=>{m.coverage.extra={expected:1};},
+  m=>{m.verify='x'.repeat(1001);},
+ ]){const broken=structuredClone(base);change(broken.modules[0]);assert.throws(()=>validateMasterScanReport(broken),/Invalid/);}
+});

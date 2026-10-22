@@ -30,11 +30,15 @@
       "identifies": [
         "Source and UI markers in the protected preview sample",
         "Test definitions and dated schema/deployment differences",
-        "Checks needed before claiming a module works or is missing"
+        "Checks needed before claiming a module works or is missing",
+        "Matched/expected source, UI and declared-test markers, with the unobserved checks listed",
+        "Module-specific verification criteria and the limits of the sampled tests"
       ],
       "limits": [
         "Does not run workflows, browser tests or live database checks.",
-        "Preview source and dated Live/Sandbox snapshots may represent different versions. Absence from the sample is not proof of absence."
+        "Preview source and dated Live/Sandbox snapshots may represent different versions. Absence from the sample is not proof of absence.",
+        "Counts refer to configured sample markers, not a feature-completion percentage. Not sampled means no checks are configured here.",
+        "JavaScript/JSX syntax is parsed; the rules still do not establish control flow, complete repository coverage or runtime outcomes."
       ],
       "handoff": "Verify the current branch and deployment versions; reproduce the specific module workflow with isolated data before proposing implementation."
     },

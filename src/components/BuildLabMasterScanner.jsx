@@ -9,6 +9,7 @@ import BuildLabEnvironmentPanel from "./BuildLabEnvironmentPanel.jsx";
 import "./build-lab-master-scanner.css";
 
 const LEVEL={high:0,medium:1,low:2};
+const MAX_DRAFT_SIZE=180000;
 const UID=/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i;
 const SORTS=new Set(["title","priority","status","sourceStatus","uiStatus","testStatus","dbStatus"]);
 const REVIEWS=new Set(["accept","revise","reject"]);
@@ -17,7 +18,7 @@ function restoreDraft(uid) {
  try {
   const key=storageKey(uid);if(!key)return null;
   const data=window.localStorage.getItem(key);
-  if(!data||data.length>120000)return null;
+  if(!data||data.length>MAX_DRAFT_SIZE)return null;
   const saved=JSON.parse(data);
   const report=validateMasterScanReport(saved?.report);
   const reviews=Object.fromEntries(Object.entries(saved?.reviews||{}).filter(([id,value])=>
@@ -34,19 +35,20 @@ function downloadJson(json,filename) {
 }
 function stateLabel(state) {
  return {
-  evidence_present:"Evidence found",
+  evidence_present:"Sample markers found",
   review_needed:"Needs verification",
   not_observed_in_sample:"Not observed in sample",
-  source_marker_found:"Found",ui_marker_found:"Linked",
-  test_code_found:"Test code found",tables_in_dated_snapshot:"In snapshot",
+  source_marker_found:"Markers found",ui_marker_found:"Markers found",
+  partial_source_markers:"Partial source markers",partial_ui_markers:"Partial UI markers",partial_test_code:"Partial test markers",
+  test_code_found:"Test markers found",tables_in_dated_snapshot:"In snapshot",
   snapshot_gap:"Snapshot gap",not_applicable:"N/A",not_sampled:"Not sampled",
  }[state]||"Not observed";
 }
-function StatePill({value}) {
+function StatePill({value,coverage}) {
  const cls=value==="evidence_present"||value==="source_marker_found"||
   value==="ui_marker_found"||value==="test_code_found"||value==="tables_in_dated_snapshot"
    ?"present":value==="not_observed_in_sample"||value==="snapshot_gap"?"unseen":"review";
- return <span className={"blm-state blm-"+cls}>{stateLabel(value)}</span>;
+ return <span className={"blm-state blm-"+cls}>{stateLabel(value)}{coverage?.expected>0?' · '+coverage.observed+'/'+coverage.expected:''}</span>;
 }
 const COLS=[
  {key:"title",name:"Module"},
@@ -76,7 +78,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
   const key=storageKey(ownerUserId);if(!key||!report)return;
   try {
    const json=JSON.stringify({report,reviews});
-   if(json.length>120000)throw Error("Report too large for browser storage");
+   if(json.length>MAX_DRAFT_SIZE)throw Error("Report too large for browser storage");
    window.localStorage.setItem(key,json);
    setSaveError(false);
   } catch {setSaveError(true);}
@@ -87,9 +89,9 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
   if(!report)return[];
   const needle=query.trim().toLowerCase();
   const list=report.modules.filter(m=>!needle||
-   [m.title,m.priority,m.status,m.nextCheck,
-    ...m.evidence.map(x=>x.path),...m.tables.map(x=>x.table)]
-    .some(v=>String(v).toLowerCase().includes(needle)));
+   [m.title,m.priority,m.status,m.nextCheck,m.verify,m.testScope,m.observation,stateLabel(m.sourceStatus),stateLabel(m.uiStatus),stateLabel(m.testStatus),
+    ...m.evidence.map(x=>x.path),...m.tables.map(x=>x.table),...Object.values(m.coverage||{}).flatMap(c=>c.checks.flatMap(x=>[x.path,x.marker]))]
+    .some(v=>v!=null&&String(v).toLowerCase().includes(needle)));
   const sign=sort.direction==="asc"?1:-1;
   return [...list].sort((a,b)=>{
    const compare=sort.key==="priority"
@@ -167,7 +169,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
    <p className="blm-report-scope">Report scope: <strong>{report?.scope==="module"?report.modules[0]?.title:"Entire ElevationPilot platform"}</strong>{report?.scope==="module"?" (one module from the fixed source catalog)":""}.</p>
    <div className="blm-stats" aria-label="Scanner summary">
     <div><strong>{untouched.modulesReviewed}</strong><span>Modules compared</span></div>
-    <div><strong>{untouched.evidencePresent}</strong><span>Evidence observed</span></div>
+    <div><strong>{untouched.evidencePresent}</strong><span>Configured markers found</span></div>
     <div><strong>{untouched.reviewNeeded}</strong><span>Needs verification</span></div>
     <div><strong>{untouched.notObservedInSample}</strong><span>Not observed in sample</span></div>
    </div>
@@ -182,6 +184,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
     )}</ul>
    </section>}
    <BuildLabScanDestination onViewBuckets={onViewBuckets} />
+   <p className="blm-disclaimer">Matched/expected counts describe this scanner’s configured markers, not the percentage of an app that works. Not sampled means no checks are configured for that area; tests may exist elsewhere. All runtime outcomes still require independent evidence.</p>
    <BuildLabEnvironmentPanel audit={report.environmentAudit} />
    <div className="blm-toolbar">
     <label>Search modules
@@ -202,7 +205,14 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
       <summary>{row.title}</summary>
       <div className="blm-module-details">
        <p><strong>Next verification:</strong> {row.nextCheck}</p>
-       <p><strong>Database fields checked:</strong> {row.tables.length?row.tables.map(x=>x.table+" ("+(x.production&&x.sandbox?"both snapshots":"snapshot gap")+")").join(", "):"Not applicable"}</p>
+       {row.verify&&<p><strong>Complete when:</strong> {row.verify}</p>}
+       {row.testScope&&<p><strong>Sampled test scope:</strong> {row.testScope}</p>}
+       {row.observation&&<p><strong>Observed:</strong> {row.observation}</p>}
+       {row.coverage&&<details className="blm-coverage"><summary>Configured evidence checks</summary>
+        <p>Unobserved markers can use different syntax or live outside this sample. They do not establish a defect.</p>
+        {Object.entries({source:'Source',ui:'UI links',test:'Test declarations'}).map(([kind,label])=><div key={kind}><p><strong>{label}:</strong> {row.coverage[kind].observed}/{row.coverage[kind].expected} markers observed{!row.coverage[kind].expected?' · Not sampled':''}</p><ul>{row.coverage[kind].checks.map((c,i)=><li key={i}>{c.observed?'Observed':'Not observed'} · <code>{c.path}</code> · <code>{c.marker}</code></li>)}</ul></div>)}
+       </details>}
+       <p><strong>Database tables in snapshots:</strong> {row.tables.length?row.tables.map(x=>x.table+" ("+(x.production&&x.sandbox?"both snapshots":"snapshot gap")+")").join(", "):"Not applicable"}</p>
        <p><strong>Build Lab preview source and test references only:</strong></p>
        {row.evidence.length?<ul>{row.evidence.map((ev,i)=><li key={ev.path+ev.kind+i}>
         <code>{ev.path}:{ev.line}</code> ({ev.kind}) <span>{ev.excerpt}</span>
@@ -223,9 +233,9 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
      </details></td>
      <td>{row.priority}</td>
      <td><StatePill value={row.status}/></td>
-     <td><StatePill value={row.sourceStatus}/></td>
-     <td><StatePill value={row.uiStatus}/></td>
-     <td><StatePill value={row.testStatus}/></td>
+     <td><StatePill value={row.sourceStatus} coverage={row.coverage?.source}/></td>
+     <td><StatePill value={row.uiStatus} coverage={row.coverage?.ui}/></td>
+     <td><StatePill value={row.testStatus} coverage={row.coverage?.test}/></td>
      <td><StatePill value={row.dbStatus}/></td>
     </tr>)}
     {!rows.length&&<tr><td colSpan={7}>No modules match this search.</td></tr>}</tbody>

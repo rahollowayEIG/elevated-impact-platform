@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
+const {maskSource:maskTestCommentsAndStrings,SOURCE_RECOGNIZER_VERSION}=require("./build-lab-source-patterns.cjs");
 
 const FILE_PATHS = Object.freeze([
   "src/components/InceptionApex.jsx",
@@ -82,20 +83,6 @@ const RULES = Object.freeze([
 ]);
 
 const TABLET_WIDTHS=Object.freeze([949,950,951]);
-function maskTestCommentsAndStrings(source,{keepStrings=false,lineComments=true}={}){
- let state="code",quote="",out="";
- for(let i=0;i<source.length;i++){
-  const c=source[i],n=source[i+1];
-  if(state==="line"){if(c==="\n"){state="code";out+="\n";}else out+=" ";continue;}
-  if(state==="block"){if(c==="*"&&n==="/"){out+="  ";i++;state="code";}else out+=c==="\n"?"\n":" ";continue;}
-  if(state==="string"){if(c==="\\"){out+=keepStrings?c+(n||''):"  ";i++;}else{out+=keepStrings||c==="\n"?c:" ";if(c===quote)state="code";}continue;}
-  if(lineComments&&c==="/"&&n==="/"){state="line";out+="  ";i++;}
-  else if(c==="/"&&n==="*"){state="block";out+="  ";i++;}
-  else if(c==='"'||c==="'"||c==='`'){state="string";quote=c;out+=keepStrings?c:" ";}
-  else out+=c;
- }
- return out;
-}
 function tabletViewportSignals(source){
  // Recognize explicit, standalone Playwright viewport calls, not numbers in prose.
  // This bounded recognizer is not a JavaScript parser or proof tests executed.
@@ -200,7 +187,7 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     sourceFingerprint.update(file + "\0");
     sourceFingerprint.update(sourceMap[file] + "\0");
   }
-  sourceFingerprint.update(JSON.stringify(RULES)+"\0inception-bounded-rules-v3\0");
+  sourceFingerprint.update(JSON.stringify(RULES)+"\0inception-bounded-rules-v4\0"+SOURCE_RECOGNIZER_VERSION+'\0');
   const tabletWidths=tabletViewportSignals(sourceMap["tests/inception-apex-browser.cjs"]);
   const tabletAssertions=tabletAssertionSignals(sourceMap['tests/inception-apex-browser.cjs']);
   const tabletMarkersComplete=TABLET_WIDTHS.every(width=>tabletWidths.includes(width))&&tabletAssertions.overflow&&tabletAssertions.controls;
@@ -231,7 +218,7 @@ function scanInceptionSource(sourceMap, sourceVersion = "local-unversioned", ins
     schemaVersion: 1, kind: "eig_build_lab_code_scan",
     target: "inception_apex", targetLabel: "InceptionApex",
     sourceVersion, sourceFingerprint: sourceFingerprint.digest("hex"), inspectedAt,
-    scannerVersion: "inception-directed-pilot-v3",
+    scannerVersion: "inception-directed-pilot-v4",
     ruleChecks,
     coverageChecks:[{id:"ia-tablet-breakpoints",requiredWidths:[...TABLET_WIDTHS],observedWidths:tabletWidths,assertionSignals:tabletAssertions,status:tabletMarkersComplete?"markers_found":"not_observed_in_sample",runtimeVerified:false}],
     files,

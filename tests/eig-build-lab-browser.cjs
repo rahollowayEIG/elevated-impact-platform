@@ -459,12 +459,17 @@ const fs = require("node:fs/promises");
       scannerVersion: "source-plus-dated-schema-v1", sourceVersion: "a".repeat(40),
       inspectedAt: "2026-10-20T22:00:00.000Z",
       sourceFingerprint: "d".repeat(64),
-      files: [{ path: "src/PlatformApp.jsx", lines: 1000, kind: "source" }],
+      files: [{ path: "src/PlatformApp.jsx", lines: 1000, kind: "source" },{path:'src/EieEventSetupSteps.jsx',lines:1000,kind:'source'},{path:'tests/event-builder-browser.cjs',lines:200,kind:'test'}],
       modules: [
         { id: "event-builder", title: "Event Builder", priority: "high",
-          status: "review_needed", sourceStatus: "source_marker_found",
+          status: "review_needed", sourceStatus: "partial_source_markers",
           uiStatus: "ui_marker_found", testStatus: "not_observed_in_sample", dbStatus: "tables_in_dated_snapshot",
-          evidence: [{ kind: "ui", path: "src/PlatformApp.jsx", line: 8, excerpt: "<EieEventSetupSteps" }],
+          evidence: [{ kind: "source", path: "src/EieEventSetupSteps.jsx", line: 7, excerpt: "function EieEventSetupSteps" },{ kind: "ui", path: "src/PlatformApp.jsx", line: 8, excerpt: "<EieEventSetupSteps" }],
+          coverage:{source:{expected:2,observed:1,runtimeVerified:false,checks:[{path:'src/EieEventSetupSteps.jsx',marker:'function EieEventSetupSteps',observed:true},{path:'src/EieEventSetupSteps.jsx',marker:'saveEventDetails',observed:false}]},ui:{expected:1,observed:1,runtimeVerified:false,checks:[{path:'src/PlatformApp.jsx',marker:'<EieEventSetupSteps',observed:true}]},test:{expected:3,observed:0,runtimeVerified:false,checks:['Save Event Details','Save Registration','Players per team'].map(marker=>({path:'tests/event-builder-browser.cjs',marker,observed:false}))}},
+          verify:'Save and reopen isolated Event Details and Registration settings, then attach exact-commit regression results.',
+          testScope:'Event Details and Registration locator markers only; execution remains unverified.',
+          observation:'Source 1/2, UI 1/1 and test 0/3 configured markers observed.',
+
           tables: [{ table: "events", production: true, sandbox: true }],
           nextCheck: "Run an authorized Sandbox event-creation and save/reopen browser test." },
         { id: "invoices", title: "EIG Invoicing", priority: "high",
@@ -516,7 +521,13 @@ const fs = require("node:fs/promises");
     assert.equal(await page.locator(".blm-table tbody tr").count(), 1);
     await page.getByLabel("Search Master Scanner modules").fill("");
     const masterRow = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
-    await masterRow.locator("summary").click();
+    await masterRow.locator('td:first-child > details > summary').click();
+    assert.match(await masterRow.innerText(),/Partial source markers · 1\/2/);
+    assert.match(await masterRow.innerText(),/Sampled test scope:/);
+    await masterRow.getByText('Configured evidence checks',{exact:true}).click();assert.match(await masterRow.innerText(),/saveEventDetails/);assert.match(await masterRow.innerText(),/0\/3 markers observed/);
+    await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/eig-build-lab/master-evidence-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/eig-build-lab/master-evidence-mobile.png',fullPage:true});await page.setViewportSize({width:1440,height:1000});
+    await page.getByLabel('Search Master Scanner modules').fill('saveEventDetails');assert.equal(await page.locator('.blm-table tbody tr').count(),1);await page.getByLabel('Search Master Scanner modules').fill('');
     await legacy(false);assert.equal(await masterRow.getByRole("button",{name:"Accept for follow-up",exact:true}).count(),0);await legacy(true);
     await masterRow.getByRole("button", { name: "Accept for follow-up" }).click();
     await page.waitForFunction(() => {
@@ -525,7 +536,7 @@ const fs = require("node:fs/promises");
     });
     await page.reload();
     const masterRestored = page.locator(".blm-table tbody tr").filter({ hasText: "Event Builder" });
-    await masterRestored.locator("summary").click();
+    await masterRestored.locator("td:first-child > details > summary").click();
     assert.match(await masterRestored.innerText(), /Review: accept/);
     assert.equal(await page.locator(".blm-root").getByRole("button", { name: "Export JSON" }).count(), 1);
     // The original IA-only Source Inspector remains separate. Master Scanner

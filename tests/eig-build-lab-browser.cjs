@@ -566,12 +566,14 @@ const fs = require("node:fs/promises");
         { path: "src/components/InceptionApex.jsx", lines: 1361 },
         { path: "src/components/inception-apex.css", lines: 623 },
       ],
+      ruleChecks:[{id:'ia-native-confirm',title:'Review confirmation callers',status:'source_pattern_found',findingType:'verification_needed',runtimeVerified:false,nextCheck:'Verify cancel and continue with synthetic designs.',evidence:[{path:'src/components/InceptionApex.jsx',line:232,excerpt:'window.confirm('}]}],
       findings: [
         {
           id: "ia-native-confirm", category: "Workflow", priority: "medium",
           title: "Review native confirmation dialogs",
           observation: "First-party source calls window.confirm during navigation.",
           recommendation: "Consider a reusable confirmation component.",
+          verify: "Verify cancel and continue with synthetic designs.",
           provenance: "observed_in_first_party_source", review: "pending",
           evidence: [{ path: "src/components/InceptionApex.jsx", line: 232, excerpt: "window.confirm(" }],
         },
@@ -606,11 +608,14 @@ const fs = require("node:fs/promises");
     await page.locator("#bl-panel-inspector").getByRole("heading",{name:"Review native confirmation dialogs",exact:true}).waitFor();
     await page.getByRole("button", { name: "Download source report JSON" }).waitFor();
     const firstScanFinding = page.locator("#bl-panel-inspector .bl-scan-finding").filter({ hasText: "Review native confirmation dialogs" });
+    const ruleChecks=page.locator('#bl-panel-inspector .bl-rule-checks');await ruleChecks.getByText('What the scanner checked (1)',{exact:true}).click();assert.match(await ruleChecks.innerText(),/Source pattern found/);assert.match(await ruleChecks.innerText(),/not test results/);
+    assert.match(await firstScanFinding.innerText(),/Verification required:/);
     await firstScanFinding.locator("summary").click();
     await firstScanFinding.getByText(/src\/components\/InceptionApex.jsx:232/).waitFor();
     await legacy(false);
     for(const name of ['Accept','Revise','Reject','Create blueprint for this finding'])assert.equal(await firstScanFinding.getByRole('button',{name,exact:true}).count(),0);
     await page.locator('#bl-panel-inspector').getByRole('button',{name:'View Work Buckets →',exact:true}).click();await page.locator('#bl-panel-buckets').getByRole('heading',{name:'Work Buckets',exact:true}).waitFor();
+    const bucketNative=page.locator('#bl-panel-buckets tbody tr').filter({hasText:'Review native confirmation dialogs'});await bucketNative.getByText('Requirement & evidence',{exact:true}).click();assert.match(await bucketNative.innerText(),/Complete when:.*Verify cancel and continue with synthetic designs/);
     await chooseTool('IA Inspector');await legacy(true);
     await firstScanFinding.getByRole("button", { name: "Accept" }).click();
     assert.equal(await firstScanFinding.locator(".state-accept").count(), 1);

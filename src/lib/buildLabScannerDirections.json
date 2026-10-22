@@ -13,11 +13,15 @@
       "mission": "Identify specific InceptionApex source patterns for workflow and usability review and recognize useful existing behavior to preserve.",
       "identifies": [
         "Source-backed usability review questions",
-        "Existing save/approve and keyboard patterns to preserve"
+        "Existing save/approve and keyboard patterns to preserve",
+        "All recognized native confirmation callers, correlated editor-navigation signals and explicit verification criteria",
+        "Declared tablet viewport and assertion markers, including simple literal-array loops",
+        "Partial and unobserved rule patterns without treating absence as a verified fix"
       ],
       "limits": [
         "Four approved files only; no screenshot, keyboard execution or live design assessment.",
-        "A source pattern is not proof of a runtime defect or accessibility conformance."
+        "A source pattern is not proof of a runtime defect or accessibility conformance.",
+        "Bounded pattern recognizers cannot establish control flow, inherited CSS, unsupported syntax or tests outside the four-file sample."
       ],
       "handoff": "Reproduce the experience with synthetic designs and record actual versus expected behavior before changing it."
     },

@@ -176,3 +176,20 @@ test('invalid bundled syntax fails inspection instead of inventing missing evide
  const source=readAllowlistedMasterSource();source['src/PlatformApp.jsx']='const invalid = <Broken';
  assert.throws(()=>scanMasterSource(source),/syntax could not be inspected/);
 });
+
+
+test("all-event registration-to-person audit remains an explicit open verification obligation",()=>{
+ const report=scanMasterSource(readAllowlistedMasterSource(),"a".repeat(40),"2026-10-26T15:00:00.000Z");
+ for(const id of ["registration","accounts"]){
+  const module=report.modules.find(x=>x.id===id);
+  assert.equal(module.status,"review_needed","code markers are not live people-linkage proof");
+  assert.match(module.nextCheck,/REG-01/);
+  assert.match(module.testScope,/NOT executed|NOT RUN|NOT executed/i);
+  assert.match(module.verify,/all EIE events|ALL EIE events/i);
+  assert.match(module.observation,/reconciliation NOT RUN/);
+  assert.equal(module.coverage.test.runtimeVerified,false);
+ }
+ assert.match(report.modules.find(x=>x.id==="registration").verify,/TBA/);
+ assert.match(report.modules.find(x=>x.id==="accounts").verify,/directory filters and pagination/);
+ assert.equal(report.safety.customerRowsRead,false);
+});

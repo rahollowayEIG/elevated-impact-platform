@@ -187,7 +187,7 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
      <div><strong>{peopleAudit.totals.accountWithoutPassenger}</strong><span>Account ID but no Passenger link</span></div>
      <div><strong>{peopleAudit.totals.linkedPassenger}</strong><span>Passenger linked</span></div>
     </div>
-    <p>Other integrity flags: missing referenced Passenger {peopleAudit.totals.brokenPassengerReference}, mismatched account/Passenger {peopleAudit.totals.accountPassengerMismatch}, missing profile {peopleAudit.totals.authWithoutProfile}, claimed without account {peopleAudit.totals.claimedWithoutAccount}.</p>
+    <p>Other integrity flags: missing referenced Passenger {peopleAudit.totals.brokenPassengerReference}, mismatched account/Passenger {peopleAudit.totals.accountPassengerMismatch}, claimed without account {peopleAudit.totals.claimedWithoutAccount}.</p>
     <p><strong>Requires review, not automatic repair.</strong> Unlinked records may represent legitimate unclaimed activity. TBA reservations and cancelled registrations are excluded from active-person counts.</p>
     <details><summary>Event-level counts and coverage limitations</summary>
      <ul>{peopleAudit.events.map(e=><li key={e.eventKey}>{e.eventKey}: {e.activeNamed} named active, {e.unlinked} without usable Passenger link</li>)}</ul>

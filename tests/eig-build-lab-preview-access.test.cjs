@@ -12,7 +12,7 @@ function sample(options = {}) {
     since: null, until: null, memberError: false,
     enabled: true, vercelEnv: "preview",
     branch: "feature/build-lab-orchestrator-20261020",
-    configuredBranch: "feature/build-lab-orchestrator-20261020",
+    configuredBranch: "feature/build-lab-orchestrator-20261020", productionEnabled: false,
     ownerConfig: OWNER, authCalls: 0, memberCalls: 0, failAuth: false,
     ...options,
   };
@@ -21,6 +21,7 @@ function sample(options = {}) {
     VERCEL_GIT_COMMIT_REF: state.branch,
     EIG_BUILD_LAB_PREVIEW_BRANCH: state.configuredBranch,
     EIG_BUILD_LAB_ACCESS_ENABLED: state.enabled ? "true" : "false",
+    EIG_BUILD_LAB_PRODUCTION_ENABLED: state.productionEnabled ? "true" : "false",
     EIG_BUILD_LAB_OWNER_USER_ID: state.ownerConfig,
   })[key];
   const handle = createBuildLabPreviewAccessHandler({
@@ -118,4 +119,25 @@ test("cross-origin, missing bearer token and unsupported verbs never enter", asy
 
 test("Vercel preview branch binding still works if runtime Git ref is hidden", async () => {
   assert.equal((await sample({ branch: undefined }).call()).status, 200);
+});
+
+
+test("production remains blocked without separate opt-in and main deployment", async () => {
+  for (const o of [
+    {vercelEnv:"production",branch:"main",productionEnabled:false},
+    {vercelEnv:"production",branch:"feature/build-lab-orchestrator-20261020",productionEnabled:true},
+    {vercelEnv:"preview",branch:"main",productionEnabled:true},
+    {vercelEnv:"production",branch:undefined,productionEnabled:true},
+    {vercelEnv:"production",branch:"main",productionEnabled:true,enabled:false},
+    {vercelEnv:"production",branch:"main",productionEnabled:true,ownerConfig:""},
+  ]) {
+    const f=sample(o); assert.equal((await f.call()).status,403,JSON.stringify(o));
+  }
+});
+
+test("explicit production opt-in still restricts access to exact current EIG owner", async () => {
+  const f=sample({vercelEnv:"production",branch:"main",productionEnabled:true});
+  assert.equal((await f.call()).status,200);
+  assert.equal((await sample({vercelEnv:"production",branch:"main",productionEnabled:true,owner:OTHER_ADMIN}).call()).status,403);
+  assert.equal((await sample({vercelEnv:"production",branch:"main",productionEnabled:true,role:"organization_staff"}).call()).status,403);
 });

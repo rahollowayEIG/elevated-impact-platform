@@ -128,7 +128,11 @@ function LoginScreen({ initialForgotMode = false }) {
       });
       if (sessionError) throw sessionError;
     } catch (signInError) {
-      setError(signInError.message || 'Unable to sign in.');
+      const message = signInError.message || 'Unable to sign in.';
+      setError(import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' &&
+        /invalid (email\/username|username|login).*password|invalid login credentials/i.test(message)
+          ? 'Sandbox could not sign you in. Use your Sandbox email and password, or select Forgot password to reset the Sandbox password.'
+          : message);
     } finally {
       setBusy(false);
     }

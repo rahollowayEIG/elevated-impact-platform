@@ -6,6 +6,7 @@ on:
       - 'scripts/build-lab/run-executed-checks.mjs'
       - '.github/workflows/build-lab-executed-evidence.yml'
       - 'tests/build-lab-executed-checks.test.mjs'
+      - 'scripts/build-lab/run-browser-checks.mjs'
 jobs:
   evidence:
     runs-on: ubuntu-latest
@@ -26,4 +27,26 @@ jobs:
         with:
           name: build-lab-executed-checks
           path: artifacts/build-lab-executed-checks.json
+          if-no-files-found: error
+  browser-evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run isolated Playwright UI checks
+        run: node scripts/build-lab/run-browser-checks.mjs
+      - name: Archive browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-lab-browser-evidence
+          path: artifacts/build-lab-browser-checks.json
           if-no-files-found: error

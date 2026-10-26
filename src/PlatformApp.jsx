@@ -223,7 +223,7 @@ function LoginScreen({ initialForgotMode = false }) {
       }
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: ELEVATIONPILOT_PUBLIC_URL + '/?recovery=1',
+        redirectTo: import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' ? 'https://elevationpilot-sandbox.vercel.app/?recovery=1' : ELEVATIONPILOT_PUBLIC_URL + '/?recovery=1',
       });
       if (resetError) throw resetError;
       setRecoverySent(true);

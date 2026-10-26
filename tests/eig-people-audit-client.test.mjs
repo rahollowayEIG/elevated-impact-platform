@@ -6,11 +6,11 @@ const sample={
  checkedAt:"2026-10-26T15:00:00Z",environment:"live",scope:"eie_golf_registrations",
  assessment:"review_required",sourceCoverage:"golf_registration_only",
  readOnly:true,rawPeopleReturned:false,automaticRepair:false,
- coverage:{registrationRows:1,passengerRows:0,profileRows:0,allAuthorizedRowsFetched:true,allPlatformApplicationsChecked:false},
+ coverage:{registrationRows:1,passengerRows:0,allAuthorizedRowsFetched:true,allPlatformApplicationsChecked:false},
  totals:{registrations:1,activeNamed:1,inactive:0,tba:0,nameless:0,
  unclaimedWithoutPassenger:1,accountWithoutPassenger:0,linkedPassenger:0,
  brokenPassengerReference:0,accountPassengerMismatch:0,claimedWithoutAccount:0,
- authWithoutProfile:0,mergedPassengerReference:0},
+ mergedPassengerReference:0},
  flaggedChecks:1,events:[{eventKey:"golf",registrations:1,activeNamed:1,unlinked:1,linked:0}],eventsTruncated:false,
  limitations:["Read only data","Unclaimed identity needs review"]
 };

@@ -5,6 +5,8 @@ import {
  simulateInvoicePayment,manualInvoiceEmailCopy,manualInvoiceTextCopy
 } from "../lib/epInvoiceDraft.mjs";
 import "./ep-invoice-pilot.css";
+import EpInvoicePersistence from "./EpInvoicePersistence";
+import {invoiceSandboxEnabled} from "../lib/epInvoicePersistence.mjs";
 
 const currentDate=()=>new Date().toISOString().slice(0,10);
 const dueDate=()=>{const d=new Date();d.setUTCDate(d.getUTCDate()+30);return d.toISOString().slice(0,10);};
@@ -32,6 +34,7 @@ export default function EpInvoicePilot(){
  const [notice,setNotice]=useState("");
  const [error,setError]=useState("");
  const [copied,setCopied]=useState("");
+ const persistenceEnabled=invoiceSandboxEnabled(import.meta.env);
  const canAdd=rows.length<30;
  const subtotal=useMemo(()=>{
   try{return rows.reduce((n,r)=>n+parseInvoiceCents(r.unitPrice)*Number(r.quantity),0);}
@@ -93,7 +96,7 @@ export default function EpInvoicePilot(){
     <p>Try drafting, reviewing and preparing invoices for email, text or print. All invoice numbers, official sending and payments remain disabled until the financial backend is approved.</p></div>
    <span className="epd-counter">DEMO · NOT ISSUED</span>
   </header>
-  <p className="epi-warning"><strong>Important:</strong> Only use fictional customers for now. This demo does not persist data, verify the legal payee or tax rate, allocate an official invoice number, issue a real bill, send email/text or record real payments.</p>
+  <p className="epi-warning"><strong>Important:</strong> Only use fictional customers for now. The preview stays in browser memory. {persistenceEnabled&&"The separate Sandbox save below can retain fictional snapshots. "}This demo does not verify the legal payee or tax rate, allocate an official invoice number, issue a real bill, send email/text or record real payments.</p>
   <form className="epi-form" onSubmit={generate}>
    <div className="epi-fields">
     <label>Invoice issuer / Hangar
@@ -213,7 +216,8 @@ export default function EpInvoicePilot(){
      <p className="epi-warning">No real invoice number, hosted payment link, email delivery, SMS provider or financial ledger is connected. For real billing, we must first configure verified issuer data, safe server storage and explicit delivery approvals.</p>
    </div>
   </div>}
-  <p className="epi-foot">Private pilot safety: {EP_INVOICE_SAFETY.databaseWrites?"Writes enabled":"No database writes"} ·
-   no customer contact · no official invoice issuance · no real credit/debit · this form clears on refresh.</p>
+  {persistenceEnabled&&<EpInvoicePersistence draft={draft}/>}
+  <p className="epi-foot">Private pilot safety: {persistenceEnabled?"Separate fictional Sandbox saves available":EP_INVOICE_SAFETY.databaseWrites?"Writes enabled":"No database writes"} ·
+   no customer contact · no official invoice issuance · no real credit/debit · this preview form clears on refresh.</p>
  </section>;
 }

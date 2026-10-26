@@ -59,7 +59,7 @@ const MODULES = Object.freeze([
     ui:[["src/PlatformApp.jsx","<MainCabinPage"]],
     tests:[["tests/roster-numbering.test.mjs","confirmed-only exports preserve original Team IDs","test"]] ,
     tables:["golf_registration_teams","golf_registrations","golf_team_invitations"],
-    next:"Test captain invites, claim/replacement, cancellations and numbering using fictional Sandbox golfers."},
+    next:"REG-01–09: Reconcile every EIE event against central People/Passenger identities, claimed Auth accounts and the People directory. Verify manual/self entry, captain/teammate claims, TBA exclusions, cancellation, history and resends with authorized read-only records before describing any missing link as a defect."},
   {id:"payments",title:"Team Payments & Split Payments",priority:"high",
     source:[["src/EieEventSetupSteps.jsx","golf_event_payment_settings"]],
     ui:[["src/PlatformApp.jsx","<EieEventSetupSteps"]],
@@ -77,7 +77,7 @@ const MODULES = Object.freeze([
     ui:[["src/PlatformApp.jsx","<LoginScreen"]],
     tests:[["tests/recovery-session.test.mjs","recovery hint alone cannot authorize","test"],["tests/recovery-session.test.mjs","cross-account reset only uses","test"]],
     tables:["profiles","organization_memberships","platform_invitations"],
-    next:"Verify owner, Pilot, Co-Pilot, ATC and Passenger permissions with separate Sandbox accounts."},
+    next:"REG-01–09: Check all-event registration ↔ permanent person ↔ Passenger ↔ verified Auth/profile links and directory visibility; distinguish unclaimed invites, TBA and filtered people from true missing/duplicate identity. Separately verify role permissions in Sandbox."},
   {id:"squawk",title:"Squawk Box Communications",priority:"high",
     source:[["src/SquawkCenter.jsx","squawk_messages"]],
     ui:[["src/PlatformApp.jsx","<SquawkProvider"]],
@@ -184,10 +184,10 @@ const MODULES = Object.freeze([
 // every workflow or that an external service, template or schema is current.
 const VERIFICATION=Object.freeze({
  'event-builder':{scope:'Event Details / Registration locator markers only; Event Packet Studio is a separate flow.',criteria:'Locate equivalent event-creation tests first. With isolated events, save and reopen Event Details and Registration settings; assert changed field values and team-size settings persist. Record expected versus actual behavior and exact-commit test results before proposing a fix.'},
- registration:{scope:'Roster-numbering unit-test declarations only; invitations and account claims are not exercised by this scan.',criteria:'Use fictional golfers and mocked delivery to verify captain invites, slot claims, replacement, cancellation and stable team IDs. Assert each actor reaches only the permitted team/slot and that reopening preserves the reviewed state; attach exact-commit results.'},
+ registration:{scope:'REG-01–09 central identity reconciliation is NOT executed. Roster numbering declarations do not test linking people across events.',criteria:'Across ALL EIE events compare authorized complete-page golf_registrations with permanent People/Passenger identity mappings, profiles, Auth claim states and People directory results. Test manual/public entry, each named teammate, existing and new accounts, secure repeated claim, captain access, TBA, cancellation, save/reopen and history. Record event counts, read completeness, exceptions and sanitized mismatches; unavailable or partial reads are NOT checked, never pass.'},
  payments:{scope:'Payment-cart calculation test declarations only; no processor, settlement or live charge verification.',criteria:'Use simulated payments to check split shares, captain-paid/TBA slots, partial payments, refunds and cent totals. Verify clubhouse instructions and reopened balances without live charges; attach exact-commit tests and reconcile expected versus actual amounts.'},
  roster:{scope:'Roster-numbering unit-test declarations only; maintenance UI coverage must be located separately.',criteria:'With isolated teams, verify add/remove/replace/TBA/withdraw behavior, stable IDs and derived numbering. Reopen the roster and verify affected payment/registration states. Locate equivalent existing tests first and attach exact-commit results.'},
- accounts:{scope:'Recovery-session unit-test declarations only; this does not verify the complete role/permission matrix.',criteria:'Use separate isolated accounts to test allowed and denied actions for owner, Pilot, Co-Pilot, ATC and Passenger. Check active-session and membership changes, recovery and cross-account denial at the server boundary; attach exact-commit results without broadening permissions.'},
+ accounts:{scope:'REG-01–09 all-event person/account/directory consistency audit is NOT executed; recovery-session unit test declarations only.',criteria:'Verify claimed registrations map to the correct Passenger/person and verified Auth identity; unclaimed real people are visible only in authorized identity-review views. TBA never creates a person/login. Check duplicates using verified identity, never auto-merge by name/email alone. Verify directory filters and pagination, owner/Pilot/Co-Pilot/ATC/Passenger permissions, session revocation and cross-account denial. Require bounded complete read-only evidence and exact-commit Sandbox workflow checks.'},
  squawk:{scope:'No communication-test markers configured in this source sample.',criteria:'Locate communication tests first. With mocked delivery, verify recipient authorization, context, duplicate delivery handling, unread state and quiet hours. Assert forbidden recipients receive nothing; attach exact-commit results without sending real messages.'},
  sponsors:{scope:'No sponsorship pricing or purchase-flow test markers configured; packet artwork references are insufficient.',criteria:'Locate sponsorship tests first. Use fictional packages and simulated purchases to verify pricing, sponsor assets and registration links across save/reopen. Confirm the owning event and organization remain correct; attach exact-commit results without charges or publication.'},
  'event-packet':{scope:'Packet-save locator and reload markers only; persistence/export assertions and execution require independent review.',criteria:'Verify synthetic packet content survives save/reopen, export uses the reviewed version and event/product links stay correct. Confirm relevant assertions and the latest exact-commit test result; use isolated data for any authorized Sandbox walkthrough.'},
@@ -282,8 +282,11 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
     const sourceComplete=src.length===rule.source.length;
     const uiComplete=ui.length===rule.ui.length;
     const testComplete=!rule.tests.length||tests.length===rule.tests.length;
+    // All-event identity reconciliation is an unexecuted runtime obligation.
+    // Source, UI and test *markers* cannot close this finding.
+    const identityReconciliationRequired = rule.id==="registration" || rule.id==="accounts";
     const status=(!src.length)?"not_observed_in_sample":
-      (!sourceComplete||!rule.ui.length||!uiComplete||!rule.tests.length||!testComplete||db.some(x=>!x.production||!x.sandbox))
+      (identityReconciliationRequired||!sourceComplete||!rule.ui.length||!uiComplete||!rule.tests.length||!testComplete||db.some(x=>!x.production||!x.sandbox))
         ?"review_needed":"evidence_present";
     return {
       id:rule.id,title:rule.title,priority:rule.priority,status,
@@ -296,7 +299,7 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
         db.every(x=>x.production&&x.sandbox)?"tables_in_dated_snapshot":"snapshot_gap",
       evidence:[...src,...ui,...tests],tables:db,nextCheck:rule.next,
       coverage:{source:source.coverage,ui:linked.coverage,test:tested.coverage},testScope:verification.scope,verify:verification.criteria,
-      observation:`Preview sample markers: source ${src.length}/${rule.source.length}, UI ${ui.length}/${rule.ui.length}, tests ${tests.length}/${rule.tests.length}. Counts describe configured markers, not feature completeness or passing tests. Database evidence is dated ${schemaSnapshot.capturedOn}; no live workflow was executed.`,
+      observation:`Preview sample markers: source ${src.length}/${rule.source.length}, UI ${ui.length}/${rule.ui.length}, tests ${tests.length}/${rule.tests.length}. Counts are not test results. DB snapshot ${schemaSnapshot.capturedOn}; no live workflow executed.${identityReconciliationRequired?" REG-01–09 all-event People/Passenger/Auth/directory reconciliation NOT RUN; retain needs verification regardless of matched code.":""}`,
     };
   });
   const policyDifferences=[...prod.entries()].filter(([name,p])=>{

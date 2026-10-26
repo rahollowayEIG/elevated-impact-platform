@@ -77,7 +77,7 @@ function analyzePeopleIntegrity({registrations,passengers,checkedAt=new Date().t
   totals,flaggedChecks:flagged,events:events.slice(0,100),
   eventsTruncated:events.length>100,
   limitations:[
-   "Live read of authorized EIE golf registration, Passenger and profile records only; other apps are not checked.",
+   "Live read of authorized EIE golf registration and Passenger records only; other apps are not checked.",
    "Unlinked registrations require identity review; do not infer a missing person or merge by email.",
    "Auth/profile completeness is NOT checked. Profiles RLS permits users to read only their own profile.",
    "RLS applies to all reads. Pagination confirms visible-row completeness, not independent database-wide visibility.",

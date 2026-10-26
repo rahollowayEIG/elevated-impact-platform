@@ -128,6 +128,13 @@ on:
       - "server/eig-master-source-scan.cjs"
       - "server/build-lab-source-patterns.cjs"
       - "server/eig-master-scan-handler.cjs"
+      - "server/eig-people-reconciliation.cjs"
+      - "server/eig-people-audit-handler.cjs"
+      - "api/eig-build-lab-people-audit.js"
+      - "src/lib/eigPeopleAuditClient.mjs"
+      - "tests/eig-people-reconciliation.test.cjs"
+      - "tests/eig-people-audit-handler.test.cjs"
+      - "tests/eig-people-audit-client.test.mjs"
       - "api/eig-build-lab-master-scan.js"
       - "src/lib/eigMasterScanClient.mjs"
       - "src/lib/eigMasterScanTargets.mjs"
@@ -267,6 +274,13 @@ on:
       - "server/eig-master-source-scan.cjs"
       - "server/build-lab-source-patterns.cjs"
       - "server/eig-master-scan-handler.cjs"
+      - "server/eig-people-reconciliation.cjs"
+      - "server/eig-people-audit-handler.cjs"
+      - "api/eig-build-lab-people-audit.js"
+      - "src/lib/eigPeopleAuditClient.mjs"
+      - "tests/eig-people-reconciliation.test.cjs"
+      - "tests/eig-people-audit-handler.test.cjs"
+      - "tests/eig-people-audit-client.test.mjs"
       - "api/eig-build-lab-master-scan.js"
       - "src/lib/eigMasterScanClient.mjs"
       - "src/lib/eigMasterScanTargets.mjs"
@@ -307,6 +321,7 @@ jobs:
           node-version: "22"
       - run: npm ci
       - run: node --test tests/build-lab-work-buckets.test.mjs tests/build-lab-builder.test.mjs tests/build-lab-inception-pilot.test.mjs tests/build-lab-manager-blueprint.test.mjs tests/build-lab-scan-history.test.mjs tests/research-target-draft.test.mjs tests/eig-build-lab-ai-probe.test.cjs tests/build-change-impact.test.mjs tests/universal-scan.test.mjs tests/openai-scan-preview.test.mjs tests/eig-build-architect.test.mjs tests/eig-build-lab-draft.test.mjs tests/eig-build-lab-scan-client.test.mjs tests/eig-inception-source-scan.test.cjs tests/eig-build-lab-scan-access.test.cjs tests/eig-build-lab-access.test.mjs tests/eig-build-lab-preview-access.test.cjs tests/build-lab-pwa.test.mjs tests/build-lab-mission-orchestrator.test.mjs tests/eig-master-source-scan.test.cjs tests/eig-master-scan-access.test.cjs tests/eig-master-scan-client.test.mjs tests/eig-master-environment-compare.test.cjs tests/event-inquiry-lifecycle.test.mjs tests/event-inquiry-portal-client.test.mjs tests/eig-essential-wow-scan.test.cjs tests/eig-improvement-radar-client.test.mjs
+      - run: node --test tests/eig-people-reconciliation.test.cjs tests/eig-people-audit-handler.test.cjs tests/eig-people-audit-client.test.mjs
       - run: node --test tests/ep-discovery-engine.test.mjs
       - run: node --test tests/ep-storefront-sources.test.mjs
       - run: node --test tests/ep-unified-store.test.mjs

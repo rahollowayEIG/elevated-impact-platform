@@ -4,6 +4,7 @@ import useBuildLabScanHistory from "./useBuildLabScanHistory.jsx";
 import ScannerToolsDisclosure from "./ScannerToolsDisclosure.jsx";
 import React,{useEffect,useMemo,useState} from "react";
 import {requestMasterScan,validateMasterScanReport} from "../lib/eigMasterScanClient.mjs";
+import {requestPeopleIntegrityAudit,validatePeopleIntegrityAudit} from "../lib/eigPeopleAuditClient.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 import BuildLabEnvironmentPanel from "./BuildLabEnvironmentPanel.jsx";
 import "./build-lab-master-scanner.css";
@@ -24,7 +25,8 @@ function restoreDraft(uid) {
   const reviews=Object.fromEntries(Object.entries(saved?.reviews||{}).filter(([id,value])=>
    report.modules.some(m=>m.id===id)&&REVIEWS.has(value?.review)&&
    (typeof value?.note==="string"&&value.note.length<=1000)));
-  return {report,reviews};
+  const peopleAudit=saved?.peopleAudit?validatePeopleIntegrityAudit(saved.peopleAudit):null;
+  return {report,reviews,peopleAudit};
  } catch {return null;}
 }
 function downloadJson(json,filename) {
@@ -65,6 +67,8 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
  const [selectedEnvironment,setSelectedEnvironment] = useState(()=>restored?.report?.environmentAudit?.selected||"compare");
  const [report,setReport] = useState(()=>restored?.report||null);
  const [reviews,setReviews] = useState(()=>restored?.reviews||{});
+ const [peopleAudit,setPeopleAudit] = useState(()=>restored?.peopleAudit||null);
+ const [peopleAuditError,setPeopleAuditError] = useState("");
  const [running,setRunning] = useState(false);
  const [error,setError] = useState("");
  const [notice,setNotice] = useState(restored?"Previous evidence report restored from this browser.":"");
@@ -77,12 +81,12 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
  useEffect(()=>{
   const key=storageKey(ownerUserId);if(!key||!report)return;
   try {
-   const json=JSON.stringify({report,reviews});
+   const json=JSON.stringify({report,reviews,peopleAudit});
    if(json.length>MAX_DRAFT_SIZE)throw Error("Report too large for browser storage");
    window.localStorage.setItem(key,json);
    setSaveError(false);
   } catch {setSaveError(true);}
- },[report,reviews,ownerUserId]);
+ },[report,reviews,peopleAudit,ownerUserId]);
 
  const history=useBuildLabScanHistory(ownerUserId,"master",report?{report,reviews}:null,report?.scope==="module"?report.selectedModule:"all",report?.sourceVersion||report?.sourceFingerprint);
  const rows=useMemo(()=>{
@@ -109,6 +113,13 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
   setRunning(true);setError("");setNotice("");
   try {
    const next=await requestMasterScan(supabaseClient,undefined,selectedScope==="all"?null:selectedScope,selectedEnvironment);
+   let currentAudit=null;
+   let auditWarning="";
+   if(selectedEnvironment!=="sandbox"&&["all","registration","accounts"].includes(selectedScope)){
+    try { currentAudit=await requestPeopleIntegrityAudit(supabaseClient); }
+    catch { auditWarning="Live People integrity check was incomplete or unavailable. No database integrity result was certified."; }
+   }
+   setPeopleAudit(currentAudit);setPeopleAuditError(auditWarning);
    const identical=report?.sourceFingerprint===next.sourceFingerprint;
    setReviews(current=>identical?current:{});
    setEditing("");setNote("");
@@ -166,6 +177,24 @@ export default function BuildLabMasterScanner({ownerUserId,supabaseClient,legacy
   {saveError&&<p className="platform-error" role="alert">Browser autosave unavailable. Export the report JSON to keep these review decisions.</p>}
   {report&&!reportMatchesSelection&&<p className="blm-message" role="status">Showing the previous {report.environmentAudit?.selected||"unknown"} report for {reportSelection==="all"?"the entire platform":"one module"}. Run <strong>{selectedScope==="all"?"Scan Entire Platform":"Scan Selected Module"}</strong> to inspect {selectedLabel} in the newly selected environment.</p>}
   {report&&<>
+   {peopleAuditError&&<p className="platform-error" role="alert">{peopleAuditError}</p>}
+   {peopleAudit&&<section className="platform-section-card" aria-label="Live People identity audit">
+    <h3>Live People &amp; Registration Integrity</h3>
+    <p>Owner-only read-only runtime check: {new Date(peopleAudit.checkedAt).toLocaleString()}. Covers EIE golf registrations only, not every application.</p>
+    <div className="blm-stats">
+     <div><strong>{peopleAudit.totals.activeNamed}</strong><span>Named active registrations</span></div>
+     <div><strong>{peopleAudit.totals.unclaimedWithoutPassenger}</strong><span>Unclaimed with no Passenger link</span></div>
+     <div><strong>{peopleAudit.totals.accountWithoutPassenger}</strong><span>Account ID but no Passenger link</span></div>
+     <div><strong>{peopleAudit.totals.linkedPassenger}</strong><span>Passenger linked</span></div>
+    </div>
+    <p>Other integrity flags: missing referenced Passenger {peopleAudit.totals.brokenPassengerReference}, mismatched account/Passenger {peopleAudit.totals.accountPassengerMismatch}, missing profile {peopleAudit.totals.authWithoutProfile}, claimed without account {peopleAudit.totals.claimedWithoutAccount}.</p>
+    <p><strong>Requires review, not automatic repair.</strong> Unlinked records may represent legitimate unclaimed activity. TBA reservations and cancelled registrations are excluded from active-person counts.</p>
+    <details><summary>Event-level counts and coverage limitations</summary>
+     <ul>{peopleAudit.events.map(e=><li key={e.eventKey}>{e.eventKey}: {e.activeNamed} named active, {e.unlinked} without usable Passenger link</li>)}</ul>
+     {peopleAudit.eventsTruncated&&<p>Additional events omitted from this display. The audit cannot claim all-event display coverage.</p>}
+     <ul>{peopleAudit.limitations.map((limit,i)=><li key={i}>{limit}</li>)}</ul>
+    </details>
+   </section>}
    <p className="blm-report-scope">Report scope: <strong>{report?.scope==="module"?report.modules[0]?.title:"Entire ElevationPilot platform"}</strong>{report?.scope==="module"?" (one module from the fixed source catalog)":""}.</p>
    <div className="blm-stats" aria-label="Scanner summary">
     <div><strong>{untouched.modulesReviewed}</strong><span>Modules compared</span></div>

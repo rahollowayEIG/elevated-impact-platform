@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from "react";
+import {createBuildLabEvidencePackage} from "../lib/buildLabEvidencePackage.mjs";
 import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 const scopeLabel=id=>id==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(x=>x.id===id)?.label||id;
@@ -11,12 +12,14 @@ export default function BuildLabScanHistory({ownerUserId}) {
   return ()=>{window.removeEventListener(HISTORY_EVENT,load);window.removeEventListener("storage",load);};
  },[ownerUserId]);
  function order(key){setSort(s=>({key,direction:s.key===key&&s.direction==="asc"?"desc":"asc"}));}
+ function exportPackage(){try{const pkg=createBuildLabEvidencePackage(window.localStorage,ownerUserId);const url=URL.createObjectURL(new Blob([JSON.stringify(pkg,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="eig-build-lab-evidence-"+pkg.generatedAt.slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setError("");}catch{setError("Evidence package unavailable. Existing records have not been modified.");}}
  function exportEntry(row){const url=URL.createObjectURL(new Blob([JSON.stringify(row,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="build-lab-"+row.type+"-"+row.savedAt.replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  const needle=query.trim().toLowerCase();
  const visible=entries.filter(x=>(type==="all"||x.type===type)&&(!needle||[SCAN_TYPES[x.type],scopeLabel(x.scope),x.source,x.savedAt,JSON.stringify(x.snapshot)].join(" ").toLowerCase().includes(needle)));
  return <section className="platform-section-card bl-history" aria-labelledby="bl-history-title">
   <h2 id="bl-history-title">Scan History</h2>
   <p>Completed scans grouped by scan type. Saved in this browser on this preview address; other devices and preview addresses have separate history. Keeps up to 20 scans per type within the browser history size limit; oldest scans are removed first. Download JSON to keep a permanent copy.</p>
+  <p><button type="button" className="platform-primary-button" onClick={exportPackage}>Download Full Scanner Evidence Package (JSON)</button> Includes saved scans, complete evidence, review choices, Work Buckets, approved plans, and a readable README. Review contents before sharing. No live data is retrieved.</p>
   <p>Existing saved scanner results are added when Build Lab opens. Earlier overwritten results and AI responses lost before this update cannot be recovered. Opening history never runs a scan or calls AI.</p>
   {error&&<p role="alert" className="platform-error">{error}</p>}
   <div className="bl-scan-controls"><label>Search scan history<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Module, recommendation, source version…" /></label>

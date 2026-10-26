@@ -30,9 +30,15 @@ export async function runBrowserEvidence({cwd=process.cwd(),commit=process.env.G
    const begin=Date.now();
    const processResult=spawnSync(process.execPath,[item.file],{cwd,encoding:'utf8',timeout:120000,maxBuffer:1024*1024,env:{...process.env,CI:'true'}});
    outcome=summarizeBrowserResult(item,processResult,Date.now()-begin);
+   if(outcome.status!=='passed'){
+    const diagnostic=[processResult?.stderr,processResult?.stdout,processResult?.error?.message].filter(Boolean).join('\n');
+    const last=diagnostic.split('\n').filter(Boolean).slice(-14).join('\n').slice(0,2500);
+    console.error('[Build Lab browser] '+item.id+' failure excerpt: '+last.replace(/Bearer\\s+[^\\s]+/gi,'Bearer [redacted]'));
+   }
   }catch{outcome={...item,executed:false,verifiedBrowserBehavior:false,status:'error',exitCode:null,durationMs:0};}
   finally{if(server&&server.exitCode===null){server.kill('SIGTERM');}}
   results.push(outcome);
+  console.log('[Build Lab browser] '+item.id+': '+outcome.status+' (exit '+(outcome.exitCode??'n/a')+')');
  }
  return {kind:'eig_build_lab_executed_browser_checks',version:1,commit,startedAt,finishedAt:now(),environment:'local_fixture_only',checks:results,
   limitations:['Tests use synthetic browser fixtures, not deployed Live or Sandbox customer flows.','Accounts and registration checks do not prove roster claim, split payment or database persistence.','No raw browser logs, secrets or PII are exported.']};

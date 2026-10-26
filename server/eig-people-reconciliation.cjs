@@ -5,8 +5,7 @@ const PAGE_SIZE=250;
 const MAX_ROWS=15000;
 const SPECS=[
  {table:"golf_registrations",select:"id,event_id,event_key,first_name,last_name,custom_fields,registration_status,user_id,passenger_id,passenger_claim_status"},
- {table:"passengers",select:"id,auth_user_id,status,merged_into_passenger_id"},
- {table:"profiles",select:"id"}
+ {table:"passengers",select:"id,auth_user_id,status,merged_into_passenger_id"}
 ];
 async function fetchComplete(client,{table,select},limit=MAX_ROWS){
  const rows=[];let expected=null;
@@ -34,14 +33,13 @@ function isTba(row){
 function isInactive(row){
  return ["cancelled","canceled","withdrawn","removed"].includes(String(row.registration_status||"").toLowerCase());
 }
-function analyzePeopleIntegrity({registrations,passengers,profiles,checkedAt=new Date().toISOString()}){
+function analyzePeopleIntegrity({registrations,passengers,checkedAt=new Date().toISOString()}){
  const byPassenger=new Map(passengers.map(p=>[p.id,p]));
- const profileIds=new Set(profiles.map(p=>p.id));
  const totals={
   registrations:registrations.length,activeNamed:0,inactive:0,tba:0,nameless:0,
   unclaimedWithoutPassenger:0,accountWithoutPassenger:0,linkedPassenger:0,
   brokenPassengerReference:0,accountPassengerMismatch:0,
-  claimedWithoutAccount:0,authWithoutProfile:0,mergedPassengerReference:0
+  claimedWithoutAccount:0,mergedPassengerReference:0
  };
  const perEvent=new Map();
  for(const row of registrations){
@@ -64,25 +62,24 @@ function analyzePeopleIntegrity({registrations,passengers,profiles,checkedAt=new
    if(p.status==="merged"||p.merged_into_passenger_id)totals.mergedPassengerReference++;
    if(row.user_id&&p.auth_user_id&&row.user_id!==p.auth_user_id)totals.accountPassengerMismatch++;
   }
-  if(row.user_id&&!profileIds.has(row.user_id))totals.authWithoutProfile++;
   if(row.passenger_claim_status==="claimed"&&!row.user_id)totals.claimedWithoutAccount++;
  }
  const events=[...perEvent.values()].sort((a,b)=>b.unlinked-a.unlinked||a.eventKey.localeCompare(b.eventKey));
  const flagged=totals.unclaimedWithoutPassenger+totals.accountWithoutPassenger+
   totals.brokenPassengerReference+totals.accountPassengerMismatch+
-  totals.mergedPassengerReference+totals.authWithoutProfile+totals.claimedWithoutAccount;
+  totals.mergedPassengerReference+totals.claimedWithoutAccount;
  return {
   kind:"eig_people_integrity_audit",schemaVersion:1,
   checkedAt,environment:"live",scope:"eie_golf_registrations",
   assessment:"review_required",sourceCoverage:"golf_registration_only",
   readOnly:true,rawPeopleReturned:false,automaticRepair:false,
-  coverage:{registrationRows:registrations.length,passengerRows:passengers.length,profileRows:profiles.length,
-   allAuthorizedRowsFetched:true,allPlatformApplicationsChecked:false},
+  coverage:{registrationRows:registrations.length,passengerRows:passengers.length,allAuthorizedRowsFetched:true,allPlatformApplicationsChecked:false},
   totals,flaggedChecks:flagged,events:events.slice(0,100),
   eventsTruncated:events.length>100,
   limitations:[
    "Live read of authorized EIE golf registration, Passenger and profile records only; other apps are not checked.",
    "Unlinked registrations require identity review; do not infer a missing person or merge by email.",
+   "Auth/profile completeness is NOT checked. Profiles RLS permits users to read only their own profile.",
    "RLS applies to all reads. Pagination confirms visible-row completeness, not independent database-wide visibility.",
    "This report neither creates accounts nor changes, merges or deletes customer records."
   ]
@@ -90,12 +87,11 @@ function analyzePeopleIntegrity({registrations,passengers,profiles,checkedAt=new
 }
 async function scanPeopleIntegrity(client,{limit=MAX_ROWS,now=()=>new Date().toISOString()}={}){
  if(!client?.from)throw Error("Identity audit database access unavailable");
- // Sequential bounded reads avoid concurrent snapshots being misinterpreted as one atomic transaction.
- const [registrations,passengers,profiles]=await Promise.all(SPECS.map(spec=>fetchComplete(client,spec,limit)));
- const audit=analyzePeopleIntegrity({registrations:registrations.rows,passengers:passengers.rows,profiles:profiles.rows,checkedAt:now()});
+ // Each authorized table is read in bounded pages; no write operations are performed.
+ const [registrations,passengers]=await Promise.all(SPECS.map(spec=>fetchComplete(client,spec,limit)));
+ const audit=analyzePeopleIntegrity({registrations:registrations.rows,passengers:passengers.rows,checkedAt:now()});
  audit.coverage.registrationRows=registrations.count;
  audit.coverage.passengerRows=passengers.count;
- audit.coverage.profileRows=profiles.count;
  return audit;
 }
 module.exports={PAGE_SIZE,MAX_ROWS,fetchComplete,isTba,analyzePeopleIntegrity,scanPeopleIntegrity};

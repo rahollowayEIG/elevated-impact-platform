@@ -128,7 +128,11 @@ function LoginScreen({ initialForgotMode = false }) {
       });
       if (sessionError) throw sessionError;
     } catch (signInError) {
-      setError(signInError.message || 'Unable to sign in.');
+      const message = signInError.message || 'Unable to sign in.';
+      setError(import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' &&
+        /invalid (email\/username|username|login).*password|invalid login credentials/i.test(message)
+          ? 'Sandbox could not sign you in. Use your Sandbox email and password, or select Forgot password to reset the Sandbox password.'
+          : message);
     } finally {
       setBusy(false);
     }
@@ -223,7 +227,7 @@ function LoginScreen({ initialForgotMode = false }) {
       }
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: ELEVATIONPILOT_PUBLIC_URL + '/?recovery=1',
+        redirectTo: import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' ? 'https://elevationpilot-sandbox.vercel.app/?recovery=1' : ELEVATIONPILOT_PUBLIC_URL + '/?recovery=1',
       });
       if (resetError) throw resetError;
       setRecoverySent(true);
@@ -242,6 +246,7 @@ function LoginScreen({ initialForgotMode = false }) {
         <h1>{forgotMode ? 'Reset your password.' : joinMode ? 'Join ElevationPilot.' : 'One login. Every EIG workspace.'}</h1>
         {!forgotMode && !joinMode ? <>
           <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
+          {import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' && <p className="platform-login-copy" role="note">Sandbox sign-in: use your Sandbox account email and its separate password. Your live account password may be different. If needed, select Forgot password.</p>}
           <form onSubmit={submit} className="platform-login-form">
             <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
             <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />

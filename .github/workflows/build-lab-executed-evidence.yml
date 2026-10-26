@@ -1,0 +1,26 @@
+name: Build Lab Executed Evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/build-lab/run-executed-checks.mjs'
+      - '.github/workflows/build-lab-executed-evidence.yml'
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run isolated registration, payment and account checks
+        run: node scripts/build-lab/run-executed-checks.mjs
+      - name: Upload evidence, even when tests fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-lab-executed-checks
+          path: artifacts/build-lab-executed-checks.json
+          if-no-files-found: error

@@ -53,7 +53,7 @@ test("bounded paginated RLS reads inspect all visible records and never issue wr
  const result=await scanPeopleIntegrity(client,{now:()=>"2026-10-26T15:00:00Z"});
  assert.equal(result.coverage.registrationRows,261);
  assert.equal(result.totals.unclaimedWithoutPassenger,261);
- assert.deepEqual(observed,["golf_registrations","passengers","profiles"]);
+ assert.deepEqual(observed,["golf_registrations","passengers","profiles","golf_registrations"]);
  assert.equal(result.coverage.allPlatformApplicationsChecked,false);
 });
 test("refuses to certify partial source reads, inconsistent pagination or row limit",async()=>{

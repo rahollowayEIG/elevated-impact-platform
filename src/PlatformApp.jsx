@@ -242,6 +242,7 @@ function LoginScreen({ initialForgotMode = false }) {
         <h1>{forgotMode ? 'Reset your password.' : joinMode ? 'Join ElevationPilot.' : 'One login. Every EIG workspace.'}</h1>
         {!forgotMode && !joinMode ? <>
           <p className="platform-login-copy">Sign in with your email or ElevationPilot @username.</p>
+          {import.meta.env.VITE_SANDBOX_WORKSPACE_ENABLED === 'true' && <p className="platform-login-copy" role="note">Sandbox sign-in: use your Sandbox account email and its separate password. Your live account password may be different. If needed, select Forgot password.</p>}
           <form onSubmit={submit} className="platform-login-form">
             <label>Email or @username<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" autoComplete="username" required placeholder="name@example.com or @username" /></label>
             <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />

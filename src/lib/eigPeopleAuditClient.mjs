@@ -5,7 +5,7 @@ const TOTAL_FIELDS=[
  "registrations","activeNamed","inactive","tba","nameless",
  "unclaimedWithoutPassenger","accountWithoutPassenger","linkedPassenger",
  "brokenPassengerReference","accountPassengerMismatch","claimedWithoutAccount",
- "authWithoutProfile","mergedPassengerReference"
+ "mergedPassengerReference"
 ];
 function validNumber(n){return Number.isSafeInteger(n)&&n>=0&&n<=MAX;}
 export function validatePeopleIntegrityAudit(a){
@@ -17,7 +17,7 @@ export function validatePeopleIntegrityAudit(a){
   !a.totals||!TOTAL_FIELDS.every(k=>validNumber(a.totals[k]))||
   !validNumber(a.flaggedChecks)||!a.coverage||
   a.coverage.allAuthorizedRowsFetched!==true||a.coverage.allPlatformApplicationsChecked!==false||
-  !["registrationRows","passengerRows","profileRows"].every(k=>validNumber(a.coverage[k]))||
+  !["registrationRows","passengerRows"].every(k=>validNumber(a.coverage[k]))||
   a.totals.registrations!==a.coverage.registrationRows||
   a.totals.registrations!==a.totals.activeNamed+a.totals.inactive+a.totals.tba+a.totals.nameless||
   !Array.isArray(a.events)||a.events.length>100||typeof a.eventsTruncated!=="boolean"||

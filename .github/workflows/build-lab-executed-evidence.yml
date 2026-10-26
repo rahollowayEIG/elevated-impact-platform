@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/build-lab/run-executed-checks.mjs'
       - '.github/workflows/build-lab-executed-evidence.yml'
+      - 'tests/build-lab-executed-checks.test.mjs'
 jobs:
   evidence:
     runs-on: ubuntu-latest
@@ -15,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate evidence contract
+        run: node --test tests/build-lab-executed-checks.test.mjs
       - name: Run isolated registration, payment and account checks
         run: node scripts/build-lab/run-executed-checks.mjs
       - name: Upload evidence, even when tests fail

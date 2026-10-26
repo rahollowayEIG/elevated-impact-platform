@@ -10,6 +10,12 @@ module.exports=createPeopleAuditHandler({
  audit:async token=>{
   const url=env("VITE_SUPABASE_URL"),key=env("VITE_SUPABASE_ANON_KEY");
   if(!url||!key||!token)throw Error("Identity audit environment unavailable");
+  // Never label Sandbox or an unknown project as the live EIG People database.
+  const LIVE_PROJECT_HOST="aszixzrdayrivungodwq.supabase.co";
+  let hostname;
+  try { const u=new URL(url);if(u.protocol!=="https:"||u.username||u.password||u.pathname!=="/")throw Error("Unsupported target");hostname=u.hostname; }
+  catch {throw Error("Live identity audit database identity unavailable");}
+  if(hostname!==LIVE_PROJECT_HOST)throw Error("Live identity audit target mismatch");
   const client=createClient(url,key,{
    auth:{persistSession:false,autoRefreshToken:false},
    global:{headers:{Authorization:"Bearer "+token}}

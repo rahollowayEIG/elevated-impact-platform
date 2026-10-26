@@ -14,7 +14,7 @@ test("identity audit distinguishes unclaimed records, broken links, signed-in ac
  ];
  const report=analyzePeopleIntegrity({
   registrations,passengers:[{id:"p1",auth_user_id:"u1",status:"claimed"},{id:"p3",auth_user_id:"wrong",status:"claimed"}],
-  profiles:[{id:"u1"},{id:"u3"}],checkedAt:"2026-10-26T15:00:00.000Z"
+  checkedAt:"2026-10-26T15:00:00.000Z"
  });
  assert.equal(report.totals.registrations,8);
  assert.equal(report.totals.activeNamed,5);
@@ -26,7 +26,6 @@ test("identity audit distinguishes unclaimed records, broken links, signed-in ac
  assert.equal(report.totals.linkedPassenger,2);
  assert.equal(report.totals.brokenPassengerReference,1);
  assert.equal(report.totals.accountPassengerMismatch,1);
- assert.equal(report.totals.authWithoutProfile,1);
  assert.equal(report.events.find(e=>e.eventKey==="a").unlinked,2);
  assert.equal(report.rawPeopleReturned,false);
  assert.equal(report.automaticRepair,false);
@@ -53,7 +52,7 @@ test("bounded paginated RLS reads inspect all visible records and never issue wr
  const result=await scanPeopleIntegrity(client,{now:()=>"2026-10-26T15:00:00Z"});
  assert.equal(result.coverage.registrationRows,261);
  assert.equal(result.totals.unclaimedWithoutPassenger,261);
- assert.deepEqual(observed,["golf_registrations","passengers","profiles","golf_registrations"]);
+ assert.deepEqual(observed,["golf_registrations","passengers","golf_registrations"]);
  assert.equal(result.coverage.allPlatformApplicationsChecked,false);
 });
 test("refuses to certify partial source reads, inconsistent pagination or row limit",async()=>{

@@ -1,7 +1,7 @@
-// Read-only Build Lab authorization for the controlled Vercel branch preview.
+// Read-only Build Lab authorization for controlled preview or separately enabled production.
 // Never grants authority to perform scanner, AI, repository or persistence actions.
-// On deployment, this handler is restricted to the preview environment and
-// exact owner account; production and other accounts must fail closed.
+// Production requires an explicit independent opt-in, the main Git ref, and
+// the exact owner. All other environments and accounts fail closed.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EXPECTED_PREVIEW_BRANCH = "feature/build-lab-orchestrator-20261020";
 
@@ -13,16 +13,22 @@ function currentEIGAdmin(row, now) {
   return !Number.isNaN(start) && !Number.isNaN(end) && start <= now && end > now;
 }
 function serverReady(env) {
+  const environment = env("VERCEL_ENV");
   const detectedRef = env("VERCEL_GIT_COMMIT_REF");
-  return env("VERCEL_ENV") === "preview" &&
-    // The branch-specific server setting is required. If Vercel exposes the
-    // Git ref at runtime, it must agree; otherwise stay branch-bound by the
-    // Vercel environment-variable gitBranch selector.
+  // Preview remains restricted to the original owner-only branch.
+  const approvedPreview = environment === "preview" &&
     env("EIG_BUILD_LAB_PREVIEW_BRANCH") === EXPECTED_PREVIEW_BRANCH &&
-    (!detectedRef || detectedRef === EXPECTED_PREVIEW_BRANCH) &&
+    (!detectedRef || detectedRef === EXPECTED_PREVIEW_BRANCH);
+  // Production is a separate, explicit opt-in. A promoted preview or
+  // unknown Git ref must NOT unlock protected Build Lab endpoints.
+  const approvedProduction = environment === "production" &&
+    env("EIG_BUILD_LAB_PRODUCTION_ENABLED") === "true" &&
+    detectedRef === "main";
+  return (approvedPreview || approvedProduction) &&
     env("EIG_BUILD_LAB_ACCESS_ENABLED") === "true" &&
     UUID.test((env("EIG_BUILD_LAB_OWNER_USER_ID") || "").trim());
 }
+
 function response(res, status, body) {
   res.setHeader("Cache-Control", "private, no-store, max-age=0");
   res.setHeader("Content-Type", "application/json; charset=utf-8");

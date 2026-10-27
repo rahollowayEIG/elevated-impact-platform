@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "reviewed_at": "2026-10-26",
+  "reviewed_at": "2026-10-27",
   "policy": "docs/ElevationPilot-Approved-Version-Rules.md",
   "environments": {
     "live": {
@@ -25,17 +25,17 @@
       "outdated_candidates": []
     },
     "sandbox": {
-      "approval_status": "verification_required",
+      "approval_status": "approved",
       "purpose": "Pink, isolated training and tests",
       "repository": "rahollowayEIG/elevated-impact-platform",
       "vercel_project": "elevationpilot-sandbox",
       "canonical_domain": "elevationpilot-sandbox.vercel.app",
-      "observed_branch": "main",
-      "observed_commit": "b96f2c10aed08b4b6218e1705c6b8d148657935c",
-      "approved_commit": null,
-      "approved_by": null,
-      "approved_at": null,
-      "rollback_commit": null,
+      "observed_branch": "feature/sandbox-readonly-live-ui-20261019",
+      "observed_commit": "e9c84d2f49831af0a91e0f6fcfedbc43dfb8419b",
+      "approved_commit": "e9c84d2f49831af0a91e0f6fcfedbc43dfb8419b",
+      "approved_by": "EIG owner",
+      "approved_at": "2026-10-27",
+      "rollback_commit": "eb399c0e8b5cc32e39b820c685b92e3cbafe1585",
       "expected_identity": "One approved tester login and real Switch Role; no fictional-name persona login",
       "expected_backend": "publruuuyvpggogrrgwp",
       "required_ui_signatures": [
@@ -60,8 +60,8 @@
           "reason": "Email work branched from legacy fictional-name version; port after verifying current role switch"
         }
       ],
-      "observed_deployment": "elevationpilot-sandbox-pvim2atnd-rahollowayeigs-projects.vercel.app",
-      "observed_alias_checked_at": "2026-10-26",
+      "observed_deployment": "elevationpilot-sandbox-ae6sruf1u-rahollowayeigs-projects.vercel.app",
+      "observed_alias_checked_at": "2026-10-27",
       "historical_switch_role_candidate": {
         "branch": "feature/sandbox-session-header-20261019",
         "commit": "eb399c0e8b5cc32e39b820c685b92e3cbafe1585",
@@ -77,7 +77,11 @@
         "state": "feature_preview_not_approved_or_merged",
         "approved": false,
         "note": "Installable manifest/PWA assets are on a separate branch; no evidence an installable PWA release was integrated with the Switch Role Sandbox or that the user's locally installed desktop icon uses this preview."
-      }
+      },
+      "approved_deployment_id": "dpl_Guv3XncA9kWc9cKwXDPHH1hR4BQc",
+      "approved_deployment_url": "elevationpilot-sandbox-ae6sruf1u-rahollowayeigs-projects.vercel.app",
+      "acceptance_evidence": "Owner tested six-digit email-code sign-in and Pilot/Co-Pilot Switch Role on Oct 27; Vercel alias resolved to approved immutable commit after isolated Sandbox rollback; Live project unchanged.",
+      "acceptance_scope": "Approved Sandbox login, pink shell and practice-role baseline; broader event registration, writes, mail and integrations still require separate per-feature verification."
     }
   }
 }

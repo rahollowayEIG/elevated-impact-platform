@@ -236,7 +236,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
     try {
       const report = await requestInceptionSourceScan(supabaseClient);
       const changed = scanReport?.sourceFingerprint !== report.sourceFingerprint;
-      scanHistory.begin();setScanReport(report);
+      scanHistory.record({report,reviews:changed?{}:scanReviews},"inception-apex",report.sourceVersion||report.sourceFingerprint);setScanReport(report);
       if (changed) {
         setScanReviews({}); setScanEditing(""); setScanEditValue("");
       }

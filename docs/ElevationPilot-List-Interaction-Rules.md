@@ -1,4 +1,4 @@
-# ElevationPilot List Interaction Rules
+# ElevationPilot Platform Rules (1. Searchable Lists, 2. Sortable Fields, 3. Approved Version)
 
 These rules apply across ElevationPilot, EIG Command Center, Hangar, Cockpit, ATC, Airport, EIE tools, and future platform applications.
 
@@ -43,3 +43,9 @@ Implementation expectations:
 ## Platform default
 
 Searchability and sortable fields are now default considerations whenever a new list, directory, roster, or table is created or an existing one is materially revised. If either capability is intentionally omitted, the reason should be obvious from the workflow rather than accidental.
+
+## 3. One Approved Version Rule
+
+Only one explicitly **approved** source version and canonical route may represent any ElevationPilot environment or workspace at a time. Passing tests or a Vercel `READY` build does not prove approval. After the replacement passes role/auth, workflow, visual and environment verification, promote it, update all references, and **retire obsolete UI/preview links and branches** using an auditable, rollback-safe cleanup. Do not mass-delete data, active integrations, or anything with unknown dependencies.
+
+See [ElevationPilot Approved Version Rules](ElevationPilot-Approved-Version-Rules.md) and the machine-readable `config/elevationpilot-approved-versions.json` inventory. Before suggesting a URL, run the Rule 3 approved-version preflight. When approval is unknown, label the URL **unverified** rather than claiming it is the current build.

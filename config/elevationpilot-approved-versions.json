@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-10-26",
+  "policy": "docs/ElevationPilot-Approved-Version-Rules.md",
+  "environments": {
+    "live": {
+      "approval_status": "verification_required",
+      "purpose": "Real customer operations",
+      "repository": "rahollowayEIG/elevated-impact-platform",
+      "vercel_project": "elevated-impact-platform",
+      "canonical_domain": "elevated-impact-platform.vercel.app",
+      "observed_branch": "main",
+      "observed_commit": "b96f2c10aed08b4b6218e1705c6b8d148657935c",
+      "approved_commit": null,
+      "approved_by": null,
+      "approved_at": null,
+      "rollback_commit": null,
+      "expected_identity": "Live ElevationPilot sign-in and owner-approved role routing",
+      "expected_backend": "Live Supabase; never Sandbox",
+      "required_ui_signatures": [],
+      "forbidden_ui_signatures": [
+        "SandboxPersonaLogin",
+        "SANDBOX • Choose Practice Role"
+      ],
+      "outdated_candidates": []
+    },
+    "sandbox": {
+      "approval_status": "verification_required",
+      "purpose": "Pink, isolated training and tests",
+      "repository": "rahollowayEIG/elevated-impact-platform",
+      "vercel_project": "elevationpilot-sandbox",
+      "canonical_domain": "elevationpilot-sandbox.vercel.app",
+      "observed_branch": null,
+      "observed_commit": null,
+      "approved_commit": null,
+      "approved_by": null,
+      "approved_at": null,
+      "rollback_commit": null,
+      "expected_identity": "One approved tester login and real Switch Role; no fictional-name persona login",
+      "expected_backend": "publruuuyvpggogrrgwp",
+      "required_ui_signatures": [
+        "elevationpilot-sandbox",
+        "SandboxAccessGate",
+        "SandboxPracticeRoles",
+        "Switch role"
+      ],
+      "forbidden_ui_signatures": [
+        "SandboxPersonaLogin",
+        "alex@sandbox.invalid",
+        "jordan@sandbox.invalid"
+      ],
+      "outdated_candidates": [
+        {
+          "branch": "feature/sandbox-personas-auth-foundation-20261018",
+          "reason": "Legacy fictional-name practice login; not approved Switch Role UI"
+        },
+        {
+          "branch": "feature/pink-sandbox-my-profile-emails-20261026",
+          "pr": 106,
+          "reason": "Email work branched from legacy fictional-name version; port after verifying current role switch"
+        }
+      ]
+    }
+  }
+}

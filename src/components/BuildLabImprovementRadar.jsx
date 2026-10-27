@@ -98,8 +98,9 @@ export default function BuildLabImprovementRadar({ownerUserId,supabaseClient,leg
    validateImprovementRadar(audit,files,audit.sourceVersion,scope);
    const same=result?.fingerprint===response.fingerprint;
    setChoices(current=>same?current:{});
-   history.begin(scope);setResult({audit,files,sourceVersion:audit.sourceVersion,scope,
-     fingerprint:response.fingerprint,inspectedAt:response.inspectedAt,choices:{}});
+   const completed={audit,files,sourceVersion:audit.sourceVersion,scope,
+     fingerprint:response.fingerprint,inspectedAt:response.inspectedAt,choices:{}};
+   history.record({...completed,choices:same?choices:{}},scope,audit.sourceVersion||response.fingerprint);setResult(completed);
    setEditing("");
    setNotice((same?"Existing decisions preserved. ":"New source or rubric evidence: review decisions reset. ")+
      "Upgrade opportunities prepared from protected preview code. No live behavior or competitor sites were inspected.");

@@ -1,0 +1,81 @@
+# EIG recovery ledger. No customer app deploys, database writes, or Live tokens.
+# Credentials must use short-lived Google Workload Identity Federation.
+name: EIG Progress Ledger Sync
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/eig-progress-ledger-sync.mjs'
+      - 'tests/eig-progress-ledger-sync.test.mjs'
+      - '.github/workflows/eig-progress-ledger-sync.yml'
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: eig-progress-ledger-writer
+  cancel-in-progress: false
+
+jobs:
+  safety-tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no-secret ledger rules
+        run: node --test tests/eig-progress-ledger-sync.test.mjs
+
+  publish:
+    # This is deliberately disabled until the owner supplies a dedicated
+    # short-lived Google OIDC identity and explicitly turns on the repo variable.
+    # pull_request_target runs trusted BASE branch code; never checkout PR HEAD!
+    if: >-
+      vars.EIG_PROGRESS_LEDGER_ENABLED == 'true' &&
+      vars.EIG_GOOGLE_WIF_PROVIDER != '' &&
+      vars.EIG_GOOGLE_DOCS_WRITER_SA != '' &&
+      github.actor == 'rahollowayEIG' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+        (
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        )
+      )
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # On pull_request_target, do NOT checkout untrusted PR code.
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.EIG_GOOGLE_WIF_PROVIDER }}
+          service_account: ${{ vars.EIG_GOOGLE_DOCS_WRITER_SA }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/documents
+          access_token_lifetime: 300s
+      - name: Validate and write readback-verified evidence
+        env:
+          GOOGLE_DOCS_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: node scripts/eig-progress-ledger-sync.mjs

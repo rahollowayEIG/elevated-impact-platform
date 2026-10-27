@@ -35,7 +35,7 @@ export default function BuildImpactReview({ ownerUserId, legacyReview=false, onV
     try {
       const files=fileText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(path=>({path,status:'modified'}));
       const next=scanBuildChangeImpact({repository:REPO,baseRef,headRef,files});
-      history.begin();setReport(next);setError('');
+      history.record({report:next,reviews:{}},'proposed-change',next.headRef||headRef);setReport(next);setError('');
       setDecisions({}); // a new scan invalidates prior approvals
     } catch(e) {setError(e.message||'Unable to assess changes');setReport(null);}
   }

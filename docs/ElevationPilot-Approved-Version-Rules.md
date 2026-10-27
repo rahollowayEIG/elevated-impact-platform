@@ -3,7 +3,7 @@
 **Status:** Approved working rule, 2026-10-26  
 **Applies to:** EIG Live, the pink ElevationPilot Sandbox, Build Lab, Golf/EIE, Airport, Hangar, Cockpit, ATC and every future extension.
 
-## Principle
+**Cross-system evidence baseline:** [October 26 chat/GitHub/Supabase/Vercel/Google Drive reconciliation](EIG-Platform-Cross-System-Reconciliation-20261026.md). Review this snapshot before suggesting a new master directory or current Sandbox URL. Its evidence is dated and must be refreshed before implementation.\n\n## Principle
 
 For **each deployed workspace and route**, there is exactly **one explicitly approved version**. A green build, a passing GitHub check, or a working preview URL is **not** approval.
 

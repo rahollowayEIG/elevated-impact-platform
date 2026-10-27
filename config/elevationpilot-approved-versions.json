@@ -30,8 +30,8 @@
       "repository": "rahollowayEIG/elevated-impact-platform",
       "vercel_project": "elevationpilot-sandbox",
       "canonical_domain": "elevationpilot-sandbox.vercel.app",
-      "observed_branch": null,
-      "observed_commit": null,
+      "observed_branch": "main",
+      "observed_commit": "b96f2c10aed08b4b6218e1705c6b8d148657935c",
       "approved_commit": null,
       "approved_by": null,
       "approved_at": null,
@@ -59,7 +59,25 @@
           "pr": 106,
           "reason": "Email work branched from legacy fictional-name version; port after verifying current role switch"
         }
-      ]
+      ],
+      "observed_deployment": "elevationpilot-sandbox-pvim2atnd-rahollowayeigs-projects.vercel.app",
+      "observed_alias_checked_at": "2026-10-26",
+      "historical_switch_role_candidate": {
+        "branch": "feature/sandbox-session-header-20261019",
+        "commit": "eb399c0e8b5cc32e39b820c685b92e3cbafe1585",
+        "deployment": "elevationpilot-sandbox-9e3a2ifda-rahollowayeigs-projects.vercel.app",
+        "deployment_created_at": "2026-10-19T19:35:55Z",
+        "evidence": "Was production deployment alias for elevationpilot-sandbox.vercel.app in Oct 19; verified pink theme, SandboxAccessGate, signed-in header and Switch Role source. Its current historical deployment URL is distinct from later current alias.",
+        "approved": false
+      },
+      "historical_pwa_foundation": {
+        "branch": "feature/installable-dual-pwa-20261018",
+        "commit": "94d82111734bea7dc09ccbc27c3c33017de91b69",
+        "preview_deployment": "elevationpilot-sandbox-6r4zwjs60-rahollowayeigs-projects.vercel.app",
+        "state": "feature_preview_not_approved_or_merged",
+        "approved": false,
+        "note": "Installable manifest/PWA assets are on a separate branch; no evidence an installable PWA release was integrated with the Switch Role Sandbox or that the user's locally installed desktop icon uses this preview."
+      }
     }
   }
 }

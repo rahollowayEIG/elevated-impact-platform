@@ -65,7 +65,7 @@ export default function BuildLabAiConnection({supabaseClient,ownerUserId,onViewB
    });
    const data=await res.json().catch(()=>({}));
    if(!res.ok)throw Error(data.message||"Review connection unavailable.");
-   history.begin(moduleId);setReview(validateReview(data,moduleId));
+   const completed=validateReview(data,moduleId);history.record({review:completed},moduleId,completed.sourceVersion);setReview(completed);
   }catch(e){setReviewError(e.message||"AI review unavailable.");}
   finally{setReviewRunning(false);}
  }

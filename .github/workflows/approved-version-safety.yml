@@ -1,0 +1,28 @@
+name: ElevationPilot Rule 3 - Approved Version Safety
+
+on:
+  pull_request:
+    paths:
+      - 'docs/ElevationPilot-Approved-Version-Rules.md'
+      - 'docs/ElevationPilot-List-Interaction-Rules.md'
+      - 'config/elevationpilot-approved-versions.json'
+      - 'scripts/elevationpilot-version-guard.mjs'
+      - 'tests/elevationpilot-version-guard.test.mjs'
+      - '.github/workflows/approved-version-safety.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Test rejection of stale and unapproved routes
+        run: node --test tests/elevationpilot-version-guard.test.mjs
+      - name: Validate version registry without changing deployments
+        run: node scripts/elevationpilot-version-guard.mjs audit

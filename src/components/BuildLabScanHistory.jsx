@@ -1,10 +1,13 @@
-import React,{useEffect,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import {createBuildLabEvidencePackage} from "../lib/buildLabEvidencePackage.mjs";
+import {inspectBuildLabEvidencePackage,restoreBuildLabEvidencePackage} from "../lib/buildLabEvidenceRecovery.mjs";
+import {WORK_EVENT} from "../lib/buildLabWorkBuckets.mjs";
 import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 const scopeLabel=id=>id==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(x=>x.id===id)?.label||id;
 export default function BuildLabScanHistory({ownerUserId}) {
  const [entries,setEntries]=useState([]),[error,setError]=useState("");
+ const restoreInput=useRef(null);
  const [query,setQuery]=useState(""),[type,setType]=useState("all"),[sort,setSort]=useState({key:"savedAt",direction:"desc"});
  const [notice,setNotice]=useState("");
  useEffect(()=>{
@@ -15,13 +18,32 @@ export default function BuildLabScanHistory({ownerUserId}) {
  function order(key){setSort(s=>({key,direction:s.key===key&&s.direction==="asc"?"desc":"asc"}));}
  async function sharePackage(){try{const pkg=createBuildLabEvidencePackage(window.localStorage,ownerUserId);const payload=JSON.stringify(pkg,null,2);const file=new File([payload],"eig-build-lab-evidence-"+pkg.generatedAt.slice(0,10)+".json",{type:"application/json"});if(navigator.share&&navigator.canShare?.({files:[file]})){await navigator.share({title:"EIG Build Lab Evidence",files:[file]});setError("");return;}if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(payload);setError("");setNotice("Evidence JSON copied to clipboard. Paste into your intended secure destination. Check for sensitive content first.");return;}setError("Direct share is unavailable in this browser. Use Download instead.");}catch(e){if(e?.name!=="AbortError")setError("Could not share evidence. Saved records were not modified.");}}
  function exportPackage(){try{const pkg=createBuildLabEvidencePackage(window.localStorage,ownerUserId);const url=URL.createObjectURL(new Blob([JSON.stringify(pkg,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="eig-build-lab-evidence-"+pkg.generatedAt.slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setError("");}catch{setError("Evidence package unavailable. Existing records have not been modified.");}}
+ async function restorePackage(event){
+  const file=event.target.files?.[0];if(event.target)event.target.value="";
+  if(!file)return;
+  try{
+   if(file.size>5000000)throw Error("Choose an evidence JSON file smaller than 5 MB.");
+   const raw=await file.text();
+   const inspection=inspectBuildLabEvidencePackage(ownerUserId,raw);
+   const summary=inspection.summary;
+   const accepted=window.confirm("Restore owner-local Build Lab evidence from "+new Date(summary.generatedAt).toLocaleString()+"?\\n\\nScans: "+summary.scans+"; work items: "+summary.workItems+"; approved/draft batches: "+summary.batches+"; Manager blueprint: "+(summary.manager?"yes":"no")+".\\n\\nThis REPLACES saved scan history, Work Buckets and Manager plan in THIS browser. Download your current evidence package FIRST if you want to retain it. It cannot be undone. No agents run and no production data is changed.");
+   if(!accepted){setNotice("Restore cancelled. Existing records were not changed.");setError("");return;}
+   restoreBuildLabEvidencePackage(window.localStorage,ownerUserId,raw,{allowReplace:true});
+   window.dispatchEvent(new Event(HISTORY_EVENT));
+   window.dispatchEvent(new Event(WORK_EVENT));
+   window.dispatchEvent(new Event("storage"));
+   setError("");
+   setNotice("Evidence restored and verified in this browser: "+summary.scans+" scans, "+summary.workItems+" work items, "+summary.batches+" batches. Manager blueprint: "+(summary.manager?"restored":"none")+". This did not authorize execution or deployment.");
+  }catch(e){setNotice("");setError(e?.message||"Evidence recovery failed. Existing records were not intentionally replaced.");}
+ }
  function exportEntry(row){const url=URL.createObjectURL(new Blob([JSON.stringify(row,null,2)],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download="build-lab-"+row.type+"-"+row.savedAt.replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  const needle=query.trim().toLowerCase();
  const visible=entries.filter(x=>(type==="all"||x.type===type)&&(!needle||[SCAN_TYPES[x.type],scopeLabel(x.scope),x.source,x.savedAt,JSON.stringify(x.snapshot)].join(" ").toLowerCase().includes(needle)));
  return <section className="platform-section-card bl-history" aria-labelledby="bl-history-title">
   <h2 id="bl-history-title">Scan History</h2>
   <p>Completed scans grouped by scan type. Saved in this browser on this preview address; other devices and preview addresses have separate history. Keeps up to 20 scans per type within the browser history size limit; oldest scans are removed first. Download JSON to keep a permanent copy.</p>
-  <p><button type="button" className="platform-primary-button" onClick={exportPackage}>Download Full Scanner Evidence Package (JSON)</button> <button type="button" className="platform-secondary-button" onClick={sharePackage}>Share Evidence Package</button> Share uses your device sharing options when available or copies evidence JSON to the clipboard; no cloud link is created. Includes saved scans, complete evidence, review choices, Work Buckets, approved plans, and a readable README. Review contents before sharing. No live data is retrieved.</p>
+  <p><button type="button" className="platform-primary-button" onClick={exportPackage}>Download Full Scanner Evidence Package (JSON)</button> <button type="button" className="platform-secondary-button" onClick={sharePackage}>Share Evidence Package</button> Share uses your device sharing options when available or copies evidence JSON to the clipboard; no cloud link is created. Includes saved scans, complete evidence, review choices, Work Buckets, the current Manager blueprint, and a readable README. Review contents before sharing. No live data is retrieved.</p>
+  <p><button type="button" className="platform-secondary-button" onClick={()=>restoreInput.current?.click()}>Restore Saved Evidence (JSON)</button> <input ref={restoreInput} type="file" accept=".json,application/json" aria-label="Select owner evidence backup" onChange={restorePackage} style={{display:"none"}} /> Restore a v2 evidence backup from the same owner account. The app validates the file and asks before replacing local scan history, Work Buckets and Manager blueprint. Download the current package first. This is local recovery, not automatic cloud backup.</p>
   <p>Existing saved scanner results are added when Build Lab opens. Earlier overwritten results and AI responses lost before this update cannot be recovered. Opening history never runs a scan or calls AI.</p>
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {notice&&<p role="status">{notice}</p>}

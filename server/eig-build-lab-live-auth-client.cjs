@@ -3,7 +3,6 @@
 // never receive a privileged database client or a caller-chosen SQL operation.
 const {createClient}=require('@supabase/supabase-js');
 const {buildLabPreviewAuthProviders}=require('./eig-build-lab-auth-client.cjs');
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STANDARD_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function verifiedSessionId(jwt){
  try{
@@ -19,7 +18,7 @@ function buildLabLiveAuthProviders(env=name=>process.env[name]){
  return {...base,async verifyLiveSession(userId,token){
   const sessionId=verifiedSessionId(token);
   const url=env('VITE_SUPABASE_URL'),serverKey=env('SUPABASE_SERVICE_ROLE_KEY');
-  if(!STANDARD_UUID.test(userId||'')||!sessionId||!url||!serverKey)
+  if(!STANDARD_UUID.test(userId||'')||!sessionId||url!==LIVE_SUPABASE_URL||!serverKey)
    throw Error('Live Build Lab active-session attestation unavailable.');
   const admin=createClient(url,serverKey,{auth:{persistSession:false,autoRefreshToken:false}});
   const {error}=await admin.rpc('platform_assert_active_admin',{

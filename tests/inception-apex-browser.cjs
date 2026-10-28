@@ -114,6 +114,9 @@ const jsQR = require("jsqr");
       await page.getByLabel("Image X", { exact: true }).inputValue(),
       "25",
     );
+    // Restore the previous saved-project expectation; this extra regression
+    // must not alter what later save/reopen assertions are checking.
+    await page.getByLabel("Image X", { exact: true }).fill("105");
     await page
       .getByRole("button", {
         name: "Details & creative direction",

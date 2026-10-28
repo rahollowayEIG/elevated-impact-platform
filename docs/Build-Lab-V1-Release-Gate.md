@@ -30,6 +30,19 @@ Build Lab's **future cross-app dependency / impact analysis contract** should:
 
 These goals inform the Build Lab architecture, but a full dependency engine is **not** a reason to block a limited, secure, owner-only V1 scanner/planning release; add and verify coverage incrementally. Future first-app choice remains uncommitted.
 
+## Standing architecture: One Database, One Milky Way Galaxy
+
+**Owner's governing vision (October 28, 2026):** Elevated Impact Group and ElevationPilot operate as **one connected galaxy** of applications, all working together to serve their authorized participants. Maintain **one central, logically unified database and source of truth** for the platform's shared operational records, rather than isolated app-owned identity/customer/product databases. Each app specializes in its function and reuses shared platform capabilities. This is a design rule for all future features, not a claim that every current integration is complete.
+
+- **Shared identities and relationships:** one universal user identity linked to the relevant organizations, contacts, roles and activities; no duplicate user records for separate app signups.
+- **Shared reusable services:** identity, organization and customer registries, product registry/inventory, communications, media/design assets, contracts, billing/payment when later authorized, audit and approvals. A service has one defined owner and contract.
+- **App-specific domains:** EIE events, EIG Publishing magazines/books, EIG Golf, InceptionApex, Squawk Box and future apps keep their distinct workflows and data structures while interoperating through shared references and services.
+- **Security boundaries remain absolute:** one database is not one unrestricted data pool. Use organization/tenant scoping, authorization, RLS and least-privilege actions; prohibit accidental mixing of customer, issuer, financial or private records across businesses.
+- **Cross-app impact checks:** Build Lab must maintain a verifiable map of actual dependencies, app integrations, role visibility, canonical records and change propagation. Before any proposed change, identify what uses the affected data/API and which regression tests need to run.
+- **Avoid dual-source synchronization:** prefer a single canonical record with references and purpose-built views, not separate authoritative copies requiring fragile two-way sync. Where cached/projection data is necessary, document ownership and reconciliation.
+- **Physical implementation:** honor the user's one-database goal as the preferred core architecture. Do not silently introduce separate production databases or app-specific registries. Treat strictly necessary infrastructure isolation, ephemeral test data and backups as explicit, reviewable exceptions; these must not become independent sources of truth.
+- **Release discipline:** this long-term galaxy architecture guides Build Lab V1 design; do not hold up a limited, secure owner-only release until every planned service is implemented.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

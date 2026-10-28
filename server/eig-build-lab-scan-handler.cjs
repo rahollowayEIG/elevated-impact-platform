@@ -7,9 +7,10 @@ const {
 function createBuildLabInceptionScanHandler({
   env, verifyUser, membershipsForUser, readSources, scan,
   now = Date.now,
+  authorize = authorizeBuildLabPreviewOwner,
 }) {
   return async (req, res) => {
-    const grant = await authorizeBuildLabPreviewOwner(
+    const grant = await authorize(
       req, { env, verifyUser, membershipsForUser, now });
     if (!grant.allowed) return response(res, grant.status, { ok: false });
     const body = req.body;

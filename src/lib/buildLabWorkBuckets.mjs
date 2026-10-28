@@ -1,11 +1,14 @@
 /** Owner-local work ledger. Planning data is never execution or deployment authority. */
 import {historyKey, SCAN_TYPES} from './buildLabScanHistory.mjs';
 import {stackScanBlueprint, validateManagerBlueprint, approveManagerBlueprint} from './buildLabManagerBlueprint.mjs';
-import {scanFindingAssessment,ownerGoalAssessment,findingAssessment,validFindingAssessment} from './buildLabFindingStandards.mjs';
+import {scanFindingAssessment,ownerGoalAssessment,manualFindingAssessment,findingAssessment,validFindingAssessment} from './buildLabFindingStandards.mjs';
 export const WORK_BUCKETS = {investigation:'Investigation',interface:'Interface & accessibility',behavior:'Application behavior',data:'Data & integrations',security:'Security & permissions',development:'Research & development'};
 export const WORK_INTENTS = {repair:'Repair',upgrade:'Upgrade',build:'New build'};
 export const WORK_STATES = {open:'Open',hold:'On hold',manual:'Needs manual fix',dismissed:'Dismissed'};
 export const WORK_EVENT = 'eig-work-buckets-changed';
+export const MANUAL_OUTCOMES={reported:'Reported · unverified',confirmed:'Confirmed by manual test',not_reproduced:'Cannot reproduce',verified_working:'Verified working'};
+const manualReady=j=>!j.manualFinding||j.manualFinding.outcome==='confirmed';
+const refType=t=>t==='manual'||Object.hasOwn(SCAN_TYPES,t);
 const MAX_SIZE=2400000;
 const copy=x=>JSON.parse(JSON.stringify(x));
 const clean=(s,n=3000)=>typeof s==='string'?s.trim().slice(0,n):'';
@@ -17,7 +20,11 @@ export function validateWorkLedger(value){
  if(!value||value.kind!=='eig_work_buckets'||value.version!==1||!Array.isArray(value.jobs)||value.jobs.length>500||!Array.isArray(value.batches)||value.batches.length>100||JSON.stringify(value).length>MAX_SIZE)throw Error('Work buckets are unreadable or exceed the local limit. Existing data has been preserved.');
  const ids=new Set();
  for(const j of value.jobs){
-  if(!j||typeof j.id!=='string'||!j.id||j.id.length>700||ids.has(j.id)||!clean(j.title,180)||typeof j.detail!=='string'||j.detail.length>3000||!Object.hasOwn(WORK_BUCKETS,j.bucket)||!Object.hasOwn(WORK_INTENTS,j.intent)||!Object.hasOwn(WORK_STATES,j.state)||typeof j.manualReason!=='string'||j.manualReason.length>1000||typeof j.completion!=='string'||j.completion.length>3000||!Array.isArray(j.apps)||!j.apps.length||j.apps.length>30||!j.apps.every(a=>typeof a==='string'&&a.length<=150)||!['app','multi_app','platform'].includes(j.scope)||!date(j.firstSeen)||!date(j.lastSeen)||typeof j.signature!=='string'||j.signature.length>30000||!Array.isArray(j.refs)||!j.refs.length||j.refs.length>20||!j.refs.every(r=>Object.hasOwn(SCAN_TYPES,r.type)&&typeof r.scanKey==='string'&&typeof r.sourceVersion==='string'&&Array.isArray(r.files)&&r.files.every(validPath))||!Array.isArray(j.evidence)||j.evidence.length>30||!j.evidence.every(e=>typeof e==='string'&&e.length<=1000)||!['critical','high','medium','low'].includes(j.priority)||typeof j.observation!=='string'||j.observation.length>3000||typeof j.classificationReason!=='string'||typeof j.ownerEdited!=='boolean')throw Error('Saved work item is invalid. Existing data has been preserved.');
+  if(!j||typeof j.id!=='string'||!j.id||j.id.length>700||ids.has(j.id)||!clean(j.title,180)||typeof j.detail!=='string'||j.detail.length>3000||!Object.hasOwn(WORK_BUCKETS,j.bucket)||!Object.hasOwn(WORK_INTENTS,j.intent)||!Object.hasOwn(WORK_STATES,j.state)||typeof j.manualReason!=='string'||j.manualReason.length>1000||typeof j.completion!=='string'||j.completion.length>3000||!Array.isArray(j.apps)||!j.apps.length||j.apps.length>30||!j.apps.every(a=>typeof a==='string'&&a.length<=150)||!['app','multi_app','platform'].includes(j.scope)||!date(j.firstSeen)||!date(j.lastSeen)||typeof j.signature!=='string'||j.signature.length>30000||!Array.isArray(j.refs)||!j.refs.length||j.refs.length>20||!j.refs.every(r=>refType(r.type)&&typeof r.scanKey==='string'&&typeof r.sourceVersion==='string'&&Array.isArray(r.files)&&r.files.every(validPath))||!Array.isArray(j.evidence)||j.evidence.length>30||!j.evidence.every(e=>typeof e==='string'&&e.length<=1000)||!['critical','high','medium','low'].includes(j.priority)||typeof j.observation!=='string'||j.observation.length>3000||typeof j.classificationReason!=='string'||typeof j.ownerEdited!=='boolean')throw Error('Saved work item is invalid. Existing data has been preserved.');
+  if(j.manualFinding!==undefined){
+   const m=j.manualFinding;
+   if(!m||typeof m!=='object'||!Object.hasOwn(MANUAL_OUTCOMES,m.outcome)||['expected','actual','steps','environment','relatedId','verificationNote'].some(k=>typeof m[k]!=='string'||m[k].length>1500)||!m.expected.trim()||!m.actual.trim()||!m.steps.trim()||!m.environment.trim()||!date(m.reportedAt)||!(m.verifiedAt===null||date(m.verifiedAt))||!j.refs.some(r=>r.type==='manual')||(m.outcome!=='confirmed'&&j.state==='open')||(m.outcome==='confirmed'&&!m.verificationNote.trim())||(m.outcome==='reported'&&m.verifiedAt!==null))throw Error('Saved manual report is invalid. Existing data has been preserved.');
+  }
   ids.add(j.id);
   if(j.assessment!==undefined&&!validFindingAssessment(j.assessment))throw Error('Saved finding assessment is invalid. Existing data has been preserved.');
  }
@@ -56,7 +63,7 @@ function extract(entry){
  const s=entry.snapshot,r=s.review||s.report||s.audit||s;
  return r.recommendations||r.findings||r.suggestions||r.modules||[];
 }
-function signature(j){return JSON.stringify([j.title,j.detail,j.completion,j.bucket,j.intent,j.scope,j.apps,[...new Set(j.refs.map(r=>r.type+':'+r.sourceVersion))].sort(),j.assessment]);}
+function signature(j){return JSON.stringify([j.title,j.detail,j.completion,j.bucket,j.intent,j.scope,j.apps,[...new Set(j.refs.map(r=>r.type+':'+r.sourceVersion))].sort(),j.assessment,j.manualFinding||null]);}
 export function collectScanWork(ledger,entries){
  const next=copy(validateWorkLedger(ledger));
  // Oldest first: latest observation wins, without deleting jobs absent from a later scan.
@@ -101,10 +108,33 @@ export function collectScanWork(ledger,entries){
 export function reviseWorkItem(ledger,id,patch){
  const next=copy(validateWorkLedger(ledger)),j=next.jobs.find(j=>j.id===id);if(!j)throw Error('Unknown work item.');
  for(const key of ['title','detail','completion','bucket','intent','scope','state','manualReason','apps'])if(Object.hasOwn(patch,key))j[key]=copy(patch[key]);
+ if(j.state==='open'&&!manualReady(j))throw Error('Verify the manual report before including it in an approved repair.');
  j.ownerEdited=true;j.signature=signature(j);
  if(!clean(j.detail)||!clean(j.completion))throw Error('A requirement and completion criteria are required.');
  if(j.state==='manual'&&!clean(j.manualReason))throw Error('Explain what needs manual work or which capability is missing.');
  return validateWorkLedger(next);
+}
+/** Manual observations are distinct from scan history and cannot impersonate an IA source scan. */
+export function addManualFinding(ledger,{id,title,app,expected,actual,steps,completion,environment='Build Lab preview',sourceVersion='',relatedId='',bucket='investigation',now=new Date().toISOString()}){
+ const next=copy(validateWorkLedger(ledger)),name=clean(title,180),appName=clean(app,150);
+ const expectedText=clean(expected,700),actualText=clean(actual,700),repro=clean(steps,800);
+ const version=clean(sourceVersion,40);
+ if(!date(now)||!/^manual:[0-9a-f-]{36}$/i.test(id||'')||next.jobs.some(j=>j.id===id)||!name||!appName||!expectedText||!actualText||!repro||!clean(completion)||!clean(environment,300)||!Object.hasOwn(WORK_BUCKETS,bucket)||(version&&!/^[a-f0-9]{40}$/i.test(version)))throw Error('Enter a valid title, app, expected/actual behavior, steps, completion and optional 40-character source SHA.');
+ if(next.jobs.some(j=>j.manualFinding&&j.title.toLowerCase()===name.toLowerCase()&&j.apps[0].toLowerCase()===appName.toLowerCase()&&j.manualFinding.actual.toLowerCase()===actualText.toLowerCase()))throw Error('A matching manual report already exists. Review the existing item instead.');
+ const j={id,title:name,detail:'Expected: '+expectedText+'\nActual: '+actualText+'\nReproduce: '+repro,completion:clean(completion),bucket,intent:'repair',scope:'app',apps:[appName],state:'hold',manualReason:'',assessment:manualFindingAssessment(),priority:'medium',firstSeen:now,lastSeen:now,
+  observation:'Manually reported; reproduction and version verification required.',evidence:[],refs:[{scanKey:id,type:'manual',sourceVersion:version||'unknown',savedAt:now,itemId:id,files:[]}],ownerEdited:true,classificationReason:'Owner-reported behavior, not a scanner-confirmed defect.',
+  manualFinding:{expected:expectedText,actual:actualText,steps:repro,environment:clean(environment,300),relatedId:clean(relatedId,300),reportedAt:now,outcome:'reported',verificationNote:'',verifiedAt:null},signature:''};
+ j.signature=signature(j);next.jobs.push(j);return validateWorkLedger(next);
+}
+/** An explicit manual result, distinct from an automated verification verdict. */
+export function reviewManualFinding(ledger,id,{outcome,note='',now=new Date().toISOString()}){
+ const next=copy(validateWorkLedger(ledger)),j=next.jobs.find(j=>j.id===id);
+ if(!j?.manualFinding)throw Error('Choose a manual report.');if(!Object.hasOwn(MANUAL_OUTCOMES,outcome)||!date(now))throw Error('Choose a valid verification outcome.');
+ const explanation=clean(note,1200);
+ if(outcome!=='reported'&&!explanation)throw Error('Record what you tested and observed before setting a verification outcome.');
+ j.manualFinding={...j.manualFinding,outcome,verificationNote:explanation,verifiedAt:outcome==='reported'?null:now};
+ j.state=outcome==='confirmed'?'open':outcome==='verified_working'?'dismissed':'hold';
+ j.ownerEdited=true;j.signature=signature(j);return validateWorkLedger(next);
 }
 export function addBuildBrief(ledger,{id,title,detail,completion,apps=['platform'],now=new Date().toISOString()}){
  const next=copy(validateWorkLedger(ledger));if(!id||next.jobs.some(j=>j.id===id))throw Error('Unique work ID required.');
@@ -114,12 +144,12 @@ export function addBuildBrief(ledger,{id,title,detail,completion,apps=['platform
  j.signature=signature(j);next.jobs.push(j);return validateWorkLedger(next);
 }
 export function batchIsCurrent(ledger,batch){
- return batch.items.every(i=>{const j=ledger.jobs.find(j=>j.id===i.id);return j&&j.signature===i.signature&&j.state==='open';});
+ return batch.items.every(i=>{const j=ledger.jobs.find(j=>j.id===i.id);return j&&j.signature===i.signature&&j.state==='open'&&manualReady(j);});
 }
 export function createWorkBatch(ledger,{id,title,jobIds,now=new Date().toISOString()}){
  const next=copy(validateWorkLedger(ledger)),jobs=next.jobs.filter(j=>jobIds.includes(j.id));
  if(!id||next.batches.some(b=>b.id===id)||!clean(title,120)||!jobs.length||jobs.length>50||jobs.length!==new Set(jobIds).size)throw Error('Choose 1–50 work items and enter a batch title.');
- if(jobs.some(j=>j.state!=='open'))throw Error('Only open items can enter a new batch. Reopen held or manual work deliberately first.');
+ if(jobs.some(j=>j.state!=='open'||!manualReady(j)))throw Error('Only verified open items can enter a new batch. Reproduce manual reports first.');
  if(new Set(jobs.map(j=>j.intent)).size!==1)throw Error('Keep repairs, upgrades and new builds in separate batches.');
  next.batches.unshift({id,title:clean(title,120),intent:jobs[0].intent,createdAt:now,status:'draft',approvedAt:null,items:jobs.map(j=>({id:j.id,signature:j.signature,title:j.title,detail:j.detail,completion:j.completion,assessment:copy(findingAssessment(j)),apps:[...j.apps],scope:j.scope,sourceRefs:copy(j.refs),evidence:copy(j.evidence)}))});
  return validateWorkLedger(next);
@@ -148,13 +178,14 @@ export function workBatchPlan(ledger,id){
 export function workRoute(job){
  const latest=job.refs[0];
  if(job.state==='manual')return {label:'Needs manual fix',reason:job.manualReason};
+ if(job.manualFinding)return {label:job.manualFinding.outcome==='confirmed'?'Manual report · scope review only':'Needs manual verification',reason:job.manualFinding.outcome==='confirmed'?'The owner reproduced the issue. This report is not an IA scan, so the bounded AI builder cannot execute it without separate source verification and a compatible intake path.':'Capture the test outcome before approving this as repair work.'};
  if(job.scope==='app'&&latest?.type==='inspector'&&/^[a-f0-9]{40}$/.test(latest.sourceVersion)&&job.apps.every(a=>['inception','inception-apex'].includes(a)))return {label:'Bounded IA candidate review',reason:'One IA finding can use the existing candidate generator after current-source verification. Successful implementation is not guaranteed.'};
  return {label:'Capability not assessed',reason:'An implementation route has not been established for this scope. Assess the tools, permissions and tests needed before choosing assisted work or an agent. This does not establish a defect or an agent limitation.'};
 }
 
 function reviewedSelection(ledger,selection){
  if(!Array.isArray(selection)||!selection.length||selection.length>50||new Set(selection.map(x=>x.id)).size!==selection.length)throw Error('Review between 1 and 50 findings at a time.');
- return selection.map(s=>{const j=ledger.jobs.find(j=>j.id===s.id);if(!j||j.signature!==s.signature||j.state!=='open')throw Error('Findings changed since this review. Refresh the bucket and review the current work.');return j;});
+ return selection.map(s=>{const j=ledger.jobs.find(j=>j.id===s.id);if(!j||j.signature!==s.signature||j.state!=='open'||!manualReady(j))throw Error('Findings changed or are not verified since this review. Refresh the bucket and review the current work.');return j;});
 }
 /** One bucket approval creates reviewed batches by work intent; no provider or execution. */
 export function approveBucketSelection(ledger,{selection,idPrefix,title='Reviewed bucket',now=new Date().toISOString()}){

@@ -8,14 +8,17 @@ const blank={title:'',detail:'',completion:'',apps:'platform'};
 const blankReport={title:'',app:'inception-apex',expected:'',actual:'',steps:'',completion:'',bucket:'interface',environment:'',sourceVersion:'',relatedId:''};
 // Browser-only, owner-separated draft. Never part of the scan evidence or approved work ledger.
 const manualDraftKey=uid=>historyKey(uid)?.replace('scan-history','work-manual-draft')||null;
-function readManualDraft(uid){
- const key=manualDraftKey(uid);if(!key)return {...blankReport};
+function storedManualDraft(uid){
+ const key=manualDraftKey(uid);if(!key)return null;
  try{
-  const raw=localStorage.getItem(key);if(!raw||raw.length>6000)return {...blankReport};
-  const data=JSON.parse(raw);if(!data||typeof data!=='object'||Array.isArray(data))return {...blankReport};
-  return Object.fromEntries(Object.entries(blankReport).map(([key,defaultValue])=>[key,typeof data[key]==='string'&&data[key].length<=1500?data[key]:defaultValue]));
- }catch{return {...blankReport};}
+  const raw=localStorage.getItem(key);if(!raw||raw.length>6000)return null;
+  const data=JSON.parse(raw);if(!data||typeof data!=='object'||Array.isArray(data))return null;
+  const entry=Object.fromEntries(Object.entries(blankReport).map(([name,defaultValue])=>[name,typeof data[name]==='string'&&data[name].length<=1500?data[name]:defaultValue]));
+  if(!Object.keys(blankReport).some(name=>entry[name]!==blankReport[name]))return null;
+  return {data:entry,savedAt:typeof data.savedAt==='string'&&Number.isFinite(Date.parse(data.savedAt))?data.savedAt:null};
+ }catch{return null;}
 }
+const readManualDraft=uid=>storedManualDraft(uid)?.data||{...blankReport};
 function download(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='build-lab-work-buckets.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  const selectionKey='eig:work-selection:v1:'+ownerUserId;
@@ -24,7 +27,7 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  const [selectionError,setSelectionError]=useState('');
  const [ledger,setLedger]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [query,setQuery]=useState(''),[bucket,setBucket]=useState('all'),[intent,setIntent]=useState('all'),[state,setState]=useState('all'),[assessmentKind,setAssessmentKind]=useState('all'),[order,setOrder]=useState({key:'lastSeen',direction:'desc'});
- const [selected,setSelected]=useState(()=>{try{const x=JSON.parse(localStorage.getItem(selectionKey)||'[]');return Array.isArray(x)&&x.every(v=>typeof v==='string')?x:[];}catch{return [];}}),[batchTitle,setBatchTitle]=useState(''),[editing,setEditing]=useState(''),[draft,setDraft]=useState(null),[brief,setBrief]=useState(blank),[reportState,setReportState]=useState(()=>({owner:ownerUserId,data:readManualDraft(ownerUserId)})),[draftSaveError,setDraftSaveError]=useState('');
+ const [selected,setSelected]=useState(()=>{try{const x=JSON.parse(localStorage.getItem(selectionKey)||'[]');return Array.isArray(x)&&x.every(v=>typeof v==='string')?x:[];}catch{return [];}}),[batchTitle,setBatchTitle]=useState(''),[editing,setEditing]=useState(''),[draft,setDraft]=useState(null),[brief,setBrief]=useState(blank),[reportState,setReportState]=useState(()=>({owner:ownerUserId,data:readManualDraft(ownerUserId)})),[draftSaveError,setDraftSaveError]=useState(''),[draftSavedAt,setDraftSavedAt]=useState(()=>storedManualDraft(ownerUserId)?.savedAt||null),[draftExists,setDraftExists]=useState(()=>!!storedManualDraft(ownerUserId)),[draftExpanded,setDraftExpanded]=useState(()=>!!storedManualDraft(ownerUserId));
   const reported=reportState.owner===ownerUserId?reportState.data:readManualDraft(ownerUserId);
   function setReported(next){
    setReportState({owner:ownerUserId,data:next});
@@ -33,7 +36,12 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
     if(!key)throw Error('Owner account is required.');
     // The untouched defaults need no draft. Clear only after an actual report save.
     const changed=Object.keys(blankReport).some(field=>next[field]!==blankReport[field]);
-    if(changed)localStorage.setItem(key,JSON.stringify(next));else localStorage.removeItem(key);
+    if(changed){
+     const savedAt=new Date().toISOString(),json=JSON.stringify({...next,savedAt});
+     localStorage.setItem(key,json);
+     if(localStorage.getItem(key)!==json)throw Error('Saved draft could not be read back.');
+     setDraftExists(true);setDraftSavedAt(savedAt);
+    }else{localStorage.removeItem(key);setDraftExists(false);setDraftSavedAt(null);}
     setDraftSaveError('');
    }catch{setDraftSaveError('Draft changes could not be saved in this browser. Keep a copy of your text before leaving this page.');}
   }
@@ -68,8 +76,9 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
   <p className="bl-quiet">Saved in this browser and preview address only. Batch approval records scope; it does not run agents or deploy changes.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}{draftSaveError&&<p className="platform-error" role="alert">{draftSaveError}</p>}{selectionError&&<p className="platform-error" role="alert">{selectionError}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
   {ledger&&<>
-   <details className="bl-work-brief"><summary>Report an issue scanners missed</summary>
-    <p>Owner-only manual observation. Reports start On hold, not as scanner-confirmed defects. Do not include customer records, private screenshots, passwords or tokens. Nothing runs or deploys.</p><p className="bl-quiet" role="status">Draft autosave is on. Unsubmitted entries survive refreshing or leaving Work Buckets in this browser and preview address; they do not sync to other devices. Recording the issue saves it separately and clears the draft.</p>
+   {draftExists&&<p role="status" className="bl-notice"><strong>Draft saved in this browser</strong>{draftSavedAt?' · '+new Date(draftSavedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):' · Restored from an earlier session'}. Not yet recorded as an issue. The report form reopens with your entries.</p>}
+   <details className="bl-work-brief" open={draftExpanded} onToggle={e=>setDraftExpanded(e.currentTarget.open)}><summary>Report an issue scanners missed{draftExists?' · Unsubmitted draft saved':''}</summary>
+    <p>Owner-only manual observation. Reports start On hold, not as scanner-confirmed defects. Do not include customer records, private screenshots, passwords or tokens. Nothing runs or deploys.</p><p className="bl-quiet">Draft autosave is on. Unsubmitted entries survive refreshing or leaving Work Buckets in this browser and preview address; they do not sync to other devices. Recording the issue saves it separately and clears the draft.</p>
     <form onSubmit={e=>{e.preventDefault();reportIssue();}}>
      <label>Issue title<input aria-label="Issue title" required maxLength={180} value={reported.title} onChange={e=>setReported({...reported,title:e.target.value})} placeholder="Clicking artwork does not enable arrow keys" /></label>
      <label>Affected app<input aria-label="Affected app" required maxLength={150} value={reported.app} onChange={e=>setReported({...reported,app:e.target.value})} /></label>

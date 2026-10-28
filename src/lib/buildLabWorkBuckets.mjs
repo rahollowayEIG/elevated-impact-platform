@@ -169,7 +169,7 @@ export function workBatchPlan(ledger,id){
  const proposals=jobs.map((j,i)=>{
   const requirement=j.detail+'\n\nComplete when: '+j.completion;
   if(requirement.length>3000)throw Error('The requirement and completion criteria for '+j.title+' exceed the implementation review limit of 3,000 characters. Shorten the work item and prepare a fresh batch.');
-  return {id:'proposal-'+(i+1),module:j.apps.join(', '),title:j.title,detail:requirement,revision:requirement,priority:j.priority,assignedTo:j.intent==='repair'?'fixer':'builder',decision:'revise',requiresVerification:true,sourceRefs:[j.refs[0]]};
+  return {id:'proposal-'+(i+1),module:j.apps.join(', '),title:j.title,detail:requirement,revision:requirement,priority:j.priority,assignedTo:j.intent==='repair'?'fixer':'builder',decision:'revise',requiresVerification:true,sourceRefs:[{...j.refs[0],...(j.manualFinding?{manualReview:{outcome:j.manualFinding.outcome,verificationNote:j.manualFinding.verificationNote,verifiedAt:j.manualFinding.verifiedAt,reportedAt:j.manualFinding.reportedAt,relatedId:j.manualFinding.relatedId,environment:j.manualFinding.environment}}:{})}]};
  });
  const plan=validateManagerBlueprint({kind:'eig_build_lab_manager_blueprint',schemaVersion:1,title:batch.title,createdAt:batch.createdAt,revision:1,status:'owner_review_required',inputs,proposals,
  warnings:['Batch scope approval does not authorize execution or release. Verify the exact current branch, dependencies and affected apps before implementation.'],tasks:[],approval:null,execution:'not_connected',safety:{localPlanningOnly:true,autoBuilt:false,autoDeployed:false}});

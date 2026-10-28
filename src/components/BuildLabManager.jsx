@@ -1,21 +1,31 @@
 import React,{useEffect,useState} from 'react';
 import BuildLabBuilder from './BuildLabBuilder.jsx';
 import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from '../lib/buildLabScanHistory.mjs';
+import {WORK_EVENT,MANUAL_OUTCOMES,readWorkLedger} from '../lib/buildLabWorkBuckets.mjs';
 import {MASTER_SCAN_TARGETS} from '../lib/eigMasterScanTargets.mjs';
 import {MANAGER_AGENTS,managerStorageKey,stackScanBlueprint,reviewManagerProposal,assignManagerProposal,approveManagerBlueprint,restoreManagerBlueprint} from '../lib/buildLabMissionOrchestrator.mjs';
 const scopeName=id=>id==='all'?'Entire platform':MASTER_SCAN_TARGETS.find(x=>x.id===id)?.label||id;
 const briefId=x=>x.type+':'+x.id;
 const AGENT_ROLES={builder:'Build approved features',fixer:'Investigate and repair defects',designer:'Improve the user experience',scientist:'Test hypotheses and prototypes',researcher:'Gather and compare evidence',inspector:'Verify findings and test results'};
 function readSaved(uid){try{const key=managerStorageKey(uid);return {plan:key?restoreManagerBlueprint(localStorage.getItem(key)):null,error:''};}catch{return {plan:null,error:'The saved Manager blueprint could not be read. Existing browser data has been preserved.'};}}
+function currentManualRecords(uid){
+ try{
+  const ledger=readWorkLedger(localStorage,uid);
+  return Object.fromEntries(ledger.jobs.filter(j=>j.manualFinding&&j.refs.some(r=>r.type==='manual')).map(j=>[j.refs.find(r=>r.type==='manual').scanKey,{
+   ...j.manualFinding,reportId:j.id,
+  }]));
+ }catch{return {};}
+}
 export default function BuildLabManager({ownerUserId,supabaseClient}){
  const [saved]=useState(()=>readSaved(ownerUserId));
- const [plan,setPlan]=useState(saved.plan),[entries,setEntries]=useState([]),[selected,setSelected]=useState([]);
+ const [plan,setPlan]=useState(saved.plan),[entries,setEntries]=useState([]),[selected,setSelected]=useState([]),[manualRecords,setManualRecords]=useState(()=>currentManualRecords(ownerUserId));
  const [title,setTitle]=useState(saved.plan?.title||'Build Lab improvement blueprint');
  const [query,setQuery]=useState(''),[type,setType]=useState('all'),[order,setOrder]=useState({key:'savedAt',direction:'desc'});
  const [error,setError]=useState(saved.error),[saveError,setSaveError]=useState(''),[notice,setNotice]=useState('');
  const [editing,setEditing]=useState(''),[revision,setRevision]=useState(''),[acknowledged,setAcknowledged]=useState(false);
  const [taskQuery,setTaskQuery]=useState(''),[agent,setAgent]=useState('all'),[taskOrder,setTaskOrder]=useState({key:'id',direction:'asc'});
  useEffect(()=>{function load(){try{setEntries(readScanHistory(localStorage,ownerUserId));}catch{setError('Scan history could not be read. Download your available results before leaving.');}}load();window.addEventListener(HISTORY_EVENT,load);window.addEventListener('storage',load);return()=>{window.removeEventListener(HISTORY_EVENT,load);window.removeEventListener('storage',load);};},[ownerUserId]);
+ useEffect(()=>{const load=()=>setManualRecords(currentManualRecords(ownerUserId));load();window.addEventListener(WORK_EVENT,load);window.addEventListener('storage',load);return()=>{window.removeEventListener(WORK_EVENT,load);window.removeEventListener('storage',load);};},[ownerUserId]);
  useEffect(()=>{if(!plan)return;try{const key=managerStorageKey(ownerUserId);if(!key)throw Error();localStorage.setItem(key,JSON.stringify(plan));setSaveError('');}catch{setSaveError('Manager autosave is unavailable. Download blueprint JSON before leaving.');}},[ownerUserId,plan]);
  function apply(action){try{setPlan(action());setError('');setAcknowledged(false);setNotice('Review saved locally. No agent has been dispatched.');}catch(e){setError(e.message);}}
  function generate(){if(plan&&!window.confirm('Replace the current Manager blueprint? Download its JSON first if you want to keep it.'))return;apply(()=>stackScanBlueprint(entries.filter(x=>selected.includes(briefId(x))),{title}));setEditing('');}
@@ -40,13 +50,26 @@ export default function BuildLabManager({ownerUserId,supabaseClient}){
   <button type="button" className="platform-primary-button" disabled={!selected.length||selected.length>10||!title.trim()} onClick={generate}>{plan?'Replace blueprint from selected scans':'Create blueprint from selected scans'}</button>
   {plan&&<>
    {plan.pilot&&<div className="bl-notice"><strong>One-scanner pilot · Implementation after owner approval</strong><p>Automatic dispatch is not connected. Export the approved blueprint for the implementation step, then attach the resulting branch, test run and rescan to the review.</p><ul>{plan.pilot.verification.map(x=><li key={x}>{x}</li>)}</ul></div>}
-   <h3>2. Review · {plan.title}</h3><p>Revision {plan.revision} · {plan.inputs.length} scans · {plan.merged} exact duplicates combined · {plan.omitted} rejected/held/parked findings omitted · {plan.preserved||0} existing patterns preserved</p>
+   <h3>2. Review · {plan.title}</h3><p>Revision {plan.revision} · {plan.inputs.length} {plan.inputs.some(x=>x.type==='manual')?'evidence sources':'scans'} · {plan.merged} exact duplicates combined · {plan.omitted} rejected/held/parked findings omitted · {plan.preserved||0} existing patterns preserved</p>
    <p>All recommendations still require evidence verification. Accepting a proposal does not establish that it is a verified defect.</p>
    {plan.warnings.length>0&&<div className="bl-notice"><strong>Evidence review needed</strong><ul>{plan.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></div>}
    {plan.proposals.map(p=><article className="bl-scan-finding" key={p.id}>
     <div className="bl-suggestion-top"><span>{scopeName(p.module)} · {p.priority}</span><strong>Decision: {p.decision}</strong></div><h4>{p.title}</h4><p>{p.revision||p.detail}</p>
     <label>Specialist for {p.title}<select aria-label={'Specialist for '+p.title} value={p.assignedTo} onChange={e=>apply(()=>assignManagerProposal(plan,p.id,e.target.value))}>{Object.entries(MANAGER_AGENTS).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
-    <details><summary>Source evidence ({p.sourceRefs.length})</summary><ul>{p.sourceRefs.map((r,i)=><li key={i}>{SCAN_TYPES[r.type]} · {r.sourceVersion.slice(0,12)} · {new Date(r.savedAt).toLocaleString()}<p>{r.files.join(', ')||'No file paths provided; verify the scope before implementation.'}</p></li>)}</ul></details>
+    <details><summary>Source evidence ({p.sourceRefs.length})</summary><ul>{p.sourceRefs.map((r,i)=>{
+     const manual=r.type==='manual'?(r.manualReview||manualRecords[r.scanKey]):null;
+     return <li key={i}>
+      <strong>{r.type==='manual'?'Owner manual report':SCAN_TYPES[r.type]||'Unrecognized source'}</strong> · {r.sourceVersion==='unknown'?'Original code version not recorded':r.sourceVersion.slice(0,12)} · {Number.isFinite(Date.parse(r.savedAt))?new Date(r.savedAt).toLocaleString():'Date not recorded'}
+      <p>{r.files.length?r.files.join(', '):r.type==='manual'?'No verified source file paths were attached. Inspect the exact affected code before implementation.':'No file paths provided; verify the scope before implementation.'}</p>
+      {r.type==='manual'&&<div>
+       <p><strong>{r.manualReview?'Verification at handoff:':'Current Work Buckets verification:'}</strong> {manual?MANUAL_OUTCOMES[manual.outcome]||'Unrecognized status':'Not available in this saved blueprint'}{manual?.verifiedAt?' · '+new Date(manual.verifiedAt).toLocaleString():''}</p>
+       {manual?.verificationNote&&<p><strong>Owner test notes:</strong> {manual.verificationNote}</p>}
+       {manual?.environment&&<p><strong>Reported environment:</strong> {manual.environment}</p>}
+       {manual?.relatedId&&<p><strong>Related issue:</strong> {manual.relatedId}</p>}
+       <p>This is owner-recorded verification, not an independently executed code test. Confirm the exact code version before repair.</p>
+      </div>}
+     </li>;
+    })}</ul></details>
     <div className="bl-review-actions"><button type="button" className="platform-secondary-button" onClick={()=>decide(p.id,'accept')}>Accept</button><button type="button" className="platform-secondary-button" onClick={()=>{setEditing(p.id);setRevision(p.revision||p.detail);}}>Revise</button><button type="button" className="platform-secondary-button" onClick={()=>decide(p.id,'hold')}>Hold</button><button type="button" className="platform-secondary-button" onClick={()=>decide(p.id,'reject')}>Reject</button></div>
     {editing===p.id&&<div className="bl-revise"><label>Revised Manager requirement<textarea rows={4} maxLength={3000} value={revision} onChange={e=>setRevision(e.target.value)} /></label><button type="button" className="platform-primary-button" onClick={()=>decide(p.id,'revise',revision)}>Save Manager revision</button><button type="button" className="platform-secondary-button" onClick={()=>setEditing('')}>Cancel</button></div>}
    </article>)}

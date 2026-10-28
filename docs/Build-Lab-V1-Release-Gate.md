@@ -43,6 +43,33 @@ These goals inform the Build Lab architecture, but a full dependency engine is *
 - **Physical implementation:** honor the user's one-database goal as the preferred core architecture. Do not silently introduce separate production databases or app-specific registries. Treat strictly necessary infrastructure isolation, ephemeral test data and backups as explicit, reviewable exceptions; these must not become independent sources of truth.
 - **Release discipline:** this long-term galaxy architecture guides Build Lab V1 design; do not hold up a limited, secure owner-only release until every planned service is implemented.
 
+## Galaxy rule: standalone apps and shared integrations
+
+**Owner examples (October 28, 2026):** A first-class platform app must be usable **independently** for its own purpose and also **integrated** by other apps wherever authorized. Being heavily used by one app does not make it a subfeature owned by that app. Avoid duplicate implementations or separate authoritative data sources.
+
+### Set the Table
+
+- **Within EIE:** event-specific meals, banquet/outing food services, catering, menus, and hospitality should be attachable to event records, schedules, registrations and permitted payment workflows.
+- **Standalone:** restaurants or caterers should be able to use Set the Table for their own food-service operations without needing to create an EIE event or subscribe to EIE.
+- **Reuse:** the same Set the Table capabilities and underlying records/services should work in both contexts, with EIE adding event relationships rather than becoming a required parent.
+
+### InceptionApex
+
+- **Integrated:** shared creative functionality can be called from EIE, EIG Publishing, EIG Golf, advertising and other authorized applications.
+- **Standalone:** a person can use InceptionApex independently for personal creative work, for example editing a personal picture and printing it, without first entering a magazine, event or other business workflow.
+- **Reuse and privacy:** use one creative engine and shared service contracts. Personal designs are private to their authorized owner; organization assets and publishing approvals remain appropriately scoped. Context-specific presets, products, fulfillment or billing should not force unrelated app dependencies.
+
+### Build Lab architecture acceptance checks
+
+1. For every app, identify its **standalone entry point** and all **integrated entry points**, treating supported contexts as first-class.
+2. Model required shared services versus optional integration adapters. Failure/unavailability of an unrelated app must not break a standalone workflow.
+3. Require canonical records and stable IDs; context links (event ID, advertiser, organization, personal owner) are scoped references rather than separate duplicates.
+4. Test both independent and integrated use cases, including access isolation and transitions between contexts.
+5. Before changing a shared component, enumerate every consuming app and run the relevant cross-app regressions.
+6. Label the examples above as the **intended capability model**: confirm actual implemented behavior through source and authorized runtime tests before calling an integration finished.
+
+Keep this rule in all future app designs and in the dependency map; it does not add another standalone database, scanner, or production release prerequisite.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

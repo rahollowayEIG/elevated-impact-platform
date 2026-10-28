@@ -13,6 +13,23 @@
 
 **Build Lab release sequence:** (1) core scanner/bucket/manager evidence workflow and owner-only security, recovery and rollback; (2) independently verified production deployment only after approval; (3) extend approved, isolated AI candidate generation, testing and review to support complete app development before choosing app-specific projects. No autonomous production edits or releases.
 
+## Owner architectural principle: shared platform and cross-application dependencies
+
+**Decision recorded October 28, 2026.** Do not choose the first post-Build-Lab business app yet. EIG Publishing / magazine publishing, EIE / event management, or another application could become the next priority based on the business opportunity and deadline.
+
+ElevationPilot is one interconnected platform, **not unrelated standalone applications**. Shared capabilities must be modeled as reusable, securely scoped platform services rather than copied independently into each app. Examples include identity and the universal user/business records, role permissions, contacts and customer records, InceptionApex creative assets and ad creation, the Product Registry and inventory, invoicing/payment capabilities when approved, contracts, communications/Squawk Box, and audit/history. These are architectural targets; do not presume every integration is implemented or ready.
+
+Build Lab's **future cross-app dependency / impact analysis contract** should:
+
+1. Inventory each application's capabilities, actual implementation status, exposed interfaces, data ownership and shared dependencies; use code and verified owner-approved requirements instead of assumptions.
+2. Map which modules call or share which platform services and which roles/businesses have access. Distinguish **implemented**, **planned**, **deferred**, and **not verified** dependencies.
+3. Before approving a build/repair, identify upstream/downstream apps, schema/API contracts, permissions/RLS, source and deployment versions, shared assets and event/payment side effects.
+4. Add regression checks spanning affected apps. Do not call an isolated feature green if a shared component breaks another app.
+5. Preserve one source of truth for shared business/user/product records, while retaining separate organization ownership, permissions, invoices/payments and audit boundaries.
+6. Present an owner-reviewable dependency/impact map and proposed reuse approach **before** starting new app development. Do not automatically deploy or make production data changes.
+
+These goals inform the Build Lab architecture, but a full dependency engine is **not** a reason to block a limited, secure, owner-only V1 scanner/planning release; add and verify coverage incrementally. Future first-app choice remains uncommitted.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

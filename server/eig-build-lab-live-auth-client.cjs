@@ -4,6 +4,7 @@
 const {createClient}=require('@supabase/supabase-js');
 const {buildLabPreviewAuthProviders}=require('./eig-build-lab-auth-client.cjs');
 const STANDARD_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LIVE_SUPABASE_URL='https://aszixzrdayrivungodwq.supabase.co';
 function verifiedSessionId(jwt){
  try{
   const segments=jwt.split('.');

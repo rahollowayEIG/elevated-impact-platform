@@ -80,6 +80,19 @@ Keep this rule in all future app designs and in the dependency map; it does not 
 - **Prevent accidental capability escalation:** do **not** simply change the preview helper to accept Live. It protects multiple endpoints including AI code generation. Define production read-only scanning/planning authorization separately from the preview builder/AI execution grant, and reject disabled or unknown operations by default.
 - **Release isolation:** `main` and the approved pink Sandbox remain unchanged; the long-running Build Lab branch must be selectively packaged and integrated, not merged wholesale. Require source SHA parity, tests, recovery checks and owner release approval.
 
+## Production read-only authorization engineering checkpoint (October 28, 2026)
+
+**Staged on the approved Build Lab development branch; NOT live-enabled or production approved.**
+
+- New dedicated production-only owner verification: `server/eig-build-lab-live-readonly-access.cjs` and server-only Supabase session attestation in `server/eig-build-lab-live-auth-client.cjs`. This is separate from the unchanged preview-only AI/Builder gate.
+- New explicitly isolated read-only routes: `/api/eig-build-lab-live-access`, `/api/eig-build-lab-live-master-scan`, and `/api/eig-build-lab-live-scan`. Existing preview endpoints continue to fail closed in production.
+- Live access is **OFF by default**. It requires `VERCEL_ENV=production`, the Vercel `main` ref, the exact approved production origin and host, `EIG_BUILD_LAB_LIVE_READONLY_ENABLED=true`, and one explicitly configured owner ID. Neither another EIG admin nor another tenant qualifies.
+- The server validates the Supabase Auth user, the active EIG membership, and the active authenticated admin session using the existing privileged `platform_assert_active_admin` RPC. That RPC is restricted to the Supabase `service_role`. The server-only key **must never** be in client-side `VITE_*` settings, source, logs, or exports. The Live Supabase URL is pinned to the existing EIG production project to prevent accidentally validating a Sandbox account.
+- Only read-only, allowlisted source scanner handlers accept the new production authorization callback. AI generation, execution, build workers and repair endpoints are NOT authorized by it. No arbitrary paths, SQL, or production record writes are permitted.
+- Automated `tests/eig-build-lab-live-readonly.test.cjs` checks allow/deny conditions, wrong-origin attempts, stopped or invalid sessions, cross-tenant memberships, unsupported scan targets, Supabase environment mismatch and explicit separation from preview AI operations.
+
+**Still required before Live enablement:** independently audit the narrow privileged RPC configuration and secret handling; choose a least-privilege server attestation approach; connect a production-specific owner-only UI with only permitted scanner/planning tools; select safe persistent storage; conduct actual authenticated production-readiness checks without customer-data mutations; verify deployment/rollback; obtain explicit owner approval. A mock-backed unit test is *not* a live-session end-to-end test, and the staged routes are not currently usable from the production UI.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

@@ -70,6 +70,16 @@ These goals inform the Build Lab architecture, but a full dependency engine is *
 
 Keep this rule in all future app designs and in the dependency map; it does not add another standalone database, scanner, or production release prerequisite.
 
+## Release readiness update: local evidence recovery and production access boundary
+
+**Development checkpoint, October 28, 2026:** `0fa9e5eba7cbbd52a5a8e21f10fc3497a994876b` passed the existing Universal Scan Foundation workflow in all three jobs, including new evidence recovery tests. Vercel marked the existing approved Build Lab preview READY. **This is not production approval.**
+
+- **Implemented in the development preview:** a versioned, owner-bound evidence package now includes scan history, Work Buckets and the current Manager blueprint. Scan History offers explicit import/restore with file validation, replacement confirmation, read-back verification and best-effort rollback. Older v1 evidence exports are **not** accepted for restore; re-export as v2 from the original browser where possible. This is still owner-local browser storage.
+- **Storage remaining:** choose and verify durable, centrally backed owner records and restoration/reconciliation before relying on Build Lab for long-running critical business operations. Local JSON exports are a recovery aid, not guaranteed backup or cross-device sync.
+- **Security boundary remaining:** the Vercel server routes still use `authorizeBuildLabPreviewOwner`, whose strict branch/environment gate deliberately DENIES production. The separate Supabase edge status gate does not independently authorize Vercel scanner reads. Production rollout must specify and independently test exact Live origin, trusted session validity, one configured owner, active EIG membership, scoped endpoints, least privileges and revocation.
+- **Prevent accidental capability escalation:** do **not** simply change the preview helper to accept Live. It protects multiple endpoints including AI code generation. Define production read-only scanning/planning authorization separately from the preview builder/AI execution grant, and reject disabled or unknown operations by default.
+- **Release isolation:** `main` and the approved pink Sandbox remain unchanged; the long-running Build Lab branch must be selectively packaged and integrated, not merged wholesale. Require source SHA parity, tests, recovery checks and owner release approval.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

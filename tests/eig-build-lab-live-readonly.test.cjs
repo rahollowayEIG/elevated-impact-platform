@@ -136,6 +136,8 @@ test('privileged session verifier rejects missing server key or invalid session 
  assert.equal(verifiedSessionId('header.'+Buffer.from('{}').toString('base64url')+'.sig'),'');
  const deps=buildLabLiveAuthProviders(k=>k==='VITE_SUPABASE_URL'?'https://placeholder.supabase.co':undefined);
  await assert.rejects(()=>deps.verifyLiveSession(OWNER,token),/unavailable/);
+ const wrongProject=buildLabLiveAuthProviders(k=>({VITE_SUPABASE_URL:'https://publruuuyvpggogrrgwp.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'not-a-real-secret'})[k]);
+ await assert.rejects(()=>wrongProject.verifyLiveSession(OWNER,token),/unavailable/);
 });
 
 test('production read-only policy cannot be passed to preview-only AI builder or AI review',()=>{

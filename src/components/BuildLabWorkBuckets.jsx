@@ -1,11 +1,21 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from '../lib/buildLabScanHistory.mjs';
+import {HISTORY_EVENT,SCAN_TYPES,historyKey,readScanHistory} from '../lib/buildLabScanHistory.mjs';
 import {managerStorageKey} from '../lib/buildLabManagerBlueprint.mjs';
 import {WORK_BUCKETS,WORK_INTENTS,WORK_STATES,WORK_EVENT,validateWorkLedger,readWorkLedger,saveWorkLedger,collectScanWork,approveBucketSelection,setBucketDisposition,batchWorkBlueprint,reviseWorkItem,addBuildBrief,addManualFinding,reviewManualFinding,MANUAL_OUTCOMES,createWorkBatch,approveWorkBatch,batchIsCurrent,workBatchPlan,workRoute} from '../lib/buildLabWorkBuckets.mjs';
 import {FINDING_KINDS,findingAssessment} from '../lib/buildLabFindingStandards.mjs';
 import './build-lab-work-buckets.css';
 const blank={title:'',detail:'',completion:'',apps:'platform'};
 const blankReport={title:'',app:'inception-apex',expected:'',actual:'',steps:'',completion:'',bucket:'interface',environment:'',sourceVersion:'',relatedId:''};
+// Browser-only, owner-separated draft. Never part of the scan evidence or approved work ledger.
+const manualDraftKey=uid=>historyKey(uid)?.replace('scan-history','work-manual-draft')||null;
+function readManualDraft(uid){
+ const key=manualDraftKey(uid);if(!key)return {...blankReport};
+ try{
+  const raw=localStorage.getItem(key);if(!raw||raw.length>6000)return {...blankReport};
+  const data=JSON.parse(raw);if(!data||typeof data!=='object'||Array.isArray(data))return {...blankReport};
+  return Object.fromEntries(Object.entries(blankReport).map(([key,defaultValue])=>[key,typeof data[key]==='string'&&data[key].length<=1500?data[key]:defaultValue]));
+ }catch{return {...blankReport};}
+}
 function download(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='build-lab-work-buckets.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  const selectionKey='eig:work-selection:v1:'+ownerUserId;
@@ -14,7 +24,19 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  const [selectionError,setSelectionError]=useState('');
  const [ledger,setLedger]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [query,setQuery]=useState(''),[bucket,setBucket]=useState('all'),[intent,setIntent]=useState('all'),[state,setState]=useState('all'),[assessmentKind,setAssessmentKind]=useState('all'),[order,setOrder]=useState({key:'lastSeen',direction:'desc'});
- const [selected,setSelected]=useState(()=>{try{const x=JSON.parse(localStorage.getItem(selectionKey)||'[]');return Array.isArray(x)&&x.every(v=>typeof v==='string')?x:[];}catch{return [];}}),[batchTitle,setBatchTitle]=useState(''),[editing,setEditing]=useState(''),[draft,setDraft]=useState(null),[brief,setBrief]=useState(blank),[reported,setReported]=useState(blankReport);
+ const [selected,setSelected]=useState(()=>{try{const x=JSON.parse(localStorage.getItem(selectionKey)||'[]');return Array.isArray(x)&&x.every(v=>typeof v==='string')?x:[];}catch{return [];}}),[batchTitle,setBatchTitle]=useState(''),[editing,setEditing]=useState(''),[draft,setDraft]=useState(null),[brief,setBrief]=useState(blank),[reportState,setReportState]=useState(()=>({owner:ownerUserId,data:readManualDraft(ownerUserId)})),[draftSaveError,setDraftSaveError]=useState('');
+  const reported=reportState.owner===ownerUserId?reportState.data:readManualDraft(ownerUserId);
+  function setReported(next){
+   setReportState({owner:ownerUserId,data:next});
+   const key=manualDraftKey(ownerUserId);
+   try{
+    if(!key)throw Error('Owner account is required.');
+    // The untouched defaults need no draft. Clear only after an actual report save.
+    const changed=Object.keys(blankReport).some(field=>next[field]!==blankReport[field]);
+    if(changed)localStorage.setItem(key,JSON.stringify(next));else localStorage.removeItem(key);
+    setDraftSaveError('');
+   }catch{setDraftSaveError('Draft changes could not be saved in this browser. Keep a copy of your text before leaving this page.');}
+  }
  useEffect(()=>{try{localStorage.setItem(selectionKey,JSON.stringify(selected));setSelectionError('');}catch{setSelectionError('Work selection could not be saved in this browser.');}},[selectionKey,selected]);
  useEffect(()=>{if(editing){editorRef.current?.scrollIntoView({block:'nearest'});editorRef.current?.querySelector('input')?.focus();}},[editing]);
  useEffect(()=>{
@@ -44,10 +66,10 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
   <p>Saved scans collect here automatically. You can also record an issue a scanner missed, verify it, then approve any confirmed repair. The work plan is created automatically.</p>
   <p className="bl-quiet">Assessment describes the evidence; Repair, Upgrade and New build describe proposed work. Approval does not confirm a defect. Needs manual fix is reserved for an identified capability gap.</p>
   <p className="bl-quiet">Saved in this browser and preview address only. Batch approval records scope; it does not run agents or deploy changes.</p>
-  {error&&<p className="platform-error" role="alert">{error}</p>}{selectionError&&<p className="platform-error" role="alert">{selectionError}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
+  {error&&<p className="platform-error" role="alert">{error}</p>}{draftSaveError&&<p className="platform-error" role="alert">{draftSaveError}</p>}{selectionError&&<p className="platform-error" role="alert">{selectionError}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
   {ledger&&<>
    <details className="bl-work-brief"><summary>Report an issue scanners missed</summary>
-    <p>Owner-only manual observation. Reports start On hold, not as scanner-confirmed defects. Do not include customer records, private screenshots, passwords or tokens. Nothing runs or deploys.</p>
+    <p>Owner-only manual observation. Reports start On hold, not as scanner-confirmed defects. Do not include customer records, private screenshots, passwords or tokens. Nothing runs or deploys.</p><p className="bl-quiet" role="status">Draft autosave is on. Unsubmitted entries survive refreshing or leaving Work Buckets in this browser and preview address; they do not sync to other devices. Recording the issue saves it separately and clears the draft.</p>
     <form onSubmit={e=>{e.preventDefault();reportIssue();}}>
      <label>Issue title<input aria-label="Issue title" required maxLength={180} value={reported.title} onChange={e=>setReported({...reported,title:e.target.value})} placeholder="Clicking artwork does not enable arrow keys" /></label>
      <label>Affected app<input aria-label="Affected app" required maxLength={150} value={reported.app} onChange={e=>setReported({...reported,app:e.target.value})} /></label>

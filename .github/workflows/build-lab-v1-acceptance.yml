@@ -18,6 +18,11 @@ on:
       - "tests/*build-lab*"
       - "tests/eig-master-source-scan.test.cjs"
       - "tests/eig-inception-source-scan.test.cjs"
+      - "src/lib/buildLabEvidenceRecovery.mjs"
+      - "src/lib/buildLabEvidencePackage.mjs"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "tests/build-lab-evidence-recovery.test.mjs"
+      - "tests/build-lab-evidence-package.test.mjs"
       - "tests/inception-apex-browser.cjs"
       - "package.json"
       - "package-lock.json"
@@ -58,6 +63,8 @@ jobs:
           node --test
           tests/build-lab-work-buckets.test.mjs
           tests/build-lab-manager-blueprint.test.mjs
+          tests/build-lab-evidence-package.test.mjs
+          tests/build-lab-evidence-recovery.test.mjs
           tests/build-lab-scan-history.test.mjs
           tests/build-lab-mission-orchestrator.test.mjs
           tests/build-lab-builder.test.mjs

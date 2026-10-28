@@ -57,7 +57,7 @@ const fs=require('node:fs/promises');
   await manual.getByText('Confirmed by manual test',{exact:false}).waitFor();
   await manual.getByLabel('Include work item Image click missing keyboard focus').check();
   await panel.getByRole('button',{name:'Approve selected findings (1)',exact:true}).click();
-  const manualPlan=panel.locator('article').filter({has:page.getByRole('heading',{name:'Repair · Reviewed scan findings',exact:true})}).last();
+  const manualPlan=panel.locator('article').filter({hasText:'Image click missing keyboard focus'});
   await manualPlan.getByText('Scope approved · implementation pending',{exact:false}).waitFor();
   await manualPlan.getByText('View work plan & evidence',{exact:true}).click();
   assert.match(await manualPlan.innerText(),/manual/);

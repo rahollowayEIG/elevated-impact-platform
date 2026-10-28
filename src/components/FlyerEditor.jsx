@@ -68,6 +68,9 @@ export default function FlyerEditor({
   function pointerDown(e, item, resize = false) {
     e.preventDefault();
     e.stopPropagation();
+    // Pointer selection must also move keyboard focus so arrow keys work immediately.
+    // The resize handle is nested inside the same focusable SVG group.
+    e.currentTarget.closest('g[tabindex="0"]')?.focus({ preventScroll: true });
     if (item.src) {
       setSelectedImage(item.id);
       setSelected(null);

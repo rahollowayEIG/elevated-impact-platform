@@ -97,6 +97,21 @@ const jsQR = require("jsqr");
       await page.getByLabel("Image X", { exact: true }).inputValue(),
       "105",
     );
+    // The same movement must work immediately after a real pointer selection,
+    // without tabbing back onto the canvas artwork.
+    const logoArtwork = page.getByRole("button", {
+      name: "sponsor-logo.png image",
+      exact: true,
+    });
+    await page.getByLabel("Image X", { exact: true }).focus();
+    assert.equal(await logoArtwork.evaluate((node) => document.activeElement === node), false);
+    await logoArtwork.click();
+    assert.equal(await logoArtwork.evaluate((node) => document.activeElement === node), true);
+    await page.keyboard.press("ArrowRight");
+    assert.equal(
+      await page.getByLabel("Image X", { exact: true }).inputValue(),
+      "110",
+    );
     await page
       .getByRole("button", {
         name: "Details & creative direction",

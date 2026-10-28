@@ -49,13 +49,13 @@ const fs=require('node:fs/promises');
   // A partially entered manual report must survive a refresh without creating a work item.
   await page.reload();await choose('Work Buckets');
   await panel.getByRole('status').filter({hasText:'Draft saved in this browser'}).waitFor();
-  assert.equal(await panel.locator('details.bl-work-brief').evaluate(node=>node.open),true,'Unsubmitted draft automatically opens when restored');
+  assert.equal(await panel.locator('details.bl-work-brief').first().evaluate(node=>node.open),true,'Unsubmitted draft automatically opens when restored');
   assert.equal(await panel.getByLabel('Issue title',{exact:true}).inputValue(),'Image click missing keyboard focus');
   assert.equal(await panel.getByLabel('Expected behavior',{exact:true}).inputValue(),'Click then ArrowRight moves the logo five units.');
   assert.equal(await panel.getByRole('row').filter({hasText:'Image click missing keyboard focus'}).count(),0);
   await page.getByRole('navigation',{name:'Build Lab groups'}).getByRole('button',{name:'Scanners',exact:true}).click();
   await choose('Work Buckets');
-  assert.equal(await panel.locator('details.bl-work-brief').evaluate(node=>node.open),true,'Draft stays accessible after switching tools');
+  assert.equal(await panel.locator('details.bl-work-brief').first().evaluate(node=>node.open),true,'Draft stays accessible after switching tools');
   assert.equal(await panel.getByLabel('Issue title',{exact:true}).inputValue(),'Image click missing keyboard focus');
   await panel.getByLabel('Observed behavior',{exact:true}).fill('Click then ArrowRight does not move; Tab then ArrowRight works.');
   await panel.getByLabel('How to reproduce',{exact:true}).fill('Upload a synthetic logo, click it, press ArrowRight.');

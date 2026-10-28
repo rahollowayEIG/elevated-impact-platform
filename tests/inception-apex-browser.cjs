@@ -97,20 +97,22 @@ const jsQR = require("jsqr");
       await page.getByLabel("Image X", { exact: true }).inputValue(),
       "105",
     );
-    // The same movement must work immediately after a real pointer selection,
-    // without tabbing back onto the canvas artwork.
+    // Click-to-focus must work when the logo itself is the real pointer target.
+    // Starter text boxes cover x=65..785, so put its clickable left edge in
+    // the clear margin to avoid conflating focus with overlapping-layer hits.
+    await page.getByLabel("Image X", { exact: true }).fill("20");
     const logoArtwork = page.getByRole("button", {
       name: "sponsor-logo.png image",
       exact: true,
     });
     await page.getByLabel("Image X", { exact: true }).focus();
     assert.equal(await logoArtwork.evaluate((node) => document.activeElement === node), false);
-    await logoArtwork.click();
+    await logoArtwork.click({ position: { x: 8, y: 8 } });
     assert.equal(await logoArtwork.evaluate((node) => document.activeElement === node), true);
     await page.keyboard.press("ArrowRight");
     assert.equal(
       await page.getByLabel("Image X", { exact: true }).inputValue(),
-      "110",
+      "25",
     );
     await page
       .getByRole("button", {

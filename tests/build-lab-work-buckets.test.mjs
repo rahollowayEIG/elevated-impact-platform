@@ -169,7 +169,16 @@ test('manual issue intake stays unverified until explicitly reproduced, then joi
  assert.equal(approved.batches[0].status,'approved');
  assert.equal(approved.batches[0].items[0].sourceRefs[0].type,'manual');
  const plan=workBatchPlan(approved,approved.batches[0].id);
- const {selectBuilderProposal}=await import('../src/lib/buildLabManagerBlueprint.mjs');
+ assert.equal(plan.proposals[0].sourceRefs[0].type,'manual');
+ assert.equal(plan.proposals[0].sourceRefs[0].manualReview.outcome,'confirmed');
+ assert.match(plan.proposals[0].sourceRefs[0].manualReview.verificationNote,/Mouse-click failed/);
+ assert.equal(plan.proposals[0].sourceRefs[0].manualReview.verifiedAt,'2026-10-28T04:00:00Z');
+ assert.equal(plan.proposals[0].sourceRefs[0].manualReview.relatedId,'GitHub #112');
+ const {selectBuilderProposal,restoreManagerBlueprint}=await import('../src/lib/buildLabManagerBlueprint.mjs');
+ const restoredPlan=restoreManagerBlueprint(JSON.stringify(plan));
+ assert.equal(restoredPlan.proposals[0].sourceRefs[0].manualReview.outcome,'confirmed');
+ const legacyPlan=JSON.parse(JSON.stringify(plan));delete legacyPlan.proposals[0].sourceRefs[0].manualReview;
+ assert.equal(restoreManagerBlueprint(JSON.stringify(legacyPlan)).proposals[0].sourceRefs[0].type,'manual','Older Manager drafts remain readable without rewriting owner data');
  assert.equal(selectBuilderProposal(plan),null,'Manual owner observation cannot impersonate the bounded IA source scan');
  assert.match(workRoute(approved.jobs.find(j=>j.id===id)).label,/scope review only/);
  const updated=reviewManualFinding(approved,id,{outcome:'not_reproduced',note:'Could not reproduce after navigation update.'});

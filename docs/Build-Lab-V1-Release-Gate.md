@@ -5,6 +5,14 @@
 **One approved Build Lab branch:** `feature/build-lab-orchestrator-20261020`.  
 **Acceptance workflow:** [Build Lab V1 Acceptance](../.github/workflows/build-lab-v1-acceptance.yml). Runs synthetic tests on affected pushes to the existing branch; read-only GitHub permissions and no deploy step.
 
+## Owner priority decision (October 28, 2026)
+
+**One active development priority: Build Lab.** Complete a secure, production-ready, owner-only Build Lab and strengthen its controlled AI-assisted development capabilities in a subsequent reviewed phase. Defer choosing and developing business applications until Build Lab's workflow and release safeguards have been established. Do not create competing Build Lab or Sandbox previews, merge the divergent feature branch wholesale, or deploy without explicit owner approval.
+
+**Invoicing explicitly deferred.** Owner will use the basic external invoice process already in place for current bills. The existing ElevationPilot manual invoice builder remains a non-issuing demonstration, with no real customer invoice issuance, ledger writes, emails, SMS, payment collection, or migration from the outside invoice process. When invoicing is reconsidered, first define issuer scope separately for EIG and Chapel Hill, authorized operator roles, historical-record ownership and approval, and exact accounting boundaries. Do not assume the user wishes to issue invoices for third-party Hangars or fold outside invoices into the platform.
+
+**Build Lab release sequence:** (1) core scanner/bucket/manager evidence workflow and owner-only security, recovery and rollback; (2) independently verified production deployment only after approval; (3) extend approved, isolated AI candidate generation, testing and review to support complete app development before choosing app-specific projects. No autonomous production edits or releases.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

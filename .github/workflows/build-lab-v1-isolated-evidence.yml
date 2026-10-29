@@ -49,6 +49,24 @@ jobs:
         run: |
           npm ci
           npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Inventory missing release-owned scanner source files
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('server/eig-master-source-scan.cjs', 'utf8');
+          const match = source.match(/const FILE_PATHS = Object.freeze\(\[([\s\S]*?)\]\)/);
+          if (!match) throw new Error('Master Scanner file allowlist unavailable');
+          const paths = [...match[1].matchAll(/"([^"]+)"/g)].map(x => x[1]);
+          const missing = paths.filter(p => !fs.existsSync(p));
+          const summary = process.env.GITHUB_STEP_SUMMARY;
+          fs.appendFileSync(summary, '### Release-owned scanner source inventory\n' +
+            'Total allowlisted: ' + paths.length + ', missing: ' + missing.length + '\n\n' +
+            (missing.length ? missing.map(p => '- Missing: `' + p + '`').join('\n') : 'All allowlisted files present') + '\n');
+          if (missing.length) {
+            console.error('Strict release package is missing these required source files:\n' + missing.join('\n'));
+            process.exitCode = 1;
+          }
+          NODE
       - name: Mandatory full-source scanner-to-buckets integration
         run: node --test tests/build-lab-master-source-integration.test.mjs
       - name: Record source SHA and block release on any missing files

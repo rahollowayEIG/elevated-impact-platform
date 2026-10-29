@@ -5,7 +5,7 @@ const {createClient}=require('@supabase/supabase-js');
 const LIVE_SUPABASE_URL='https://aszixzrdayrivungodwq.supabase.co';
 const TABLE='eig_build_lab_documents';
 const SAVE_RPC='eig_build_lab_save_document';
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KINDS=new Set(['scan_history','work_buckets','manager_blueprint']);
 
 function createBuildLabDocumentStore(env=name=>process.env[name],makeClient=createClient){

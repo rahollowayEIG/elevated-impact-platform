@@ -6,7 +6,13 @@ const path=require('node:path');
 const {FILE_PATHS,MODULES}=require('./eig-master-source-scan.cjs');
 
 const EXCLUDED_MODULES=Object.freeze(['invoices','product-registry','contracts','pos-tax']);
-const RELEASE_MODULES=Object.freeze(MODULES.filter(m=>!EXCLUDED_MODULES.includes(m.id)));
+const RELEASE_MODULES=Object.freeze(MODULES.filter(m=>!EXCLUDED_MODULES.includes(m.id)).map(m=>
+  m.id==='build-lab' ? Object.freeze({...m,
+    source:[['src/components/BuildLabLiveOwnerWorkspace.jsx','function BuildLabLiveOwnerWorkspace']],
+    ui:[['src/PlatformApp.jsx','<BuildLabLiveOwnerWorkspace']],
+    tests:[['tests/eig-build-lab-live-client.test.mjs','production owner workspace excludes preview-only development capabilities','test']]
+  }) : m
+));
 const RELEASE_PATHS=Object.freeze(FILE_PATHS.filter(p=>
   !p.includes('EpInvoicePilot') && !p.includes('epInvoiceDraft') &&
   !p.includes('epProductCapture') && !p.includes('EpProductCapture') &&

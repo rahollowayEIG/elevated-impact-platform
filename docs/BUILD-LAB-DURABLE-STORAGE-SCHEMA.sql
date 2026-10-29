@@ -54,15 +54,17 @@ declare
  v_revision integer;
  v_saved_at timestamptz;
  v_length integer;
+ v_limit integer;
 begin
- if p_owner_user_id is null or p_document_key not in ('scan_history','work_buckets','manager_blueprint')
+ if p_owner_user_id is null or p_document_key is null or p_document_key not in ('scan_history','work_buckets','manager_blueprint')
   or p_expected_revision is null or p_expected_revision < 0 or p_expected_revision >= 2147483647
   or p_payload is null or jsonb_typeof(p_payload) <> 'object' then
    raise exception 'Invalid Build Lab document input' using errcode = '22023';
  end if;
  v_length := octet_length(p_payload::text);
- if v_length > case p_document_key
-    when 'scan_history' then 1800000 when 'work_buckets' then 2400000 else 600000 end then
+ v_limit := case p_document_key
+    when 'scan_history' then 1800000 when 'work_buckets' then 2400000 else 600000 end;
+ if v_length > v_limit then
    raise exception 'Build Lab document too large' using errcode = '22023';
  end if;
 

@@ -59,7 +59,7 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
     aria-pressed={activeTool===id} onClick={()=>setActiveTool(id)}>{label}</button>)}
   </nav>
   {error&&<p role="alert" className="platform-error">{error}</p>}
-  {recordNotice&&<p role="status">{recordNotice}</p>
+  {recordNotice&&<p role="status">{recordNotice}</p>}
   {activeTool==='scanners'&&<section className="platform-section-card">
    <h2>Read-only source scanners</h2>
    <p>Every scan rechecks the owner session on the server. If the server is not enabled for Live, access is denied.</p>

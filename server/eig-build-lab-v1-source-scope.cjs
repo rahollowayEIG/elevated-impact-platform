@@ -26,4 +26,12 @@ function validateReleaseSourceScope() {
     if(!RELEASE_PATHS.includes(p))unscoped.push({module:m.id,path:p});
   return {modules:RELEASE_MODULES.map(x=>x.id),paths:RELEASE_PATHS,missing,unscoped};
 }
-module.exports={EXCLUDED_MODULES,RELEASE_MODULES,RELEASE_PATHS,validateReleaseSourceScope};
+
+function scanReleaseV1(sourceVersion='local-unversioned') {
+  const {readAllowlistedMasterSource,scanMasterSource}=require('./eig-master-source-scan.cjs');
+  const state=validateReleaseSourceScope();
+  if(state.missing.length||state.unscoped.length)
+    throw new Error('V1 scanner source scope needs reviewed reconciliation: '+[...state.missing,...state.unscoped.map(x=>x.module+':'+x.path)].join(', '));
+  return scanMasterSource(readAllowlistedMasterSource(RELEASE_PATHS),sourceVersion,new Date().toISOString(),null,'compare',{paths:RELEASE_PATHS,modules:RELEASE_MODULES});
+}
+module.exports={EXCLUDED_MODULES,RELEASE_MODULES,RELEASE_PATHS,validateReleaseSourceScope,scanReleaseV1};

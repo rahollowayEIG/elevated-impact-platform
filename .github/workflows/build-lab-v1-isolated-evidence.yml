@@ -14,6 +14,11 @@ on:
       - "tests/build-lab-master-source-integration.test.mjs"
       - "tests/build-lab-v1-source-scope.test.cjs"
       - "server/eig-build-lab-v1-source-scope.cjs"
+      - "src/components/BuildLab*.jsx"
+      - "src/components/build-lab-work-buckets.css"
+      - "src/lib/eigBuildLab*Client.mjs"
+      - "src/lib/eigMasterScanClient.mjs"
+      - "src/lib/buildLabCloud*.mjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:
@@ -126,3 +131,20 @@ jobs:
       - name: Explain limited scope result
         if: always()
         run: echo "Scope tests do not certify the owner interface or full-source scanner. Strict release integration must pass separately." >> "$GITHUB_STEP_SUMMARY"
+
+  isolated-owner-interface-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install baseline dependencies
+        run: npm ci
+      - name: Compile owner workspace and transitive UI dependencies without routing or deployment
+        run: |
+          mkdir -p .build-lab-test-output
+          ./node_modules/.bin/esbuild src/components/BuildLabLiveOwnerWorkspace.jsx --bundle --platform=browser --format=esm --loader:.css=css --outdir=.build-lab-test-output
+      - name: Run existing production base build
+        run: npm run build

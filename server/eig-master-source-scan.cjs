@@ -248,7 +248,20 @@ function evidenceFor(files, tuples, kind,views) {
 function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null,environmentMode="compare",profile=null) {
   const scopedPaths=profile?.paths || FILE_PATHS;
   const scopedModules=profile?.modules || MODULES;
-  if (!Array.isArray(scopedPaths)||!Array.isArray(scopedModules)||scopedPaths.some(p=>!FILE_PATHS.includes(p))||scopedModules.some(m=>!MODULES.includes(m))) throw new Error("Invalid scanner source profile");
+  if (!Array.isArray(scopedPaths)||!Array.isArray(scopedModules)||scopedPaths.some(p=>!FILE_PATHS.includes(p))||scopedModules.some(m=>{
+    const base=MODULES.find(rule=>rule.id===m?.id);
+    if(!base)return true;
+    if(m.id!=='build-lab')return JSON.stringify(m)!==JSON.stringify(base);
+    if(m===base)return false;
+    return !(
+      m.title===base.title && m.priority===base.priority &&
+      JSON.stringify(m.tables)===JSON.stringify(base.tables) &&
+      m.next===base.next &&
+      JSON.stringify(m.source)==='[["src/components/BuildLabLiveOwnerWorkspace.jsx","function BuildLabLiveOwnerWorkspace"]]' &&
+      JSON.stringify(m.ui)==='[["src/PlatformApp.jsx","<BuildLabLiveOwnerWorkspace"]]' &&
+      JSON.stringify(m.tests)==='[["tests/eig-build-lab-live-client.test.mjs","production owner workspace excludes preview-only development capabilities","test"]]'
+    );
+  })) throw new Error("Invalid scanner source profile");
   if (!sources || typeof sources !== "object") throw new TypeError("Source map required");
   // Narrow the report to a catalogued module. The underlying source read
   // remains the same fixed allowlist. Never permit arbitrary paths or targets.

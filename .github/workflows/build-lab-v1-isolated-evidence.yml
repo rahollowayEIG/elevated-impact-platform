@@ -13,6 +13,9 @@ on:
       - "server/build-lab-source-patterns.cjs"
       - "tests/build-lab-master-source-integration.test.mjs"
       - "tests/build-lab-v1-source-scope.test.cjs"
+      - "tests/build-lab-owner-release-readiness.test.cjs"
+      - "api/eig-build-lab-live-*.js"
+      - "server/eig-build-lab-live-*.cjs"
       - "server/eig-build-lab-v1-source-scope.cjs"
       - "src/components/BuildLab*.jsx"
       - "src/components/build-lab-work-buckets.css"
@@ -170,3 +173,17 @@ jobs:
       - name: Record scope
         if: always()
         run: echo "Owner browser client and cloud contracts only. This is not live owner authentication or hosted DB approval." >> "$GITHUB_STEP_SUMMARY"
+
+  owner-release-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Require reviewed protected owner server routes
+        run: node --test tests/build-lab-owner-release-readiness.test.cjs
+      - name: Record strict owner-login gate
+        if: always()
+        run: echo "Passing UI build alone does not permit owner testing. Protected API routes must exist on the same release SHA." >> "$GITHUB_STEP_SUMMARY"

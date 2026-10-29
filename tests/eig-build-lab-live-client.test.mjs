@@ -64,7 +64,7 @@ test('Live IA Inspector calls fixed source endpoint and validates report',async(
 });
 test('server rejection, forged evidence and builder requests cannot succeed',async()=>{
  await assert.rejects(()=>requestLiveBuildLabScan(client,'builder',async()=>{throw Error('must not call')}),/Unsupported/);
- await assert.rejects(()=>requestLiveBuildLabScan(client,'master',async()=>({ok:false,status:403})),/owner gate/);
+ await assert.rejects(()=>requestLiveBuildLabScan(client,'master',async()=>({ok:false,status:403})),/HTTP 403/);
  await assert.rejects(()=>requestLiveBuildLabScan(client,'inspector',async()=>({ok:true,json:async()=>({ok:true,report:{...ia,target:'payments'}})})),/report|unsupported/i);
  await assert.rejects(()=>requestLiveBuildLabScan(null,'master'),/Sign in/);
 });

@@ -161,6 +161,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install pinned client validation dependency
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
       - name: Verify owner client access failures and cloud recovery contract
         run: node --test tests/eig-build-lab-live-client.test.mjs tests/build-lab-cloud-records.test.mjs tests/build-lab-cloud-backup.test.mjs
       - name: Record scope

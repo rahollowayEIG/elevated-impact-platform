@@ -22,6 +22,7 @@ on:
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "tests/eig-build-lab-durable-records.test.cjs"
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
       - "server/eig-build-lab-v1-source-scope.cjs"
       - "src/components/BuildLab*.jsx"
       - "src/components/build-lab-work-buckets.css"

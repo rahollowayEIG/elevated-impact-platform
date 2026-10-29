@@ -1,0 +1,68 @@
+name: Build Lab PostgreSQL Migration Isolation Test
+
+on:
+  push:
+    branches:
+      - feature/build-lab-orchestrator-20261020
+    paths:
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/build-lab-migration-postgres.sql"
+      - "tests/build-lab-migration-postgres.sh"
+      - ".github/workflows/build-lab-postgres-migration-test.yml"
+  pull_request:
+    paths:
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/build-lab-migration-postgres.sql"
+      - "tests/build-lab-migration-postgres.sh"
+      - ".github/workflows/build-lab-postgres-migration-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-postgres:
+    name: Isolated PG17 RLS and revision test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: buildlab_ephemeral_ci_only
+          POSTGRES_DB: buildlab_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d buildlab_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: buildlab_migration_test
+      PGUSER: postgres
+      PGPASSWORD: buildlab_ephemeral_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify isolated disposable database and Postgres client
+        shell: bash
+        run: |
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "buildlab_migration_test"
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql -X -v ON_ERROR_STOP=1 -Atc "select version();"
+      - name: Execute SQL dry run, RLS, revisions, concurrency and rollback
+        shell: bash
+        run: bash tests/build-lab-migration-postgres.sh
+      - name: Verify no EIG production or Sandbox credentials were used
+        shell: bash
+        run: |
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "buildlab_migration_test"
+          echo "Only the GitHub Actions disposable Postgres 17 service was targeted."

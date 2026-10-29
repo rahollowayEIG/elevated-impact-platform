@@ -29,6 +29,9 @@ on:
       - "tests/eig-build-lab-durable-records.test.cjs"
       - "src/lib/buildLabCloudRecords.mjs"
       - "tests/build-lab-cloud-records.test.mjs"
+      - "src/lib/buildLabCloudBackup.mjs"
+      - "src/components/BuildLabCloudBackup.jsx"
+      - "tests/build-lab-cloud-backup.test.mjs"
       - "src/lib/buildLabEvidenceRecovery.mjs"
       - "src/lib/buildLabEvidencePackage.mjs"
       - "src/components/BuildLabScanHistory.jsx"
@@ -77,6 +80,7 @@ jobs:
           tests/build-lab-evidence-package.test.mjs
           tests/build-lab-evidence-recovery.test.mjs
           tests/build-lab-cloud-records.test.mjs
+          tests/build-lab-cloud-backup.test.mjs
           tests/build-lab-scan-history.test.mjs
           tests/build-lab-mission-orchestrator.test.mjs
           tests/build-lab-builder.test.mjs

@@ -13,6 +13,8 @@ test('V1 profile excludes unfinished modules without altering development-wide s
 test('V1 profile reports missing code and any module evidence paths outside approved scope',()=>{
   const result=validateReleaseSourceScope();
   assert.deepEqual(result.missing,[]);
-  assert.ok(result.unscoped.length>0,'Missing owner-console evidence must be reported, not silently suppressed');
-  assert.ok(result.unscoped.some(x=>x.module==='build-lab'));
+  assert.deepEqual(result.unscoped,[],'Every configured V1 module must use release-owned evidence');
+  const owner=RELEASE_MODULES.find(x=>x.id==='build-lab');
+  assert.ok(owner.source.some(x=>x[0]==='src/components/BuildLabLiveOwnerWorkspace.jsx'));
+  assert.ok(owner.tests.some(x=>x[0]==='tests/eig-build-lab-live-client.test.mjs'));
 });

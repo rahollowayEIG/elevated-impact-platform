@@ -56,3 +56,35 @@ jobs:
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: echo "Master Scanner integration exact SHA $SOURCE_SHA. Must pass before release; never mock missing source files." >> "$GITHUB_STEP_SUMMARY"
+
+  pinned-source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned scanner test dependency
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Stage exact approved-development source as test-only evidence
+        env:
+          REFERENCE_SHA: 4cf7bf4ee99ba98aee6f93b199df02a44e2e635d
+        run: |
+          git fetch origin "$REFERENCE_SHA"
+          node -e 'const fs=require("fs");const s=fs.readFileSync("server/eig-master-source-scan.cjs","utf8");const section=s.match(/const FILE_PATHS = Object.freeze\(\[([\s\S]*?)\]\)/);if(!section)process.exit(1);for(const m of section[1].matchAll(/"([^"]+)"/g))console.log(m[1])' > "$RUNNER_TEMP/build-lab-reference-paths.txt"
+          while IFS= read -r file; do
+            if [ ! -f "$file" ]; then
+              mkdir -p "$(dirname "$file")"
+              git show "$REFERENCE_SHA:$file" > "$file"
+            fi
+          done < "$RUNNER_TEMP/build-lab-reference-paths.txt"
+      - name: Source-contract test with reference-only files (not release validation)
+        run: node --test tests/build-lab-master-source-integration.test.mjs
+      - name: Explain strict release gate
+        if: always()
+        run: echo "Reference-source contract is diagnostic only. master-scanner-integration must pass with release-owned files before deployment approval." >> "$GITHUB_STEP_SUMMARY"

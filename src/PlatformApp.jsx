@@ -21,11 +21,15 @@ import QRCode from 'qrcode';
 import { eventHubUrl, eventVenueAddress } from './lib/eventShare';
 import { canUseAutoResizer } from './lib/imageResize.mjs';
 import { ownerPreviewVisible, requestOwnerBuildLabAccess } from './lib/eigBuildLabGate.mjs';
+import { requestLiveBuildLabAccess } from './lib/eigBuildLabLiveClient.mjs';
 import { desktopAppFromLaunch, shouldFocusBuildLab, buildLabLaunchStep } from './lib/desktopAppMode.mjs';
 
 const InceptionApex = React.lazy(() => import('./components/InceptionApex.jsx'));
 const EigBuildLab = React.lazy(() => import('./components/EigBuildLab.jsx'));
+const BuildLabLiveOwnerWorkspace = React.lazy(() => import('./components/BuildLabLiveOwnerWorkspace.jsx'));
 const EIG_BUILD_LAB_PREVIEW_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_ENABLED === 'true';
+// Owner-only Live UI is disabled by default; server independently enforces access.
+const EIG_BUILD_LAB_LIVE_UI_ENABLED = import.meta.env.VITE_EIG_BUILD_LAB_LIVE_OWNER_UI_ENABLED === 'true' && !EIG_BUILD_LAB_PREVIEW_ENABLED;
 // Deliberately off in Live. Enable only on an isolated Sandbox preview after
 // deploying and verifying the server-owned event-inquiry-portal Edge Function.
 const EVENT_INQUIRY_PORTAL_ENABLED = import.meta.env.VITE_EIE_INQUIRY_PORTAL_ENABLED === 'true' &&
@@ -2888,6 +2892,7 @@ export default function App() {
   const [inceptionDirty, setInceptionDirty] = useState(false);
   const [buildLabDirty, setBuildLabDirty] = useState(false);
   const [buildLabOwnerGrant, setBuildLabOwnerGrant] = useState(null);
+  const [liveBuildLabOwnerGrant,setLiveBuildLabOwnerGrant] = useState(null);
   const [buildLabFocusPreference, setBuildLabFocusPreference] = useState(() => {
     try {
       const saved = window.localStorage.getItem('eig-build-lab-focus-v1');
@@ -2935,6 +2940,25 @@ export default function App() {
     window.addEventListener('focus', recheck);
     return () => { canceled = true; window.removeEventListener('focus', recheck); };
   }, [session?.user?.id, memberships]);
+
+  // Live and preview access use SEPARATE gates. This flag only controls a link;
+  // every Live request is reauthorized by a production-only server function.
+  useEffect(()=>{
+    const accountId=session?.user?.id||'';
+    let cancelled=false;
+    setLiveBuildLabOwnerGrant(null);
+    if(!EIG_BUILD_LAB_LIVE_UI_ENABLED||!accountId||!canUseAutoResizer(memberships)){
+      return ()=>{cancelled=true;};
+    }
+    const verify=async()=>{
+      const allowed=await requestLiveBuildLabAccess(supabase);
+      if(!cancelled)setLiveBuildLabOwnerGrant({userId:accountId,allowed});
+    };
+    void verify();
+    const recheck=()=>{setLiveBuildLabOwnerGrant(null);void verify();};
+    window.addEventListener('focus',recheck);
+    return ()=>{cancelled=true;window.removeEventListener('focus',recheck);};
+  },[session?.user?.id,memberships]);
 
   const currentAuthSession = useRef(null);
   function acceptAuthSession(nextSession) {
@@ -3534,6 +3558,20 @@ export default function App() {
     setAdminView('build_lab');
     return true;
   }
+  async function openLiveBuildLab(){
+    if(!liveBuildLabAllowed||!canLeaveInception())return false;
+    const accountId=session?.user?.id||'';
+    const allowed=await requestLiveBuildLabAccess(supabase);
+    if(!allowed||currentAuthSession.current?.user?.id!==accountId){
+      setLiveBuildLabOwnerGrant(null);return false;
+    }
+    const eigOrg=organizations.find(org=>org.slug===EIG_SLUG);
+    if(!eigOrg?.id)return false;
+    setActiveOrganizationId(eigOrg.id);
+    setPortalView('workspace');setCockpitApp('');setEieInitialEventId('');
+    setBuildLabDirty(false);setAdminView('build_lab_live');
+    return true;
+  }
   function closeBuildLab() { if (!canLeaveInception()) return; buildLabLaunchStarted.current = true; setBuildLabDirty(false); setAdminView('command'); }
   function toggleBuildLabFocus() {
     setBuildLabFocusPreference((current) => {
@@ -3617,6 +3655,10 @@ export default function App() {
     userId: session.user.id,
     serverGrant: buildLabOwnerGrant,
   });
+  const liveBuildLabAllowed = EIG_BUILD_LAB_LIVE_UI_ENABLED &&
+    isEigAdminWorkspace && canUseAutoResizer(memberships) &&
+    liveBuildLabOwnerGrant?.userId===session.user.id &&
+    liveBuildLabOwnerGrant?.allowed===true;
   const focusedBuildLab = shouldFocusBuildLab({ standalone: IS_STANDALONE_WINDOW, preference: buildLabFocusPreference }) &&
     adminView === 'build_lab' && buildLabAllowed && isEigAdminWorkspace;
   const isAirport = portalView === 'airport';
@@ -3659,7 +3701,9 @@ export default function App() {
               ? adminView === 'users' ? <EigUserManagement currentUserId={session.user.id} onBack={closeUserManagement} onInviteUser={sendPlatformInvite} />
                 : adminView === 'build_lab' && buildLabAllowed
                   ? <React.Suspense fallback={<LoadingScreen message="Opening EIG Build Lab…" />}><EigBuildLab key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} onDirtyChange={setBuildLabDirty} focusedMode={focusedBuildLab} onToggleFocus={toggleBuildLabFocus} /></React.Suspense>
-                  : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : null} />
+                : adminView === 'build_lab_live' && liveBuildLabAllowed
+                  ? <React.Suspense fallback={<LoadingScreen message="Opening EIG owner console…" />}><BuildLabLiveOwnerWorkspace key={session.user.id} ownerUserId={session.user.id} supabaseClient={supabase} onBack={closeBuildLab} /></React.Suspense>
+                  : <EigAdminDashboard organizations={organizations} products={products} loading={loadingData} onOpenOrganization={openWorkspace} onCreateOrganization={createOrganization} onInviteUser={sendPlatformInvite} onOpenUserManagement={openUserManagement} onOpenBuildLab={buildLabAllowed ? openBuildLab : liveBuildLabAllowed ? openLiveBuildLab : null} />
               : cockpitApp === 'eie'
                 ? <EieEventDirectory organization={activeOrganization} events={eieEvents} loading={loadingEieEvents} initialEventId={eieInitialEventId} onOpenInception={openInception} onCreativeDirtyChange={setEventStudioDirty} onReload={() => loadEieEvents(activeOrganizationId)} onBack={() => { setCockpitApp(''); setEieInitialEventId(''); }} />
                 : <OrganizationDashboard organization={activeOrganization} profile={organizationProfile} role={effectiveActiveRole} products={products} entitlements={entitlements} eventRequests={eventRequests} eieEvents={eieEvents} loadingRequests={loadingRequests} onReloadRequests={() => Promise.all([loadEventRequests(activeOrganizationId), loadEieEvents(activeOrganizationId)])} onLaunchGolfRegistration={openEieDirectory} onOpenEventAtc={openCockpitEventAtc} onSaveProfile={saveOrganizationProfile} onInviteUser={sendPlatformInvite} onOpenInception={openInception} />}

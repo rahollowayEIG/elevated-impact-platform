@@ -345,7 +345,7 @@ export default function EigBuildLab({ ownerUserId, supabaseClient, onBack, onDir
         : "Your project and review decisions save automatically in this browser. Use JSON export for another device or preview link."}
     </p>
 
-    <div className="bl-tool-panel" id="bl-panel-history" role="region" aria-labelledby="bl-tool-history" hidden={activeTool !== "history"}><BuildLabScanHistory ownerUserId={ownerUserId} /></div>
+    <div className="bl-tool-panel" id="bl-panel-history" role="region" aria-labelledby="bl-tool-history" hidden={activeTool !== "history"}><BuildLabScanHistory ownerUserId={ownerUserId} supabaseClient={supabaseClient} /></div>
 
     <div className="bl-tool-panel" id="bl-panel-plans" role="region" aria-labelledby="bl-tool-plans" hidden={activeTool !== "plans"}><BuildLabScanPlans ownerUserId={ownerUserId} /></div>
 

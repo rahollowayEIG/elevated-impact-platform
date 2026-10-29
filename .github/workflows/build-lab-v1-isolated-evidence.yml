@@ -12,6 +12,8 @@ on:
       - "server/eig-essential-wow-scan.cjs"
       - "server/build-lab-source-patterns.cjs"
       - "tests/build-lab-master-source-integration.test.mjs"
+      - "tests/build-lab-v1-source-scope.test.cjs"
+      - "server/eig-build-lab-v1-source-scope.cjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:
@@ -67,6 +69,8 @@ jobs:
             process.exitCode = 1;
           }
           NODE
+      - name: Verify V1 scope exclusions and missing evidence contracts
+        run: node --test tests/build-lab-v1-source-scope.test.cjs
       - name: Mandatory full-source scanner-to-buckets integration
         run: node --test tests/build-lab-master-source-integration.test.mjs
       - name: Record source SHA and block release on any missing files

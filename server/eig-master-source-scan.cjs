@@ -285,7 +285,7 @@ function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=
   fingerprint.update(JSON.stringify(VERIFICATION)+'\0master-evidence-v3\0'+SOURCE_RECOGNIZER_VERSION+'\0');
   const environmentAudit=buildEnvironmentAudit({mode:environmentMode,moduleId,modules:scopedModules});
   fingerprint.update(JSON.stringify(environmentAudit)+"\0");
-  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:scopedPaths,moduleIds:scopedModules.map(rule=>rule.id),sourceVersion});
+  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:scopedPaths,moduleIds:scopedModules.map(rule=>rule.id),sourceVersion,releaseSourceProfile:profile!==null});
   fingerprint.update(JSON.stringify(RADAR_RULES)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));

@@ -69,8 +69,6 @@ jobs:
             process.exitCode = 1;
           }
           NODE
-      - name: Verify V1 scope exclusions and missing evidence contracts
-        run: node --test tests/build-lab-v1-source-scope.test.cjs
       - name: Mandatory full-source scanner-to-buckets integration
         run: node --test tests/build-lab-master-source-integration.test.mjs
       - name: Record source SHA and block release on any missing files
@@ -110,3 +108,17 @@ jobs:
       - name: Explain strict release gate
         if: always()
         run: echo "Reference-source contract is diagnostic only. master-scanner-integration must pass with release-owned files before deployment approval." >> "$GITHUB_STEP_SUMMARY"
+
+  release-scope-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate V1 source scope and unresolved evidence paths
+        run: node --test tests/build-lab-v1-source-scope.test.cjs
+      - name: Explain limited scope result
+        if: always()
+        run: echo "Scope tests do not certify the owner interface or full-source scanner. Strict release integration must pass separately." >> "$GITHUB_STEP_SUMMARY"

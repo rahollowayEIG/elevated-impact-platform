@@ -32,6 +32,7 @@ on:
       - "src/lib/buildLabCloudBackup.mjs"
       - "src/components/BuildLabCloudBackup.jsx"
       - "tests/build-lab-cloud-backup.test.mjs"
+      - "tests/build-lab-cloud-backup-browser.cjs"
       - "src/lib/buildLabEvidenceRecovery.mjs"
       - "src/lib/buildLabEvidencePackage.mjs"
       - "src/components/BuildLabScanHistory.jsx"
@@ -112,6 +113,8 @@ jobs:
         run: node tests/eig-build-lab-browser.cjs
       - name: Report, autosave, verification, bucket approval and Manager handoff
         run: node tests/build-lab-work-buckets-browser.cjs
+      - name: Owner cloud restore browser flow (synthetic provider only)
+        run: node tests/build-lab-cloud-backup-browser.cjs
       - name: InceptionApex editor keyboard and save regressions
         run: node tests/inception-apex-browser.cjs
       - name: Attach synthetic browser evidence

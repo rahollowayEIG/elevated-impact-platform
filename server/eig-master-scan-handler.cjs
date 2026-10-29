@@ -21,7 +21,8 @@ function createBuildLabMasterScanHandler({env,verifyUser,membershipsForUser,veri
       const version=env("VERCEL_GIT_COMMIT_SHA")||"local-unversioned";
       const report=await scan(source,version,undefined,body?.moduleId||null,body?.environmentMode||"compare");
       return response(res,200,{ok:true,report});
-    } catch {
+    } catch (error) {
+      console.error('Build Lab master scan failed:',error?.name||'Error',String(error?.message||'unknown').slice(0,180));
       // Never return source/SQL contents or exception stack traces.
       return response(res,503,{ok:false,message:"Read-only Master Scanner unavailable. Check preview bundle."});
     }

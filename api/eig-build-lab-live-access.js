@@ -1,5 +1,7 @@
-// Separate, disabled-by-default PRODUCTION owner-only read-only status endpoint.
+// Strictly separate preview and production authorization. Both default disabled.
 const {createBuildLabLiveReadOnlyAccessHandler}=require('../server/eig-build-lab-live-readonly-access.cjs');
+const {createPreviewAccessHandler}=require('../server/eig-build-lab-owner-preview-access.cjs');
 const {buildLabLiveAuthProviders}=require('../server/eig-build-lab-live-auth-client.cjs');
 const env=name=>process.env[name];
-module.exports=createBuildLabLiveReadOnlyAccessHandler({env,...buildLabLiveAuthProviders(env)});
+const deps={env,...buildLabLiveAuthProviders(env)};
+module.exports=env('VERCEL_ENV')==='preview'?createPreviewAccessHandler(deps):createBuildLabLiveReadOnlyAccessHandler(deps);

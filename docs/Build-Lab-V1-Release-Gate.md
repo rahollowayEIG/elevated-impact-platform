@@ -118,6 +118,18 @@ Keep this rule in all future app designs and in the dependency map; it does not 
 - **Live integration is still blocked:** the current `PlatformApp` owner navigation is preview-only, so this flag alone does not enable the new panel in production. A separate production read-only/planning workspace with exact owner-server verification and without AI execution tools must be wired and verified.
 - **Never turn on these flags prematurely:** SQL migration remains unapplied, provider-backed save/restore and RLS checks remain undone, and no end-to-end production session run has been approved.
 
+## Restricted Live owner console: staged, not enabled (October 28, 2026)
+
+A separate minimal production owner workspace has been implemented in the development branch as `src/components/BuildLabLiveOwnerWorkspace.jsx`, with its own typed client `src/lib/eigBuildLabLiveClient.mjs`. The existing full Build Lab preview stays preview-only.
+
+- **Production UI is OFF by default:** `VITE_EIG_BUILD_LAB_LIVE_OWNER_UI_ENABLED=true` must be explicitly set on the intended build, and the EIG Command Center will still hide the entry unless the exact owner obtains a fresh `/api/eig-build-lab-live-access` authorization. A client flag alone grants **nothing**.
+- **Server access remains OFF by default:** `EIG_BUILD_LAB_LIVE_READONLY_ENABLED=true` and a valid `EIG_BUILD_LAB_LIVE_OWNER_USER_ID` must be configured on the exact Vercel production/main origin, after separate approval and verification.
+- **Explicitly restricted surface:** only Master Scanner and IA Inspector first-party source inspection (never functional test certification), manual JSON downloads, and a separately gated Cloud Backup & Recovery panel. No `EigBuildLab` preview component, AI agents, Builder, auto-repairs, invoices, Event Builder, or deployment controls are imported into the Live workspace.
+- **Cloud storage requires further independent enablement:** `VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED=true` plus server `EIG_BUILD_LAB_LIVE_RECORDS_ENABLED=true`, but these must stay OFF until the reviewed SQL migration has been tested in a dedicated isolated environment and production access/recovery acceptance are independently verified. The Cloud UI flag does not grant storage permissions.
+- **Read-only production verification (no writes):** the proposed `eig_build_lab_documents`, `eig_build_lab_document_revisions` and `eig_build_lab_save_document` objects were **not present** in the current production Supabase project when checked. The existing `platform_assert_active_admin` function is executable by `service_role`, but not by `anon` or `authenticated`.
+- **Automated tests:** `tests/eig-build-lab-live-client.test.mjs` checks fixed read-only endpoints, precise grant response, rejected AI operations and untrusted scan results. `tests/build-lab-live-owner-render.cjs` verifies Live workspace markup excludes builder/agent tools. Both are wired into CI, with all database and auth providers mocked.
+- **Remaining gate:** test a reviewed migration against a truly isolated PostgreSQL environment, verify RLS/GRANT/RPC transaction behavior and SQL rollback plan, test actual owner session and source scanner runtime in an authorized pre-release deployment, confirm backups, then secure explicit owner approval before enabling Live flags or deploying. Do not merge the long-running feature branch wholesale.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

@@ -19,6 +19,8 @@ on:
       - "src/lib/eigBuildLab*Client.mjs"
       - "src/lib/eigMasterScanClient.mjs"
       - "src/lib/buildLabCloud*.mjs"
+      - "tests/eig-build-lab-live-client.test.mjs"
+      - "tests/build-lab-cloud-*.test.mjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:
@@ -150,3 +152,17 @@ jobs:
           ./node_modules/.bin/esbuild src/components/BuildLabLiveOwnerWorkspace.jsx --bundle --platform=browser --format=esm --loader:.css=css --outdir=.build-lab-test-output
       - name: Run existing production base build
         run: npm run build
+
+  owner-client-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify owner client access failures and cloud recovery contract
+        run: node --test tests/eig-build-lab-live-client.test.mjs tests/build-lab-cloud-records.test.mjs tests/build-lab-cloud-backup.test.mjs
+      - name: Record scope
+        if: always()
+        run: echo "Owner browser client and cloud contracts only. This is not live owner authentication or hosted DB approval." >> "$GITHUB_STEP_SUMMARY"

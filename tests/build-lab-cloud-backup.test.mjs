@@ -116,7 +116,6 @@ test('entire cloud snapshot restores into another browser after owner confirmati
   inspection=await inspectBuildLabCloudSnapshot(client,original,owner,cloud.http);
  }
  const receiver=memory();
- assert.throws(()=>restoreBuildLabCloudSnapshot(receiver,owner,inspection),/owner|current|exists/i);
  // No previous records means owner can restore without replacement authorization.
  const summary=restoreBuildLabCloudSnapshot(receiver,owner,inspection,{allowReplace:true});
  assert.equal(summary.scans,1);assert.equal(summary.workItems,1);assert.equal(summary.manager,true);

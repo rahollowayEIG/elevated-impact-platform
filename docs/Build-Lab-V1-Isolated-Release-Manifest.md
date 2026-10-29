@@ -27,3 +27,11 @@ Destination: `release/build-lab-v1-owner-only-20261028`.
 5. Present final tested SHA, no-change assurance for unrelated apps, and request explicit go-live approval.
 
 Cross-reference: GitHub issue #117 and `docs/Build-Lab-V1-Release-Gate.md` on the approved development branch.
+
+## Packaging checkpoint: dependency and release-order audit
+
+- Confirmed isolated branch still at original manifest-only SHA `0c346eed6e830ec89ee76eb9335b91792a5ea4bd`; no production changes.
+- Bulk transfer of privileged server/auth and records files was blocked by the connected tool. No files were copied; do not treat branch as a functional release package.
+- Safest port order: (1) independent pure browser validation and evidence model modules with their tests, (2) limited owner UI with existing main interfaces reconciled, (3) reviewed read-only scan routes and allowlisted source handlers, (4) dedicated server auth and cloud records code after separate security review, (5) minimal main routing and Vercel packaging configuration changes.
+- Run build and scoped tests after each coherent port. Never insert server credentials into code, public `VITE_*` variables, or test fixtures.
+- Stop at first unresolved import or source mismatch; do not copy the long-running feature branch wholesale.

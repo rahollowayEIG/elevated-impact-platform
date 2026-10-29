@@ -93,6 +93,21 @@ Keep this rule in all future app designs and in the dependency map; it does not 
 
 **Still required before Live enablement:** independently audit the narrow privileged RPC configuration and secret handling; choose a least-privilege server attestation approach; connect a production-specific owner-only UI with only permitted scanner/planning tools; select safe persistent storage; conduct actual authenticated production-readiness checks without customer-data mutations; verify deployment/rollback; obtain explicit owner approval. A mock-backed unit test is *not* a live-session end-to-end test, and the staged routes are not currently usable from the production UI.
 
+## Durable Build Lab records: staged implementation, NOT deployed (October 28, 2026)
+
+**Development-only implementation:** `docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql`, `server/eig-build-lab-document-store.cjs`, `server/eig-build-lab-durable-records.cjs`, `api/eig-build-lab-live-records.js`, and `src/lib/buildLabCloudRecords.mjs`. The SQL file is an owner-review proposal, **not an applied Supabase migration**. The Supabase CLI is not available in this development runtime, so migration generation and genuine database testing remain a separate explicit gate.
+
+- **Database target:** the existing EIG production Supabase project only, never ElevationPilot-Sandbox or EIG Ticketing. The proposed two new tables store owner-scoped current documents and append-only version snapshots for only `scan_history`, `work_buckets`, and `manager_blueprint`.
+- **Access:** no browser `anon` or `authenticated` table grants; RLS enabled; service-role-only table and RPC permissions, with the key on the server only. The server independently checks the fixed Live origin, main branch, EIG owner, active EIG membership and active session on every operation.
+- **Separate feature gate:** `EIG_BUILD_LAB_LIVE_RECORDS_ENABLED` defaults OFF and is REQUIRED in addition to the already-disabled `EIG_BUILD_LAB_LIVE_READONLY_ENABLED`. Neither flag authorizes AI generation, agents, payments, event registrations, or deployments.
+- **Integrity:** database compare-and-swap increments revision atomically and appends history in the same transaction. The browser client makes only explicit manual read/save requests and handles HTTP 409 stale-revision conflicts. It never overwrites newer work automatically or treats a preview-only permission as write access.
+- **Validation:** server rejects arbitrary document keys, owner IDs, SQL, unsupported operations, invalid payloads, oversized records, unauthorized sessions and malformed revisions before invoking storage. Existing local v2 JSON export and import remain the current recovery tools.
+- **Scope of checks:** CI uses synthetic tests for server/store/client contracts and source-level SQL access checks. **It does not demonstrate real database table creation, real session access, real cross-device sync or completed production UI.**
+
+**Activation sequence, gated:** (1) approve scope and secret handling; (2) create a proper migration with Supabase tooling; (3) apply only to an approved isolated test environment, verify RLS/GRANT/REVOKE and full transactional save/replay; (4) build and manually test production owner UI with cloud restore, local backup, and partial-failure handling; (5) introduce schema into Live via reviewed migration, back up existing records, verify actual owner access, and enable server/UI flags only with explicit owner approval; (6) monitor errors, retain all revision history and retain a rollback path that disables flags without destroying data.
+
+**No existing Supabase schema, payment, roster, customer or event record was altered during this stage.** The pink Sandbox remains untouched.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

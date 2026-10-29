@@ -5,6 +5,25 @@
 **One approved Build Lab branch:** `feature/build-lab-orchestrator-20261020`.  
 **Acceptance workflow:** [Build Lab V1 Acceptance](../.github/workflows/build-lab-v1-acceptance.yml). Runs synthetic tests on affected pushes to the existing branch; read-only GitHub permissions and no deploy step.
 
+## Real local Supabase Auth + REST API integration: PASSED (October 28, 2026 ET)
+
+**Third storage gate green:** [Build Lab Local Supabase Auth and REST Integration CI](https://github.com/rahollowayEIG/elevated-impact-platform/actions/runs/40806936598) completed successfully with a fresh **unlinked, disposable local Supabase CLI stack**, using Supabase CLI 2.120.0. No paid hosted branch, project, Vercel deployment, production migration or pink Sandbox change occurred.
+
+**Seven passed checks against the actual local Supabase Auth and PostgREST services:**
+1. Created two synthetic users via server-role Auth Admin and signed each in with password; verified genuine access tokens through Auth.
+2. Verified anonymous and *both* signed-in accounts receive denied results for current and history table reads, inserts, updates and the privileged save RPC, even when supplying another user's ID.
+3. Used the server service-role credentials to save version 1, then version 2 through the actual REST/RPC endpoint; inspected current record and immutable revision payloads.
+4. Confirmed a stale revision-1 save is rejected after revision 2; then advanced successfully to revision 3.
+5. Created another owner's independent scan record, plus owner Work Buckets and Manager plan records. Confirmed all four record scopes remain distinct.
+6. Rejected invalid document names, negative expected revisions and an oversized Manager payload; checked no accidental revision was appended.
+7. Repeated authenticated owner and different-user access-denial checks *after* the server role populated the documents.
+
+**Protection and reproducibility:** `tests/build-lab-supabase-local-integration.cjs` runs under `.github/workflows/build-lab-supabase-local-integration.yml`. The workflow creates an unlinked local project, makes its migration using the CLI, copies the exact proposed schema SQL, starts only the required Auth/REST/database services, runs genuine API calls, and discards the local Docker database. It refuses non-loopback endpoints, remote credentials, and production context. CI permissions are `contents: read` with no hosted Supabase secrets.
+
+**Current status:** The migration and Auth/Data API permissions are proven in disposable environments. The production EIG project was rechecked read-only and remains without the Build Lab document tables and save RPC. This is **not** approval for live deployment.
+
+**Remaining before release:** confirm exact production Supabase feature/extension compatibility and server-secret access; verify real production owner membership and active-session checks end to end in an authorized pre-release environment; test complete application save/recovery and actual Vercel integration with production-scoped permissions while keeping write flags disabled until approved; review failure/backup/rollback procedures; receive explicit owner go-live authorization. Do not merge the entire long-running feature branch wholesale.
+
 ## Real PostgreSQL migration test: PASSED (October 28, 2026 ET)
 
 **Verified in disposable PostgreSQL 17, no EIG database mutations.** The test used the exact versioned SQL proposal in `docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql` and synthetic roles/users only. [Successful isolated migration run](https://github.com/rahollowayEIG/elevated-impact-platform/actions/runs/40806293626).

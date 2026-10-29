@@ -85,7 +85,9 @@ const assert=require('node:assert/strict');
   const download=await downloadPromise;
   assert.match(download.suggestedFilename(),/eig-build-lab-before-cloud-restore.*\.json/);
   await next.getByRole('checkbox',{name:/I located my downloaded browser backup/}).check();
+  const reloadCompleted=page.waitForEvent('load');
   await next.getByRole('button',{name:'Restore cloud records to this browser'}).click();
+  await reloadCompleted;
   await page.waitForFunction(()=>{
    const raw=localStorage.getItem('eig:scan-history:v1:11111111-1111-4111-8111-111111111111');
    try{return JSON.parse(raw).entries[0].id==='seed-scan';}catch{return false;}

@@ -17,7 +17,7 @@ async function livePost(client,path,body,http=fetch){
   headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
   body:JSON.stringify(body),cache:'no-store',credentials:'same-origin'
  });
- if(!res?.ok)throw Error('The production Build Lab owner gate is unavailable or denied access.');
+ if(!res?.ok)throw Error('Build Lab scanner request failed (HTTP '+(res?.status||'unknown')+'). Check the preview server logs for the reason.');
  return res.json();
 }
 export async function requestLiveBuildLabAccess(client,http=fetch){

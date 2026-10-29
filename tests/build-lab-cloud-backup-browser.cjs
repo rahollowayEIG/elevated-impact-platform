@@ -99,7 +99,8 @@ const assert=require('node:assert/strict');
   });
   assert.equal(restored.history.entries.length,1);
   assert.equal(restored.work.kind,'eig_work_buckets');
-  assert.equal(restored.work.jobs.length,0);
+  assert.deepEqual(restored.work.jobs.map(x=>x.id),cloud.get('work_buckets').payload.jobs.map(x=>x.id),
+   'Restored Work Buckets retain the exact scan-linked job IDs; no duplicates or losses.');
   assert.deepEqual(errors,[],'Browser emitted unexpected JavaScript exceptions');
   console.log('Build Lab cloud recovery browser: compare, 2 cloud saves, download, explicit restore and local recovery passed.');
  }finally{

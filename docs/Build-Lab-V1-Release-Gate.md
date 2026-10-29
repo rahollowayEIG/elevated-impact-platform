@@ -5,6 +5,16 @@
 **One approved Build Lab branch:** `feature/build-lab-orchestrator-20261020`.  
 **Acceptance workflow:** [Build Lab V1 Acceptance](../.github/workflows/build-lab-v1-acceptance.yml). Runs synthetic tests on affected pushes to the existing branch; read-only GitHub permissions and no deploy step.
 
+## October 28 owner-preview V1 operation checkpoint
+
+**Code and preview testing green, production remains gated.** The existing approved Build Lab branch preview alias points to the latest READY Vercel preview. The restricted Live console code now supports **Scan → History → Work Buckets → Review & Fix Plan** with explicit owner-local persistence, plus separately gated cloud recovery. Neither its plan approval nor a source scan invokes code generation or deployment. V1 scans are source-evidence inspection and dated schema metadata, **not** proof of live functionality.
+
+**Verified:** [Universal Scan Foundation: 3/3 jobs passed](https://github.com/rahollowayEIG/elevated-impact-platform/actions/runs/40808605797), including synthetic real-browser scan-to-buckets-to-plan proof; Live API route file bundles now explicitly include the allowlisted source files used by their preview equivalents. The approved Build Lab preview URL is `https://elevated-impact-platform-git-fea-8e8a01-rahollowayeigs-projects.vercel.app`. An actual signed-in owner walkthrough must still be performed; CI synthetic login does not certify owner login.
+
+**Deployment reality check:** Production Vercel currently has ordinary `VITE_SUPABASE_*` variables but does not have the explicitly gated Build Lab owner and privileged server configuration needed for production Live access. The production Supabase document tables and revision RPC have not been migrated. The long-running development branch must not be wholesale merged or promoted. The preview uses browser-local persistence and export/restore; cross-device permanent cloud storage is **not live**.
+
+**Remaining production gates:** (1) real owner signs in and verifies V1 preview experience with an export; (2) review a clean selective production release branch or PR from current main, not all development work; (3) verify exact owner UUID, scoped Vercel secrets and production-only build flags with no browser exposure; (4) explicitly approve and apply the already tested Supabase schema migration, checking RLS grants and backups immediately afterward; (5) re-test production owner access, read-only scanner bundles, record revision/rollback and denial tests; (6) owner gives explicit go-live authorization. Stop/rollback by disabling flags without deleting saved records.
+
 ## Real local Supabase Auth + REST API integration: PASSED (October 28, 2026 ET)
 
 **Third storage gate green:** [Build Lab Local Supabase Auth and REST Integration CI](https://github.com/rahollowayEIG/elevated-impact-platform/actions/runs/40806936598) completed successfully with a fresh **unlinked, disposable local Supabase CLI stack**, using Supabase CLI 2.120.0. No paid hosted branch, project, Vercel deployment, production migration or pink Sandbox change occurred.

@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install locked baseline dependencies
+        run: npm ci
+      - name: Install pinned scanner parser for isolated test only
+        run: npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
       - name: Evidence export and recovery regression (synthetic/local only)
         run: node --test tests/build-lab-evidence-package.test.mjs tests/build-lab-evidence-recovery.test.mjs tests/build-lab-work-buckets.test.mjs tests/build-lab-manager-blueprint.test.mjs
       - name: Record tested commit

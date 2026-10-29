@@ -61,6 +61,9 @@ on:
       - "src/components/BuildLabLiveOwnerWorkspace.jsx"
       - "tests/eig-build-lab-live-client.test.mjs"
       - "tests/build-lab-live-owner-render.cjs"
+      - "tests/build-lab-live-release-contract.test.cjs"
+      - "src/components/BuildLabLivePlanReview.jsx"
+      - "vercel.json"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -237,6 +240,9 @@ on:
       - "src/components/BuildLabLiveOwnerWorkspace.jsx"
       - "tests/eig-build-lab-live-client.test.mjs"
       - "tests/build-lab-live-owner-render.cjs"
+      - "tests/build-lab-live-release-contract.test.cjs"
+      - "src/components/BuildLabLivePlanReview.jsx"
+      - "vercel.json"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -377,6 +383,7 @@ jobs:
       - run: node --test tests/build-lab-evidence-package.test.mjs tests/build-lab-evidence-recovery.test.mjs
       - run: node --test tests/eig-build-lab-live-readonly.test.cjs
       - run: node --test tests/eig-build-lab-live-client.test.mjs
+      - run: node --test tests/build-lab-live-release-contract.test.cjs
       - run: node --test tests/eig-build-lab-durable-records.test.cjs
       - run: node --test tests/build-lab-cloud-records.test.mjs
       - run: node --test tests/build-lab-cloud-backup.test.mjs

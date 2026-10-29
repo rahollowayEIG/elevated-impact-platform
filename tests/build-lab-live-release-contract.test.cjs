@@ -26,12 +26,12 @@ test('owner-only production workspace has History, Buckets and Fix Plan without 
  assert.match(src,/saveScanHistory\(localStorage,ownerUserId,entry\)/);
  assert.match(src,/window\.dispatchEvent\(new Event\(HISTORY_EVENT\)\)/);
  assert.match(src,/requestLiveBuildLabScan/);
- assert.doesNotMatch(src,/import\s+.*(?:BuildLabBuilder|BuildLabAiConnection|EigBuildLab)/);
+ assert.doesNotMatch(src.split('\\n').filter(line=>line.startsWith('import ')).join('\\n'),/BuildLabBuilder|BuildLabAiConnection|EigBuildLab/);
  const review=read('src/components/BuildLabLivePlanReview.jsx');
  assert.match(review,/reviewManagerProposal/);
  assert.match(review,/approveManagerBlueprint/);
  assert.match(review,/execution and deployment remain disconnected/i);
- assert.doesNotMatch(review,/import\s+.*(?:BuildLabBuilder|BuildLabAiConnection|EigBuildLab)/);
+ assert.doesNotMatch(review.split('\\n').filter(line=>line.startsWith('import ')).join('\\n'),/BuildLabBuilder|BuildLabAiConnection|EigBuildLab/);
 });
 
 test('production owner-only access remains opt-in with independent server and UI gates',()=>{

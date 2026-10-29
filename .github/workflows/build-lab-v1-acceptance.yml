@@ -22,6 +22,9 @@ on:
       - "server/eig-build-lab-live-auth-client.cjs"
       - "api/eig-build-lab-live-*.js"
       - "tests/eig-build-lab-live-readonly.test.cjs"
+      - "src/lib/eigBuildLabLiveClient.mjs"
+      - "src/components/BuildLabLiveOwnerWorkspace.jsx"
+      - "tests/eig-build-lab-live-client.test.mjs"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -91,6 +94,7 @@ jobs:
           tests/eig-build-lab-access.test.mjs
           tests/eig-build-lab-preview-access.test.cjs
           tests/eig-build-lab-live-readonly.test.cjs
+          tests/eig-build-lab-live-client.test.mjs
           tests/eig-build-lab-durable-records.test.cjs
           tests/eig-build-lab-ai-review.test.cjs
 

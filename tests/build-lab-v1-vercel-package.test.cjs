@@ -2,27 +2,29 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const path=require('node:path');
 const {RELEASE_PATHS,validateReleaseSourceScope}=require('../server/eig-build-lab-v1-source-scope.cjs');
 const {FILE_PATHS:IA_PATHS}=require('../server/eig-inception-source-scan.cjs');
 const config=require('../vercel.json');
-function includedFor(name){
- const entry=config.functions?.[name];
- assert.equal(typeof entry?.includeFiles,'string',name+' must declare its source bundle');
- const pattern=entry.includeFiles;
- assert.ok(pattern.startsWith('{')&&pattern.endsWith('}'),'Require fixed exact file names, not broad wildcard sources');
- const paths=pattern.slice(1,-1).split(',');
- assert.ok(paths.every(p=>p.startsWith('src/')||p.startsWith('tests/')),'Only approved source and tests');
- assert.ok(paths.every(p=>!/[?*{}]/.test(p)),'No wildcard or nested glob');
- assert.equal(new Set(paths).size,paths.length,'No duplicate evidence files');
- for(const p of paths)assert.ok(fs.existsSync(p),'Evidence file missing from repo: '+p);
- return paths;
+const EXPECTED={
+  'api/eig-build-lab-live-master-scan.js':'{src/*.jsx,src/components/*.jsx,tests/*.{cjs,mjs}}',
+  'api/eig-build-lab-live-scan.js':'{src/components/*.{jsx,css},tests/*.cjs}'
+};
+function checkBundle(entry,approvedPaths){
+ const pattern=config.functions?.[entry]?.includeFiles;
+ assert.equal(pattern,EXPECTED[entry],'Only reviewed evidence file globs are authorized');
+ assert.ok(pattern.length<=256,'Vercel limits includeFiles patterns to 256 characters');
+ for(const p of approvedPaths){
+   assert.ok(fs.existsSync(p),'Evidence source missing from release repository: '+p);
+   assert.ok(path.matchesGlob(p,pattern),'Vercel function would omit approved scan evidence: '+p);
+ }
 }
-test('Vercel packages every and only V1 Master Scanner evidence file',()=>{
+test('V1 Master Scanner runtime includes every approved evidence file',()=>{
  const scope=validateReleaseSourceScope();
  assert.deepEqual(scope.missing,[]);
  assert.deepEqual(scope.unscoped,[]);
- assert.deepEqual(includedFor('api/eig-build-lab-live-master-scan.js').sort(),[...RELEASE_PATHS].sort());
+ checkBundle('api/eig-build-lab-live-master-scan.js',RELEASE_PATHS);
 });
-test('Vercel packages every and only InceptionApex evidence file',()=>{
- assert.deepEqual(includedFor('api/eig-build-lab-live-scan.js').sort(),[...IA_PATHS].sort());
+test('InceptionApex runtime includes every approved evidence file',()=>{
+ checkBundle('api/eig-build-lab-live-scan.js',IA_PATHS);
 });

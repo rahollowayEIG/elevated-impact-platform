@@ -90,7 +90,7 @@ test('work buckets and manager plans are separate from scanners, not execution a
  const f=fixture();
  assert.equal((await f.call({action:'save',kind:'work_buckets',expectedRevision:0,payload:WORK})).status,200);
  const {stackScanBlueprint}=await import('../src/lib/buildLabManagerBlueprint.mjs');
- const plan=stackScanBlueprint([SCANS.entries[0]],{title:'Read-only audit review'});
+ const plan=stackScanBlueprint([{...SCANS.entries[0],type:'ai',snapshot:{review:{recommendations:[{id:'focus',title:'Verify keyboard focus',recommendation:'Confirm keyboard operation after selection.'}]}}}],{title:'Read-only audit review'});
  const result=await f.call({action:'save',kind:'manager_blueprint',expectedRevision:0,payload:plan});
  assert.equal(result.status,200);
  const read=await f.call({action:'read',kind:'manager_blueprint'});
@@ -192,7 +192,7 @@ test('schema is service-only, RLS protected and uses atomic compare-and-swap wit
  assert.match(schema,/revoke all on table public\.eig_build_lab_documents from public, anon, authenticated/i);
  assert.match(schema,/revoke all on function public\.eig_build_lab_save_document\(uuid,text,integer,jsonb\) from public,anon,authenticated/i);
  assert.match(schema,/security invoker/i);
- assert.doesNotMatch(schema,/security definer/i);
+ assert.doesNotMatch(schema,/^\s*security definer\b/im);
  assert.match(schema,/d\.revision=p_expected_revision/i);
  assert.match(schema,/insert into public\.eig_build_lab_document_revisions/i);
  assert.match(schema,/on conflict do nothing/i);

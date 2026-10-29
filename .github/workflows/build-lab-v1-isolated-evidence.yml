@@ -184,6 +184,8 @@ jobs:
           node-version: "22"
       - name: Require reviewed protected owner server routes
         run: node --test tests/build-lab-owner-release-readiness.test.cjs
+      - name: Preview owner grant authorization tests
+        run: node --test tests/build-lab-owner-preview-access.test.cjs
       - name: Record strict owner-login gate
         if: always()
         run: echo "Passing UI build alone does not permit owner testing. Protected API routes must exist on the same release SHA." >> "$GITHUB_STEP_SUMMARY"

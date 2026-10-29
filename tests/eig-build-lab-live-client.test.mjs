@@ -20,7 +20,7 @@ const master={
  database:{capturedOn:'2026-10-20',freshLiveQuery:false,productionTables:71,sandboxTables:71,
  missingInSandbox:[],missingInProduction:[],policyDifferences:[]},
  environmentAudit:buildEnvironmentAudit({mode:'live',moduleId:null,modules:MODULES}),
- limitations:['Static source reference, not runtime verification.']
+ limitations:['Static source reference, not runtime verification.','Database metadata comes from dated snapshots, not a fresh production query.']
 };
 const ia={schemaVersion:1,kind:'eig_build_lab_code_scan',target:'inception_apex',
  targetLabel:'InceptionApex',sourceVersion:'a'.repeat(40),sourceFingerprint:'b'.repeat(64),

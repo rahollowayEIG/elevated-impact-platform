@@ -16,6 +16,7 @@ on:
       - "tests/build-lab-owner-release-readiness.test.cjs"
       - "api/eig-build-lab-live-*.js"
       - "server/eig-build-lab-live-*.cjs"
+      - "server/eig-build-lab-owner-preview-access.cjs"
       - "server/eig-build-lab-v1-source-scope.cjs"
       - "src/components/BuildLab*.jsx"
       - "src/components/build-lab-work-buckets.css"

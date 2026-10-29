@@ -202,10 +202,11 @@ const VERIFICATION=Object.freeze({
  'pos-tax':{scope:'Catalog/tax-readiness planner unit-test markers only; no valid legal tax calculation or live POS posting is established.',criteria:'Check shared catalog hierarchy, inventory authority and verified tax-rule provenance. Use fictional mixed-category sales, exemptions and returns to test scoped readiness and rejection of missing rules. Research build/reuse options separately; attach exact-commit evidence without posting sales or declaring tax correctness.'},
 });
 
-function readAllowlistedMasterSource() {
+function readAllowlistedMasterSource(allowedPaths=FILE_PATHS) {
+  if (!Array.isArray(allowedPaths) || allowedPaths.some(p=>!FILE_PATHS.includes(p))) throw new Error('Unapproved scanner source scope');
   const sources = {};
   let total = 0;
-  for (const relative of FILE_PATHS) {
+  for (const relative of allowedPaths) {
     const contents = fs.readFileSync(path.resolve(__dirname,"..",relative),"utf8");
     if (!contents.trim() || contents.length > 400000)
       throw new Error("Master Scanner source file missing or exceeds bound: "+relative);
@@ -240,36 +241,39 @@ function evidenceFor(files, tuples, kind,views) {
   return {evidence:checks.map(c=>c.evidence).filter(Boolean),coverage:{expected:checks.length,observed:checks.filter(c=>c.check.observed).length,checks:checks.map(c=>c.check),runtimeVerified:false}};
 }
 
-function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null,environmentMode="compare") {
+function scanMasterSource(sources,sourceVersion="local-unversioned",inspectedAt=new Date().toISOString(),moduleId=null,environmentMode="compare",profile=null) {
+  const scopedPaths=profile?.paths || FILE_PATHS;
+  const scopedModules=profile?.modules || MODULES;
+  if (!Array.isArray(scopedPaths)||!Array.isArray(scopedModules)||scopedPaths.some(p=>!FILE_PATHS.includes(p))||scopedModules.some(m=>!MODULES.includes(m))) throw new Error("Invalid scanner source profile");
   if (!sources || typeof sources !== "object") throw new TypeError("Source map required");
   // Narrow the report to a catalogued module. The underlying source read
   // remains the same fixed allowlist. Never permit arbitrary paths or targets.
-  if (moduleId !== null && !MODULES.some(rule=>rule.id===moduleId))
+  if (moduleId !== null && !scopedModules.some(rule=>rule.id===moduleId))
     throw new Error("Unsupported Master Scanner module.");
   if (!(sourceVersion==="local-unversioned" || /^[a-f0-9]{40}$/i.test(sourceVersion)))
     throw new Error("Invalid source version");
   if (schemaSnapshot.schemaVersion!==1 || !Array.isArray(schemaSnapshot.tables?.production) ||
       !Array.isArray(schemaSnapshot.tables?.sandbox)) throw new Error("Schema snapshot unavailable");
-  const files = FILE_PATHS.map(p=>{
+  const files = scopedPaths.map(p=>{
     const data=sources[p];
     if(typeof data!=="string" || !data.trim() || data.length>400000) throw new Error("Required source unavailable: "+p);
     return {path:p,lines:data.split("\n").length,kind:p.startsWith("tests/")?"test":"source"};
   });
   const fingerprint=createHash("sha256");
-  for(const f of FILE_PATHS) fingerprint.update(f+"\0"+sources[f]+"\0");
+  for(const f of scopedPaths) fingerprint.update(f+"\0"+sources[f]+"\0");
   fingerprint.update(JSON.stringify(schemaSnapshot)+"\0");
   // The rulebook is part of report identity. Changed coverage requirements
   // must reset prior owner decisions even if application source is unchanged.
-  fingerprint.update(JSON.stringify(MODULES)+"\0");
+  fingerprint.update(JSON.stringify(scopedModules)+"\0");
   fingerprint.update(JSON.stringify(VERIFICATION)+'\0master-evidence-v3\0'+SOURCE_RECOGNIZER_VERSION+'\0');
-  const environmentAudit=buildEnvironmentAudit({mode:environmentMode,moduleId,modules:MODULES});
+  const environmentAudit=buildEnvironmentAudit({mode:environmentMode,moduleId,modules:scopedModules});
   fingerprint.update(JSON.stringify(environmentAudit)+"\0");
-  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:FILE_PATHS,moduleIds:MODULES.map(rule=>rule.id),sourceVersion});
+  const improvementAudit=runImprovementRadar(sources,{moduleId,allowedFiles:scopedPaths,moduleIds:scopedModules.map(rule=>rule.id),sourceVersion});
   fingerprint.update(JSON.stringify(RADAR_RULES)+"\0");
   const prod=new Map(schemaSnapshot.tables.production.map(x=>[x.table,x]));
   const sandbox=new Map(schemaSnapshot.tables.sandbox.map(x=>[x.table,x]));
-  const views=Object.fromEntries(FILE_PATHS.map(file=>[file,sourceViews(sources[file])]));
-  const modules=MODULES.filter(rule=>moduleId===null||rule.id===moduleId).map(rule=>{
+  const views=Object.fromEntries(scopedPaths.map(file=>[file,sourceViews(sources[file])]));
+  const modules=scopedModules.filter(rule=>moduleId===null||rule.id===moduleId).map(rule=>{
     const source=evidenceFor(sources,rule.source,"source",views);
     const linked=evidenceFor(sources,rule.ui,"ui",views);
     const tested=evidenceFor(sources,rule.tests,"test",views);

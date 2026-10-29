@@ -65,10 +65,10 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const source = fs.readFileSync('server/eig-master-source-scan.cjs', 'utf8');
-          const match = source.match(/const FILE_PATHS = Object.freeze\(\[([\s\S]*?)\]\)/);
-          if (!match) throw new Error('Master Scanner file allowlist unavailable');
-          const paths = [...match[1].matchAll(/"([^"]+)"/g)].map(x => x[1]);
+          const {RELEASE_PATHS,validateReleaseSourceScope}=require('./server/eig-build-lab-v1-source-scope.cjs');
+          const scope=validateReleaseSourceScope();
+          const paths=RELEASE_PATHS;
+          if (scope.unscoped.length) throw new Error('Unscoped V1 evidence paths: '+JSON.stringify(scope.unscoped));
           const missing = paths.filter(p => !fs.existsSync(p));
           const summary = process.env.GITHUB_STEP_SUMMARY;
           fs.appendFileSync(summary, '### Release-owned scanner source inventory\n' +

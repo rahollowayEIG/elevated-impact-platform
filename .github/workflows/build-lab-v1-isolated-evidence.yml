@@ -5,6 +5,12 @@ on:
     paths:
       - "src/lib/buildLab*.mjs"
       - "tests/build-lab-*.test.mjs"
+      - "src/lib/buildChangeImpact.mjs"
+      - "src/lib/eigBuildArchitect.mjs"
+      - "server/eig-master-*.cjs"
+      - "server/eig-master-*.json"
+      - "server/eig-essential-wow-scan.cjs"
+      - "server/build-lab-source-patterns.cjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:

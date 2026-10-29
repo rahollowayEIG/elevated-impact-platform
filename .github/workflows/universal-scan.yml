@@ -67,6 +67,7 @@ on:
       - "src/lib/buildLabCloudBackup.mjs"
       - "src/components/BuildLabCloudBackup.jsx"
       - "tests/build-lab-cloud-backup.test.mjs"
+      - "tests/build-lab-cloud-backup-browser.cjs"
       - "src/lib/buildLabEvidencePackage.mjs"
       - "src/lib/buildLabEvidenceRecovery.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
@@ -238,6 +239,7 @@ on:
       - "src/lib/buildLabCloudBackup.mjs"
       - "src/components/BuildLabCloudBackup.jsx"
       - "tests/build-lab-cloud-backup.test.mjs"
+      - "tests/build-lab-cloud-backup-browser.cjs"
       - "src/lib/buildLabEvidencePackage.mjs"
       - "src/lib/buildLabEvidenceRecovery.mjs"
       - "src/lib/eigBuildLabDraft.mjs"
@@ -383,6 +385,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs
       - run: node tests/build-lab-work-buckets-browser.cjs
+      - run: node tests/build-lab-cloud-backup-browser.cjs
       - run: node tests/inception-apex-browser.cjs
       - run: node tests/event-inquiry-browser.cjs
       - run: node tests/eig-improvement-radar-browser.cjs

@@ -1,11 +1,13 @@
 import React,{useEffect,useRef,useState} from "react";
 import {createBuildLabEvidencePackage} from "../lib/buildLabEvidencePackage.mjs";
+import BuildLabCloudBackup from "./BuildLabCloudBackup.jsx";
+const CLOUD_BACKUP_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED==="true";
 import {inspectBuildLabEvidencePackage,restoreBuildLabEvidencePackage} from "../lib/buildLabEvidenceRecovery.mjs";
 import {WORK_EVENT} from "../lib/buildLabWorkBuckets.mjs";
 import {HISTORY_EVENT,SCAN_TYPES,readScanHistory} from "../lib/buildLabScanHistory.mjs";
 import {MASTER_SCAN_TARGETS} from "../lib/eigMasterScanTargets.mjs";
 const scopeLabel=id=>id==="all"?"Entire platform":MASTER_SCAN_TARGETS.find(x=>x.id===id)?.label||id;
-export default function BuildLabScanHistory({ownerUserId}) {
+export default function BuildLabScanHistory({ownerUserId,supabaseClient}) {
  const [entries,setEntries]=useState([]),[error,setError]=useState("");
  const restoreInput=useRef(null);
  const [query,setQuery]=useState(""),[type,setType]=useState("all"),[sort,setSort]=useState({key:"savedAt",direction:"desc"});
@@ -44,6 +46,7 @@ export default function BuildLabScanHistory({ownerUserId}) {
   <p>Completed scans grouped by scan type. Saved in this browser on this preview address; other devices and preview addresses have separate history. Keeps up to 20 scans per type within the browser history size limit; oldest scans are removed first. Download JSON to keep a permanent copy.</p>
   <p><button type="button" className="platform-primary-button" onClick={exportPackage}>Download Full Scanner Evidence Package (JSON)</button> <button type="button" className="platform-secondary-button" onClick={sharePackage}>Share Evidence Package</button> Share uses your device sharing options when available or copies evidence JSON to the clipboard; no cloud link is created. Includes saved scans, complete evidence, review choices, Work Buckets, the current Manager blueprint, and a readable README. Review contents before sharing. No live data is retrieved.</p>
   <p><button type="button" className="platform-secondary-button" onClick={()=>restoreInput.current?.click()}>Restore Saved Evidence (JSON)</button> <input ref={restoreInput} type="file" accept=".json,application/json" aria-label="Select owner evidence backup" onChange={restorePackage} style={{display:"none"}} /> Restore a v2 evidence backup from the same owner account. The app validates the file and asks before replacing local scan history, Work Buckets and Manager blueprint. Download the current package first. This is local recovery, not automatic cloud backup.</p>
+  {CLOUD_BACKUP_UI_ENABLED&&<BuildLabCloudBackup ownerUserId={ownerUserId} supabaseClient={supabaseClient} />}
   <p>Existing saved scanner results are added when Build Lab opens. Earlier overwritten results and AI responses lost before this update cannot be recovered. Opening history never runs a scan or calls AI.</p>
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {notice&&<p role="status">{notice}</p>}

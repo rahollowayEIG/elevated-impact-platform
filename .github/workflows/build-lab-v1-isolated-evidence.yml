@@ -19,6 +19,9 @@ on:
       - "tests/build-lab-v1-vercel-package.test.cjs"
       - "server/eig-build-lab-live-*.cjs"
       - "server/eig-build-lab-owner-preview-access.cjs"
+      - "server/eig-build-lab-durable-records.cjs"
+      - "server/eig-build-lab-document-store.cjs"
+      - "tests/eig-build-lab-durable-records.test.cjs"
       - "server/eig-build-lab-v1-source-scope.cjs"
       - "src/components/BuildLab*.jsx"
       - "src/components/build-lab-work-buckets.css"
@@ -189,6 +192,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Require reviewed protected owner server routes
         run: node --test tests/build-lab-owner-release-readiness.test.cjs
+      - name: Verify disabled cloud records authorization and conflict handling
+        run: node --test tests/eig-build-lab-durable-records.test.cjs
       - name: Verify scanner source files will be included in Vercel runtime
         run: node --test tests/build-lab-v1-vercel-package.test.cjs
       - name: Preview owner grant authorization tests

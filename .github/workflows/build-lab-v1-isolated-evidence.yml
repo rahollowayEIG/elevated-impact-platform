@@ -142,6 +142,8 @@ jobs:
           node-version: "22"
       - name: Install baseline dependencies
         run: npm ci
+      - name: Install pinned isolated JSX compiler
+        run: npm install --no-save --package-lock=false esbuild@0.25.12
       - name: Compile owner workspace and transitive UI dependencies without routing or deployment
         run: |
           mkdir -p .build-lab-test-output

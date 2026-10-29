@@ -1,0 +1,50 @@
+/* Build Lab upgrade radar: readable priority and evidence without implied pass badges. */
+.blr-root{min-width:0}
+.blr-header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.blr-header .platform-eyebrow{color:#9db6ca}
+.blr-header h2{margin:4px 0 8px}
+.blr-header p{color:#c4d5e4;line-height:1.55;margin:0;max-width:620px}
+.blr-launch{display:grid;gap:10px;flex:1;min-width:min(360px,100%);max-width:460px}
+.blr-launch label,.blr-controls label,.blr-revise label{display:grid;gap:6px;color:#d5e3f0;font-weight:700;font-size:.8rem}
+.blr-launch select,.blr-controls select,.blr-controls input,.blr-revise textarea{box-sizing:border-box;padding:10px 12px;border:1px solid #6e8caa;border-radius:9px;color:#183049;background:#f7fbff;width:100%;min-width:0;font-size:.88rem}
+.blr-launch button{min-height:43px}
+.blr-disclosure{color:#cdddeb;background:#102a3b;border:1px solid #34566c;border-radius:10px;font-size:.84rem;line-height:1.55;padding:12px 14px;margin:18px 0}
+.blr-notice{padding:11px 14px;border-radius:9px;border:1px solid #375d79;background:#19384a;color:#e0f2ff;font-size:.84rem}
+.blr-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.blr-stats>div{display:grid;gap:4px;min-width:0;padding:15px 14px;border:1px solid #3d6078;background:#122d45;border-radius:11px}
+.blr-stats strong{font-size:1.65rem;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+.blr-stats span{font-size:.76rem;color:#c0d0df;line-height:1.3}
+.blr-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:16px 0 7px}
+.blr-controls label{flex:1;min-width:min(175px,100%)}
+.blr-controls label:nth-child(2){flex:2;min-width:min(230px,100%)}
+.blr-controls>button{min-height:39px}
+.blr-count{font-size:.79rem;color:#b9cddc;margin:10px 0 14px}
+.blr-items{display:grid;gap:12px}
+.blr-card{min-width:0;border:1px solid #365b76;border-radius:13px;background:#132c42;padding:15px 17px;overflow-wrap:anywhere}
+.blr-card-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.blr-card-title{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.blr-card-title h3{color:#fff;font-size:1rem;line-height:1.35;margin:0}
+.blr-lane{font-weight:800;font-size:.72rem;letter-spacing:.04em;padding:5px 8px;border-radius:6px;background:#24475a;color:#dbedf6}
+.blr-lane.blr-wow{background:#3e3158;color:#ebdfff}
+.blr-priority{color:#f1dfc1;border:1px solid #685a37;border-radius:6px;padding:5px 8px;font-size:.72rem;text-transform:capitalize;font-weight:700}
+.blr-meta{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+.blr-meta>span{color:#ccdbea;font-size:.73rem;border:1px solid #355267;border-radius:7px;padding:5px 8px;background:#1a3850}
+.blr-meta strong{color:#f3f8fc;margin-right:4px}
+.blr-card p{font-size:.85rem;line-height:1.55;color:#d7e6f0;margin:7px 0}
+.blr-card p strong{color:#fff}
+.blr-card .blr-evidence-state{color:#f6dfb9;font-weight:650;font-size:.78rem}
+.blr-card details{margin-top:10px;border:1px solid #30536c;border-radius:8px}
+.blr-card summary{padding:9px 12px;color:#ecf6ff;font-size:.82rem;cursor:pointer;font-weight:700}
+.blr-card summary:hover{background:#23445e}
+.blr-details{padding:0 13px 12px}
+.blr-details ul{margin:9px 0 0;padding-left:20px;max-height:180px;overflow:auto}
+.blr-details li{font-size:.76rem;color:#cddfee;line-height:1.5;margin:6px 0}
+.blr-details code,.blr-footer code{font-size:.75rem;color:#c8e9ff;overflow-wrap:anywhere}
+.blr-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.blr-actions button,.blr-revise button{border:1px solid #5b839e;color:#f2f9fe;background:#24475e;border-radius:8px;padding:8px 11px;cursor:pointer;font-size:.78rem;font-weight:650}
+.blr-actions button:hover,.blr-revise button:hover{background:#345f7b}
+.blr-revise{padding:12px;margin-top:11px;border:1px solid #40617e;border-radius:9px;display:grid;gap:9px}
+.blr-revise button{justify-self:start}
+.blr-footer{margin:16px 0 2px;color:#acc5d9;font-size:.75rem;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:730px){.blr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.blr-header{display:grid}.blr-launch{max-width:100%}}
+@media(max-width:440px){.blr-stats{gap:7px}.blr-stats>div{padding:11px}.blr-card{padding:12px}.blr-actions button{flex:1}}

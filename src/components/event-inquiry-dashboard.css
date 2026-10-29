@@ -1,0 +1,25 @@
+.eir-dashboard{padding:22px;box-sizing:border-box;border:1px solid #38566f;border-radius:16px;background:#0e2138;color:#edf6ff;max-width:100%;min-width:0;overflow:hidden}
+.eir-dashboard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.eir-dashboard-head h2{margin:4px 0 9px;font-size:1.5rem;color:white}
+.eir-dashboard-head p{margin:0 0 11px;color:#d1e1f1;font-size:.89rem;line-height:1.55}
+.eir-dashboard-actions{display:flex;flex-wrap:wrap;gap:8px}
+.eir-dashboard-actions button{white-space:nowrap}
+.eir-dashboard-search{display:grid;gap:7px;font-size:.82rem;font-weight:700;color:#e1edfc;max-width:360px;margin:17px 0}
+.eir-dashboard-search input{width:100%;padding:10px 12px;border:1px solid #96adc0;border-radius:9px;background:white;color:#172940;font-size:.93rem}
+.eir-dashboard-scroll{max-width:100%;overflow-x:auto;border:1px solid #2a475f;border-radius:10px;box-sizing:border-box}
+.eir-dashboard table{width:100%;border-collapse:collapse;min-width:630px;font-size:.83rem}
+.eir-dashboard th{text-align:left;background:#122e49;color:#fff}
+.eir-dashboard th button{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;text-align:left;padding:12px;width:100%}
+.eir-dashboard th button:hover{background:#244662}
+.eir-dashboard td{padding:12px;border-top:1px solid #2c4c66;vertical-align:top}
+.eir-dashboard-row:hover{background:rgba(255,255,255,.04)}
+.eir-dashboard-open{background:transparent;border:0;color:#eff7ff;font-size:.88rem;cursor:pointer;text-align:left;font-weight:750;max-width:300px}
+.eir-dashboard-row small{display:block;font-size:.75rem;color:#b7cedf}
+.eir-dashboard-status{display:inline-block;background:#163f38;border:1px solid #316a57;padding:5px 8px;border-radius:7px;color:#c7eed9;font-size:.75rem;font-weight:700;white-space:nowrap}
+.eir-dashboard-detail{background:#112d45}
+.eir-dashboard-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:0}
+.eir-dashboard-detail dt{font-size:.7rem;color:#b5c9dc}
+.eir-dashboard-detail dd{margin:3px 0 0;font-weight:700;color:#fff}
+.eir-dashboard-detail p{color:#e0edf8;line-height:1.5;margin:12px 0}
+.eir-dashboard-detail .eir-dashboard-note{color:#b5c8d8;font-size:.75rem}
+@media(max-width:620px){.eir-dashboard{padding:14px}.eir-dashboard-detail dl{grid-template-columns:1fr}.eir-dashboard-actions{width:100%}.eir-dashboard-actions button{flex:1}}

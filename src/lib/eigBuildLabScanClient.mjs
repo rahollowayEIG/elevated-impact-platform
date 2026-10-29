@@ -1,5 +1,6 @@
 // Unprivileged browser scanner client. The Vercel server independently
 // verifies current owner, active session, scoped EIG membership and branch.
+const ALLOWED_PATHS=new Set(["src/components/InceptionApex.jsx","src/components/FlyerEditor.jsx","src/components/inception-apex.css","tests/inception-apex-browser.cjs"]);
 const SHA = /^[a-f0-9]{64}$/i;
 export function validateInceptionSourceReport(value) {
   if (!value || typeof value !== "object" ||
@@ -10,7 +11,18 @@ export function validateInceptionSourceReport(value) {
       !Array.isArray(value.findings) || value.findings.length > 25)
     throw new Error("The source scanner returned an unsupported report.");
   const sourcePaths = new Set(value.files.map((file) => file.path));
+  if(sourcePaths.size!==value.files.length||value.files.some(f=>!ALLOWED_PATHS.has(f.path)||!Number.isInteger(f.lines)||f.lines<1))throw Error("Invalid source file list.");
+  const validEvidence=evidence=>sourcePaths.has(evidence?.path)&&Number.isInteger(evidence.line)&&evidence.line>=1&&evidence.line<=50000&&typeof evidence.excerpt==='string'&&evidence.excerpt.length<=160;
+  if(value.ruleChecks!==undefined){
+    if(!Array.isArray(value.ruleChecks)||value.ruleChecks.length>10||new Set(value.ruleChecks.map(c=>c?.id)).size!==value.ruleChecks.length||value.ruleChecks.some(c=>
+      !/^[a-z0-9-]{3,80}$/.test(c?.id||'')||typeof c.title!=='string'||!c.title.trim()||c.title.length>200||
+      !['source_pattern_found','coverage_markers_found','partial_pattern','not_observed_in_sample'].includes(c.status)||
+      !['preserve_existing','coverage_gap','verification_needed'].includes(c.findingType)||c.runtimeVerified!==false||
+      typeof c.nextCheck!=='string'||!c.nextCheck.trim()||c.nextCheck.length>1500||!Array.isArray(c.evidence)||c.evidence.length>4||!c.evidence.every(validEvidence)))throw Error('Invalid source rule checks.');
+  }
   for (const item of value.findings) {
+    if(item.verify!==undefined&&(typeof item.verify!=='string'||!item.verify.trim()||item.verify.length>1500))throw Error('Invalid source verification criteria.');
+    if(item.findingType!==undefined&&!["preserve_existing","coverage_gap","verification_needed"].includes(item.findingType))throw Error("Invalid finding classification.");
     if (!/^[a-z0-9-]{3,80}$/.test(item?.id || "") ||
         typeof item.title !== "string" || item.title.length > 200 ||
         typeof item.observation !== "string" || item.observation.length > 1000 ||
@@ -19,9 +31,7 @@ export function validateInceptionSourceReport(value) {
         item.provenance !== "observed_in_first_party_source")
       throw new Error("The source report has invalid findings.");
     for (const evidence of item.evidence) {
-      if (!sourcePaths.has(evidence?.path) || !Number.isInteger(evidence.line) ||
-          evidence.line < 1 || evidence.line > 50000 ||
-          typeof evidence.excerpt !== "string" || evidence.excerpt.length > 160)
+      if (!validEvidence(evidence))
         throw new Error("Source evidence is missing or invalid.");
     }
   }

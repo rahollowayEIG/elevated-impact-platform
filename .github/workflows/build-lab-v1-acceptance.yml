@@ -1,0 +1,183 @@
+name: Build Lab V1 Acceptance
+
+# Acceptance automation only. This workflow never deploys, merges, writes production data,
+# accesses live customer information, or changes the permanent pink Sandbox.
+on:
+  push:
+    branches:
+      - feature/build-lab-orchestrator-20261020
+    paths:
+      - "src/components/EigBuildLab.jsx"
+      - "src/components/BuildLab*.jsx"
+      - "src/components/FlyerEditor.jsx"
+      - "src/lib/buildLab*.mjs"
+      - "src/lib/eig*Scan*.mjs"
+      - "server/eig*scan*.cjs"
+      - "server/eig-build-lab*.cjs"
+      - "api/eig-build-lab*.js"
+      - "tests/*build-lab*"
+      - "tests/eig-master-source-scan.test.cjs"
+      - "tests/eig-inception-source-scan.test.cjs"
+      - "server/eig-build-lab-live-readonly-access.cjs"
+      - "server/eig-build-lab-live-auth-client.cjs"
+      - "api/eig-build-lab-live-*.js"
+      - "tests/eig-build-lab-live-readonly.test.cjs"
+      - "src/lib/eigBuildLabLiveClient.mjs"
+      - "src/components/BuildLabLiveOwnerWorkspace.jsx"
+      - "tests/eig-build-lab-live-client.test.mjs"
+      - "tests/build-lab-live-owner-render.cjs"
+      - "tests/build-lab-live-release-contract.test.cjs"
+      - "tests/build-lab-live-owner-browser.cjs"
+      - "tests/build-lab-live-owner-harness.jsx"
+      - "tests/build-lab-live-owner.html"
+      - "src/components/BuildLabLivePlanReview.jsx"
+      - "vercel.json"
+      - "server/eig-build-lab-durable-records.cjs"
+      - "server/eig-build-lab-document-store.cjs"
+      - "api/eig-build-lab-live-records.js"
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/eig-build-lab-durable-records.test.cjs"
+      - "src/lib/buildLabCloudRecords.mjs"
+      - "tests/build-lab-cloud-records.test.mjs"
+      - "src/lib/buildLabCloudBackup.mjs"
+      - "src/components/BuildLabCloudBackup.jsx"
+      - "tests/build-lab-cloud-backup.test.mjs"
+      - "tests/build-lab-cloud-backup-browser.cjs"
+      - "src/lib/buildLabEvidenceRecovery.mjs"
+      - "src/lib/buildLabEvidencePackage.mjs"
+      - "src/components/BuildLabScanHistory.jsx"
+      - "tests/build-lab-evidence-recovery.test.mjs"
+      - "tests/build-lab-evidence-package.test.mjs"
+      - "tests/inception-apex-browser.cjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/build-lab-v1-acceptance.yml"
+      - "docs/Build-Lab-V1-Release-Gate.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-lab-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scanners-and-security:
+    name: Scanners, work routing and owner access
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Validate Master Scanner and IA Inspector detection contracts
+        run: >-
+          node --test
+          tests/eig-master-source-scan.test.cjs
+          tests/eig-inception-source-scan.test.cjs
+          tests/eig-master-scan-access.test.cjs
+          tests/eig-master-scan-client.test.mjs
+          tests/eig-build-lab-scan-access.test.cjs
+          tests/eig-build-lab-scan-client.test.mjs
+      - name: Validate manual intake, Work Buckets and Manager handoff
+        run: >-
+          node --test
+          tests/build-lab-work-buckets.test.mjs
+          tests/build-lab-manager-blueprint.test.mjs
+          tests/build-lab-evidence-package.test.mjs
+          tests/build-lab-evidence-recovery.test.mjs
+          tests/build-lab-cloud-records.test.mjs
+          tests/build-lab-cloud-backup.test.mjs
+          tests/build-lab-scan-history.test.mjs
+          tests/build-lab-mission-orchestrator.test.mjs
+          tests/build-lab-builder.test.mjs
+      - name: Validate owner-only access and fail-closed behavior
+        run: >-
+          node --test
+          tests/eig-build-lab-access.test.mjs
+          tests/eig-build-lab-preview-access.test.cjs
+          tests/eig-build-lab-live-readonly.test.cjs
+          tests/eig-build-lab-live-client.test.mjs
+          tests/build-lab-live-release-contract.test.cjs
+          tests/eig-build-lab-durable-records.test.cjs
+          tests/eig-build-lab-ai-review.test.cjs
+
+  browser-acceptance:
+    name: Build Lab browser acceptance (synthetic only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build application UI
+        run: npx vite build
+      - name: Install Chromium for isolated synthetic browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Render isolated production owner console (no browser or Live API)
+        run: node tests/build-lab-live-owner-render.cjs
+      - name: Restricted V1 owner Scan to Buckets to Fix Plan browser walkthrough
+        run: node tests/build-lab-live-owner-browser.cjs
+      - name: Build Lab owner-only navigation and scanner smoke
+        run: node tests/eig-build-lab-browser.cjs
+      - name: Report, autosave, verification, bucket approval and Manager handoff
+        run: node tests/build-lab-work-buckets-browser.cjs
+      - name: Owner cloud restore browser flow (synthetic provider only)
+        run: node tests/build-lab-cloud-backup-browser.cjs
+      - name: InceptionApex editor keyboard and save regressions
+        run: node tests/inception-apex-browser.cjs
+      - name: Attach synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-lab-v1-browser-evidence
+          path: test-results/eig-build-lab/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  readiness-summary:
+    name: One-page V1 readiness summary (no deployment)
+    needs: [scanners-and-security, browser-acceptance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize automated checks and outstanding human gates
+        env:
+          SOURCE_RESULT: ${{ needs.scanners-and-security.result }}
+          BROWSER_RESULT: ${{ needs.browser-acceptance.result }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          {
+            echo "## Build Lab V1 | Fast-track acceptance"
+            echo ""
+            echo "Exact source commit: \`$SOURCE_SHA\`"
+            echo ""
+            echo "| Automated group | Outcome |"
+            echo "| --- | --- |"
+            echo "| Source scanners, work routing, owner permissions | $SOURCE_RESULT |"
+            echo "| Chromium browser workflows, Work Buckets, IA regression | $BROWSER_RESULT |"
+            echo ""
+            if [[ "$SOURCE_RESULT" == "success" && "$BROWSER_RESULT" == "success" ]]; then
+              echo "**Automated acceptance: PASSED.** This is not production approval."
+            else
+              echo "**Automated acceptance: BLOCKED.** Fix the failed/skipped group before a release decision."
+            fi
+            echo ""
+            echo "### Still requires independent owner/security release decisions"
+            echo "- Validate exact-version scanner findings against representative authorized runtime behavior; source markers alone are not live defect confirmation."
+            echo "- Independently verify staged owner-only Live authorization against an actual active production session, EIG membership and exact origin. Live remains disabled."
+            echo "- Apply and verify durable-storage schema only after approved migration review; exercise authenticated cloud save, conflict, backup and restore end to end. Browser-local recovery remains available."
+            echo "- Verify actual production configuration, tenant isolation, RLS, secret handling, scanner allowlists, release SHA parity and rollback with zero customer/payment/event mutations."
+            echo "- Require one explicit owner release approval. Never auto-deploy from this workflow."
+            echo ""
+            echo "Advanced AI repair dispatch, scheduled scanner learning and other expansions are outside V1 scope."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$SOURCE_RESULT" != "success" || "$BROWSER_RESULT" != "success" ]]; then exit 1; fi

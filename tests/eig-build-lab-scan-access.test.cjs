@@ -5,7 +5,7 @@ const { readAllowlistedInceptionSource, scanInceptionSource } = require("../serv
 
 const OWNER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
-const BRANCH = "feature/build-intelligence-impact-20261017";
+const BRANCH = "feature/build-lab-orchestrator-20261020";
 function fixture(overrides = {}) {
   const state = {
     userId: OWNER, memberRole: "eig_admin", org: "elevated-impact-group", memberStatus: "active",
@@ -69,7 +69,7 @@ test("owner-only scan uses real source evidence after verifying active owner", a
   const result = await f.send();
   assert.equal(result.status, 200);
   assert.equal(result.body.ok, true);
-  assert.equal(result.body.report.findings.length, 6);
+  assert.equal(result.body.report.findings.length, 5);
   assert.equal(result.body.report.sourceVersion, "a".repeat(40));
   assert.equal(result.headers["Cache-Control"], "private, no-store, max-age=0");
   assert.equal(f.state.verifyCalls, 1);

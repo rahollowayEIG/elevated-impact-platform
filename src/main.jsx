@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import ElevatedImpactPhaseOneFrontend from './App.jsx';
 import './styles.css';
 import ActionConfirmation from './components/ActionConfirmation.jsx';
+import { desktopAppFromLaunch } from './lib/desktopAppMode.mjs';
+
+const focusedBuildLabWindow = desktopAppFromLaunch({ standalone: window.matchMedia?.('(display-mode: standalone)')?.matches === true, search: window.location.search }) === 'build_lab';
 
 const EIG_ICON = 'https://raw.githubusercontent.com/rahollowayEIG/elevated-impact-group-site/main/assets/eig-header-icon.png';
 
@@ -29,7 +32,7 @@ function EIGAppHeader() {
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <EIGAppHeader />
+    {!focusedBuildLabWindow && <EIGAppHeader />}
     <ElevatedImpactPhaseOneFrontend />
     <ActionConfirmation />
   </React.StrictMode>

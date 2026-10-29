@@ -1,0 +1,102 @@
+name: Build Lab Local Supabase Auth and REST Integration
+
+on:
+  push:
+    branches:
+      - feature/build-lab-orchestrator-20261020
+    paths:
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/build-lab-supabase-local-integration.cjs"
+      - ".github/workflows/build-lab-supabase-local-integration.yml"
+  pull_request:
+    paths:
+      - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/build-lab-supabase-local-integration.cjs"
+      - ".github/workflows/build-lab-supabase-local-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-supabase:
+    name: Disposable Supabase Auth, REST, RLS and revision RPC
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Strict local-only test. Do not link any hosted project, and do not load
+      # EIG's remote credentials or copy its entire migration history.
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+      - name: Verify supported CLI commands and Docker
+        shell: bash
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase start --help >/dev/null
+          docker info >/dev/null
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "Refusing a remotely authenticated Supabase session"
+            exit 1
+          fi
+      - name: Create dedicated unlinked Supabase project and migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tests/build-lab-local-supabase
+          cd tests/build-lab-local-supabase
+          supabase init --yes
+          supabase migration new build_lab_ci_only
+          migration=$(find supabase/migrations -maxdepth 1 -name "*_build_lab_ci_only.sql" -print -quit)
+          test -n "$migration"
+          cp ../../docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql "$migration"
+          test ! -f supabase/.temp/project-ref
+          test ! -f supabase/.branches/_current_branch
+          echo "Local migration created in a disposable, unlinked CLI workspace."
+      - name: Start local Supabase Auth and REST API with migration applied
+        working-directory: tests/build-lab-local-supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only the Postgres, GoTrue Auth, Kong gateway and PostgREST services
+          # are needed. Skip unrelated services to fit a standard CI runner.
+          if ! supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$RUNNER_TEMP/eig-supabase-start.log" 2>&1; then
+            grep -Ei 'error|failed|unhealthy|unsupported|invalid|container' "$RUNNER_TEMP/eig-supabase-start.log" | head -30 || true
+            echo "Local Supabase startup failed; no hosted services were contacted."
+            exit 1
+          fi
+          echo "Disposable local Auth, REST and PostgreSQL services running."
+      - name: Install locked application dependencies
+        shell: bash
+        run: npm ci --ignore-scripts
+      - name: Test real Auth sessions, RLS/grants, service role and revision RPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Parse local CLI credentials without logging or uploading the keys.
+          (
+            cd tests/build-lab-local-supabase
+            supabase status -o env > "$RUNNER_TEMP/eig-supabase-local.env"
+          )
+          set -a
+          source "$RUNNER_TEMP/eig-supabase-local.env"
+          set +a
+          test "${API_URL:-}" = "http://127.0.0.1:54321"
+          node tests/build-lab-supabase-local-integration.cjs
+          rm -f "$RUNNER_TEMP/eig-supabase-local.env"
+      - name: Stop and discard disposable Supabase resources
+        if: always()
+        working-directory: tests/build-lab-local-supabase
+        shell: bash
+        run: |
+          supabase stop --no-backup >/dev/null 2>&1 || true
+          echo "No production or Sandbox migration was attempted."

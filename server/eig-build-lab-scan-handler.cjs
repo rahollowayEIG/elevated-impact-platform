@@ -5,12 +5,13 @@ const {
 } = require("./eig-build-lab-preview-access.cjs");
 
 function createBuildLabInceptionScanHandler({
-  env, verifyUser, membershipsForUser, readSources, scan,
+  env, verifyUser, membershipsForUser, verifyLiveSession, readSources, scan,
   now = Date.now,
+  authorize = authorizeBuildLabPreviewOwner,
 }) {
   return async (req, res) => {
-    const grant = await authorizeBuildLabPreviewOwner(
-      req, { env, verifyUser, membershipsForUser, now });
+    const grant = await authorize(
+      req, { env, verifyUser, membershipsForUser, verifyLiveSession, now });
     if (!grant.allowed) return response(res, grant.status, { ok: false });
     const body = req.body;
     if (body && (typeof body !== "object" || Array.isArray(body) ||

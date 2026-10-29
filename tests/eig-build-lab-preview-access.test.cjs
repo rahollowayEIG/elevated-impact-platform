@@ -11,8 +11,8 @@ function sample(options = {}) {
     organization: "elevated-impact-group",
     since: null, until: null, memberError: false,
     enabled: true, vercelEnv: "preview",
-    branch: "feature/build-intelligence-impact-20261017",
-    configuredBranch: "feature/build-intelligence-impact-20261017",
+    branch: "feature/build-lab-orchestrator-20261020",
+    configuredBranch: "feature/build-lab-orchestrator-20261020",
     ownerConfig: OWNER, authCalls: 0, memberCalls: 0, failAuth: false,
     ...options,
   };

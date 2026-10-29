@@ -53,3 +53,11 @@ test("forged report, unverifiable evidence and unsafe server result are rejected
     { findings: [{ ...report().findings[0], provenance: "verified_in_production" }] },
   ]) assert.throws(() => validateInceptionSourceReport({ ...report(), ...changes }), /report|evidence/);
 });
+
+test('rule check metadata and verification criteria are bounded and cannot claim test execution',()=>{
+ const base=report(),check={id:'ia-native-confirm',title:'Review confirmation callers',status:'source_pattern_found',findingType:'verification_needed',runtimeVerified:false,evidence:base.findings[0].evidence,nextCheck:'Verify cancel and continue with synthetic data.'};
+ assert.equal(validateInceptionSourceReport({...base,ruleChecks:[check]}).ruleChecks.length,1);
+ for(const invalid of [{...check,runtimeVerified:true},{...check,status:'passed'},{...check,evidence:[{path:'../../secret',line:1,excerpt:'x'}]},{...check,nextCheck:'x'.repeat(1501)}])assert.throws(()=>validateInceptionSourceReport({...base,ruleChecks:[invalid]}),/rule checks/);
+ assert.throws(()=>validateInceptionSourceReport({...base,ruleChecks:[check,check]}),/rule checks/);
+ assert.throws(()=>validateInceptionSourceReport({...base,findings:[{...base.findings[0],verify:'x'.repeat(1501)}]}),/verification criteria/);
+});

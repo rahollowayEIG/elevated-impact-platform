@@ -1,0 +1,17 @@
+.bl-scanner-tools{margin:14px 0;padding:12px 14px;background:#122d43;border:1px solid #55758d;border-radius:9px;color:#dbeaf6;font-size:.85rem;line-height:1.5}
+.bl-scanner-tools summary{cursor:pointer;font-weight:700;color:#fff;min-height:24px}
+.bl-scanner-tools summary:focus-visible{outline:2px solid #a4dfff;outline-offset:4px}
+.bl-scanner-tools p{color:#c6d9e7;font-size:.82rem}
+.bl-scanner-tools dl{margin:12px 0}
+.bl-scanner-tools dl>div{padding:10px 0;border-top:1px solid #35556c}
+.bl-scanner-tools dt{display:flex;flex-wrap:wrap;gap:6px 12px;font-weight:700;color:#fff}
+.bl-scanner-tools dt span{font-weight:400;color:#b9d9ee}
+.bl-scanner-tools dd{margin:5px 0 0;overflow-wrap:anywhere;color:#cfdfeb}
+.bl-scanner-tools h4{color:#fff;margin:16px 0 6px}
+
+.bl-scanner-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;min-width:0}
+.bl-scanner-title>h2{margin:0}
+.bl-scanner-title>.bl-scanner-tools{margin:0;padding:0;border:0;background:transparent}
+.bl-scanner-title>.bl-scanner-tools[open]{flex:1 1 100%;padding:10px 14px;border:1px solid #55758d;background:#122d43}
+.bl-scanner-title .bl-scanner-tools summary{color:#c2e4fa;font-size:.8rem;min-height:30px;padding:4px}
+.bl-scanner-directions{margin:12px 0;padding:12px;border:1px solid #56748e;border-radius:9px;font-size:.9rem}.bl-scanner-directions summary{cursor:pointer;font-weight:700}.bl-scanner-directions li{margin:6px 0}.bl-scanner-directions h4{margin:14px 0 6px}

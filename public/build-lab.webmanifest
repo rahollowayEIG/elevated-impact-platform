@@ -1,0 +1,19 @@
+{
+  "id": "/build-lab",
+  "name": "EIG Build Lab",
+  "short_name": "Build Lab",
+  "description": "Owner-controlled ElevationPilot Build Lab. Online connection required.",
+  "start_url": "/?buildlab=1",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1f35",
+  "theme_color": "#0b1f35",
+  "icons": [
+    {
+      "src": "/build-lab-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

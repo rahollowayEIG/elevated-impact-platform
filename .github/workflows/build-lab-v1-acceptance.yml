@@ -27,6 +27,9 @@ on:
       - "tests/eig-build-lab-live-client.test.mjs"
       - "tests/build-lab-live-owner-render.cjs"
       - "tests/build-lab-live-release-contract.test.cjs"
+      - "tests/build-lab-live-owner-browser.cjs"
+      - "tests/build-lab-live-owner-harness.jsx"
+      - "tests/build-lab-live-owner.html"
       - "src/components/BuildLabLivePlanReview.jsx"
       - "vercel.json"
       - "server/eig-build-lab-durable-records.cjs"
@@ -120,6 +123,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Render isolated production owner console (no browser or Live API)
         run: node tests/build-lab-live-owner-render.cjs
+      - name: Restricted V1 owner Scan to Buckets to Fix Plan browser walkthrough
+        run: node tests/build-lab-live-owner-browser.cjs
       - name: Build Lab owner-only navigation and scanner smoke
         run: node tests/eig-build-lab-browser.cjs
       - name: Report, autosave, verification, bucket approval and Manager handoff

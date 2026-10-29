@@ -7,11 +7,11 @@
       "maxDuration": 30
     },
     "api/eig-build-lab-live-master-scan.js": {
-      "includeFiles": "{src/PlatformApp.jsx,src/EieEventSetupSteps.jsx,src/ElevationAirport.jsx,src/SquawkCenter.jsx,src/EieRosterMaintenance.jsx,src/components/EventPacketStudio.jsx,src/components/EventBudget.jsx,src/components/InceptionApex.jsx,src/components/SocialMediaApp.jsx,src/components/BuildLabLiveOwnerWorkspace.jsx,src/components/BuildLabWorkBuckets.jsx,src/components/BuildLabScanHistory.jsx,tests/eig-build-lab-live-client.test.mjs,tests/event-builder-browser.cjs,tests/team-payment-cart.test.mjs,tests/roster-numbering.test.mjs,tests/inception-apex-browser.cjs,tests/social-media-browser.cjs,tests/recovery-session.test.mjs,src/components/SponsorBuilder.jsx}",
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,tests/*.{cjs,mjs}}",
       "maxDuration": 30
     },
     "api/eig-build-lab-live-scan.js": {
-      "includeFiles": "{src/components/InceptionApex.jsx,src/components/FlyerEditor.jsx,src/components/inception-apex.css,tests/inception-apex-browser.cjs}",
+      "includeFiles": "{src/components/*.{jsx,css},tests/*.cjs}",
       "maxDuration": 30
     }
   },

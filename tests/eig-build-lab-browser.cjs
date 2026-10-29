@@ -86,6 +86,7 @@ const fs = require("node:fs/promises");
     assert.equal(aiCalls,1,"Restoring AI results must not call OpenAI");
     await chooseTool("Scan History");
     const historyPanel=page.locator("#bl-panel-history");
+    assert.equal(await historyPanel.getByRole("region",{name:"Build Lab Cloud Backup & Recovery"}).count(),0,"Cloud controls must stay hidden unless explicitly enabled.");
     // Group sections use their accessible labels without changing scanner panels.
     await historyPanel.getByRole("heading",{name:"AI Review (1)",exact:true}).waitFor();
     await historyPanel.getByText("View saved scan (1 items)").click();

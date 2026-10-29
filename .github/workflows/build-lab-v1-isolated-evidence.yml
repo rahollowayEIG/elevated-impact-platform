@@ -117,6 +117,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install isolated scanner parser dependency
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
       - name: Validate V1 source scope and unresolved evidence paths
         run: node --test tests/build-lab-v1-source-scope.test.cjs
       - name: Explain limited scope result

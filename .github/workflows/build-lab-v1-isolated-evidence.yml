@@ -185,6 +185,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install locked runtime dependencies for package verification
+        run: npm ci --ignore-scripts
       - name: Require reviewed protected owner server routes
         run: node --test tests/build-lab-owner-release-readiness.test.cjs
       - name: Verify scanner source files will be included in Vercel runtime

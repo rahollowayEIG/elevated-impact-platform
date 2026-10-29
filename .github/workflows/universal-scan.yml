@@ -62,6 +62,9 @@ on:
       - "tests/eig-build-lab-live-client.test.mjs"
       - "tests/build-lab-live-owner-render.cjs"
       - "tests/build-lab-live-release-contract.test.cjs"
+      - "tests/build-lab-live-owner-browser.cjs"
+      - "tests/build-lab-live-owner-harness.jsx"
+      - "tests/build-lab-live-owner.html"
       - "src/components/BuildLabLivePlanReview.jsx"
       - "vercel.json"
       - "server/eig-build-lab-durable-records.cjs"
@@ -241,6 +244,9 @@ on:
       - "tests/eig-build-lab-live-client.test.mjs"
       - "tests/build-lab-live-owner-render.cjs"
       - "tests/build-lab-live-release-contract.test.cjs"
+      - "tests/build-lab-live-owner-browser.cjs"
+      - "tests/build-lab-live-owner-harness.jsx"
+      - "tests/build-lab-live-owner.html"
       - "src/components/BuildLabLivePlanReview.jsx"
       - "vercel.json"
       - "server/eig-build-lab-durable-records.cjs"
@@ -398,6 +404,7 @@ jobs:
       - run: node --test tests/eig-build-lab-ai-review.test.cjs
       - run: node tests/build-lab-manager-render.cjs
       - run: node tests/build-lab-live-owner-render.cjs
+      - run: node tests/build-lab-live-owner-browser.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

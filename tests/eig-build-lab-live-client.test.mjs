@@ -78,6 +78,8 @@ test('production owner workspace excludes preview-only development capabilities 
  assert.match(app,/VITE_EIG_BUILD_LAB_LIVE_OWNER_UI_ENABLED/);
  assert.match(app,/requestLiveBuildLabAccess\(supabase\)/);
  assert.match(app,/adminView === 'build_lab_live' && liveBuildLabAllowed/);
- assert.match(app,/adminView === 'build_lab' && buildLabAllowed/);
- assert.match(app,/const EIG_BUILD_LAB_PREVIEW_ENABLED/);
+ assert.match(app,/const EIG_BUILD_LAB_PREVIEW_ENABLED = false/);
+ assert.match(app,/EIG_BUILD_LAB_LIVE_UI_ENABLED/);
+ assert.match(app,/onOpenBuildLab=\{EIG_BUILD_LAB_LIVE_UI_ENABLED \? openLiveBuildLab : null\}/);
+ assert.doesNotMatch(app,/import\(['\"]\.\/components\/EigBuildLab\.jsx['\"]\)/);
 });

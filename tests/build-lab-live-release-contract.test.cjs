@@ -30,7 +30,7 @@ test('owner-only production workspace has History, Buckets and Fix Plan without 
  const review=read('src/components/BuildLabLivePlanReview.jsx');
  assert.match(review,/reviewManagerProposal/);
  assert.match(review,/approveManagerBlueprint/);
- assert.match(review,/execution remain disconnected/i);
+ assert.match(review,/execution and deployment remain disconnected/i);
  assert.doesNotMatch(review,/import\s+.*(?:BuildLabBuilder|BuildLabAiConnection|EigBuildLab)/);
 });
 

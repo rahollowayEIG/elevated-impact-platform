@@ -21,6 +21,8 @@ insert into auth.users(id) values
 SQL
 echo "[2/7] Test transactional dry run and complete rollback"
 test_sql="$(mktemp)"
+test_a=""
+test_b=""
 trap 'rm -f "$test_sql" "$test_a" "$test_b"' EXIT
 awk 'tolower($0) !~ /^[[:space:]]*(begin|commit);[[:space:]]*$/' "$SOURCE" > "$test_sql"
 {

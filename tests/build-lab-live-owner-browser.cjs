@@ -49,6 +49,7 @@ const {chromium}=require('playwright');
   assert.equal(saved?.entries?.[0]?.type,'inspector');
   assert.equal(saved?.entries?.[0]?.snapshot?.report?.findings[0]?.title,'Verify focus');
   await nav.getByRole('button',{name:'2. History'}).click();
+  await page.getByText('View saved scan (1 items)',{exact:false}).first().click();
   await page.getByText('Verify focus',{exact:false}).first().waitFor();
   await nav.getByRole('button',{name:'3. Work Buckets'}).click();
   await page.getByText('Verify focus',{exact:false}).first().waitFor();

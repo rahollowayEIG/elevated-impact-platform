@@ -108,6 +108,16 @@ Keep this rule in all future app designs and in the dependency map; it does not 
 
 **No existing Supabase schema, payment, roster, customer or event record was altered during this stage.** The pink Sandbox remains untouched.
 
+## Owner cloud backup and recovery UI: development-only (October 28, 2026)
+
+- `src/lib/buildLabCloudBackup.mjs`: inspect all three remote document revisions, compare separately with current browser snapshots, save only explicitly selected record types with a compare-and-swap expected revision, and rebuild a full local v2 evidence package from the cloud for validated owner-controlled restoration. Incomplete cloud backups cannot silently wipe browser Work Buckets.
+- `src/components/BuildLabCloudBackup.jsx`: an opt-in panel within Scan History behind `VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED=true` (OFF by default). It shows per-record revisions and differences and offers a deliberate cloud save. Recovery requires downloading the existing local JSON, acknowledging the backup, confirming full replacement and a forced reload to avoid stale React autosave overwriting restored data.
+- `tests/build-lab-cloud-backup.test.mjs`: empty/complete cloud snapshots, stale browser edits, HTTP 409 conflicts, corrupted records, account separation and full restore from a synthetic remote.
+- `tests/build-lab-cloud-backup-browser.cjs`: isolated real-browser journey with a synthetic authenticated token and simulated records endpoint; no actual Supabase connections or customer data.
+- **No automatic sync or merging:** the three server documents are versioned independently and uploaded one at a time. Partial cloud uploads can exist; the UI displays them explicitly, and full restore requires both core records. The Manager blueprint is optional and may be absent in a valid complete snapshot. Browser JSON export remains the practical recoverable backup until real cloud storage is provisioned.
+- **Live integration is still blocked:** the current `PlatformApp` owner navigation is preview-only, so this flag alone does not enable the new panel in production. A separate production read-only/planning workspace with exact owner-server verification and without AI execution tools must be wired and verified.
+- **Never turn on these flags prematurely:** SQL migration remains unapplied, provider-backed save/restore and RLS checks remain undone, and no end-to-end production session run has been approved.
+
 ## V1 scope
 
 - Master Scanner and IA Inspector: source-inspection reports with explicit detection limitations and exact revision evidence

@@ -18,3 +18,10 @@ test('V1 profile reports missing code and any module evidence paths outside appr
   assert.ok(owner.source.some(x=>x[0]==='src/components/BuildLabLiveOwnerWorkspace.jsx'));
   assert.ok(owner.tests.some(x=>x[0]==='tests/eig-build-lab-live-client.test.mjs'));
 });
+
+test('scanner rejects unapproved source rules even when a known module id is reused',()=>{
+ const {scanMasterSource,readAllowlistedMasterSource}=require('../server/eig-master-source-scan.cjs');
+ const {RELEASE_MODULES,RELEASE_PATHS}=require('../server/eig-build-lab-v1-source-scope.cjs');
+ const forged=RELEASE_MODULES.map(m=>m.id==='build-lab'?{...m,source:[['src/components/BuildLabLiveOwnerWorkspace.jsx','nonexistent privileged marker']]}:m);
+ assert.throws(()=>scanMasterSource(readAllowlistedMasterSource(RELEASE_PATHS),'a'.repeat(40),new Date().toISOString(),null,'compare',{paths:RELEASE_PATHS,modules:forged}),/Invalid scanner source profile/);
+});

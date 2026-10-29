@@ -25,6 +25,7 @@ on:
       - "src/lib/eigBuildLabLiveClient.mjs"
       - "src/components/BuildLabLiveOwnerWorkspace.jsx"
       - "tests/eig-build-lab-live-client.test.mjs"
+      - "tests/build-lab-live-owner-render.cjs"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -113,6 +114,8 @@ jobs:
         run: npx vite build
       - name: Install Chromium for isolated synthetic browser tests
         run: npx playwright install --with-deps chromium
+      - name: Render isolated production owner console (no browser or Live API)
+        run: node tests/build-lab-live-owner-render.cjs
       - name: Build Lab owner-only navigation and scanner smoke
         run: node tests/eig-build-lab-browser.cjs
       - name: Report, autosave, verification, bucket approval and Manager handoff

@@ -11,6 +11,7 @@ on:
       - "server/eig-master-*.json"
       - "server/eig-essential-wow-scan.cjs"
       - "server/build-lab-source-patterns.cjs"
+      - "tests/build-lab-master-source-integration.test.mjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:
@@ -35,3 +36,23 @@ jobs:
         env:
           SOURCE_SHA: ${{ github.sha }}
         run: echo "Tested isolated release SHA $SOURCE_SHA. No live deployment, database access, or production approval." >> "$GITHUB_STEP_SUMMARY"
+
+  master-scanner-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned test dependencies
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Mandatory full-source scanner-to-buckets integration
+        run: node --test tests/build-lab-master-source-integration.test.mjs
+      - name: Record source SHA and block release on any missing files
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: echo "Master Scanner integration exact SHA $SOURCE_SHA. Must pass before release; never mock missing source files." >> "$GITHUB_STEP_SUMMARY"

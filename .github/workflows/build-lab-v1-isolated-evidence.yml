@@ -4,7 +4,7 @@ on:
     branches: [release/build-lab-v1-owner-only-20261028]
     paths:
       - "src/lib/buildLab*.mjs"
-      - "tests/build-lab-evidence*.test.mjs"
+      - "tests/build-lab-*.test.mjs"
       - ".github/workflows/build-lab-v1-isolated-evidence.yml"
   workflow_dispatch:
 permissions:
@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: "22"
       - name: Evidence export and recovery regression (synthetic/local only)
-        run: node --test tests/build-lab-evidence-package.test.mjs tests/build-lab-evidence-recovery.test.mjs
+        run: node --test tests/build-lab-evidence-package.test.mjs tests/build-lab-evidence-recovery.test.mjs tests/build-lab-work-buckets.test.mjs tests/build-lab-manager-blueprint.test.mjs
       - name: Record tested commit
         if: always()
         env:

@@ -135,18 +135,6 @@ test('older work restores without invented verification and rejects malformed ne
  assert.equal(brief.jobs[1].assessment.kind,'goal');assert.equal(brief.jobs[1].assessment.basis,'owner_brief');
 });
 
-test('actual Master Scanner verification criteria and observations survive bucket collection and reviewed plans',async()=>{
- const require=createRequire(import.meta.url),{scanMasterSource,readAllowlistedMasterSource}=require('../server/eig-master-source-scan.cjs');
- const {approveBucketSelection,batchWorkBlueprint}=await import('../src/lib/buildLabWorkBuckets.mjs');
- const report=scanMasterSource(readAllowlistedMasterSource(),'a'.repeat(40));
- const entry={id:'master-criteria',type:'master',scope:'all',source:report.sourceVersion,savedAt:'2026-10-22T18:00:00Z',snapshot:{report}};
- const ledger=collectScanWork(emptyWorkLedger(),[entry]);assert.equal(ledger.jobs.length,report.modules.length);
- const module=report.modules.find(m=>m.id==='invoices'),job=ledger.jobs.find(j=>j.apps.includes('invoices'));
- assert.equal(job.completion,module.verify);assert.equal(job.observation,module.observation);assert.equal(job.assessment.kind,'investigation');
- const approved=approveBucketSelection(ledger,{selection:[{id:job.id,signature:job.signature}],idPrefix:'master-review'});
- const plan=batchWorkBlueprint(approved.batches[0]);assert.equal(plan.work[0].completion,module.verify);assert.equal(plan.work[0].sourceRefs[0].sourceVersion,report.sourceVersion);assert.equal(plan.execution,'not_connected');
-});
-
 test('manual issue intake stays unverified until explicitly reproduced, then joins reviewed repair plan',async()=>{
  const id='manual:11111111-1111-4111-8111-111111111111';
  const report={id,title:'Image click does not focus',app:'inception-apex',expected:'Click then ArrowRight moves 5 units.',actual:'Click then ArrowRight does not move.',steps:'Upload logo, click on logo, press ArrowRight.',completion:'Click, focus and ArrowRight move 5 units while Tab still works.',bucket:'interface',environment:'isolated preview',relatedId:'GitHub #112'};

@@ -227,14 +227,16 @@ const RADAR_RULES=Object.freeze([
 ]);
 const LANE_ORDER={essential:0,wow:1};
 const PRIORITY_ORDER={critical:0,high:1,medium:2,low:3};
-function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],moduleIds=[],sourceVersion="local-unversioned"}={}){
+function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],moduleIds=[],sourceVersion="local-unversioned",releaseSourceProfile=false}={}){
  if(!sources||typeof sources!=="object"||Array.isArray(sources))throw Error("Approved source map required.");
  if((typeof moduleId!=="string"&&moduleId!==null)||
     (moduleId!==null&&!moduleIds.includes(moduleId)))throw Error("Unsupported improvement scope.");
  const allowed=new Set(allowedFiles);
  if(!allowed.size||[...allowed].some(x=>typeof x!=="string"||!Object.prototype.hasOwnProperty.call(sources,x)))
    throw Error("Approved source catalog required.");
- const candidates=RADAR_RULES.filter(x=>moduleId===null||x.scope.includes("*")||x.scope.includes(moduleId));
+ const selected=RADAR_RULES.filter(x=>moduleId===null||x.scope.includes("*")||x.scope.includes(moduleId));
+ const excludedRules=releaseSourceProfile?selected.filter(rule=>rule.signals.some(([file])=>!allowed.has(file))):[];
+ const candidates=releaseSourceProfile?selected.filter(rule=>rule.signals.every(([file])=>allowed.has(file))):selected;
  if(moduleId!==null&&!candidates.length)throw Error("Unsupported improvement scope.");
  const suggestions=candidates.map(rule=>{
    const evidence=[];
@@ -267,6 +269,7 @@ function runImprovementRadar(sources,{moduleId=null,allowedFiles=[],moduleIds=[]
    benchmark:"Static product-quality rubric inspired by OWASP ASVS, WCAG 2.2, NN/g usability heuristics and Core Web Vitals. No external app comparison or live UI audit was performed.",
    references:RADAR_REFERENCES.map(x=>({...x})),
    suggestions,
+   excludedRuleIds:excludedRules.map(rule=>rule.id),
    summary:{essential:suggestions.filter(s=>s.lane==="essential").length,
      wow:suggestions.filter(s=>s.lane==="wow").length,
      signalsFound:suggestions.filter(s=>s.status==="preview_signals_found").length,

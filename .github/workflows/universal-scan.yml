@@ -60,6 +60,7 @@ on:
       - "src/lib/eigBuildLabLiveClient.mjs"
       - "src/components/BuildLabLiveOwnerWorkspace.jsx"
       - "tests/eig-build-lab-live-client.test.mjs"
+      - "tests/build-lab-live-owner-render.cjs"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -235,6 +236,7 @@ on:
       - "src/lib/eigBuildLabLiveClient.mjs"
       - "src/components/BuildLabLiveOwnerWorkspace.jsx"
       - "tests/eig-build-lab-live-client.test.mjs"
+      - "tests/build-lab-live-owner-render.cjs"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
       - "api/eig-build-lab-live-records.js"
@@ -388,6 +390,7 @@ jobs:
       - run: node --test tests/ep-commerce-contract-readiness.test.mjs
       - run: node --test tests/eig-build-lab-ai-review.test.cjs
       - run: node tests/build-lab-manager-render.cjs
+      - run: node tests/build-lab-live-owner-render.cjs
       - run: npx vite build
       - run: npx playwright install --with-deps chromium
       - run: node tests/eig-build-lab-browser.cjs

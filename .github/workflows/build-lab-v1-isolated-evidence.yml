@@ -1,0 +1,27 @@
+name: Build Lab V1 Isolated Evidence Acceptance
+on:
+  push:
+    branches: [release/build-lab-v1-owner-only-20261028]
+    paths:
+      - "src/lib/buildLab*.mjs"
+      - "tests/build-lab-evidence*.test.mjs"
+      - ".github/workflows/build-lab-v1-isolated-evidence.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Evidence export and recovery regression (synthetic/local only)
+        run: node --test tests/build-lab-evidence-package.test.mjs tests/build-lab-evidence-recovery.test.mjs
+      - name: Record tested commit
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: echo "Tested isolated release SHA $SOURCE_SHA. No live deployment, database access, or production approval." >> "$GITHUB_STEP_SUMMARY"

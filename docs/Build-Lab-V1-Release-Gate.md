@@ -5,6 +5,25 @@
 **One approved Build Lab branch:** `feature/build-lab-orchestrator-20261020`.  
 **Acceptance workflow:** [Build Lab V1 Acceptance](../.github/workflows/build-lab-v1-acceptance.yml). Runs synthetic tests on affected pushes to the existing branch; read-only GitHub permissions and no deploy step.
 
+## Real PostgreSQL migration test: PASSED (October 28, 2026 ET)
+
+**Verified in disposable PostgreSQL 17, no EIG database mutations.** The test used the exact versioned SQL proposal in `docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql` and synthetic roles/users only. [Successful isolated migration run](https://github.com/rahollowayEIG/elevated-impact-platform/actions/runs/40806293626).
+
+Seven independently checked stages:
+1. Create synthetic `anon`, `authenticated`, `service_role`, and `auth.users` fixtures.
+2. Apply the full migration within a transaction, roll it back, and verify neither the table nor the function remains.
+3. Apply the proposed SQL to the disposable PostgreSQL instance.
+4. Confirm RLS, no browser permissions, service-role-only function access, version 1/2 saves, stale write rejection, historical payload preservation, separate owner IDs, invalid and oversized document rejection.
+5. Race two actual simultaneous expected-revision-2 saves; verify one success at version 3, one version-3 conflict, and exactly three immutable recorded versions.
+6. Reapply the migration without losing the stored revision or history.
+7. Verify `anon` and `authenticated` are denied execution of the save RPC.
+
+The initial disposable run caught an ambiguous PL/pgSQL size-limit expression and revealed incomplete script cleanup; corrected on the feature branch and the next real PostgreSQL run passed.
+
+**Production verification:** read-only schema inspection after the passing test confirms the production EIG project still has **none** of the Build Lab document tables or save function. No pink Sandbox project was modified. No hosted Supabase test branch was created, so no additional Supabase project charge was incurred.
+
+**What this test does NOT certify:** applying the migration to a full Supabase environment with all real extensions/settings and existing platform migrations; server-side service-role credentials and RPC over Supabase Data API; authenticated browser session and owner grants end-to-end; backup and restore against the actual hosted database. These are remaining controlled pre-release gates. The reviewed SQL proposal is not an applied production migration. Do not enable Live flags or treat CI success as authorization to deploy.
+
 ## Owner priority decision (October 28, 2026)
 
 **One active development priority: Build Lab.** Complete a secure, production-ready, owner-only Build Lab and strengthen its controlled AI-assisted development capabilities in a subsequent reviewed phase. Defer choosing and developing business applications until Build Lab's workflow and release safeguards have been established. Do not create competing Build Lab or Sandbox previews, merge the divergent feature branch wholesale, or deploy without explicit owner approval.

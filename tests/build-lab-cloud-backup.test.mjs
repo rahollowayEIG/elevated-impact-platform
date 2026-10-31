@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  readBuildLabBrowserSnapshot,cloudDocumentComparison,inspectBuildLabCloudSnapshot,
- saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan
+ saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan,wouldOverwriteCloudWithEmptyBrowser
 } from '../src/lib/buildLabCloudBackup.mjs';
 import {historyKey,saveScanHistory,readScanHistory} from '../src/lib/buildLabScanHistory.mjs';
 import {workStorageKey,emptyWorkLedger,addBuildBrief,saveWorkLedger,readWorkLedger} from '../src/lib/buildLabWorkBuckets.mjs';
@@ -240,4 +240,38 @@ test('preview Manager Plan fixture refuses to replace existing work or invalid o
  const blank=memory();
  assert.throws(()=>createPreviewOnlyManagerPlan(blank,'invalid',{now:date}),/authorized/);
  assert.equal(blank.map.size,0);
+});
+
+
+test('new preview origin cannot accidentally replace populated cloud with empty browser history or buckets',async()=>{
+ const oldBrowser=seed(),cloud=remoteStore();
+ let comparison=await inspectBuildLabCloudSnapshot(client,oldBrowser,owner,cloud.http);
+ for(const kind of ['scan_history','work_buckets']){
+  await saveOneBuildLabCloudDocument(client,oldBrowser,owner,comparison,kind,cloud.http);
+  comparison=await inspectBuildLabCloudSnapshot(client,oldBrowser,owner,cloud.http);
+ }
+ const freshOrigin=memory();
+ const fresh=await inspectBuildLabCloudSnapshot(client,freshOrigin,owner,cloud.http);
+ assert.equal(fresh.summary.localScans,0);
+ assert.equal(fresh.summary.cloudScans,1);
+ assert.equal(fresh.summary.localWorkItems,0);
+ assert.equal(fresh.summary.cloudWorkItems,1);
+ assert.equal(wouldOverwriteCloudWithEmptyBrowser(fresh,'scan_history'),true);
+ assert.equal(wouldOverwriteCloudWithEmptyBrowser(fresh,'work_buckets'),true);
+ const originalRevisions=Object.fromEntries([...cloud.records].map(([k,v])=>[k,v.revision]));
+ for(const kind of ['scan_history','work_buckets']){
+  await assert.rejects(
+   ()=>saveOneBuildLabCloudDocument(client,freshOrigin,owner,fresh,kind,cloud.http),
+   /browser is empty/
+  );
+ }
+ assert.deepEqual(Object.fromEntries([...cloud.records].map(([k,v])=>[k,v.revision])),originalRevisions);
+ const restored=restoreBuildLabCloudSnapshot(freshOrigin,owner,fresh,{allowReplace:true});
+ assert.equal(restored.scans,1);
+ assert.equal(restored.workItems,1);
+ const synced=await inspectBuildLabCloudSnapshot(client,freshOrigin,owner,cloud.http);
+ assert.equal(wouldOverwriteCloudWithEmptyBrowser(synced,'scan_history'),false);
+ assert.equal(wouldOverwriteCloudWithEmptyBrowser(synced,'work_buckets'),false);
+ assert.equal(synced.compare.scan_history,'identical');
+ assert.equal(synced.compare.work_buckets,'identical');
 });

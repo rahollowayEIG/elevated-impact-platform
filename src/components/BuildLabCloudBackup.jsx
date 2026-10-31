@@ -90,7 +90,7 @@ export default function BuildLabCloudBackup({ownerUserId,supabaseClient,temporar
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {notice&&<p role="status" className="bl-notice">{notice}</p>}
   {inspection&&<>
-   {CLOUD_RECORD_KIN.some(([kind])=>wouldOverwriteCloudWithEmptyBrowser(inspection,kind))&&
+   {CLOUD_RECORD_KINDS.some(([kind])=>wouldOverwriteCloudWithEmptyBrowser(inspection,kind))&&
     <p role="alert"><strong>Cloud work is safer than this browser's empty copy.</strong> Saving an empty Scan History or Work Buckets over populated cloud records is blocked. Download a browser backup, then restore cloud records to this browser before continuing.</p>}
    <div className="bl-history-table"><table>
     <thead><tr><th>Record type</th><th>Cloud revision</th><th>Comparison</th><th>Owner action</th></tr></thead>

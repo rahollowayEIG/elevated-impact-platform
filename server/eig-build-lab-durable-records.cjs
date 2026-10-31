@@ -31,16 +31,18 @@ async function validateBuildLabDocument(kind,payload,owner){
 }
 
 function createBuildLabDurableRecordsHandler({
- env,verifyUser,membershipsForUser,verifyLiveSession,store,now=Date.now
+ env,verifyUser,membershipsForUser,verifyLiveSession,store,now=Date.now,
+ authorizeOwner=authorizeBuildLabLiveReadOnlyOwner,
+ recordsFlag='EIG_BUILD_LAB_LIVE_RECORDS_ENABLED'
 }={}){
  return async (req,res)=>{
   // Record writes are a distinct capability, never inferred from read-only grant.
   // Still require the entire production owner/session gate before any read/write.
-  const grant=await authorizeBuildLabLiveReadOnlyOwner(req,{
+  const grant=await authorizeOwner(req,{
    env,verifyUser,membershipsForUser,verifyLiveSession,now
   });
   if(!grant.allowed)return response(res,grant.status,{ok:false});
-  if(typeof env!=='function'||env('EIG_BUILD_LAB_LIVE_RECORDS_ENABLED')!=='true')
+  if(typeof env!=='function'||env(recordsFlag)!=='true')
    return response(res,403,{ok:false});
   if(!store||typeof store.read!=='function'||typeof store.save!=='function')
    return response(res,503,{ok:false});

@@ -23,6 +23,7 @@ on:
       - "server/eig-build-lab-document-store.cjs"
       - "tests/eig-build-lab-durable-records.test.cjs"
       - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
+      - "tests/build-lab-db-*.sql"
       - "server/eig-build-lab-v1-source-scope.cjs"
       - "src/components/BuildLab*.jsx"
       - "src/components/build-lab-work-buckets.css"
@@ -202,3 +203,80 @@ jobs:
       - name: Record strict owner-login gate
         if: always()
         run: echo "Passing UI build alone does not permit owner testing. Protected API routes must exist on the same release SHA." >> "$GITHUB_STEP_SUMMARY"
+
+  postgres-schema-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Synthetic, disposable CI database. No production or Sandbox credentials.
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_PASSWORD: build-lab-ci-only-not-a-real-secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: build-lab-ci-only-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check isolated database client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+      - name: Create synthetic Supabase role and auth fixtures
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/build-lab-db-bootstrap.sql
+      - name: Apply proposed schema ONLY to disposable PostgreSQL service
+        run: psql -X -v ON_ERROR_STOP=1 -f docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql
+      - name: Verify RLS, role grants, RPC privileges and version history
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/build-lab-db-integration.sql
+      - name: Verify two competing saves cannot both win
+        shell: bash
+        run: |
+          set -euo pipefail
+          query="SET ROLE service_role; BEGIN; SELECT saved::int FROM public.eig_build_lab_save_document('11111111-1111-4111-8111-111111111111','scan_history',2,'{\"version\":1,\"entries\":[]}'::jsonb); SELECT pg_sleep(0.3); COMMIT;"
+          ( psql -XAt -v ON_ERROR_STOP=1 -c "$query" | grep -E '^[01]$' > "$RUNNER_TEMP/claim-a.txt" ) &
+          first=$!
+          ( psql -XAt -v ON_ERROR_STOP=1 -c "$query" | grep -E '^[01]$' > "$RUNNER_TEMP/claim-b.txt" ) &
+          second=$!
+          wait "$first"
+          wait "$second"
+          a="$(cat "$RUNNER_TEMP/claim-a.txt")"
+          b="$(cat "$RUNNER_TEMP/claim-b.txt")"
+          if [ "$a$b" != "10" ] && [ "$a$b" != "01" ]; then
+            echo "Expected one successful save and one revision conflict, got $a / $b"
+            exit 1
+          fi
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          SET ROLE service_role;
+          DO $check$
+          DECLARE
+            n integer;
+            head integer;
+          BEGIN
+            SELECT count(*), max(revision) INTO n,head
+            FROM public.eig_build_lab_document_revisions
+            WHERE owner_user_id='11111111-1111-4111-8111-111111111111'
+              AND document_key='scan_history';
+            IF n<>3 OR head<>3 THEN
+              RAISE EXCEPTION 'Concurrent save history not atomic: %, %', n,head;
+            END IF;
+          END
+          $check$;
+          SQL
+      - name: Record isolation boundary
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: echo "PostgreSQL storage schema checked in isolated CI at $SOURCE_SHA. No live database migration, secret, owner session, or cloud feature enablement." >> "$GITHUB_STEP_SUMMARY"

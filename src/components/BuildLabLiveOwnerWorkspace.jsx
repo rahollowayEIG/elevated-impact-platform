@@ -83,7 +83,7 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   {activeTool==='buckets'&&<BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>setActiveTool('plans')}/>}
   {activeTool==='plans'&&<BuildLabLivePlanReview key={ownerUserId} ownerUserId={ownerUserId}/>}
   {RECORDS_UI_ENABLED
-   ?<BuildLabCloudBackup key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient}/>
+   ?<BuildLabCloudBackup key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient} temporary={import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true'}/>
    :<section className="platform-section-card"><h2>Permanent records</h2><p>Cloud records will be shown here only after their database migration, access controls, and recovery workflow have passed the release gate. Browser data remains separate until explicitly reviewed.</p></section>}
  </main>;
 }

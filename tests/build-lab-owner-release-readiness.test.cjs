@@ -21,3 +21,14 @@ test('owner route must remain opt-in and verify access before navigation',()=>{
  assert.match(source,/adminView === 'build_lab_live' && liveBuildLabAllowed/);
  assert.doesNotMatch(source,/React\.lazy\(\(\) => import\('\.\/components\/EigBuildLab\.jsx'\)\)/);
 });
+
+test('isolated cloud storage uses a clearly labeled opt-in navigation step',()=>{
+ const workspace=fs.readFileSync(path.join(root,'src/components/BuildLabLiveOwnerWorkspace.jsx'),'utf8');
+ assert.match(workspace,/\['cloud','5\. Cloud Storage'\]/);
+ assert.match(workspace,/activeTool==='cloud'&&RECORDS_UI_ENABLED/);
+ assert.match(workspace,/VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED/);
+ assert.match(workspace,/temporary=\{import\.meta\.env\.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true'\}/);
+ assert.match(workspace,/\['history','2\. History'\]/);
+ assert.match(workspace,/\['buckets','3\. Work Buckets'\]/);
+ assert.match(workspace,/\['plans','4\. Review & Fix Plan'\]/);
+});

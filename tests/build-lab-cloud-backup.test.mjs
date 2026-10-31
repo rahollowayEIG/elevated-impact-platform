@@ -152,3 +152,58 @@ test('comparison is stable against JSON key ordering and rejects untrusted resul
  assert.equal(cloudDocumentComparison({b:2,a:{d:4,c:3}},{found:true,revision:1,payload:{a:{c:3,d:4},b:2}}),'identical');
  assert.throws(()=>cloudDocumentComparison({},null),/revision must be checked/);
 });
+
+
+test('Manager Plan cloud recovery restores the verified plan without writing another revision',async()=>{
+ const local=seed(),cloud=remoteStore();
+ const ownerPlanKey=managerStorageKey(owner);
+ let inspected=await inspectBuildLabCloudSnapshot(client,local,owner,cloud.http);
+ for(const kind of ['scan_history','work_buckets','manager_blueprint']){
+  await saveOneBuildLabCloudDocument(client,local,owner,inspected,kind,cloud.http);
+  inspected=await inspectBuildLabCloudSnapshot(client,local,owner,cloud.http);
+ }
+ const cloudPlan=JSON.parse(JSON.stringify(cloud.records.get('manager_blueprint').payload));
+ const modified={...cloudPlan,title:'Different local Manager Plan draft'};
+ validateManagerBlueprint(modified);
+ local.setItem(ownerPlanKey,JSON.stringify(modified));
+ saveScanHistory(local,owner,{...scan,id:'unsaved-second-scan',savedAt:'2026-10-28T22:00:00.000Z'});
+ const unsaved=await inspectBuildLabCloudSnapshot(client,local,owner,cloud.http);
+ assert.equal(unsaved.compare.manager_blueprint,'different');
+ assert.equal(unsaved.compare.scan_history,'different');
+ assert.equal(unsaved.compare.work_buckets,'identical');
+ const writesBefore=cloud.requests.filter(x=>x.action==='save').length;
+ assert.throws(()=>restoreBuildLabCloudSnapshot(local,owner,unsaved),/explicitly approve replacement/);
+ assert.equal(JSON.parse(local.getItem(ownerPlanKey)).title,modified.title);
+ const result=restoreBuildLabCloudSnapshot(local,owner,unsaved,{allowReplace:true});
+ assert.equal(result.manager,true);
+ assert.equal(readScanHistory(local,owner).length,1);
+ assert.deepEqual(JSON.parse(local.getItem(ownerPlanKey)),cloudPlan);
+ assert.equal(cloud.records.get('manager_blueprint').revision,1);
+ assert.equal(cloud.requests.filter(x=>x.action==='save').length,writesBefore);
+ const after=await inspectBuildLabCloudSnapshot(client,local,owner,cloud.http);
+ assert.deepEqual(after.compare,{
+  scan_history:'identical',work_buckets:'identical',manager_blueprint:'identical'
+ });
+});
+
+test('stale Manager Plan comparison cannot overwrite a newer cloud revision',async()=>{
+ const browserA=seed(),browserB=seed(),cloud=remoteStore();
+ let inspection=await inspectBuildLabCloudSnapshot(client,browserA,owner,cloud.http);
+ const first=await saveOneBuildLabCloudDocument(client,browserA,owner,inspection,'manager_blueprint',cloud.http);
+ assert.equal(first.revision,1);
+ const stale=await inspectBuildLabCloudSnapshot(client,browserB,owner,cloud.http);
+ const changed=JSON.parse(browserA.getItem(managerStorageKey(owner)));
+ changed.title='Manager review updated only by first browser';
+ browserA.setItem(managerStorageKey(owner),JSON.stringify(changed));
+ inspection=await inspectBuildLabCloudSnapshot(client,browserA,owner,cloud.http);
+ const second=await saveOneBuildLabCloudDocument(client,browserA,owner,inspection,'manager_blueprint',cloud.http);
+ assert.equal(second.revision,2);
+ const existing=JSON.stringify(cloud.records.get('manager_blueprint').payload);
+ await assert.rejects(
+  ()=>saveOneBuildLabCloudDocument(client,browserB,owner,stale,'manager_blueprint',cloud.http),
+  error=>error.code==='build_lab_revision_conflict'&&error.currentRevision===2
+ );
+ assert.equal(cloud.records.get('manager_blueprint').revision,2);
+ assert.equal(JSON.stringify(cloud.records.get('manager_blueprint').payload),existing);
+ assert.notEqual(JSON.parse(browserB.getItem(managerStorageKey(owner))).title,changed.title);
+});

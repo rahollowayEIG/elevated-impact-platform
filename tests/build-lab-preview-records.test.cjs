@@ -45,7 +45,7 @@ function storeCapture(){
  return {calls,makeClient};
 }
 function handlerFixture(overrides={}){
- const settings={user:OWNER,active:true,role:'eig_admin',org:'elevated-impact-group',...overrides};
+ const settings={user:OWNER,active:true,role:'eig_admin',org:'elevated-impact-group',memberStatus:'active',accessStartsAt:null,accessEndsAt:null,...overrides};
  const e=env(settings.extraEnv||{});
  const calls=[];
  const store={
@@ -60,7 +60,8 @@ function handlerFixture(overrides={}){
   recordsFlag:'EIG_BUILD_LAB_PREVIEW_RECORDS_ENABLED',
   verifyUser:async()=>({id:settings.user}),
   verifyLiveSession:async()=>settings.active,
-  membershipsForUser:async()=>({data:[{role:settings.role,status:'active',
+  membershipsForUser:async()=>({data:[{role:settings.role,status:settings.memberStatus,
+   access_starts_at:settings.accessStartsAt,access_ends_at:settings.accessEndsAt,
    organization:{slug:settings.org}}]})
  });
  const call=async(body,changes={})=>{
@@ -139,7 +140,9 @@ test('preview route refuses missing flag, wrong owner, revoked session, invalid 
   {extraEnv:{EIG_BUILD_LAB_OWNER_PREVIEW_ENABLED:'false'}},
   {extraEnv:{VERCEL_ENV:'production'}},
   {extraEnv:{VERCEL_GIT_COMMIT_REF:'main'}},
-  {user:OTHER},{active:false},{role:'guest'},{org:'other-tenant'}
+  {user:OTHER},{active:false},{role:'guest'},{org:'other-tenant'},
+  {memberStatus:'inactive'},{accessEndsAt:'2020-01-01T00:00:00.000Z'},
+  {accessStartsAt:'2099-01-01T00:00:00.000Z'}
  ]){
   const f=handlerFixture(opts);
   assert.notEqual((await f.call({action:'read',kind:'scan_history'})).statusCode,200,JSON.stringify(opts));
@@ -149,6 +152,23 @@ test('preview route refuses missing flag, wrong owner, revoked session, invalid 
  assert.equal((await wrongHost.call({action:'read',kind:'scan_history'},
   {headers:{origin:'https://evil.example'}})).statusCode,403);
  assert.equal(wrongHost.calls.length,0);
+});
+
+test('preview cloud storage refuses missing bearer, invalid host and unsupported HTTP methods',async()=>{
+ const cases=[
+  {headers:{authorization:''}},
+  {headers:{authorization:'Basic wrong-scheme'}},
+  {headers:{authorization:'Bearer '+'x'.repeat(4097)}},
+  {headers:{host:'some-other-preview.vercel.app'}},
+  {method:'GET'},
+  {method:'DELETE'}
+ ];
+ for(const opts of cases){
+  const f=handlerFixture();
+  const response=await f.call({action:'read',kind:'scan_history'},opts);
+  assert.notEqual(response.statusCode,200,JSON.stringify(opts).slice(0,100));
+  assert.equal(f.calls.length,0,'Rejected request must not access cloud store');
+ }
 });
 
 test('preview route cannot accept document owner overrides or arbitrary SQL',async()=>{

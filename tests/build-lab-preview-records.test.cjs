@@ -105,6 +105,7 @@ test('adapter refuses production, pink Sandbox, Ticketing, main branch and reuse
   {EIG_BUILD_LAB_PREVIEW_STORAGE_PROJECT_REF:'fyihtdhpkniuthsvxwla',
    EIG_BUILD_LAB_PREVIEW_STORAGE_URL:'https://fyihtdhpkniuthsvxwla.supabase.co'},
   {EIG_BUILD_LAB_PREVIEW_STORAGE_URL:'https://wrong.supabase.co'},
+  {VITE_SUPABASE_URL:'https://'+REF+'.supabase.co'},
   {EIG_BUILD_LAB_PREVIEW_STORAGE_SERVICE_ROLE_KEY:'production-mock-key'},
   {EIG_BUILD_LAB_PREVIEW_STORAGE_SERVICE_ROLE_KEY:''},
   {EIG_BUILD_LAB_PREVIEW_STORAGE_PROJECT_REF:''}

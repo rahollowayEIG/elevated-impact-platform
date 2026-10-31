@@ -20,7 +20,7 @@
 
 ## Environment limitation: not suitable for browser rollout yet
 
-Supabase branch reported `MIGRATIONS_FAILED` while replaying the **existing ElevationPilot migrations**. The branch was accessible for direct database queries and Build Lab storage contract tests, but its broader application schema was incomplete. This failure was NOT caused by applying the Build Lab schema (which succeeded afterward). A reliable root cause for the existing migration replay was not established in this test.
+Supabase branch reported `MIGRATIONS_FAILED` while replaying the **existing ElevationPilot migrations**. The branch was accessible for direct database queries and Build Lab storage contract tests, but its broader application schema was incomplete. This failure was NOT caused by applying the Build Lab schema (which succeeded afterward). A later read-only inspection of production's migration metadata found that the earliest migration, `20260818023837_add_golf_stripe_payment_fields`, begins with `ALTER TABLE public.golf_registrations`, while the new branch initially had zero public tables. This is strong evidence that the historic migrations depend on a pre-existing baseline schema not carried into fresh branch replay. The exact Supabase failure message was not captured, so this is the likely explanation, not a verified complete diagnosis.
 
 The isolated branch is **not approved** as an end-to-end browser environment. Do not assume the migration replay is repaired or that the owner-only browser cloud save/restore path works.
 

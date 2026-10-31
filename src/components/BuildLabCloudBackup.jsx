@@ -1,7 +1,7 @@
 import React,{useState} from 'react';
 import {
  CLOUD_RECORD_KINDS,readBuildLabBrowserSnapshot,inspectBuildLabCloudSnapshot,
- saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot
+ saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan
 } from '../lib/buildLabCloudBackup.mjs';
 import {createBuildLabEvidencePackage} from '../lib/buildLabEvidencePackage.mjs';
 
@@ -21,6 +21,15 @@ export default function BuildLabCloudBackup({ownerUserId,supabaseClient,temporar
    setNotice('Cloud and browser records inspected. Nothing has been saved or restored.');
   }catch(e){setInspection(null);setError(e.message||'Cloud records could not be read.');}
   finally{setBusy(false);}
+ }
+ function preparePreviewTestPlan(){
+  if(!temporary||busy||!inspection||inspection.local.documents.manager_blueprint!==null||
+      inspection.remote.manager_blueprint.found)return;
+  try{
+   createPreviewOnlyManagerPlan(localStorage,ownerUserId);
+   setInspection(null);setBackupRequested(false);setConfirmed(false);setError('');
+   setNotice('Created a clearly labeled synthetic Manager Plan in this browser only. Inspect again, then save its Manager Plan row to the test cloud. No real work was approved or launched.');
+  }catch(e){setError(e.message||'Could not prepare the preview-only Manager Plan.');}
  }
  function downloadBrowserBackup(){
   try{
@@ -75,6 +84,9 @@ export default function BuildLabCloudBackup({ownerUserId,supabaseClient,temporar
   {temporary&&<p role="status"><strong>Isolated test environment.</strong> Records here may be deleted when testing ends. Keep your local JSON backups; this is not permanent production storage.</p>}
   <p>Owner-controlled, versioned storage. Nothing syncs automatically. Cloud writes are made one record type at a time; a saved scan does not mean Work Buckets or the Manager plan were saved.</p>
   <p><button type="button" className="platform-secondary-button" disabled={busy} onClick={inspect}>{busy?'Checking records…':'Inspect cloud and browser records'}</button></p>
+  {temporary&&inspection&&inspection.local.documents.manager_blueprint===null&&!inspection.remote.manager_blueprint.found&&
+   <p><button type="button" className="platform-secondary-button" disabled={busy} onClick={preparePreviewTestPlan}>Create TEST Manager Plan (browser only)</button>
+    <span> Preview-only synthetic planning data. No approval, deployment or automatic cloud saving.</span></p>}
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {notice&&<p role="status" className="bl-notice">{notice}</p>}
   {inspection&&<>

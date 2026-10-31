@@ -27,6 +27,7 @@ function createBuildLabPreviewDocumentStore(env=name=>process.env[name],makeClie
      env('EIG_BUILD_LAB_PREVIEW_RECORDS_ENABLED')!=='true'||
      !PROJECT_REF.test(ref||'')||FORBIDDEN_PROJECTS.has(ref)||
      url!=='https://'+ref+'.supabase.co'||
+     url===env('VITE_SUPABASE_URL')||
      !secret||secret===liveSecret)
     throw Error('Isolated Build Lab preview storage is not configured.');
   if(!client)client=makeClient(url,secret,{

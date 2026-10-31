@@ -12,6 +12,18 @@ Live Build Lab authentication uses the exact EIG owner, active Supabase session 
 - Stored keys: \`scan_history\`, \`work_buckets\`, \`manager_blueprint\` only.
 - No automatic cloud sync, execution agents, payment changes, event writes or deployments.
 
+## 2026-10-31 storage-only environment prepared (not browser-tested)
+
+- Isolated Supabase branch: `build-lab-storage-only-20261031` (project ref `lhycwhwopjirbipfblym`), created at the previously approved $0.01344/hour rate. **Delete it when the test is finished to stop ongoing hourly charges.**
+- The existing ElevationPilot migration replay still reports `MIGRATIONS_FAILED`. This is expected until the legacy baseline is reconstructed, but **does not establish application-wide readiness**.
+- Build Lab's isolated document schema migrated successfully. The exact owner UUID from approved production auth was seeded into the test project's `auth.users` with **no email, password or customer profile data**.
+- A synthetic `service_role` save/optimistic-concurrency check passed on the new test database. Test writes were rolled back; document and revision tables remain empty.
+- Preview-only nonsecret Vercel settings now contain the isolated test project ref and URL. The test API and browser UI feature switches were explicitly set to `false`. **No test storage secret was configured.**
+- Security advisors: two informational `rls_enabled_no_policy` notices are **intentional** for private service-only tables; an auth leaked-password-protection warning is unrelated to this storage-only test and must be resolved before this test database is used for any real user authentication.
+- Next action: configure a secret/legacy service-role key from **this isolated Supabase branch**, in Vercel as `EIG_BUILD_LAB_PREVIEW_STORAGE_SERVICE_ROLE_KEY`, scoped **only to Preview and the exact Build Lab release branch**. Never paste secrets into chat and never replace the existing `SUPABASE_SERVICE_ROLE_KEY`.
+- After the secret is configured, redeploy a new approved branch preview, enable the two preview-only test flags, verify the full browser workflow, then turn the flags off and delete the branch.
+- Until browser tests succeed, permanent cloud records remain **unverified and disabled**.
+
 ## Prerequisites (do not activate prematurely)
 
 1. Create an isolated Supabase development test project or test branch and verify it has **no customer data**. Capture its project reference.

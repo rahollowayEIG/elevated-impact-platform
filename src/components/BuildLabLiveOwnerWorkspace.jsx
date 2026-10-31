@@ -9,7 +9,8 @@ import BuildLabCloudBackup from './BuildLabCloudBackup.jsx';
 // Production-only EIG owner surface. Does NOT import EigBuildLab, AI, builder,
 // agents, invoices, deployment controls or other preview-only features.
 // The backend verifies the owner and active session again on every request.
-const RECORDS_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED==='true';
+const RECORDS_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED==='true'||
+ import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true';
 function downloadReport(report,kind){
  const file=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(file);

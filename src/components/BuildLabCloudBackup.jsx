@@ -1,7 +1,7 @@
 import React,{useState} from 'react';
 import {
  CLOUD_RECORD_KINDS,readBuildLabBrowserSnapshot,inspectBuildLabCloudSnapshot,
- saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan
+ saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan,wouldOverwriteCloudWithEmptyBrowser
 } from '../lib/buildLabCloudBackup.mjs';
 import {createBuildLabEvidencePackage} from '../lib/buildLabEvidencePackage.mjs';
 
@@ -90,13 +90,15 @@ export default function BuildLabCloudBackup({ownerUserId,supabaseClient,temporar
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {notice&&<p role="status" className="bl-notice">{notice}</p>}
   {inspection&&<>
+   {CLOUD_RECORD_KIN.some(([kind])=>wouldOverwriteCloudWithEmptyBrowser(inspection,kind))&&
+    <p role="alert"><strong>Cloud work is safer than this browser's empty copy.</strong> Saving an empty Scan History or Work Buckets over populated cloud records is blocked. Download a browser backup, then restore cloud records to this browser before continuing.</p>}
    <div className="bl-history-table"><table>
     <thead><tr><th>Record type</th><th>Cloud revision</th><th>Comparison</th><th>Owner action</th></tr></thead>
     <tbody>{CLOUD_RECORD_KINDS.map(([kind,label])=><tr key={kind}>
      <td>{label}</td>
      <td>{inspection.remote[kind].found?inspection.remote[kind].revision:'Not saved'}</td>
      <td>{labels[inspection.compare[kind]]}</td>
-     <td><button type="button" className="platform-secondary-button" disabled={busy||inspection.local.documents[kind]===null||inspection.compare[kind]==='identical'}
+     <td><button type="button" className="platform-secondary-button" disabled={busy||inspection.local.documents[kind]===null||inspection.compare[kind]==='identical'||wouldOverwriteCloudWithEmptyBrowser(inspection,kind)}
       onClick={()=>save(kind)}>Save browser version to cloud</button></td>
     </tr>)}</tbody>
    </table></div>

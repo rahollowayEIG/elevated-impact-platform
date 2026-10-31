@@ -21,6 +21,9 @@ on:
       - "server/eig-build-lab-owner-preview-access.cjs"
       - "server/eig-build-lab-durable-records.cjs"
       - "server/eig-build-lab-document-store.cjs"
+      - "server/eig-build-lab-preview-document-store.cjs"
+      - "api/eig-build-lab-preview-records.js"
+      - "tests/build-lab-preview-records.test.cjs"
       - "tests/eig-build-lab-durable-records.test.cjs"
       - "docs/BUILD-LAB-DURABLE-STORAGE-SCHEMA.sql"
       - "tests/build-lab-db-*.sql"
@@ -195,7 +198,7 @@ jobs:
       - name: Require reviewed protected owner server routes
         run: node --test tests/build-lab-owner-release-readiness.test.cjs
       - name: Verify disabled cloud records authorization and conflict handling
-        run: node --test tests/eig-build-lab-durable-records.test.cjs
+        run: node --test tests/eig-build-lab-durable-records.test.cjs tests/build-lab-preview-records.test.cjs
       - name: Verify scanner source files will be included in Vercel runtime
         run: node --test tests/build-lab-v1-vercel-package.test.cjs
       - name: Preview owner grant authorization tests

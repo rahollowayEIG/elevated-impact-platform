@@ -54,7 +54,8 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   </section>
   <nav className="platform-section-card" aria-label="Build Lab V1 owner workflow">
    {[
-    ['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan']
+    ['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan'],
+    ...(RECORDS_UI_ENABLED?[['cloud','5. Cloud Storage']]:[])
    ].map(([id,label])=><button type="button" key={id}
     className={activeTool===id?'platform-primary-button':'platform-secondary-button'}
     aria-pressed={activeTool===id} onClick={()=>setActiveTool(id)}>{label}</button>)}
@@ -82,8 +83,9 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   {activeTool==='history'&&<BuildLabScanHistory key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient}/>}
   {activeTool==='buckets'&&<BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>setActiveTool('plans')}/>}
   {activeTool==='plans'&&<BuildLabLivePlanReview key={ownerUserId} ownerUserId={ownerUserId}/>}
-  {RECORDS_UI_ENABLED
-   ?<BuildLabCloudBackup key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient} temporary={import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true'}/>
-   :<section className="platform-section-card"><h2>Permanent records</h2><p>Cloud records will be shown here only after their database migration, access controls, and recovery workflow have passed the release gate. Browser data remains separate until explicitly reviewed.</p></section>}
+  {activeTool==='cloud'&&RECORDS_UI_ENABLED&&
+   <BuildLabCloudBackup key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient} temporary={import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true'}/>}
+  {activeTool==='scanners'&&!RECORDS_UI_ENABLED&&
+   <section className="platform-section-card"><h2>Permanent records</h2><p>Cloud records will be shown here only after their database migration, access controls, and recovery workflow have passed the release gate. Browser data remains separate until explicitly reviewed.</p></section>}
  </main>;
 }

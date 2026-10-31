@@ -32,3 +32,11 @@ test('isolated cloud storage uses a clearly labeled opt-in navigation step',()=>
  assert.match(workspace,/\['buckets','3\. Work Buckets'\]/);
  assert.match(workspace,/\['plans','4\. Review & Fix Plan'\]/);
 });
+
+test('Cloud Storage inspection renders the correct record-kind binding and no undefined near-name',()=>{
+ const source=fs.readFileSync(path.join(root,'src/components/BuildLabCloudBackup.jsx'),'utf8');
+ assert.match(source,/\bCLOUD_RECORD_KINDS\b/);
+ assert.match(source,/CLOUD_RECORD_KINDS\.some\(\(\[kind\]\)=>wouldOverwriteCloudWithEmptyBrowser\(inspection,kind\)\)/);
+ assert.doesNotMatch(source,/\bCLOUD_RECORD_KIN\b/,'Misspelled constant crashes the inspection screen at runtime.');
+ assert.match(source,/wouldOverwriteCloudWithEmptyBrowser\(inspection,kind\)/);
+});

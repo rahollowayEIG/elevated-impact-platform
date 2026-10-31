@@ -7,7 +7,7 @@ import {createBuildLabEvidencePackage} from '../lib/buildLabEvidencePackage.mjs'
 
 // Explicit owner actions only. Preview/Live server gates independently deny
 // inaccessible environments regardless of whether these controls are visible.
-export default function BuildLabCloudBackup({ownerUserId,supabaseClient}){
+export default function BuildLabCloudBackup({ownerUserId,supabaseClient,temporary=false}){
  const [inspection,setInspection]=useState(null);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
@@ -71,7 +71,8 @@ export default function BuildLabCloudBackup({ownerUserId,supabaseClient}){
  }
  const labels={identical:'Same',different:'Different',cloud_empty:'Not backed up',both_empty:'Both empty'};
  return <section className="platform-section-card" aria-label="Build Lab Cloud Backup & Recovery">
-  <h3>Cloud Backup &amp; Recovery</h3>
+  <h3>{temporary?'Temporary Cloud Storage Test':'Cloud Backup & Recovery'}</h3>
+  {temporary&&<p role="status"><strong>Isolated test environment.</strong> Records here may be deleted when testing ends. Keep your local JSON backups; this is not permanent production storage.</p>}
   <p>Owner-controlled, versioned storage. Nothing syncs automatically. Cloud writes are made one record type at a time; a saved scan does not mean Work Buckets or the Manager plan were saved.</p>
   <p><button type="button" className="platform-secondary-button" disabled={busy} onClick={inspect}>{busy?'Checking records…':'Inspect cloud and browser records'}</button></p>
   {error&&<p role="alert" className="platform-error">{error}</p>}

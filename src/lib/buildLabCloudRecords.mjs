@@ -2,7 +2,10 @@
 // Never runs automatically, never assumes a client-side success grants authority.
 // The production server separately verifies one owner and active admin session.
 const KINDS=new Set(['scan_history','work_buckets','manager_blueprint']);
-const ENDPOINT='/api/eig-build-lab-live-records';
+// The preview UI can only call the separately authorized TEST records endpoint.
+// Node unit tests have no import.meta.env; production stays on its existing route.
+const PREVIEW_TEST_UI=import.meta.env?.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true';
+const ENDPOINT=PREVIEW_TEST_UI?'/api/eig-build-lab-preview-records':'/api/eig-build-lab-live-records';
 
 async function postRecord(client,request,http=fetch){
  if(!KINDS.has(request?.kind)||typeof http!=='function'||!client?.auth?.getSession)

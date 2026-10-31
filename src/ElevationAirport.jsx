@@ -348,7 +348,7 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
           action: 'invite',
           team_id: teamGroup.team.id,
           registration_id: member.id,
-          app_origin: 'https://golf.elevatedimpactgroup.net',
+          app_origin: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' ? window.location.origin : 'https://golf.elevatedimpactgroup.net',
         },
       });
       if (error) throw error;
@@ -397,7 +397,7 @@ export function MainCabinPage({ flight, onBack, onOpenHub }) {
           first_name: newPlayer.first_name.trim(),
           last_name: newPlayer.last_name.trim(),
           email: newPlayer.email.trim(),
-          app_origin: 'https://golf.elevatedimpactgroup.net',
+          app_origin: import.meta.env.VITE_ELEVATIONPILOT_SANDBOX === 'true' ? window.location.origin : 'https://golf.elevatedimpactgroup.net',
         },
       });
       if (error) throw error;

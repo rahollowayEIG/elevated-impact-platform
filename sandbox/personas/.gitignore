@@ -1,0 +1,3 @@
+.sandbox-private/
+sandbox/.credentials/
+**/sandbox-test-credentials*.json

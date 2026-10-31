@@ -1,0 +1,91 @@
+/*
+ * ElevationPilot practice-mode paint only. This file is loaded by both builds
+ * but every rule is opt-in under the documentElement class set exclusively
+ * when VITE_ELEVATIONPILOT_SANDBOX=true and the sandbox Supabase gate passes.
+ * Never modify Live branding, functionality, or shared CSS token definitions.
+ */
+html.elevationpilot-sandbox {
+  --sandbox-pink: #ff4fad;
+  --sandbox-pink-light: #ffd9ee;
+  --sandbox-ink: #281027;
+  --sandbox-panel: #371637;
+  --sandbox-contrast: #fff6fc;
+  background: #281027;
+  accent-color: var(--sandbox-pink);
+}
+html.elevationpilot-sandbox body {
+  background: #281027;
+}
+html.elevationpilot-sandbox .eig-global-header {
+  background: linear-gradient(100deg, #f43194 0%, #a80a76 65%, #741059 100%) !important;
+  border-bottom: 4px solid #ffc2e3 !important;
+}
+html.elevationpilot-sandbox .eig-global-home,
+html.elevationpilot-sandbox .eig-global-home-subtitle {
+  color: #fff !important;
+}
+html.elevationpilot-sandbox .eig-sandbox-indicator {
+  color: #fff !important;
+  background: #ad0c71 !important;
+  border: 2px solid #ffc9e9 !important;
+  box-shadow: 0 8px 24px rgba(67, 0, 55, .4) !important;
+}
+html.elevationpilot-sandbox .platform-shell,
+html.elevationpilot-sandbox .app,
+html.elevationpilot-sandbox .platform-auth-screen {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 97, 189, .29), transparent 35%),
+    radial-gradient(circle at 92% 85%, rgba(255, 172, 223, .13), transparent 30%),
+    #281027 !important;
+}
+html.elevationpilot-sandbox .platform-topbar {
+  background: rgba(75, 18, 65, .97) !important;
+  border-bottom: 2px solid rgba(255, 134, 205, .9) !important;
+}
+html.elevationpilot-sandbox .sidebar {
+  background: rgba(65, 12, 63, .45);
+  border-right-color: rgba(255, 163, 218, .4);
+}
+html.elevationpilot-sandbox .platform-workspace-select {
+  background: #501b4d;
+  border-color: #e879bf;
+}
+html.elevationpilot-sandbox .platform-login-card,
+html.elevationpilot-sandbox .platform-section-card,
+html.elevationpilot-sandbox .platform-stat-card,
+html.elevationpilot-sandbox .platform-product-card,
+html.elevationpilot-sandbox .card {
+  background-color: rgba(75, 23, 71, .88);
+  border-color: rgba(255, 156, 216, .35);
+}
+html.elevationpilot-sandbox .platform-hero,
+html.elevationpilot-sandbox .platform-hero.organization {
+  background: linear-gradient(135deg, rgba(249, 69, 158, .35), rgba(76, 20, 79, .65));
+  border-color: rgba(255, 143, 208, .45);
+}
+html.elevationpilot-sandbox .airport-hero,
+html.elevationpilot-sandbox .cockpit-flightdeck {
+  background: linear-gradient(160deg, #451443, #220e27 75%);
+  border-color: rgba(255, 160, 214, .5);
+}
+html.elevationpilot-sandbox .platform-logo-mark,
+html.elevationpilot-sandbox .brand-icon,
+html.elevationpilot-sandbox .platform-primary-button,
+html.elevationpilot-sandbox .btn.primary,
+html.elevationpilot-sandbox .nav-button.active {
+  background: #bf166f;
+  color: #fff;
+}
+html.elevationpilot-sandbox .platform-primary-button:hover,
+html.elevationpilot-sandbox .btn.primary:hover {
+  background: #e32d91;
+}
+html.elevationpilot-sandbox :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #ffbfe2;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.elevationpilot-sandbox .platform-shell {
+    scroll-behavior: auto;
+  }
+}

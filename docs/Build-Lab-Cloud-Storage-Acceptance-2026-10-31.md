@@ -18,7 +18,9 @@ The test branch currently reports `MIGRATIONS_FAILED` for pre-existing applicati
 6. Running IA Inspector created a second local scan. With no further cloud save, comparison correctly showed **browser 2 scans / cloud 1 scan**; Work Buckets remained 13 items on both sides.
 7. User downloaded a separate browser evidence JSON backup, confirmed the browser restore dialog, and performed the explicit cloud restore. The preview refreshed and re-inspected as **browser 1 scan / cloud 1 scan**, **browser 13 work items / cloud 13 work items**, with both record types marked **Same**.
 8. Database read queries independently confirmed each record has **revision 2**, exactly **2 retained revision-history rows**, and the latest revision payload matches the record head. No cloud revision increment was made by the browser restore.
-9. Manager Plan remained absent and was not tested. No production records were written.
+9. Created a clearly labeled synthetic preview-only Manager Plan with execution disabled. Owner explicitly saved it as `manager_blueprint` revision 1; the database independently confirmed it had one matching revision-history entry. No real work was approved or launched.
+10. On a new preview URL, empty browser Scan History and Work Buckets were blocked from overwriting nonempty cloud records; a UI binding typo that initially caused a blank screen after inspection was fixed and a regression test added.
+11. Owner downloaded a browser backup, performed a second full cloud restore, refreshed the preview and reinspected all three document types. All reported **Same**, with browser 1 scan / 13 work items and cloud 1 scan / 13 work items, at revisions **2, 2, 1**. The test Manager Plan was included and matched. The database independently confirmed those revisions and history heads after restoration. No production records were written.
 
 ## Security review performed
 
@@ -34,7 +36,7 @@ The test branch currently reports `MIGRATIONS_FAILED` for pre-existing applicati
 
 1. Verify latest release commit's eight GitHub Actions jobs, including preview authorization tests, pass.
 2. Run a live negative authorization test against the preview endpoint: missing/expired token, non-owner, wrong origin, wrong type, stale revision, and disabled-flag denial; confirm no data mutation.
-3. Exercise `manager_blueprint` with a safe approved test draft and explicit cloud backup/restore, or document it as not production ready.
+3. **Completed:** Preview-only `manager_blueprint` browser save and full cloud recovery of all three record types, with independently verified revision history. Keep this as an explicit acceptance regression for production rollout.
 4. Review and commit an actual production Supabase migration with controlled database backup, privilege inspection, owner gate and rollback plan. **Do not apply automatically.**
 5. After production sign-off, enable production-only flags in an approved rollout, verify one deliberate owner save/reload/recovery, monitor logs and immediately disable on failure.
 6. Prior to deleting the temporary test branch, export evidence and verify local JSON recovery. Turn OFF both preview storage flags and remove the preview secret and branch-specific project settings. Delete test branch to stop the approved **$0.01344/hour** usage charge.

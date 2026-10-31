@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  readBuildLabBrowserSnapshot,cloudDocumentComparison,inspectBuildLabCloudSnapshot,
- saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot
+ saveOneBuildLabCloudDocument,restoreBuildLabCloudSnapshot,createPreviewOnlyManagerPlan
 } from '../src/lib/buildLabCloudBackup.mjs';
 import {historyKey,saveScanHistory,readScanHistory} from '../src/lib/buildLabScanHistory.mjs';
 import {workStorageKey,emptyWorkLedger,addBuildBrief,saveWorkLedger,readWorkLedger} from '../src/lib/buildLabWorkBuckets.mjs';
@@ -206,4 +206,38 @@ test('stale Manager Plan comparison cannot overwrite a newer cloud revision',asy
  assert.equal(cloud.records.get('manager_blueprint').revision,2);
  assert.equal(JSON.stringify(cloud.records.get('manager_blueprint').payload),existing);
  assert.notEqual(JSON.parse(browserB.getItem(managerStorageKey(owner))).title,changed.title);
+});
+
+
+test('preview fixture creates only a clearly labeled local non-executing Manager Plan',async()=>{
+ const db=memory();
+ const cloud=remoteStore();
+ const result=createPreviewOnlyManagerPlan(db,owner,{now:date});
+ assert.match(result.title,/TEST ONLY/);
+ assert.equal(result.status,'owner_review_required');
+ assert.equal(result.execution,'not_connected');
+ assert.equal(result.safety.localPlanningOnly,true);
+ assert.equal(result.safety.autoBuilt,false);
+ assert.equal(result.safety.autoDeployed,false);
+ assert.ok(result.inputs.every(x=>x.source==='synthetic-test-not-a-source-commit'));
+ assert.equal(readScanHistory(db,owner).length,0);
+ assert.equal(readWorkLedger(db,owner).jobs.length,0);
+ assert.equal(db.getItem(managerStorageKey(other)),null);
+ const inspected=await inspectBuildLabCloudSnapshot(client,db,owner,cloud.http);
+ assert.equal(inspected.compare.manager_blueprint,'cloud_empty');
+ assert.equal(cloud.requests.filter(x=>x.action==='save').length,0);
+ const saved=await saveOneBuildLabCloudDocument(client,db,owner,inspected,'manager_blueprint',cloud.http);
+ assert.equal(saved.revision,1);
+ const again=await inspectBuildLabCloudSnapshot(client,db,owner,cloud.http);
+ assert.equal(again.compare.manager_blueprint,'identical');
+});
+
+test('preview Manager Plan fixture refuses to replace existing work or invalid owner scope',()=>{
+ const existing=seed();
+ const before=new Map(existing.map);
+ assert.throws(()=>createPreviewOnlyManagerPlan(existing,owner,{now:date}),/already exists/);
+ assert.deepEqual(existing.map,before);
+ const blank=memory();
+ assert.throws(()=>createPreviewOnlyManagerPlan(blank,'invalid',{now:date}),/authorized/);
+ assert.equal(blank.map.size,0);
 });

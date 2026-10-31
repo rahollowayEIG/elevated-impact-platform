@@ -90,6 +90,22 @@ export async function inspectBuildLabCloudSnapshot(client,storage,ownerUserId,ht
   }
  };
 }
+// An empty browser on a different preview URL must not overwrite saved
+// cloud findings. Intentional purging needs a separate explicit workflow.
+export function wouldOverwriteCloudWithEmptyBrowser(inspection,kind){
+ const local=inspection?.local?.documents?.[kind];
+ const remote=inspection?.remote?.[kind];
+ if(!remote?.found||!local||!remote.payload)return false;
+ if(kind==='scan_history')
+  return Array.isArray(local.entries)&&local.entries.length===0&&
+   Array.isArray(remote.payload.entries)&&remote.payload.entries.length>0;
+ if(kind==='work_buckets')
+  return Array.isArray(local.jobs)&&Array.isArray(local.batches)&&
+   local.jobs.length===0&&local.batches.length===0&&
+   ((remote.payload.jobs?.length||0)>0||(remote.payload.batches?.length||0)>0);
+ return false;
+}
+
 export async function saveOneBuildLabCloudDocument(client,storage,ownerUserId,inspection,kind,http=fetch){
  if(!kindSet.has(kind)||!inspection?.remote?.[kind]||!inspection?.local)
   throw Error('Inspect current cloud records before saving.');
@@ -97,6 +113,8 @@ export async function saveOneBuildLabCloudDocument(client,storage,ownerUserId,in
  if(json(stable(fresh.documents[kind]))!==json(stable(inspection.local.documents[kind])))
   throw Error('Browser work changed since comparison. Refresh the cloud comparison before saving.');
  const document=fresh.documents[kind];
+ if(wouldOverwriteCloudWithEmptyBrowser(inspection,kind))
+  throw Error('This browser is empty while the cloud contains saved work. Restore the cloud snapshot before attempting to replace it.');
  if(document===null)throw Error('No saved Manager plan exists in this browser. Nothing was sent.');
  const expected=inspection.remote[kind].revision;
  const saved=await saveBuildLabCloudRecord(client,kind,expected,document,http);

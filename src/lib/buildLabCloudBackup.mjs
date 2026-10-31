@@ -8,7 +8,7 @@ import {createBuildLabEvidencePackage} from './buildLabEvidencePackage.mjs';
 import {inspectBuildLabEvidencePackage,restoreBuildLabEvidencePackage} from './buildLabEvidenceRecovery.mjs';
 import {readScanHistory} from './buildLabScanHistory.mjs';
 import {readWorkLedger,emptyWorkLedger} from './buildLabWorkBuckets.mjs';
-import {managerStorageKey,validateManagerBlueprint} from './buildLabManagerBlueprint.mjs';
+import {managerStorageKey,validateManagerBlueprint,stackScanBlueprint} from './buildLabManagerBlueprint.mjs';
 
 export const CLOUD_RECORD_KINDS=Object.freeze([
  ['scan_history','Scan history'],['work_buckets','Work Buckets'],['manager_blueprint','Manager plan']
@@ -18,6 +18,35 @@ const emptyHistory=()=>({version:1,entries:[]});
 const json=x=>JSON.stringify(x);
 const stable=x=>Array.isArray(x)?x.map(stable):x&&typeof x==='object'
  ?Object.fromEntries(Object.keys(x).sort().map(k=>[k,stable(x[k])])):x;
+
+// Preview-only fixture. Never approves or executes real work, and never writes to cloud.
+// Refuse to replace a real Manager Plan: the owner must preserve their own plans.
+export function createPreviewOnlyManagerPlan(storage,ownerUserId,{now=new Date().toISOString()}={}){
+ const key=managerStorageKey(ownerUserId);
+ if(!key||typeof storage?.getItem!=='function'||typeof storage?.setItem!=='function')
+  throw Error('An authorized Build Lab owner and browser storage are required.');
+ if(storage.getItem(key)!==null)
+  throw Error('A Manager Plan already exists in this browser. This test will not replace it.');
+ const entry={
+  id:'synthetic-manager-storage-test',
+  type:'inspector',
+  scope:'build-lab-preview-only',
+  source:'synthetic-test-not-a-source-commit',
+  savedAt:now,
+  snapshot:{report:{findings:[{
+   id:'preview-manager-storage-only',
+   title:'TEST ONLY: verify Manager Plan cloud storage',
+   recommendation:'Verify explicit backup and recovery of this synthetic test plan. Do not build, fix, or deploy any software.'
+  }]}}
+ };
+ const plan=stackScanBlueprint([entry],{
+  title:'TEST ONLY: Build Lab Manager Plan cloud backup',
+  now
+ });
+ validateManagerBlueprint(plan);
+ storage.setItem(key,JSON.stringify(plan));
+ return plan;
+}
 
 export function readBuildLabBrowserSnapshot(storage,ownerUserId){
  const report=createBuildLabEvidencePackage(storage,ownerUserId);

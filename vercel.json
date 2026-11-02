@@ -17,6 +17,10 @@
     "api/eig-build-lab-live-integrity.js": {
       "includeFiles": "{src/PlatformApp.jsx,src/components/BuildLabLiveOwnerWorkspace.jsx,src/components/BuildLabCloudBackup.jsx,vercel.json,supabase/migrations/*.sql}",
       "maxDuration": 30
+    },
+    "api/eig-build-lab-ai-review.js": {
+      "includeFiles": "{src/*.jsx,src/components/*.jsx,tests/*.{cjs,mjs}}",
+      "maxDuration": 30
     }
   },
   "rewrites": [

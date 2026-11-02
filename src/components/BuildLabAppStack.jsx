@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {HISTORY_EVENT,readScanHistory} from '../lib/buildLabScanHistory.mjs';
-import {WORK_EVENT,readWorkLedger} from '../lib/buildLabWorkBuckets.mjs';
+import {WORK_EVENT,readWorkLedger,collectScanWork,saveWorkLedger} from '../lib/buildLabWorkBuckets.mjs';
 import {buildAppStack,APP_STACK_CATALOG} from '../lib/buildLabAppStack.mjs';
 import './build-lab-app-stack.css';
 
@@ -37,8 +37,13 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
  const [expanded,setExpanded]=useState({});
  useEffect(()=>{
   function refresh(){
-   try{setHistory(readScanHistory(localStorage,ownerUserId));
-    setLedger(readWorkLedger(localStorage,ownerUserId));setError('');}
+   try{
+    const entries=readScanHistory(localStorage,ownerUserId);
+    const prior=readWorkLedger(localStorage,ownerUserId);
+    const next=collectScanWork(prior,entries);
+    if(JSON.stringify(prior)!==JSON.stringify(next))saveWorkLedger(localStorage,ownerUserId,next);
+    setHistory(entries);setLedger(next);setError('');
+   }
    catch{setError('One or more saved evidence records could not be loaded. Nothing was erased.');}
   }
   refresh();

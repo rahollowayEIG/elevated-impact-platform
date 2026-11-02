@@ -6,6 +6,7 @@ import BuildLabLivePlanReview from './BuildLabLivePlanReview.jsx';
 import {requestLiveBuildLabScan} from '../lib/eigBuildLabLiveClient.mjs';
 import {requestBuildLabAiReview} from '../lib/eigBuildLabAiClient.mjs';
 import BuildLabCloudBackup from './BuildLabCloudBackup.jsx';
+import BuildLabAppStack from './BuildLabAppStack.jsx';
 
 // Owner-only Build Lab. Opt-in AI planning is disabled by default and never
 // grants builder, agent, source writer, payment or deployment privileges.
@@ -23,7 +24,8 @@ function downloadReport(report,kind){
 }
 export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,onBack}){
  const [working,setWorking]=useState('');
- const [activeTool,setActiveTool]=useState('scanners');
+ const [activeTool,setActiveTool]=useState('stack');
+ const [focusedModule,setFocusedModule]=useState('all');
  const [recordNotice,setRecordNotice]=useState('');
  const [reports,setReports]=useState({});
  const [error,setError]=useState('');
@@ -73,7 +75,7 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   </section>
   <nav className="platform-section-card" aria-label="Build Lab V1 owner workflow">
    {[
-    ['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan'],
+    ['stack','App Stack'],['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan'],
     ...(RECORDS_UI_ENABLED?[['cloud','5. Cloud Storage']]:[])
    ].map(([id,label])=><button type="button" key={id}
     className={activeTool===id?'platform-primary-button':'platform-secondary-button'}
@@ -81,6 +83,9 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   </nav>
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {recordNotice&&<p role="status">{recordNotice}</p>}
+  {activeTool==='stack'&&<BuildLabAppStack key={ownerUserId} ownerUserId={ownerUserId}
+   onScan={()=>setActiveTool('scanners')}
+   onReview={id=>{setFocusedModule(id);setActiveTool('buckets');}} />}
   {activeTool==='scanners'&&<section className="platform-section-card">
    <h2>Read-only source scanners</h2>
    <p>Every scan rechecks the owner session on the server. If the server is not enabled for Live, access is denied.</p>
@@ -113,7 +118,8 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
    </section>}
   </section>}
   {activeTool==='history'&&<BuildLabScanHistory key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient}/>}
-  {activeTool==='buckets'&&<BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>setActiveTool('plans')}/>}
+  {activeTool==='buckets'&&<BuildLabWorkBuckets key={ownerUserId+':'+focusedModule} ownerUserId={ownerUserId}
+   initialModule={focusedModule} onOpenManager={()=>setActiveTool('plans')}/>}
   {activeTool==='plans'&&<BuildLabLivePlanReview key={ownerUserId} ownerUserId={ownerUserId}/>}
   {activeTool==='cloud'&&RECORDS_UI_ENABLED&&
    <BuildLabCloudBackup key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient} temporary={import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true'}/>}

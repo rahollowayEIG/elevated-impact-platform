@@ -5,6 +5,7 @@ import {WORK_BUCKETS,WORK_INTENTS,WORK_STATES,WORK_EVENT,validateWorkLedger,read
 import {FINDING_KINDS,findingAssessment} from '../lib/buildLabFindingStandards.mjs';
 import BuildLabGuidedReview from './BuildLabGuidedReview.jsx';
 import './build-lab-work-buckets.css';
+import {APP_STACK_CATALOG,appForWorkItem} from '../lib/buildLabAppStack.mjs';
 const blank={title:'',detail:'',completion:'',apps:'platform'};
 const blankReport={title:'',app:'inception-apex',expected:'',actual:'',steps:'',completion:'',bucket:'interface',environment:'',sourceVersion:'',relatedId:''};
 // Browser-only, owner-separated draft. Never part of the scan evidence or approved work ledger.
@@ -21,10 +22,11 @@ function storedManualDraft(uid){
 }
 const readManualDraft=uid=>storedManualDraft(uid)?.data||{...blankReport};
 function download(value){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='build-lab-work-buckets.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
+export default function BuildLabWorkBuckets({ownerUserId,onOpenManager,initialModule='all'}){
  const selectionKey='eig:work-selection:v1:'+ownerUserId;
  const editorRef=useRef(null);
  const [batchQuery,setBatchQuery]=useState('');
+ const [appFilter,setAppFilter]=useState(initialModule);
  const [selectionError,setSelectionError]=useState('');
  const [ledger,setLedger]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [query,setQuery]=useState(''),[bucket,setBucket]=useState('all'),[intent,setIntent]=useState('all'),[state,setState]=useState('all'),[assessmentKind,setAssessmentKind]=useState('all'),[order,setOrder]=useState({key:'lastSeen',direction:'desc'});
@@ -55,7 +57,7 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  },[ownerUserId]);
  function mutate(fn,message){try{const next=fn(readWorkLedger(localStorage,ownerUserId));saveWorkLedger(localStorage,ownerUserId,next);setLedger(next);setError('');setNotice(message);window.dispatchEvent(new Event(WORK_EVENT));return true;}catch(e){setError(e.message+' Nothing was saved.');return false;}}
  const jobs=ledger?.jobs||[],needle=query.trim().toLowerCase();
- const visible=jobs.filter(j=>(bucket==='all'||j.bucket===bucket)&&(intent==='all'||j.intent===intent)&&(assessmentKind==='all'||findingAssessment(j).kind===assessmentKind)&&(state==='all'||(state==='manual'?j.state!=='dismissed'&&workRoute(j).label==='Needs manual fix':j.state===state))&&(!needle||[j.title,j.detail,j.observation,j.manualFinding?.verificationNote||'',j.manualFinding?.relatedId||'',...j.apps,WORK_BUCKETS[j.bucket],WORK_INTENTS[j.intent],WORK_STATES[j.state],FINDING_KINDS[findingAssessment(j).kind],workRoute(j).label,...j.refs.flatMap(r=>r.files)].join(' ').toLowerCase().includes(needle))).sort((a,b)=>{
+ const visible=jobs.filter(j=>(appFilter==='all'||appForWorkItem(j)===appFilter)&&(bucket==='all'||j.bucket===bucket)&&(intent==='all'||j.intent===intent)&&(assessmentKind==='all'||findingAssessment(j).kind===assessmentKind)&&(state==='all'||(state==='manual'?j.state!=='dismissed'&&workRoute(j).label==='Needs manual fix':j.state===state))&&(!needle||[j.title,j.detail,j.observation,j.manualFinding?.verificationNote||'',j.manualFinding?.relatedId||'',...j.apps,WORK_BUCKETS[j.bucket],WORK_INTENTS[j.intent],WORK_STATES[j.state],FINDING_KINDS[findingAssessment(j).kind],workRoute(j).label,...j.refs.flatMap(r=>r.files)].join(' ').toLowerCase().includes(needle))).sort((a,b)=>{
   const val=j=>order.key==='bucket'?WORK_BUCKETS[j.bucket]:order.key==='scope'?j.apps.join(', '):order.key==='priority'?({critical:0,high:1,medium:2,low:3}[j.priority]):j[order.key];
   const comparison=order.key==='lastSeen'?Date.parse(val(a))-Date.parse(val(b)):order.key==='priority'?val(a)-val(b):String(val(a)).localeCompare(String(val(b)),undefined,{sensitivity:'base'});
   return comparison*(order.direction==='asc'?1:-1)||a.id.localeCompare(b.id);
@@ -114,6 +116,7 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
    <div className="bl-work-summary">{Object.entries(WORK_INTENTS).map(([id,label])=><button type="button" key={id} aria-pressed={intent===id} onClick={()=>setIntent(intent===id?'all':id)}><strong>{jobs.filter(j=>j.intent===id&&!['dismissed'].includes(j.state)).length}</strong>{label}</button>)}<button type="button" aria-pressed={state==='manual'} onClick={()=>setState(state==='manual'?'all':'manual')}><strong>{jobs.filter(j=>j.state!=='dismissed'&&workRoute(j).label==='Needs manual fix').length}</strong>Needs manual fix</button></div>
    <div className="bl-bucket-cards" aria-label="Review buckets">{Object.entries(WORK_BUCKETS).map(([id,label])=><button type="button" key={id} aria-pressed={bucket===id} onClick={()=>{setBucket(id);setState('all');setIntent('all');}}><strong>{label}</strong><span>{jobs.filter(j=>j.bucket===id&&j.state!=='dismissed').length} findings</span></button>)}</div>
    <div className="bl-scan-controls">
+    <label>App area<select aria-label="Filter work by app" value={appFilter} onChange={e=>setAppFilter(e.target.value)}><option value="all">All app areas</option>{APP_STACK_CATALOG.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
     <label>Search work items<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Requirement, app, file…" /></label>
     <label>Work bucket<select aria-label="Work bucket" value={bucket} onChange={e=>setBucket(e.target.value)}><option value="all">All buckets</option>{Object.entries(WORK_BUCKETS).map(([id,label])=><option key={id} value={id}>{label} ({jobs.filter(j=>j.bucket===id).length})</option>)}</select></label>
     <label>Work type<select aria-label="Work type" value={intent} onChange={e=>setIntent(e.target.value)}><option value="all">All work types</option>{Object.entries(WORK_INTENTS).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>

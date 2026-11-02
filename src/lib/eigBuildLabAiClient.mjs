@@ -42,7 +42,7 @@ export async function requestBuildLabAiReview(client,http=fetch){
  const res=await http('/api/eig-build-lab-ai-review',{method:'POST',
   headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
   body:JSON.stringify({target:'master'}),cache:'no-store',credentials:'same-origin'});
- if(!res?.ok)throw Error('AI review unavailable (HTTP '+(res?.status||'unknown')+'). Verify preview owner access and AI configuration.');
+ if(!res?.ok)throw Error('AI review unavailable (HTTP '+(res?.status||'unknown')+'). Verify owner access and AI configuration.');
  const payload=await res.json();
  if(payload?.ok!==true||!payload.review)throw Error('AI review returned no valid report.');
  return validateBuildLabAiReview(payload.review);

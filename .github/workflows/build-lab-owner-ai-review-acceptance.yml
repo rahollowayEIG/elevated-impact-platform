@@ -1,0 +1,27 @@
+name: Build Lab Owner AI Review Acceptance
+on:
+  push:
+    branches: [feature/build-lab-owner-ai-review-20261102]
+  pull_request:
+    branches: [release/build-lab-v1-owner-only-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ai-review-no-write-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: AI auth, data minimization and evidence handoff
+        run: node --test tests/build-lab-ai-review.test.cjs tests/build-lab-integrity-client.test.mjs tests/build-lab-owner-preview-access.test.cjs tests/build-lab-v1-vercel-package.test.cjs
+      - name: Verify app builds without API credentials
+        run: npm run build
+      - name: Record release constraints
+        run: |
+          echo 'AI Review remains preview-only and disabled until explicitly configured.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No real model calls or production changes occur in this workflow.' >> "$GITHUB_STEP_SUMMARY"

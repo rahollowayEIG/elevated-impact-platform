@@ -1,0 +1,90 @@
+{
+  "version": 2,
+  "principles": [
+    "Separate observations, coverage questions, improvement ideas and independently confirmed defects.",
+    "Preserve useful existing behavior; search the shared platform before building duplicates.",
+    "State the source version, evidence limits and next verification step.",
+    "Never treat sampled absence, a dated snapshot, a test definition or a permitted file reference as runtime proof.",
+    "A review decision approves work scope; it does not confirm a defect or authorize deployment.",
+    "Keep implementation capability separate from the evidence assessment. Reserve Needs manual fix for an explicitly identified capability gap."
+  ],
+  "scanners": {
+    "inspector": {
+      "mission": "Identify specific InceptionApex source patterns for workflow and usability review and recognize useful existing behavior to preserve.",
+      "identifies": [
+        "Source-backed usability review questions",
+        "Existing save/approve and keyboard patterns to preserve",
+        "All recognized native confirmation callers, correlated editor-navigation signals and explicit verification criteria",
+        "Declared tablet viewport and assertion markers, including simple literal-array loops",
+        "Partial and unobserved rule patterns without treating absence as a verified fix"
+      ],
+      "limits": [
+        "Four approved files only; no screenshot, keyboard execution or live design assessment.",
+        "A source pattern is not proof of a runtime defect or accessibility conformance.",
+        "Bounded pattern recognizers cannot establish control flow, inherited CSS, unsupported syntax or tests outside the four-file sample."
+      ],
+      "handoff": "Reproduce the experience with synthetic designs and record actual versus expected behavior before changing it."
+    },
+    "master": {
+      "mission": "Inventory approved platform source, UI links, test definitions and dated Live/Sandbox metadata; identify the next verification task for each module.",
+      "identifies": [
+        "Source and UI markers in the protected preview sample",
+        "Test definitions and dated schema/deployment differences",
+        "Checks needed before claiming a module works or is missing",
+        "Matched/expected source, UI and declared-test markers, with the unobserved checks listed",
+        "Module-specific verification criteria and the limits of the sampled tests"
+      ],
+      "limits": [
+        "Does not run workflows, browser tests or live database checks.",
+        "Preview source and dated Live/Sandbox snapshots may represent different versions. Absence from the sample is not proof of absence.",
+        "Counts refer to configured sample markers, not a feature-completion percentage. Not sampled means no checks are configured here.",
+        "JavaScript/JSX syntax is parsed; the rules still do not establish control flow, complete repository coverage or runtime outcomes."
+      ],
+      "handoff": "Verify the current branch and deployment versions; reproduce the specific module workflow with isolated data before proposing implementation."
+    },
+    "radar": {
+      "mission": "Find worthwhile improvements using a fixed product-quality rubric, while checking for shared capabilities we can reuse.",
+      "identifies": [
+        "Essential capability questions and optional upgrade ideas",
+        "Sampled source signals relevant to a proposed improvement",
+        "Dependencies and verification steps to investigate"
+      ],
+      "limits": [
+        "Heuristic suggestions are not confirmed missing features or defects.",
+        "Does not search current external apps, providers or competitors, execute browsers, or measure product quality."
+      ],
+      "handoff": "Check existing platform functionality, confirm the business benefit, and define testable scope. Research current build-versus-reuse options separately where useful."
+    },
+    "ai": {
+      "mission": "Explain bounded Master Scanner metadata and propose concise, evidence-linked follow-up work.",
+      "identifies": [
+        "Potential improvements and verification tasks grounded in supplied metadata",
+        "Referenced approved files to investigate, not newly inspected source"
+      ],
+      "limits": [
+        "Model wording and file references are not independent verification.",
+        "No raw source, browser walkthrough, customer records, external research or automatic edits are included. A provider request uses the existing owner-started AI connection."
+      ],
+      "handoff": "Verify the cited files and actual behavior independently. Keep unsupported claims as investigation or dismiss them with a reason."
+    },
+    "impact": {
+      "mission": "Flag possible cross-app and release impacts from an owner-supplied changed-file list.",
+      "identifies": [
+        "Filename matches suggesting identity, payments, event, schema, deployment or shared-UI impacts",
+        "Independent reviews and regression checks needed before release"
+      ],
+      "limits": [
+        "Does not fetch GitHub, read file contents, resolve a branch to an exact commit, or execute tests.",
+        "Severity describes possible impact, not proof of a bug. An unflagged file or low-risk result does not establish safety."
+      ],
+      "handoff": "Inspect the exact commit diff and dependencies, confirm the affected apps, and attach isolated test results before a separate release decision."
+    }
+  },
+  "modules": {
+    "inception": [
+      "Save, reopen, approve and version artwork",
+      "Keyboard, mobile, labels and print/export constraints",
+      "Preserve shared designs, approved masters and event/product handoffs"
+    ]
+  }
+}

@@ -1,0 +1,723 @@
+{
+  "schemaVersion": 1,
+  "capturedOn": "2026-10-20",
+  "source": "Read-only pg_catalog metadata query via connected Supabase; point-in-time snapshot, not a live in-app database scan",
+  "scope": "public base tables only, no rows or personal information",
+  "query": "pg_class/pg_namespace/pg_policy count",
+  "tables": {
+    "production": [
+      {
+        "table": "auth_email_code_requests",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "billing_accounts",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "contacts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "contributions",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "eic_design_product_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eic_design_products",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eie_event_budget_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eie_event_budgets",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eig_credit_ledger",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_assignments",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_builder_asset_audit",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_builder_assets",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_contact_roles",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_offers",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "event_product_entitlements",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "event_registration_fields",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_request_activity",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_requests",
+        "rls": true,
+        "policies": 5
+      },
+      {
+        "table": "events",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_admin_users",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "golf_event_payment_settings",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_event_setup",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_registration_admin_actions",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_registration_events",
+        "rls": true,
+        "policies": 6
+      },
+      {
+        "table": "golf_registration_teams",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_registrations",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_roster_info_requests",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_team_invitations",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_team_payment_shares",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golfers",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "google_oauth_tokens",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "inception_drive_exports",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "inception_project_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "inception_projects",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "organization_memberships",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "organization_product_entitlements",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "organization_profiles",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "organizations",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "passenger_billing_profiles",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "passenger_contacts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_event_results",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_name_aliases",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_payment_methods",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "passenger_profiles",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passengers",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "platform_account_audit",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "platform_google_drive_folders",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "platform_invitations",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "products",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "profiles",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "registration_field_values",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "registration_types",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "social_campaign_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "social_campaigns",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "sponsor_purchases",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "sponsors",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "sponsorship_products",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_audit_log",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_channel_connections",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_delivery_events",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_message_content",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_message_receipts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_message_recipients",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_message_reviews",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_messages",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_recipient_preferences",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_templates",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_thread_participants",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_threads",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "team_registrations",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "volunteers",
+        "rls": true,
+        "policies": 2
+      }
+    ],
+    "sandbox": [
+      {
+        "table": "auth_email_code_requests",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "billing_accounts",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "contacts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "contributions",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "eic_design_product_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eic_design_products",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eie_event_budget_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eie_event_budgets",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "eig_credit_ledger",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_assignments",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_builder_asset_audit",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_builder_assets",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_contact_roles",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_offers",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "event_product_entitlements",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "event_registration_fields",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "event_request_activity",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "event_requests",
+        "rls": true,
+        "policies": 5
+      },
+      {
+        "table": "events",
+        "rls": true,
+        "policies": 5
+      },
+      {
+        "table": "golf_admin_users",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "golf_event_payment_settings",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_event_setup",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_registration_admin_actions",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_registration_events",
+        "rls": true,
+        "policies": 6
+      },
+      {
+        "table": "golf_registration_teams",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_registrations",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "golf_roster_info_requests",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_team_invitations",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golf_team_payment_shares",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "golfers",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "google_oauth_tokens",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "inception_drive_exports",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "inception_project_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "inception_projects",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "organization_memberships",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "organization_product_entitlements",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "organization_profiles",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "organizations",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "passenger_billing_profiles",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "passenger_contacts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_event_results",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_name_aliases",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passenger_payment_methods",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "passenger_profiles",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "passengers",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "platform_account_audit",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "platform_google_drive_folders",
+        "rls": true,
+        "policies": 0
+      },
+      {
+        "table": "platform_invitations",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "products",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "profiles",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "registration_field_values",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "registration_types",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "social_campaign_versions",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "social_campaigns",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "sponsor_purchases",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "sponsors",
+        "rls": true,
+        "policies": 4
+      },
+      {
+        "table": "sponsorship_products",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_audit_log",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_channel_connections",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_delivery_events",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_message_content",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_message_receipts",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_message_recipients",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_message_reviews",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "squawk_messages",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_recipient_preferences",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_templates",
+        "rls": true,
+        "policies": 3
+      },
+      {
+        "table": "squawk_thread_participants",
+        "rls": true,
+        "policies": 1
+      },
+      {
+        "table": "squawk_threads",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "team_registrations",
+        "rls": true,
+        "policies": 2
+      },
+      {
+        "table": "volunteers",
+        "rls": true,
+        "policies": 2
+      }
+    ]
+  }
+}

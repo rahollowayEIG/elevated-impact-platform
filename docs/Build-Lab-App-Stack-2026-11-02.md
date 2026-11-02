@@ -70,3 +70,20 @@ Known and planned EIE parts not yet separately defined in the current Master Sca
 **Whole-app Built, Verified, Integration and Overall percentages remain Not measured** until an approved, versioned per-component requirements checklist, required integrations, passing exact-version test receipts, and an agreed whole-app weighting exist. Parent issue counts can be summed now without claiming finished work. New components and requirements will expand the scope denominator only when approved.
 
 No production scanners or customer data were changed by this hierarchy/navigation update.
+
+
+## App component inventory and scanner ownership gate (November 2)
+
+The parent app inventory includes more feature-level candidates across EIE, InceptionApex, Social Media & Ads, Squawk Box, Commerce & Stores, Platform & Accounts, EIG Golf Tools and Build Lab. The candidate list records planned or investigated functionality, not proof of implementation. Code path hints, where available, identify where a reviewer might look. They do not claim that a feature works, that end-to-end tests exist or that the live scanner covers the whole feature.
+
+**Build Lab Scanner Coverage Gate** adds a non-mutating GitHub PR check:
+
+- The source-coverage-audit script reconciles all eight main applications with the existing seventeen scanner module IDs and the restricted production source allowlist (thirteen currently in scope; four commerce areas deferred). It validates that candidate source hints reference existing files.
+- On pull requests, the check uses Git diff to discover newly added first-party code under src/, server/ and api/. New code without an explicit owner assignment in the source-owner registry fails CI. The owner must assign each new file to one main app and existing scanner component and explain its pending scanner status.
+- An authorized owner assignment with scannerStatus of review_pending allows a PR to continue but does NOT add that file to the live Master Scanner, approve any tests, or mark functionality complete.
+- Modified pre-existing source files outside the allowlist are reported for review without assuming they are new features. The check cannot infer if a change inside a previously allowlisted file added new functionality; that requires explicit feature-level requirements and testing.
+- The App Stack application drilldown shows candidate parts and likely source locations under Additional parts to map into scanner coverage, while preserving seven existing EIE scanner components and their own findings.
+
+This is the first scanner-enrollment safety gate, not a full automatic scanner generator. Future work should add versioned feature requirement IDs, risk-based test mapping, controlled scope updates, and exact-commit passing test receipt reconciliation.
+
+No new production scanner permissions, external targets, customer database reads or auto-fix/release permissions are included. The owner-only Hangar Connections view is unaffected.

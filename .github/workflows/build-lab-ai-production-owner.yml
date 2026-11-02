@@ -1,0 +1,43 @@
+name: Build Lab AI Production Owner Gate
+on:
+  push:
+    branches:
+      - feature/build-lab-ai-production-owner-20261102
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ai-owner-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Test production and preview owner-only AI, no-writes, history and source scopes
+        run: |
+          node --test \
+            tests/build-lab-ai-production-owner.test.cjs \
+            tests/build-lab-ai-review.test.cjs \
+            tests/build-lab-production-go-live-gate.test.cjs \
+            tests/build-lab-owner-preview-access.test.cjs \
+            tests/build-lab-v1-source-scope.test.cjs \
+            tests/build-lab-v1-vercel-package.test.cjs \
+            tests/build-lab-integrity.test.cjs \
+            tests/build-lab-work-buckets.test.mjs \
+            tests/eig-build-lab-live-client.test.mjs
+      - name: Confirm production build
+        run: npm run build
+      - name: Record unverified live gates
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          echo "AI production authorization and client tests exercised source SHA $SOURCE_SHA." >> "$GITHUB_STEP_SUMMARY"
+          echo "No real provider call or credential use in CI. Production owner login, API charges and live History -> Work Buckets need an authorized browser test." >> "$GITHUB_STEP_SUMMARY"

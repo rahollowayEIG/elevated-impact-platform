@@ -199,7 +199,11 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}
    {current.coverageCandidates.length>0&&<section className="bl-stack-future-scope" aria-label="Additional application parts to review">
     <h3>Additional parts to map into scanner coverage</h3>
     <p className="bl-stack-small">These known or planned work areas do not yet have their own entry in the current Master Scanner. Their presence here does not establish whether they are built, missing, approved or tested.</p>
-    <ul>{current.coverageCandidates.map(part=><li key={part}>{part} <span>· Coverage to review</span></li>)}</ul>
+    <ul>{current.scopeEntries.map(part=><li key={part.id}>
+     <strong>{part.name}</strong>
+     <span> · {part.scannerStatus}</span>
+     {part.sourceHints.length>0&&<small className="bl-scope-source-hint">Source locations to inspect: {part.sourceHints.join(' · ')}</small>}
+    </li>)}</ul>
    </section>}
   </div>:<>
    <div className="bl-stack-cards" aria-label="Main applications">

@@ -2,12 +2,14 @@
 // Every request is verified independently by its own production-only Vercel handler.
 import {validateMasterScanReport} from './eigMasterScanClient.mjs';
 import {validateInceptionSourceReport} from './eigBuildLabScanClient.mjs';
+import {validatePlatformIntegrityReport} from './eigPlatformIntegrityClient.mjs';
 const ENDPOINTS=Object.freeze({
  access:'/api/eig-build-lab-live-access',
  master:'/api/eig-build-lab-live-master-scan',
- inspector:'/api/eig-build-lab-live-scan'
+ inspector:'/api/eig-build-lab-live-scan',
+ integrity:'/api/eig-build-lab-live-integrity'
 });
-const VALID_SCANS=new Set(['master','inspector']);
+const VALID_SCANS=new Set(['master','inspector','integrity']);
 async function livePost(client,path,body,http=fetch){
  if(!client?.auth?.getSession||typeof http!=='function')throw Error('Sign in to an authorized EIG owner account.');
  const {data,error}=await client.auth.getSession();
@@ -28,10 +30,11 @@ export async function requestLiveBuildLabAccess(client,http=fetch){
 }
 export async function requestLiveBuildLabScan(client,kind,http=fetch){
  if(!VALID_SCANS.has(kind))throw Error('Unsupported production read-only scan.');
- const body=kind==='master'?{target:'elevationpilot',environmentMode:'live'}:{target:'inception_apex'};
+ const body=kind==='master'?{target:'elevationpilot',environmentMode:'live'}:
+  kind==='integrity'?{target:'platform_integrity'}:{target:'inception_apex'};
  const result=await livePost(client,ENDPOINTS[kind],body,http);
  if(result?.ok!==true||!result.report)throw Error('The scanner did not return a verifiable report.');
- return kind==='master'
-  ?validateMasterScanReport(result.report)
-  :validateInceptionSourceReport(result.report);
+ return kind==='master' ? validateMasterScanReport(result.report) :
+   kind==='integrity' ? validatePlatformIntegrityReport(result.report) :
+   validateInceptionSourceReport(result.report);
 }

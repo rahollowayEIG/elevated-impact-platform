@@ -61,6 +61,67 @@ export const APP_FAMILIES=Object.freeze([
    'AI Review & Improvement Radar']}
 ]);
 
+/**
+ * Candidate source locations for inspecting proposed or known app parts.
+ * A hint says where to LOOK, not that the feature works or is even built.
+ * Keep this separate from production scanner allowlists and test receipts.
+ */
+export const APP_PART_SOURCE_HINTS=Object.freeze({
+ 'eie':{
+  'Event Directory & Outing Inquiries':['src/PlatformApp.jsx'],
+  'Public Event Hub':['src/PlatformApp.jsx'],
+  'ATC Event Operations':['src/PlatformApp.jsx'],
+  'Check-in & Attendance':['src/lib/checkInRoster.mjs','src/lib/checkInPrint.mjs'],
+  'Team Invitations & Account Claims':['src/GolfTeamInvitation.jsx','src/EieTeamManagement.jsx'],
+  'Team Swaps & Captain Changes':['src/EieTeamManagement.jsx'],
+  'Golf Genius Export & Print Rosters':['src/EieRosterMaintenance.jsx'],
+  'Event Communications & Reminders':['src/SquawkCenter.jsx'],
+  'Event Materials & Print':['src/components/EventMaterials.jsx']
+ },
+ 'inception-apex':{
+  'Design Library & Templates':['src/components/DesignProductCatalog.jsx'],
+  'Creative Export & Publishing Workflows':['src/lib/inceptionDrive.js'],
+  'Shared Creative Assets & Reuse':['src/components/CreativeLinkControls.jsx']
+ },
+ 'social-marketing':{
+  'Campaign Planning & Scheduling':['src/components/CampaignPlanning.jsx'],
+  'Advertising Placement & Packages':['src/lib/socialCampaign.mjs']
+ },
+ 'squawk-box':{
+  'Cross-App Message Routing':['src/SquawkCenter.jsx'],
+  'Communication Provider Connections':['src/SquawkCenter.jsx']
+ },
+ 'commerce':{
+  'Inventory Reconciliation & Duplicates':['src/lib/epProductCapture.mjs']
+ },
+ 'platform':{
+  'Command Center & Hangar':['src/PlatformApp.jsx'],
+  'Cockpit & Airport':['src/ElevationAirport.jsx'],
+  'Universal User Directory':['src/lib/accountIdentity.mjs'],
+  'Onboarding & Invitations':['src/PlatformApp.jsx'],
+  'Temporary Roles & Delegated Access':['src/PlatformApp.jsx']
+ },
+ 'build-lab':{
+  'Completion Evidence & Gauges':['src/components/BuildLabAppStack.jsx'],
+  'Guided Work Buckets & Fix Plans':['src/components/BuildLabWorkBuckets.jsx'],
+  'Hangar Connection Adoption':['src/components/BuildLabHangarConnections.jsx'],
+  'Scan History & Recovery':['src/components/BuildLabScanHistory.jsx'],
+  'AI Review & Improvement Radar':['src/lib/eigBuildLabAiClient.mjs']
+ }
+});
+
+export function candidateScopeEntries(app){
+ if(!app||!Array.isArray(app.coverageCandidates))return [];
+ const hints=APP_PART_SOURCE_HINTS[app.id]||{};
+ return app.coverageCandidates.map((name,index)=>({
+  id:app.id+'-scope-'+(index+1),
+  name,
+  sourceHints:Array.isArray(hints[name])?[...hints[name]]:[],
+  scannerStatus:'Feature-specific scanner coverage to review',
+  proofStatus:'No independent feature-level implementation or test verdict'
+ }));
+}
+
 const isMeasured=v=>Number.isFinite(v)&&v>=0&&v<=100;
 export function buildApplicationHierarchy(components=[]){
  const byId=new Map((Array.isArray(components)?components:[]).map(x=>[x.id,x]));
@@ -82,6 +143,7 @@ export function buildApplicationHierarchy(components=[]){
     (app.components.length-parts.length);
   return {
    ...app,parts,
+   scopeEntries:candidateScopeEntries(app),
    componentCount:app.components.length,
    scannedCount:scannerCoverage,
    unscannedCount:app.components.length-scannerCoverage,

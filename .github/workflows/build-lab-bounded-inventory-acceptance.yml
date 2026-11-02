@@ -1,0 +1,32 @@
+name: Build Lab Bounded Source Inventory Acceptance
+on:
+  push:
+    branches:
+      - feature/build-lab-bounded-inventory-20261102
+  pull_request:
+    branches:
+      - release/build-lab-v1-owner-only-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bounded-scanner-and-owner-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Bounded inventory and owner-only API tests
+        run: node --test tests/build-lab-offline-source-inventory.test.cjs tests/build-lab-integrity.test.cjs tests/build-lab-integrity-client.test.mjs tests/build-lab-v1-vercel-package.test.cjs
+      - name: Validate review-only local inventory
+        run: |
+          node scripts/build-lab-offline-source-inventory.cjs > bounded-source-inventory.json
+          node -e 'const r=require("./bounded-source-inventory.json");if(!r.readOnly||r.safety.deletedItems!==0||r.safety.autoDeployed!==false||r.sourceFileCount<50)process.exit(1);console.log(JSON.stringify({sourceFiles:r.sourceFileCount,unresolvedCandidates:r.unresolvedCount,readOnly:r.readOnly}));'
+      - name: Publish safe inventory artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bounded-source-inventory-evidence
+          path: bounded-source-inventory.json

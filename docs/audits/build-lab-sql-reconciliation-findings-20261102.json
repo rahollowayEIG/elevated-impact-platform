@@ -1,0 +1,85 @@
+{
+  "kind": "eig_build_lab_sql_reconciliation_evidence",
+  "schemaVersion": 1,
+  "observedOn": "2026-11-02",
+  "productionProject": "Elevated-Impact-Platform",
+  "releaseBranch": "release/build-lab-v1-owner-only-20261028",
+  "methodology": "Read-only comparison of GitHub release SQL files and SQL stored in Supabase migration history; no SQL text stored here.",
+  "migrationCounts": {
+    "production": 67,
+    "repository": 13,
+    "matchingVersion": 10,
+    "productionOnly": 57,
+    "repositoryOnly": 3
+  },
+  "sameVersion": {
+    "exactBytes": [
+      "20261007040355",
+      "20261007052358",
+      "20261008054858",
+      "20261008055348",
+      "20261008182645",
+      "20261008204951"
+    ],
+    "trailingWhitespaceOnly": [
+      "20261007040350"
+    ],
+    "substantiveDifference": [
+      {
+        "version": "20261009193756",
+        "topic": "EIE staff roster operations",
+        "finding": "Text differs after whitespace/comment normalization; requires targeted semantic and privilege review."
+      },
+      {
+        "version": "20261009194203",
+        "topic": "EIE staff roster audit",
+        "finding": "Repository text extends beyond recorded production SQL, including GRANT/REVOKE terms absent from recorded SQL; permissions require explicit comparison."
+      },
+      {
+        "version": "20261009200051",
+        "topic": "Manual captain claim",
+        "finding": "Text differs after whitespace/comment normalization; requires targeted semantic and payment/authorization regression review."
+      }
+    ]
+  },
+  "repositoryOnly": {
+    "exactSQLButDifferentVersion": [
+      {
+        "repository": "20261005175237",
+        "production": "20261005175759",
+        "name": "user_management_security_history"
+      },
+      {
+        "repository": "20261007064246",
+        "production": "20261007065652",
+        "name": "social_campaign_workspace"
+      }
+    ],
+    "additionalFunctionPresentButFullEquivalenceUnverified": [
+      {
+        "repository": "20261010052030",
+        "name": "eie_budget_comp_value_metric",
+        "function": "eig_private.event_budget_sources(target_event_id uuid)",
+        "deployedFunctionExists": true,
+        "deployedDefinitionContainsComps": true,
+        "deployedDefinitionContainsValueCents": true,
+        "fullBodyEquivalent": false
+      }
+    ]
+  },
+  "safety": {
+    "productionWrites": false,
+    "productionMigrationHistoryAltered": false,
+    "sqlBodiesPublished": false,
+    "publicRepoSqlExportAllowed": false,
+    "approvedForMigrationRepair": false
+  },
+  "blockers": [
+    "Secure historical SQL archival and review",
+    "Detailed differences of 3 roster/claim migration files",
+    "Prove budget function deployment equivalence",
+    "Isolated full migration replay",
+    "Review Supabase security-advisor findings",
+    "Owner-approved deployment and rollback"
+  ]
+}

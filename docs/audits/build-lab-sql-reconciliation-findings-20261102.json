@@ -61,9 +61,13 @@
         "name": "eie_budget_comp_value_metric",
         "function": "eig_private.event_budget_sources(target_event_id uuid)",
         "deployedFunctionExists": true,
-        "deployedDefinitionContainsComps": true,
-        "deployedDefinitionContainsValueCents": true,
-        "fullBodyEquivalent": false
+        "exactFunctionBodyMatch": true,
+        "sourceBodyCharacters": 3956,
+        "liveBodyCharacters": 3956,
+        "securityDefiner": true,
+        "volatility": "stable",
+        "searchPath": "",
+        "caveat": "Exact current function body and attributes verified, but no exact historical migration version exists and full schema replay is not certified."
       }
     ]
   },
@@ -77,7 +81,6 @@
   "blockers": [
     "Secure historical SQL archival and review",
     "Detailed differences of 3 roster/claim migration files",
-    "Prove budget function deployment equivalence",
     "Isolated full migration replay",
     "Review Supabase security-advisor findings",
     "Owner-approved deployment and rollback"

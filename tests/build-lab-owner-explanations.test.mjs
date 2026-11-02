@@ -91,6 +91,7 @@ test('review navigation and plan UI do not import autonomous builder or a deploy
  const root=path.resolve(import.meta.dirname,'..');
  const guide=fs.readFileSync(path.join(root,'src/components/BuildLabGuidedReview.jsx'),'utf8');
  const bucket=fs.readFileSync(path.join(root,'src/components/BuildLabWorkBuckets.jsx'),'utf8');
+ const plan=fs.readFileSync(path.join(root,'src/components/BuildLabLivePlanReview.jsx'),'utf8');
  assert.match(guide,/Continue to next/);
  assert.match(guide,/Approve planning &amp; continue/);
  assert.match(guide,/Continue to Review &amp; Fix Plan/);
@@ -98,6 +99,10 @@ test('review navigation and plan UI do not import autonomous builder or a deploy
  assert.match(guide,/No unreviewed open findings/);
  assert.match(bucket,/onDecision=\{guidedDecision\}/);
  assert.match(bucket,/approveBucketSelection/);
+ assert.match(plan,/Step \{currentIndex\+1\} of \{plan\.proposals\.length\}/);
+ assert.match(plan,/Continue to next/);
+ assert.match(plan,/eig:guided-plan:v1:/);
+ assert.match(plan,/disabled=\{pending\.length>0\}/);
  for(const s of [guide,bucket]){
   assert.doesNotMatch(s,/from ['"].*eigBuildLabBuilder/);
   assert.doesNotMatch(s,/from ['"].*vercel.*deployment/);

@@ -1,4 +1,4 @@
-export const SCAN_TYPES = {master:"Master Scanner",radar:"Upgrade Radar",ai:"AI Review",inspector:"IA Inspector",impact:"Impact Review"};
+export const SCAN_TYPES = {master:"Master Scanner",radar:"Upgrade Radar",ai:"AI Review",inspector:"IA Inspector",impact:"Impact Review",integrity:"Platform Integrity & Cleanup"};
 export const HISTORY_EVENT = "eig-scan-history-changed";
 const LIMIT = 1800000;
 export function historyKey(uid) {

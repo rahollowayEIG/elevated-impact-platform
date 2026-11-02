@@ -90,7 +90,7 @@ export function collectScanWork(ledger,entries){
    const recommendation=['edit','revise'].includes(decision)&&revised?revised:proposal.detail;
    const assessment=scanFindingAssessment(entry.type,item);
    const j={id,title:proposal.title,detail:recommendation,assessment,completion:clean(item.verify||item.completion)||assessment.nextCheck,
-    ...classify({...item,detail:recommendation},entry.type),scope:entry.scope==='all'?'platform':'app',apps:[entry.type==='master'?proposal.module:entry.scope],
+    ...classify({...item,detail:recommendation},entry.type),scope:entry.scope==='all'?'platform':'app',apps:[entry.type==='master'?proposal.module:entry.type==='integrity'?'elevationpilot':entry.scope],
     priority:proposal.priority,state:decision==='reject'?'dismissed':['hold','park'].includes(decision)?'hold':'open',manualReason:'',
     firstSeen:prior?.firstSeen||entry.savedAt,lastSeen:entry.savedAt,observation:clean(item.observation||item.why||item.reason),
     evidence:(item.evidence||[]).map(e=>clean(typeof e==='string'?e:[e.path,e.line,e.excerpt].filter(Boolean).join(': '),1000)).slice(0,30),refs,ownerEdited:false};

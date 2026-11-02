@@ -16,38 +16,111 @@ export const APP_FAMILIES=Object.freeze([
   components:['event-builder','registration','payments','roster','sponsors','event-packet','event-budget'],
   coverageCandidates:[
    'Event Directory & Outing Inquiries','Public Event Hub','ATC Event Operations',
-   'Check-in & Attendance','Vendor & Volunteer Coordination','Donations, Raffles & Contests'
+   'Check-in & Attendance','Vendor & Volunteer Coordination','Donations, Raffles & Contests',
+   'Team Invitations & Account Claims','Team Swaps & Captain Changes',
+   'Golf Genius Export & Print Rosters','Event Communications & Reminders',
+   'Event Materials & Print','Event Contracts & Insurance'
   ]},
  {id:'inception-apex',name:'InceptionApex',shortName:'InceptionApex',group:'Creative & Marketing',
   description:'Creative studio, design tools, reusable assets and marketing production.',
   components:['inception'],
-  coverageCandidates:['Design Library & Templates','Creative Export & Publishing Workflows']},
+  coverageCandidates:['Design Library & Templates','Creative Export & Publishing Workflows',
+   'Canva & Adobe Creative Connections','Shared Creative Assets & Reuse']},
  {id:'social-marketing',name:'Social Media & Ads',shortName:'Social Media & Ads',group:'Creative & Marketing',
   description:'Campaign planning, social posting, ad placement and channel connections.',
   components:['social'],
-  coverageCandidates:['Provider Login & Publishing','Hangar Social Channel Authorization']},
+  coverageCandidates:['Provider Login & Publishing','Hangar Social Channel Authorization',
+   'Campaign Planning & Scheduling','Advertising Placement & Packages',
+   'Campaign Performance & Attribution']},
  {id:'squawk-box',name:'Squawk Box',shortName:'Squawk Box',group:'Communications',
   description:'In-app and external communications with permissions and delivery controls.',
   components:['squawk'],
-  coverageCandidates:['Cross-App Message Routing','Communication Provider Connections']},
+  coverageCandidates:['Cross-App Message Routing','Communication Provider Connections',
+   'Delivery Tracking & Quiet Hours','Event Hub & Passenger Messaging']},
  {id:'commerce',name:'Commerce & Stores',shortName:'Commerce & Stores',group:'Commerce',
   description:'Products, invoices, contracts, catalog, inventory and business transactions.',
   components:['invoices','product-registry','contracts','pos-tax'],
-  coverageCandidates:['Multi-Store & Direct B2B Sales','Product Deals & Fulfillment']},
+  coverageCandidates:['Multi-Store & Direct B2B Sales','Product Deals & Fulfillment',
+   'Gift & Business Registries','Offer & Deal Tracking',
+   'Catering & Set the Table Links','Inventory Reconciliation & Duplicates']},
  {id:'platform',name:'EIG Platform & Accounts',shortName:'Platform & Accounts',group:'Platform',
   description:'Identity, organization permissions and the Hangar/Cockpit/Airport platform structure.',
   components:['accounts'],
-  coverageCandidates:['Command Center & Hangar','Cockpit & Airport','Universal User Directory','Airspace']},
+  coverageCandidates:['Command Center & Hangar','Cockpit & Airport','Universal User Directory','Airspace',
+   'Onboarding & Invitations','Temporary Roles & Delegated Access','Shared App Notifications']},
  {id:'golf',name:'EIG Golf Tools',shortName:'EIG Golf Tools',group:'Golf',
   description:'Course maps, flyovers and other golf-specific tools.',
   components:['maps'],
-  coverageCandidates:['GPS & Yardage Research']},
+  coverageCandidates:['GPS & Yardage Research','Course Flyovers & Map Assets','Live Golf Scoring']},
  {id:'build-lab',name:'Build Lab',shortName:'Build Lab',group:'Platform',
   description:'Source scanning, work review, approved plans and quality checks.',
   components:['build-lab'],
   coverageCandidates:['Automatic Scanner Registration','Completion Evidence & Gauges',
-   'Research & Innovation Scanner']}
+   'Research & Innovation Scanner','Guided Work Buckets & Fix Plans',
+   'Hangar Connection Adoption','Scan History & Recovery',
+   'AI Review & Improvement Radar']}
 ]);
+
+/**
+ * Candidate source locations for inspecting proposed or known app parts.
+ * A hint says where to LOOK, not that the feature works or is even built.
+ * Keep this separate from production scanner allowlists and test receipts.
+ */
+export const APP_PART_SOURCE_HINTS=Object.freeze({
+ 'eie':{
+  'Event Directory & Outing Inquiries':['src/PlatformApp.jsx'],
+  'Public Event Hub':['src/PlatformApp.jsx'],
+  'ATC Event Operations':['src/PlatformApp.jsx'],
+  'Check-in & Attendance':['src/lib/checkInRoster.mjs','src/lib/checkInPrint.mjs'],
+  'Team Invitations & Account Claims':['src/GolfTeamInvitation.jsx','src/EieTeamManagement.jsx'],
+  'Team Swaps & Captain Changes':['src/EieTeamManagement.jsx'],
+  'Golf Genius Export & Print Rosters':['src/EieRosterMaintenance.jsx'],
+  'Event Communications & Reminders':['src/SquawkCenter.jsx'],
+  'Event Materials & Print':['src/components/EventMaterials.jsx']
+ },
+ 'inception-apex':{
+  'Design Library & Templates':['src/components/DesignProductCatalog.jsx'],
+  'Creative Export & Publishing Workflows':['src/lib/inceptionDrive.js'],
+  'Shared Creative Assets & Reuse':['src/components/CreativeLinkControls.jsx']
+ },
+ 'social-marketing':{
+  'Campaign Planning & Scheduling':['src/components/CampaignPlanning.jsx'],
+  'Advertising Placement & Packages':['src/lib/socialCampaign.mjs']
+ },
+ 'squawk-box':{
+  'Cross-App Message Routing':['src/SquawkCenter.jsx'],
+  'Communication Provider Connections':['src/SquawkCenter.jsx']
+ },
+ // Commerce prototype paths are excluded or no longer present in this branch.
+ // Keep the requirement visible without claiming a source location.
+ 'commerce':{},
+ 'platform':{
+  'Command Center & Hangar':['src/PlatformApp.jsx'],
+  'Cockpit & Airport':['src/ElevationAirport.jsx'],
+  'Universal User Directory':['src/lib/accountIdentity.mjs'],
+  'Onboarding & Invitations':['src/PlatformApp.jsx'],
+  'Temporary Roles & Delegated Access':['src/PlatformApp.jsx']
+ },
+ 'build-lab':{
+  'Completion Evidence & Gauges':['src/components/BuildLabAppStack.jsx'],
+  'Guided Work Buckets & Fix Plans':['src/components/BuildLabWorkBuckets.jsx'],
+  'Hangar Connection Adoption':['src/components/BuildLabHangarConnections.jsx'],
+  'Scan History & Recovery':['src/components/BuildLabScanHistory.jsx'],
+  'AI Review & Improvement Radar':['src/lib/eigBuildLabAiClient.mjs']
+ }
+});
+
+export function candidateScopeEntries(app){
+ if(!app||!Array.isArray(app.coverageCandidates))return [];
+ const hints=APP_PART_SOURCE_HINTS[app.id]||{};
+ return app.coverageCandidates.map((name,index)=>({
+  id:app.id+'-scope-'+(index+1),
+  name,
+  sourceHints:Array.isArray(hints[name])?[...hints[name]]:[],
+  scannerStatus:'Feature-specific scanner coverage to review',
+  proofStatus:'No independent feature-level implementation or test verdict'
+ }));
+}
 
 const isMeasured=v=>Number.isFinite(v)&&v>=0&&v<=100;
 export function buildApplicationHierarchy(components=[]){
@@ -70,6 +143,7 @@ export function buildApplicationHierarchy(components=[]){
     (app.components.length-parts.length);
   return {
    ...app,parts,
+   scopeEntries:candidateScopeEntries(app),
    componentCount:app.components.length,
    scannedCount:scannerCoverage,
    unscannedCount:app.components.length-scannerCoverage,

@@ -2,7 +2,7 @@
 
 Status: **isolated browser storage and recovery PASS (2026-10-31); production storage remains OFF and unapplied**.
 Branch: `release/build-lab-v1-owner-only-20261028`.
-Owner-only preview scanning and local Scan → History → Work Buckets → Review & Fix Plan are verified. The separate **5. Cloud Storage** preview tab successfully saved one Master Scan and 13 Work Bucket findings to a disposable Supabase development branch, retrieved them after refresh, and restored the browser from the saved cloud snapshot. Production cloud persistence is **not activated**.
+Owner-only preview scanning and local Scan → History → Work Buckets → Review & Fix Plan are verified. The separate **5. Cloud Storage** preview tab successfully saved one Master Scan, 13 Work Bucket findings and one synthetic Manager Plan to a disposable Supabase branch; all three were restored and compared successfully (cloud revisions **2, 2, 1**). Production cloud persistence is **not activated**.
 
 ## Files staged for review
 
@@ -35,17 +35,18 @@ Owner-only preview scanning and local Scan → History → Work Buckets → Revi
 | Runtime isolation | Preview uses an isolated test data store with no production writes. Current Preview endpoint must deny records while flag is off |
 | Deploy & rollback | Tests pinned to exact commit; protected preview, manual owner walkthrough, server logs and backup verified; rollback disables flags without deleting retained records |
 
-## Next authorized work
+## Next authorized work (updated 2026-11-02)
 
-- The isolated database schema, server-side save, revision history, explicit browser backup, browser reload, and restore have passed live testing. Convert the production **unapplied** schema proposal into a reviewed migration using the Supabase CLI workflow; do not apply to production without a separate go/no-go decision.
-- Finish the remaining acceptance tests: direct negative requests against the running preview endpoint, cross-session stale revision conflict, and an actual UI Manager Plan save/recovery. Automated negative-role and Manager Plan regression tests are staged but must pass the exact release CI run.
-- Add a **separate preview store adapter** bound only to test data and require explicit feature flags before testing cloud save/restore.
-- Once a verified cloud backup exists, expand additional scanners and connect **approved planning handoffs** to developer work packages and CI, never automatic production changes.
-
+- **Migration parity is the immediate production blocker.** The live database has 67 migrations, but the release branch has 13 SQL migration files: 10 versions match, 57 exist only in live history, and 3 source versions are unmatched. See [production migration baseline audit](Build-Lab-Production-Migration-Baseline-Audit-2026-11-02.md). The failing full replay of the isolated branch means storage-only tests cannot authorize production DDL.
+- **8/8 isolated CI jobs passed** at GitHub Actions run #80 (commit `1d6fb001`); SQL privileges, versioning, browser restore and synthetic Manager Plan have been verified. Retain this evidence rather than rerunning browser tests unnecessarily.
+- **Live API-denial verification still requires authenticated Vercel access.** An external no-token request was intercepted by Vercel Authentication. The perimeter is protected, but the application owner gate was not reached. Use authorized `vc curl` or short-lived project-scope credentials, without disabling Deployment Protection; test negative tokens, wrong host/origin, stale revision and nonowner/revoked sessions with no production mutation.
+- Reconcile migration baselines, generate a reviewed **new migration using Supabase CLI** and rehearse it on a representative isolated database. No direct production `apply_migration`, schema reset or migration-history repair without explicit go/no-go.
+- After green CI, migration rehearsal, application-owner gate and owner-approved production rollout, turn ON live records flags in stages, verify one explicit save/restore, monitor logs, and disable flags to roll back without deleting history.
+- Export test records and remove branch-scoped preview storage credentials/flags before deleting temporary development branch to stop billed usage.
 
 ## Verified isolated environment evidence (2026-10-31)
 
-See [Cloud Storage Acceptance](Build-Lab-Cloud-Storage-Acceptance-2026-10-31.md). Isolated Supabase branch `lhycwhwopjirbipfblym` has **Scan History revision 2, 1 scan**, and **Work Buckets revision 2, 13 items**. Each preserves two revision-history rows. Browser restore did not change cloud revision counters. The branch still reports `MIGRATIONS_FAILED` from unrelated historical application migration replay, so this is valid only as a **Build Lab storage-only** test. The temporary branch remains billable until deleted and should be retired after the remaining acceptance steps and export.
+See [Cloud Storage Acceptance](Build-Lab-Cloud-Storage-Acceptance-2026-10-31.md). Isolated Supabase branch `lhycwhwopjirbipfblym` has **Scan History revision 2, 1 scan**, and **Work Buckets revision 2, 13 items**. Each preserves two revision-history rows. Browser restore did not change cloud revision counters. The synthetic Manager Plan at revision 1 also passed full browser recovery, with all three records displaying Same. The branch still reports `MIGRATIONS_FAILED` from unrelated historical application migration replay, so this is valid only as a **Build Lab storage-only** test. The temporary branch remains billable until deleted and should be retired after the remaining acceptance steps and export.
 
 ## Recovery / rollback
 

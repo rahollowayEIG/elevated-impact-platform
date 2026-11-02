@@ -112,5 +112,34 @@
       }
     ],
     "caveat": "Current privileges verified; migration semantic equivalence and business regressions remain unverified."
+  },
+  "functionBodyVerification": {
+    "method": "Read-only compare repository PL/pgSQL dollar-quoted function body with current pg_proc.prosrc",
+    "observedOn": "2026-11-02",
+    "results": [
+      {
+        "sourceVersion": "20261009200051",
+        "function": "public.golf_claim_manual_captain_invitation",
+        "exactCurrentBody": true,
+        "bodyCharacters": 2349,
+        "securityDefiner": false
+      },
+      {
+        "sourceVersion": "20261009193756",
+        "function": "public.eie_staff_team_roster_update",
+        "exactCurrentBody": false,
+        "sourceBodyCharacters": 10972,
+        "currentBodyCharacters": 12456,
+        "notes": "Later payment and roster migrations may alter current function; reconcile in chronological replay."
+      },
+      {
+        "sourceVersion": "20261009194203",
+        "function": "public.eie_staff_team_roster_update",
+        "exactCurrentBody": false,
+        "sourceBodyCharacters": 10986,
+        "currentBodyCharacters": 12456,
+        "notes": "Later payment and roster migrations may alter current function; reconcile in chronological replay."
+      }
+    ]
   }
 }

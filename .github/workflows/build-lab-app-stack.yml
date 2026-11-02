@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -25,6 +27,7 @@ jobs:
           node --test \
             tests/build-lab-app-stack.test.mjs \
             tests/build-lab-app-hierarchy.test.mjs \
+            tests/build-lab-source-coverage-audit.test.mjs \
             tests/build-lab-hangar-connections.test.cjs \
             tests/build-lab-hangar-connections-client.test.mjs \
             tests/build-lab-owner-explanations.test.mjs \
@@ -33,6 +36,10 @@ jobs:
             tests/build-lab-ai-production-owner.test.cjs \
             tests/build-lab-production-go-live-gate.test.cjs \
             tests/build-lab-evidence-package.test.mjs
+      - name: Detect new source files without Build Lab app ownership
+        env:
+          BUILD_LAB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/build-lab-source-coverage-audit.mjs
       - name: Verify Vite production build and platform test suite
         run: npm run build
       - name: Release limits

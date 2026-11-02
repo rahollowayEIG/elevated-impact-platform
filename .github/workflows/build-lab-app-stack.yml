@@ -20,10 +20,12 @@ jobs:
           node-version: '22'
       - name: Install locked dependencies
         run: npm ci
-      - name: Check app stack metrics, workflow, evidence and owner protections
+      - name: Check app, Hangar and social integration evidence, strict owner security and client reports
         run: |
           node --test \
             tests/build-lab-app-stack.test.mjs \
+            tests/build-lab-hangar-connections.test.cjs \
+            tests/build-lab-hangar-connections-client.test.mjs \
             tests/build-lab-owner-explanations.test.mjs \
             tests/build-lab-work-buckets.test.mjs \
             tests/build-lab-ai-review.test.cjs \
@@ -36,4 +38,4 @@ jobs:
         if: always()
         run: |
           echo 'App Stack only reports owner-local scanner and plan evidence. Built and Verified completion remain unscored until approved feature scope and passing test receipts are linked.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'No new API endpoint, data migration, live database query, background agent, repair runner or release permission is included.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A new owner-only read-only Hangar connection inventory API is included; it only returns safe organization and channel summary metadata. No database migrations, customer rows, OAuth secrets, write actions or auto-deployment permissions.' >> "$GITHUB_STEP_SUMMARY"

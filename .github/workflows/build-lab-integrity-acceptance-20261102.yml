@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - test/build-lab-integrity-acceptance-20261102
+  pull_request:
+    branches:
+      - release/build-lab-v1-owner-only-20261028
   workflow_dispatch:
 permissions:
   contents: read

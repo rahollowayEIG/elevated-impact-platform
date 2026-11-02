@@ -1,0 +1,41 @@
+name: Build Lab App Stack and Meter Acceptance
+on:
+  push:
+    branches:
+      - feature/build-lab-app-stack-gauges-20261102
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  app-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check app, Hangar and social integration evidence, strict owner security and client reports
+        run: |
+          node --test \
+            tests/build-lab-app-stack.test.mjs \
+            tests/build-lab-hangar-connections.test.cjs \
+            tests/build-lab-hangar-connections-client.test.mjs \
+            tests/build-lab-owner-explanations.test.mjs \
+            tests/build-lab-work-buckets.test.mjs \
+            tests/build-lab-ai-review.test.cjs \
+            tests/build-lab-ai-production-owner.test.cjs \
+            tests/build-lab-production-go-live-gate.test.cjs \
+            tests/build-lab-evidence-package.test.mjs
+      - name: Verify Vite production build and platform test suite
+        run: npm run build
+      - name: Release limits
+        if: always()
+        run: |
+          echo 'App Stack only reports owner-local scanner and plan evidence. Built and Verified completion remain unscored until approved feature scope and passing test receipts are linked.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A new owner-only read-only Hangar connection inventory API is included; it only returns safe organization and channel summary metadata. No database migrations, customer rows, OAuth secrets, write actions or auto-deployment permissions.' >> "$GITHUB_STEP_SUMMARY"

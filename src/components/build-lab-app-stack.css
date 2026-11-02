@@ -58,3 +58,5 @@
 .bl-stack-future-scope li{border:1px solid #527693;border-radius:9px;padding:10px;background:#22445f}
 .bl-stack-future-scope li span{font-size:.82rem;color:#c4d8e9}
 @media(max-width:700px){.bl-stack-future-scope ul{grid-template-columns:1fr}}
+
+.bl-stack-future-scope .bl-scope-source-hint{display:block;margin-top:6px;font-size:.75rem;color:#c4d8e9;line-height:1.4;overflow-wrap:anywhere}

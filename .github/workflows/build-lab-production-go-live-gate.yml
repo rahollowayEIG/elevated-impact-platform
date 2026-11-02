@@ -1,0 +1,65 @@
+name: Build Lab Production Read-only Release Gate
+on:
+  push:
+    branches:
+      - release/build-lab-v1-owner-only-20261028
+    paths:
+      - 'tests/build-lab-production-go-live-gate.test.cjs'
+      - '.github/workflows/build-lab-production-go-live-gate.yml'
+      - 'server/eig-build-lab-*.cjs'
+      - 'api/eig-build-lab-*.js'
+      - 'src/components/BuildLab*.jsx'
+      - 'src/PlatformApp.jsx'
+      - 'src/lib/buildLab*.mjs'
+      - 'vercel.json'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Owner auth, AI separation, storage denial and scanners
+        run: |
+          node --test \
+            tests/build-lab-production-go-live-gate.test.cjs \
+            tests/build-lab-owner-release-readiness.test.cjs \
+            tests/build-lab-owner-preview-access.test.cjs \
+            tests/build-lab-v1-source-scope.test.cjs \
+            tests/build-lab-v1-vercel-package.test.cjs \
+            tests/build-lab-integrity.test.cjs \
+            tests/build-lab-integrity-client.test.mjs \
+            tests/build-lab-master-source-integration.test.mjs \
+            tests/eig-build-lab-live-client.test.mjs \
+            tests/build-lab-ai-review.test.cjs \
+            tests/eig-build-lab-durable-records.test.cjs \
+            tests/build-lab-preview-records.test.cjs
+      - name: Evidence history, owner review and cloud fail-closed regressions
+        run: |
+          node --test \
+            tests/build-lab-evidence-package.test.mjs \
+            tests/build-lab-evidence-recovery.test.mjs \
+            tests/build-lab-work-buckets.test.mjs \
+            tests/build-lab-manager-blueprint.test.mjs \
+            tests/build-lab-cloud-records.test.mjs \
+            tests/build-lab-cloud-backup.test.mjs
+      - name: Existing platform functional test suite and production build
+        run: npm run build
+      - name: Report explicit limitations and tested commit
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          echo "Release gate candidate SHA: $SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow never connects to production Supabase, performs DB migrations, or deploys." >> "$GITHUB_STEP_SUMMARY"
+          echo "Owner authenticated browser go-live, Vercel production env flags, rollback and production runtime confirmation still require separate verification." >> "$GITHUB_STEP_SUMMARY"

@@ -18,6 +18,10 @@ jobs:
           node-version: "22"
       - name: Run offline migration manifest contracts
         run: node --test tests/build-lab-migration-recovery.test.mjs
+      - name: Run bounded offline source inventory tests
+        run: node --test tests/build-lab-offline-source-inventory.test.cjs
+      - name: Write offline source inventory
+        run: node scripts/build-lab-offline-source-inventory.cjs > source-inventory.json
       - name: Generate read-only migration comparison
         run: node scripts/build-lab-compare-migration-manifest.mjs > migration-comparison.json
       - name: Summarize migration drift counts
@@ -31,4 +35,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: migration-recovery-comparison
-          path: migration-comparison.json
+          path: |
+            migration-comparison.json
+            source-inventory.json

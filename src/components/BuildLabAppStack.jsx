@@ -62,7 +62,7 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
  return <section className="platform-section-card bl-app-stack" aria-label="Build Lab app stack and completion gauges">
   <p className="platform-eyebrow">BUILD LAB / APP STACK</p>
   <h2>App Stack &amp; Build Meters</h2>
-  <p>One place to see what has been scanned, where review is needed, and what's ready for planning. Built and Verified gauges stay <strong>Not measured</strong> until we have an approved requirement checklist and real passing test evidence. Code markers alone cannot produce an honest completion score.</p>
+  <p>One place to see what has been scanned, where review is needed, and what's ready for planning. Built, Verified, Integration and Overall gauges stay <strong>Not measured</strong> until we have an approved scope, required app connections and real passing test evidence. An app may be ready on its own while its platform integrations remain unfinished. Code markers alone cannot produce an honest completion score.</p>
   {error&&<p role="alert" className="platform-error">{error}</p>}
   <div className="bl-stack-summary" aria-label="App Stack overview">
    <div><strong>{data.summary.tracked}</strong><span>Tracked app areas</span></div>
@@ -89,6 +89,8 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
     <div className="bl-stack-meters">
      <Meter title="Built %" value={card.build} reason="Awaiting approved feature scope and implementation evidence." />
      <Meter title="Verified %" value={card.verified} reason="Awaiting passing, exact-version feature tests." />
+     <Meter title="Integration %" value={card.integration} reason="Awaiting approved app-to-app connections and passing integration tests." />
+     <Meter title="Overall %" value={card.overall} reason="Awaiting measured build, verification and integration progress." />
     </div>
     <details className="bl-stack-signals">
      <summary>See available scan evidence</summary>
@@ -105,8 +107,17 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
      <div><dt>On hold</dt><dd>{card.hold}</dd></div>
      <div><dt>Plans prepared</dt><dd>{card.planned}</dd></div>
      <div><dt>Fixes running</dt><dd>Not tracked</dd></div>
+     <div><dt>Standalone readiness</dt><dd>{card.standaloneReadiness}</dd></div>
+     <div><dt>Ecosystem readiness</dt><dd>{card.ecosystemReadiness}</dd></div>
      <div><dt>Launch readiness</dt><dd>{card.readiness}</dd></div>
     </dl>
+    <details className="bl-stack-signals">
+     <summary>App integrations to review ({card.integrationCandidates.length} candidates)</summary>
+     <p className="bl-stack-small">These are proposed app-to-app connections from our architecture, not verified live links or approved launch requirements. The owner must confirm which are required for this app's current release.</p>
+     {card.integrationCandidates.length?<ul>{card.integrationCandidates.map(link=><li key={link.id}><strong>{link.name}</strong> · {link.state}</li>)}</ul>:
+      <p>No candidate integrations recorded yet. This does not prove integration is complete.</p>}
+     <p><strong>Integration %:</strong> {card.integrationReason}</p>
+    </details>
     <p className="bl-stack-small"><strong>Current activity:</strong> {card.activity}</p>
     <p className="bl-stack-next"><strong>Next step:</strong> {card.nextAction}</p>
     {card.unresolved>0&&<p className="bl-stack-small"><strong>Open review:</strong> {card.unresolved} finding(s) awaiting a decision or test.</p>}
@@ -114,10 +125,10 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
      <button type="button" className="platform-secondary-button" onClick={()=>onReview(card.id)}>Review this app</button>
      <button type="button" className="platform-secondary-button" onClick={()=>setExpanded(s=>({...s,[card.id]:!s[card.id]}))} aria-expanded={!!expanded[card.id]}>{expanded[card.id]?'Hide details':'What do the gauges mean?'}</button>
     </div>
-    {expanded[card.id]&&<p className="bl-stack-small" role="note"><strong>Built %</strong> compares completed approved requirements with the current release scope. <strong>Verified %</strong> counts only requirements backed by passing tests. Adding requirements can lower a percentage without undoing earlier work. Repair activity has its own progress once a verified workflow records actual implementation steps. {card.note}</p>}
+    {expanded[card.id]&&<p className="bl-stack-small" role="note"><strong>Built %</strong> compares completed approved requirements with the current release scope. <strong>Verified %</strong> counts only requirements backed by passing tests. <strong>Integration %</strong> compares required, owner-approved app connections with verified end-to-end connections. <strong>Overall %</strong> is not calculated until those three measurements have an agreed weighting. <strong>Standalone readiness</strong> and <strong>Ecosystem readiness</strong> are separate. Adding requirements can lower a percentage without undoing earlier work. Repair activity has its own progress once a verified workflow records actual implementation steps. {card.note}</p>}
    </article>)}
   </div>
   {!cards.length&&<p>No apps match this filter. Clear the search to see the full stack.</p>}
-  <p className="bl-stack-small">Launch Runway rule: no app is marked launch-ready from AI suggestions, source-file matches, planned batches, or test-script presence alone. Verified milestones, blockers, regression results and a release decision must be recorded first.</p>
+  <p className="bl-stack-small">Launch Runway rule: an app can be standalone-ready and still need ecosystem integration. No app is marked launch-ready from AI suggestions, source-file matches, proposed integrations, planned batches, or test-script presence alone. Verified milestones, blockers, regression results and a release decision must be recorded first.</p>
  </section>;
 }

@@ -3,6 +3,7 @@ import {HISTORY_EVENT,SCAN_TYPES,historyKey,readScanHistory} from '../lib/buildL
 import {managerStorageKey} from '../lib/buildLabManagerBlueprint.mjs';
 import {WORK_BUCKETS,WORK_INTENTS,WORK_STATES,WORK_EVENT,validateWorkLedger,readWorkLedger,saveWorkLedger,collectScanWork,approveBucketSelection,setBucketDisposition,batchWorkBlueprint,reviseWorkItem,addBuildBrief,addManualFinding,reviewManualFinding,MANUAL_OUTCOMES,createWorkBatch,approveWorkBatch,batchIsCurrent,workBatchPlan,workRoute} from '../lib/buildLabWorkBuckets.mjs';
 import {FINDING_KINDS,findingAssessment} from '../lib/buildLabFindingStandards.mjs';
+import BuildLabGuidedReview from './BuildLabGuidedReview.jsx';
 import './build-lab-work-buckets.css';
 const blank={title:'',detail:'',completion:'',apps:'platform'};
 const blankReport={title:'',app:'inception-apex',expected:'',actual:'',steps:'',completion:'',bucket:'interface',environment:'',sourceVersion:'',relatedId:''};
@@ -67,6 +68,17 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
  function edit(j){setEditing(j.id);setDraft({...j,apps:j.apps.join(', ')});}
  function saveEdit(){const id=editing;if(mutate(l=>{let next=l;const previous=l.jobs.find(j=>j.id===id);if(draft.manualFinding&&(draft.manualFinding.outcome!==previous?.manualFinding?.outcome||draft.manualFinding.verificationNote!==previous?.manualFinding?.verificationNote))next=reviewManualFinding(next,id,{outcome:draft.manualFinding.outcome,note:draft.manualFinding.verificationNote});return reviseWorkItem(next,id,{title:draft.title,detail:draft.detail,completion:draft.completion,bucket:draft.bucket,intent:draft.intent,scope:draft.scope,apps:draft.apps.split(',').map(x=>x.trim()).filter(Boolean),state:draft.manualFinding?next.jobs.find(j=>j.id===id).state:draft.state,manualReason:draft.manualReason});},'Work item saved locally. Existing batches retain their original scope for review.')){setSelected(s=>s.filter(x=>x!==id));setEditing('');}}
  function reportIssue(){const title=reported.title;if(mutate(l=>addManualFinding(l,{...reported,id:'manual:'+crypto.randomUUID(),environment:reported.environment||window.location.origin}),'Manual issue recorded On hold. Verify its behavior before approving a repair.')){setReported(blankReport);setQuery(title);setBucket('all');setState('all');setIntent('all');setAssessmentKind('all');setSelected([]);}}
+ function guidedDecision(job,action){
+  const selection=[{id:job.id,signature:job.signature}];
+  let ok=false;
+  if(action==='approve')ok=mutate(l=>approveBucketSelection(l,{selection,idPrefix:crypto.randomUUID(),title:job.title}),
+   'Review scope saved; Build Lab prepared the plan. No implementation was authorized.');
+  else if(action==='hold'||action==='dismiss')ok=mutate(l=>setBucketDisposition(l,{
+   selection,state:action==='dismiss'?'dismissed':'hold'}),
+   action==='hold'?'Finding held for manual testing.':'Suggestion dismissed.');
+  if(ok)setSelected(ids=>ids.filter(id=>id!==job.id));
+  return ok;
+ }
  function openPlan(batch){try{const current=readWorkLedger(localStorage,ownerUserId),plan=workBatchPlan(current,batch.id),key=managerStorageKey(ownerUserId);if(!key)throw Error('Owner account required.');if(localStorage.getItem(key)&&!window.confirm('Open this batch in implementation review? This replaces the current Manager draft. Your batch remains saved in Work Buckets.'))return;localStorage.setItem(key,JSON.stringify(plan));onOpenManager?.();}catch(e){setError(e.message);}}
  return <section className="platform-section-card bl-work" aria-labelledby="bl-work-title">
   <p className="platform-eyebrow">SCAN → BUCKETS → REVIEWED WORK BATCHES</p>
@@ -76,6 +88,10 @@ export default function BuildLabWorkBuckets({ownerUserId,onOpenManager}){
   <p className="bl-quiet">Saved in this browser and preview address only. Batch approval records scope; it does not run agents or deploy changes.</p>
   {error&&<p className="platform-error" role="alert">{error}</p>}{draftSaveError&&<p className="platform-error" role="alert">{draftSaveError}</p>}{selectionError&&<p className="platform-error" role="alert">{selectionError}</p>}{notice&&<p className="bl-notice" role="status">{notice}</p>}
   {ledger&&<>
+   <BuildLabGuidedReview ownerUserId={ownerUserId} jobs={jobs}
+    approvedIds={[...approvedIds]} approvedPlans={ledger.batches.filter(b=>b.status==='approved'&&batchIsCurrent(ledger,b)).length}
+    onDecision={guidedDecision}
+    onOpenPlan={()=>{const next=ledger.batches.find(b=>b.status==='approved'&&batchIsCurrent(ledger,b));if(next)openPlan(next);}} />
    {draftExists&&<p role="status" className="bl-notice"><strong>Draft saved in this browser</strong>{draftSavedAt?' · '+new Date(draftSavedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):' · Restored from an earlier session'}. Not yet recorded as an issue. The report form reopens with your entries.</p>}
    <details className="bl-work-brief" open={draftExpanded} onToggle={e=>setDraftExpanded(e.currentTarget.open)}><summary>Report an issue scanners missed{draftExists?' · Unsubmitted draft saved':''}</summary>
     <p>Owner-only manual observation. Reports start On hold, not as scanner-confirmed defects. Do not include customer records, private screenshots, passwords or tokens. Nothing runs or deploys.</p><p className="bl-quiet">Draft autosave is on. Unsubmitted entries survive refreshing or leaving Work Buckets in this browser and preview address; they do not sync to other devices. Recording the issue saves it separately and clears the draft.</p>

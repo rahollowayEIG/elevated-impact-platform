@@ -1,0 +1,40 @@
+name: Build Lab Guided Owner Workflow Acceptance
+on:
+  push:
+    branches:
+      - feature/build-lab-guided-owner-workflow-20261102
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guided-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify guided explanations, owner decisions, stored evidence, review and AI isolation
+        run: |
+          node --test \
+            tests/build-lab-owner-explanations.test.mjs \
+            tests/build-lab-work-buckets.test.mjs \
+            tests/build-lab-manager-blueprint.test.mjs \
+            tests/build-lab-ai-review.test.cjs \
+            tests/build-lab-ai-production-owner.test.cjs \
+            tests/build-lab-production-go-live-gate.test.cjs \
+            tests/build-lab-evidence-package.test.mjs \
+            tests/build-lab-evidence-recovery.test.mjs
+      - name: Verify production Vite build and current platform regressions
+        run: npm run build
+      - name: Release caveats
+        if: always()
+        run: |
+          echo 'Guided flow is owner-local and planning only. No background AI calls, schema changes, code writes, payments, or deploy automation.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Verify owner browser flow and preserved local history before treating this feature as complete.' >> "$GITHUB_STEP_SUMMARY"

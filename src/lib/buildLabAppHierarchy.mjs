@@ -91,9 +91,9 @@ export const APP_PART_SOURCE_HINTS=Object.freeze({
   'Cross-App Message Routing':['src/SquawkCenter.jsx'],
   'Communication Provider Connections':['src/SquawkCenter.jsx']
  },
- 'commerce':{
-  'Inventory Reconciliation & Duplicates':['src/lib/epProductCapture.mjs']
- },
+ // Commerce prototype paths are excluded or no longer present in this branch.
+ // Keep the requirement visible without claiming a source location.
+ 'commerce':{},
  'platform':{
   'Command Center & Hangar':['src/PlatformApp.jsx'],
   'Cockpit & Airport':['src/ElevationAirport.jsx'],

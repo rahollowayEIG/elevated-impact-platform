@@ -7,6 +7,7 @@ import {requestLiveBuildLabScan} from '../lib/eigBuildLabLiveClient.mjs';
 import {requestBuildLabAiReview} from '../lib/eigBuildLabAiClient.mjs';
 import BuildLabCloudBackup from './BuildLabCloudBackup.jsx';
 import BuildLabAppStack from './BuildLabAppStack.jsx';
+import BuildLabHangarConnections from './BuildLabHangarConnections.jsx';
 
 // Owner-only Build Lab. Opt-in AI planning is disabled by default and never
 // grants builder, agent, source writer, payment or deployment privileges.
@@ -75,7 +76,7 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   </section>
   <nav className="platform-section-card" aria-label="Build Lab V1 owner workflow">
    {[
-    ['stack','App Stack'],['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan'],
+    ['stack','App Stack'],['hangars','Hangar Connections'],['scanners','1. Scan'],['history','2. History'],['buckets','3. Work Buckets'],['plans','4. Review & Fix Plan'],
     ...(RECORDS_UI_ENABLED?[['cloud','5. Cloud Storage']]:[])
    ].map(([id,label])=><button type="button" key={id}
     className={activeTool===id?'platform-primary-button':'platform-secondary-button'}
@@ -84,8 +85,9 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   {error&&<p role="alert" className="platform-error">{error}</p>}
   {recordNotice&&<p role="status">{recordNotice}</p>}
   {activeTool==='stack'&&<BuildLabAppStack key={ownerUserId} ownerUserId={ownerUserId}
-   onScan={()=>setActiveTool('scanners')}
+   onScan={()=>setActiveTool('scanners')} onHangars={()=>setActiveTool('hangars')}
    onReview={id=>{setFocusedModule(id);setActiveTool('buckets');}} />}
+  {activeTool==='hangars'&&<BuildLabHangarConnections key={ownerUserId} supabaseClient={supabaseClient}/>}
   {activeTool==='scanners'&&<section className="platform-section-card">
    <h2>Read-only source scanners</h2>
    <p>Every scan rechecks the owner session on the server. If the server is not enabled for Live, access is denied.</p>

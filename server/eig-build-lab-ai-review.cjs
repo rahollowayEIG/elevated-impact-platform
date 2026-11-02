@@ -96,7 +96,15 @@ function createBuildLabAiReviewHandler({env,authorize,verifyUser,membershipsForU
  return async(req,res)=>{
   const grant=await authorize(req,{env,verifyUser,membershipsForUser,verifyLiveSession,now});
   if(!grant.allowed)return response(res,grant.status,{ok:false});
-  if(env('VERCEL_ENV')!=='preview'||env('EIG_BUILD_LAB_AI_REVIEW_ENABLED')!=='true')
+  // Production AI is a separate, explicit opt-in from preview AI. The caller
+  // must first pass the environment-specific owner/session/membership gate.
+  const previewEnabled=env('VERCEL_ENV')==='preview'&&
+   env('EIG_BUILD_LAB_AI_REVIEW_ENABLED')==='true';
+  const productionEnabled=env('VERCEL_ENV')==='production'&&
+   env('VERCEL_GIT_COMMIT_REF')==='main'&&
+   env('EIG_BUILD_LAB_LIVE_READONLY_ENABLED')==='true'&&
+   env('EIG_BUILD_LAB_AI_PRODUCTION_ENABLED')==='true';
+  if(!previewEnabled&&!productionEnabled)
    return response(res,403,{ok:false});
   const body=req.body;
   if(!body||typeof body!=='object'||Array.isArray(body)||

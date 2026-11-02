@@ -24,6 +24,38 @@ export const APP_STACK_CATALOG=Object.freeze([
  {id:'contracts',name:'Agreements & DocuSign',group:'Commerce'},
  {id:'pos-tax',name:'POS, Catalog & Tax',group:'Commerce'}
 ]);
+/**
+ * Candidate cross-app connections, not an approved dependency contract and
+ * never proof that a connection exists, fails, or is required for launch.
+ * A reviewed, versioned integration baseline and passing end-to-end receipts
+ * must precede an Integration % or ecosystem-ready verdict.
+ */
+export const APP_INTEGRATION_CANDIDATES=Object.freeze({
+ 'event-builder':['registration','event-packet','event-budget','sponsors'],
+ 'registration':['accounts','roster','payments','squawk'],
+ 'payments':['registration','roster','invoices'],
+ 'roster':['registration','accounts','payments'],
+ 'accounts':['registration','squawk'],
+ 'squawk':['registration','event-builder','accounts'],
+ 'sponsors':['event-builder','event-packet','invoices'],
+ 'event-packet':['event-builder','inception','sponsors'],
+ 'event-budget':['event-builder','payments','invoices'],
+ 'inception':['event-packet','social','sponsors','product-registry'],
+ 'social':['inception','sponsors','product-registry'],
+ 'build-lab':['accounts'],
+ 'maps':['event-builder','inception'],
+ 'invoices':['payments','product-registry','contracts'],
+ 'product-registry':['invoices','contracts','social','inception'],
+ 'contracts':['invoices','product-registry'],
+ 'pos-tax':['invoices','payments','product-registry']
+});
+export function candidateIntegrations(appId){
+ const targets=APP_INTEGRATION_CANDIDATES[appId]||[];
+ return targets.map(id=>({
+  id,name:APP_STACK_CATALOG.find(x=>x.id===id)?.name||id,
+  state:'Candidate; requires owner scope review and end-to-end testing'
+ }));
+}
 export const NOT_IN_LIVE_SCANNER=new Set(['invoices','product-registry','contracts','pos-tax']);
 const normalize=value=>String(value||'').toLowerCase().trim();
 const IDS=[...APP_STACK_CATALOG.map(x=>x.id)].sort((a,b)=>b.length-a.length);
@@ -101,7 +133,12 @@ export function buildAppStack({history=[],ledger=null}={}){
    ...app,scanned,scannerScope:notIncluded?'Outside current live scanner scope':'In current live scanner scope',
    stage:notIncluded?'Scope pending':!scanned?'Awaiting scan':mod.status==='evidence_present'?'Source evidence observed':'Needs verification',
    sourceStatus:mod?.sourceStatus||'not_scanned',
-   build:null,verified:null,  // No approved scope baseline or passing test receipts.
+   build:null,verified:null,integration:null,overall:null, // No approved requirements or passing test receipts.
+   integrationCandidates:candidateIntegrations(app.id),integrationRequirements:null,
+   integrationDone:null,
+   integrationReason:'Proposed app connections have not been approved as integration requirements or independently tested.',
+   overallReason:'Overall completion requires measured built, verified and integration progress.',
+   standaloneReadiness:'Not assessed',ecosystemReadiness:'Not assessed',
    buildReason:'Approved feature checklist has not been measured against implementation evidence.',
    verifiedReason:'No accepted, exact-commit end-to-end test receipts have been linked to app requirements.',
    sourceSignal:evidenceMarker(mod),testMarkers:marker(mod,'test'),

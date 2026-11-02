@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {HISTORY_EVENT,readScanHistory} from '../lib/buildLabScanHistory.mjs';
 import {WORK_EVENT,readWorkLedger,collectScanWork,saveWorkLedger} from '../lib/buildLabWorkBuckets.mjs';
-import {buildAppStack,APP_STACK_CATALOG} from '../lib/buildLabAppStack.mjs';
+import {buildAppStack} from '../lib/buildLabAppStack.mjs';
+import {buildApplicationHierarchy} from '../lib/buildLabAppHierarchy.mjs';
 import './build-lab-app-stack.css';
 
 const stamp=value=>value?new Date(value).toLocaleString():'No saved Master Scan';
@@ -27,6 +28,89 @@ function Signal({title,signal}){
   </div>:<small>{signal?.expected===0?'No checks specified in this scanner sample.':'No source sample saved.'}</small>}
  </div>;
 }
+const meters=[
+ {key:'build',label:'Built %',reason:'Approved feature requirements and implementation evidence have not been measured.'},
+ {key:'verified',label:'Verified %',reason:'Passing, exact-version test receipts have not been linked to all required components.'},
+ {key:'integration',label:'Integration %',reason:'Required cross-app connections and passing integration tests have not been approved.'},
+ {key:'overall',label:'Overall %',reason:'The approved scope and weighted component progress are not yet measured.'}
+];
+function FourMeters({data,parent=false}){
+ return <div className="bl-stack-meters" aria-label={parent?'Whole-app completion gauges':'Component completion gauges'}>
+  {meters.map(m=><Meter key={m.key} title={m.label} value={data[m.key]} reason={parent?m.reason:
+   m.key==='build'?'Awaiting approved feature scope and implementation evidence.':
+   m.key==='verified'?'Awaiting passing, exact-version feature tests.':
+   m.key==='integration'?'Awaiting approved app-to-app connections and passing integration tests.':
+   'Awaiting measured build, verification and integration progress.'}/>)}
+ </div>;
+}
+function AppPartCard({card,onReview}){
+ const [expanded,setExpanded]=useState(false);
+ return <article className="bl-stack-card" aria-label={card.name+' component overview'}>
+  <div className="bl-stack-card-head">
+   <div><p className="platform-eyebrow">{card.group} · COMPONENT</p><h3>{card.name}</h3></div>
+   <span className="bl-stack-stage">{card.stage}</span>
+  </div>
+  <FourMeters data={card}/>
+  <details className="bl-stack-signals">
+   <summary>See available scan evidence</summary>
+   <p className="bl-stack-small">The percentages below describe <strong>markers observed in sampled source and test scripts</strong>, not completed or passing functionality.</p>
+   <Signal title="Source &amp; UI markers" signal={card.sourceSignal}/>
+   <Signal title="Test-script markers" signal={card.testMarkers}/>
+   <p><strong>Scan scope:</strong> {card.scannerScope}</p>
+   <p><strong>Last scanned:</strong> {stamp(card.lastScan)}</p>
+   <p><strong>Source:</strong> {card.scanCommit?card.scanCommit.slice(0,12):'Not available'}</p>
+   <p><strong>Evidence:</strong> {card.evidence.length} source reference(s) in this scan. Inspect the Master Scanner report for full details.</p>
+  </details>
+  <dl className="bl-stack-metrics">
+   <div><dt>Open findings</dt><dd>{card.open}</dd></div>
+   <div><dt>On hold</dt><dd>{card.hold}</dd></div>
+   <div><dt>Plans prepared</dt><dd>{card.planned}</dd></div>
+   <div><dt>Fixes running</dt><dd>Not tracked</dd></div>
+   <div><dt>Standalone readiness</dt><dd>{card.standaloneReadiness}</dd></div>
+   <div><dt>Ecosystem readiness</dt><dd>{card.ecosystemReadiness}</dd></div>
+   <div><dt>Launch readiness</dt><dd>{card.readiness}</dd></div>
+  </dl>
+  <details className="bl-stack-signals">
+   <summary>App integrations to review ({card.integrationCandidates.length} candidates)</summary>
+   <p className="bl-stack-small">These are proposed app-to-app connections, not verified live links or approved launch requirements.</p>
+   {card.integrationCandidates.length?<ul>{card.integrationCandidates.map(link=><li key={link.id}><strong>{link.name}</strong> · {link.state}</li>)}</ul>:
+    <p>No candidate integrations recorded yet. This does not prove integration is complete.</p>}
+   <p><strong>Integration %:</strong> {card.integrationReason}</p>
+  </details>
+  <p className="bl-stack-small"><strong>Current activity:</strong> {card.activity}</p>
+  <p className="bl-stack-next"><strong>Next step:</strong> {card.nextAction}</p>
+  {card.unresolved>0&&<p className="bl-stack-small"><strong>Open review:</strong> {card.unresolved} finding(s) awaiting a decision or test.</p>}
+  <div className="bl-stack-card-actions">
+   <button type="button" className="platform-primary-button" onClick={()=>onReview(card.id)}>Review this component</button>
+   <button type="button" className="platform-secondary-button" onClick={()=>setExpanded(s=>!s)}
+    aria-expanded={expanded}>{expanded?'Hide details':'What do the gauges mean?'}</button>
+  </div>
+  {expanded&&<p className="bl-stack-small" role="note"><strong>Built %</strong> compares completed approved requirements with release scope. <strong>Verified %</strong> counts requirements backed by passing tests. <strong>Integration %</strong> counts independently tested required app connections. <strong>Overall %</strong> needs an approved weighting and complete evidence. <strong>Standalone readiness</strong> and <strong>Ecosystem readiness</strong> are separate. Adding approved requirements can lower a percentage. {card.note}</p>}
+ </article>;
+}
+function FamilyCard({app,onOpen}){
+ return <article className="bl-stack-card bl-app-family" aria-label={app.name+' application overview'}>
+  <div className="bl-stack-card-head">
+   <div><p className="platform-eyebrow">{app.group} · APPLICATION</p><h3>{app.name}</h3></div>
+   <span className="bl-stack-stage">{app.stage}</span>
+  </div>
+  <p className="bl-stack-small">{app.description}</p>
+  <FourMeters data={app} parent/>
+  <dl className="bl-stack-metrics">
+   <div><dt>App components</dt><dd>{app.componentCount}</dd></div>
+   <div><dt>With scan evidence</dt><dd>{app.scannedCount}</dd></div>
+   <div><dt>Open findings</dt><dd>{app.open}</dd></div>
+   <div><dt>On hold</dt><dd>{app.hold}</dd></div>
+   <div><dt>Plans prepared</dt><dd>{app.planned}</dd></div>
+   <div><dt>More scope to map</dt><dd>{app.coverageToScope}</dd></div>
+  </dl>
+  <p className="bl-stack-small"><strong>Inside:</strong> {app.parts.map(p=>p.name).join(' · ')}</p>
+  <div className="bl-stack-card-actions">
+   <button type="button" className="platform-primary-button" onClick={()=>onOpen(app.id)}
+    aria-label={'Open '+app.shortName+' components'}>Open {app.shortName} components</button>
+  </div>
+ </article>;
+}
 export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}){
  const [history,setHistory]=useState([]);
  const [ledger,setLedger]=useState(null);
@@ -34,7 +118,7 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}
  const [group,setGroup]=useState('All');
  const [search,setSearch]=useState('');
  const [sort,setSort]=useState('attention');
- const [expanded,setExpanded]=useState({});
+ const [appId,setAppId]=useState(null);
  useEffect(()=>{
   function refresh(){
    try{
@@ -43,8 +127,7 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}
     const next=collectScanWork(prior,entries);
     if(JSON.stringify(prior)!==JSON.stringify(next))saveWorkLedger(localStorage,ownerUserId,next);
     setHistory(entries);setLedger(next);setError('');
-   }
-   catch{setError('One or more saved evidence records could not be loaded. Nothing was erased.');}
+   }catch{setError('One or more saved evidence records could not be loaded. Nothing was erased.');}
   }
   refresh();
   window.addEventListener(HISTORY_EVENT,refresh);window.addEventListener(WORK_EVENT,refresh);
@@ -53,83 +136,77 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}
    window.removeEventListener('storage',refresh);};
  },[ownerUserId]);
  const data=useMemo(()=>buildAppStack({history,ledger}),[history,ledger]);
- const groups=['All',...new Set(APP_STACK_CATALOG.map(a=>a.group))];
- const cards=data.cards.filter(card=>(group==='All'||card.group===group)&&
-  (!search.trim()||(card.name+' '+card.id+' '+card.group).toLowerCase().includes(search.toLowerCase().trim())))
-  .sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='group'?
-   a.group.localeCompare(b.group)||a.name.localeCompare(b.name):
-   b.unresolved-a.unresolved||Number(a.scanned)-Number(b.scanned)||a.name.localeCompare(b.name));
- return <section className="platform-section-card bl-app-stack" aria-label="Build Lab app stack and completion gauges">
+ const hierarchy=useMemo(()=>buildApplicationHierarchy(data.cards),[data]);
+ const current=hierarchy.families.find(a=>a.id===appId)||null;
+ const groups=['All',...new Set(hierarchy.families.map(a=>a.group))];
+ const families=hierarchy.families.filter(a=>
+  (group==='All'||a.group===group)&&(!search.trim()||
+   (a.name+' '+a.description+' '+a.parts.map(p=>p.name).join(' ')).toLowerCase().includes(search.toLowerCase().trim())))
+  .sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):
+   sort==='group'?a.group.localeCompare(b.group)||a.name.localeCompare(b.name):
+   b.open-a.open||b.needsReview-a.needsReview||a.name.localeCompare(b.name));
+ return <section className="platform-section-card bl-app-stack" aria-label="Build Lab application stack and completion gauges">
   <p className="platform-eyebrow">BUILD LAB / APP STACK</p>
-  <h2>App Stack &amp; Build Meters</h2>
-  <p>One place to see what has been scanned, where review is needed, and what's ready for planning. Built, Verified, Integration and Overall gauges stay <strong>Not measured</strong> until we have an approved scope, required app connections and real passing test evidence. An app may be ready on its own while its platform integrations remain unfinished. Code markers alone cannot produce an honest completion score.</p>
+  {!current?<><h2>Applications &amp; Build Meters</h2>
+   <p>Start with each complete application, then open it to review the parts it contains. Built, Verified, Integration and Overall gauges remain <strong>Not measured</strong> until approved requirements and passing tests support real progress figures.</p>
+  </>:<>
+   <nav className="bl-stack-breadcrumb" aria-label="App Stack location">
+    <button type="button" className="platform-secondary-button" onClick={()=>setAppId(null)}>All applications</button>
+    <span aria-hidden="true">›</span><strong>{current.shortName}</strong>
+   </nav>
+   <h2>{current.name}</h2>
+   <p>{current.description} This is the whole app. Its parts appear below, each with its own evidence and scanner findings.</p>
+  </>}
   {error&&<p role="alert" className="platform-error">{error}</p>}
-  <div className="bl-stack-summary" aria-label="App Stack overview">
-   <div><strong>{data.summary.tracked}</strong><span>Tracked app areas</span></div>
-   <div><strong>{data.summary.scanned}</strong><span>With saved source scans</span></div>
-   <div><strong>{data.summary.needingVerification}</strong><span>Need verification</span></div>
-   <div><strong>{data.summary.open}</strong><span>Open work findings</span></div>
-   <div><strong>{data.summary.planned}</strong><span>Items with current approved plans</span></div>
-  </div>
-  <p className="bl-stack-small">Last Master Scan: {stamp(data.lastScan)} {data.reportVersion?'· source '+data.reportVersion.slice(0,12):'· no scan saved in this browser'}. Counts come from the current owner's local browser records, not a live production database audit.</p>
-  <div className="bl-stack-actions">
-   <label>Find an app<input type="search" placeholder="Search app name…" value={search} onChange={e=>setSearch(e.target.value)} /></label>
-   <label>App group<select aria-label="App group" value={group} onChange={e=>setGroup(e.target.value)}>{groups.map(g=><option key={g}>{g}</option>)}</select></label>
-   <label>Sort<select aria-label="Sort app stack" value={sort} onChange={e=>setSort(e.target.value)}>
-    <option value="attention">Needs attention first</option><option value="name">App name</option><option value="group">App group</option>
+  {!current?<div className="bl-stack-summary" aria-label="Application Stack overview">
+   <div><strong>{hierarchy.summary.applications}</strong><span>Main applications</span></div>
+   <div><strong>{hierarchy.summary.components}</strong><span>Tracked components</span></div>
+   <div><strong>{hierarchy.summary.scannedComponents}</strong><span>With saved source scans</span></div>
+   <div><strong>{hierarchy.summary.open}</strong><span>Open work findings</span></div>
+   <div><strong>{hierarchy.summary.planned}</strong><span>Items with current plans</span></div>
+  </div>:<div className="bl-stack-summary" aria-label={current.shortName+' component summary'}>
+   <div><strong>{current.componentCount}</strong><span>Tracked app components</span></div>
+   <div><strong>{current.scannedCount}</strong><span>With saved scans</span></div>
+   <div><strong>{current.open}</strong><span>Open findings</span></div>
+   <div><strong>{current.hold}</strong><span>On hold</span></div>
+   <div><strong>{current.planned}</strong><span>Plans prepared</span></div>
+  </div>}
+  <p className="bl-stack-small">Last Master Scan: {stamp(data.lastScan)} {data.reportVersion?'· source '+data.reportVersion.slice(0,12):'· no scan saved in this browser'}. Reports come from this owner's local browser records, not a live customer-data audit.</p>
+  {!current?<div className="bl-stack-actions">
+   <label>Find an application<input type="search" placeholder="Search apps or parts…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+   <label>Application group<select aria-label="Application group" value={group} onChange={e=>setGroup(e.target.value)}>{groups.map(g=><option key={g}>{g}</option>)}</select></label>
+   <label>Sort<select aria-label="Sort apps" value={sort} onChange={e=>setSort(e.target.value)}>
+    <option value="attention">Needs attention first</option>
+    <option value="name">Application name</option>
+    <option value="group">Application group</option>
    </select></label>
-   <button type="button" className="platform-primary-button" onClick={onScan}>Continue to Scan</button>
+   <button type="button" className="platform-secondary-button" onClick={onScan}>Continue to Scan</button>
    <button type="button" className="platform-secondary-button" onClick={onHangars}>View Hangar Connections</button>
-  </div>
-  <div className="bl-stack-cards">
-   {cards.map(card=><article key={card.id} className="bl-stack-card" aria-label={card.name+' completion overview'}>
-    <div className="bl-stack-card-head">
-     <div><p className="platform-eyebrow">{card.group}</p><h3>{card.name}</h3></div>
-     <span className="bl-stack-stage">{card.stage}</span>
-    </div>
-    <div className="bl-stack-meters">
-     <Meter title="Built %" value={card.build} reason="Awaiting approved feature scope and implementation evidence." />
-     <Meter title="Verified %" value={card.verified} reason="Awaiting passing, exact-version feature tests." />
-     <Meter title="Integration %" value={card.integration} reason="Awaiting approved app-to-app connections and passing integration tests." />
-     <Meter title="Overall %" value={card.overall} reason="Awaiting measured build, verification and integration progress." />
-    </div>
-    <details className="bl-stack-signals">
-     <summary>See available scan evidence</summary>
-     <p className="bl-stack-small">The percentages below describe <strong>markers observed in sampled source and test scripts</strong>, not completed or passing functionality.</p>
-     <Signal title="Source &amp; UI markers" signal={card.sourceSignal} />
-     <Signal title="Test-script markers" signal={card.testMarkers} />
-     <p><strong>Scan scope:</strong> {card.scannerScope}</p>
-     <p><strong>Last scanned:</strong> {stamp(card.lastScan)}</p>
-     <p><strong>Source:</strong> {card.scanCommit?card.scanCommit.slice(0,12):'Not available'}</p>
-     <p><strong>Evidence:</strong> {card.evidence.length} source reference(s) in this scan. Inspect the Master Scanner report for full details.</p>
-    </details>
-    <dl className="bl-stack-metrics">
-     <div><dt>Open findings</dt><dd>{card.open}</dd></div>
-     <div><dt>On hold</dt><dd>{card.hold}</dd></div>
-     <div><dt>Plans prepared</dt><dd>{card.planned}</dd></div>
-     <div><dt>Fixes running</dt><dd>Not tracked</dd></div>
-     <div><dt>Standalone readiness</dt><dd>{card.standaloneReadiness}</dd></div>
-     <div><dt>Ecosystem readiness</dt><dd>{card.ecosystemReadiness}</dd></div>
-     <div><dt>Launch readiness</dt><dd>{card.readiness}</dd></div>
-    </dl>
-    <details className="bl-stack-signals">
-     <summary>App integrations to review ({card.integrationCandidates.length} candidates)</summary>
-     <p className="bl-stack-small">These are proposed app-to-app connections from our architecture, not verified live links or approved launch requirements. The owner must confirm which are required for this app's current release.</p>
-     {card.integrationCandidates.length?<ul>{card.integrationCandidates.map(link=><li key={link.id}><strong>{link.name}</strong> · {link.state}</li>)}</ul>:
-      <p>No candidate integrations recorded yet. This does not prove integration is complete.</p>}
-     <p><strong>Integration %:</strong> {card.integrationReason}</p>
-    </details>
-    <p className="bl-stack-small"><strong>Current activity:</strong> {card.activity}</p>
-    <p className="bl-stack-next"><strong>Next step:</strong> {card.nextAction}</p>
-    {card.unresolved>0&&<p className="bl-stack-small"><strong>Open review:</strong> {card.unresolved} finding(s) awaiting a decision or test.</p>}
-    <div className="bl-stack-card-actions">
-     <button type="button" className="platform-secondary-button" onClick={()=>onReview(card.id)}>Review this app</button>
-     <button type="button" className="platform-secondary-button" onClick={()=>setExpanded(s=>({...s,[card.id]:!s[card.id]}))} aria-expanded={!!expanded[card.id]}>{expanded[card.id]?'Hide details':'What do the gauges mean?'}</button>
-    </div>
-    {expanded[card.id]&&<p className="bl-stack-small" role="note"><strong>Built %</strong> compares completed approved requirements with the current release scope. <strong>Verified %</strong> counts only requirements backed by passing tests. <strong>Integration %</strong> compares required, owner-approved app connections with verified end-to-end connections. <strong>Overall %</strong> is not calculated until those three measurements have an agreed weighting. <strong>Standalone readiness</strong> and <strong>Ecosystem readiness</strong> are separate. Adding requirements can lower a percentage without undoing earlier work. Repair activity has its own progress once a verified workflow records actual implementation steps. {card.note}</p>}
-   </article>)}
-  </div>
-  {!cards.length&&<p>No apps match this filter. Clear the search to see the full stack.</p>}
-  <p className="bl-stack-small">Launch Runway rule: an app can be standalone-ready and still need ecosystem integration. No app is marked launch-ready from AI suggestions, source-file matches, proposed integrations, planned batches, or test-script presence alone. Verified milestones, blockers, regression results and a release decision must be recorded first.</p>
+  </div>:<div className="bl-stack-actions">
+   <button type="button" className="platform-secondary-button" onClick={()=>setAppId(null)}>Back to all applications</button>
+   <button type="button" className="platform-secondary-button" onClick={onScan}>Continue to Scan</button>
+  </div>}
+  {current?<div className="bl-app-family-detail">
+   <section className="bl-app-family-overview" aria-label={current.shortName+' whole-app completion'}>
+    <h3>{current.shortName} | Whole-app completion</h3>
+    <FourMeters data={current} parent/>
+    <p className="bl-stack-small">The whole-app meters will roll up the approved requirements and passing tests of its constituent parts. Matched source code alone cannot confirm completion. No percentages are invented.</p>
+   </section>
+   <h3>Parts of {current.shortName} ({current.parts.length})</h3>
+   <div className="bl-stack-cards">
+    {current.parts.map(part=><AppPartCard key={part.id} card={part} onReview={onReview}/>)}
+   </div>
+   {current.coverageCandidates.length>0&&<section className="bl-stack-future-scope" aria-label="Additional application parts to review">
+    <h3>Additional parts to map into scanner coverage</h3>
+    <p className="bl-stack-small">These known or planned work areas do not yet have their own entry in the current Master Scanner. Their presence here does not establish whether they are built, missing, approved or tested.</p>
+    <ul>{current.coverageCandidates.map(part=><li key={part}>{part} <span>· Coverage to review</span></li>)}</ul>
+   </section>}
+  </div>:<>
+   <div className="bl-stack-cards" aria-label="Main applications">
+    {families.map(app=><FamilyCard key={app.id} app={app} onOpen={setAppId}/>)}
+   </div>
+   {!families.length&&<p>No applications match your filter. Clear the search to see the full stack.</p>}
+  </>}
+  <p className="bl-stack-small">Launch Runway rule: app and component completion cannot be inferred from AI suggestions, source matches, proposed integrations or unverified test scripts. Each app can be usable on its own while integration work remains.</p>
  </section>;
 }

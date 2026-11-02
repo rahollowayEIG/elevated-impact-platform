@@ -8,6 +8,7 @@
 - Release branch: `release/build-lab-v1-owner-only-20261028`. **13 SQL migration files** in `supabase/migrations`.
 - Only **10 versions match** between the repository and live migration history.
 - **57 migration-history versions exist only in production**; **3 local SQL file versions do not match production history**. Do not infer equivalence just because names resemble each other.
+- Read-only production verification confirms **all 67 live migration-history rows retain SQL statement arrays**. This creates a recovery path for authentic historical SQL, but the text must undergo security and data-migration review before source control or replay. No SQL statements were extracted or committed in this audit.
 - Isolated Build Lab storage-only branch: `lhycwhwopjirbipfblym`. Storage tables and RPC work with server-only permissions, but full branch migration replay reports `MIGRATIONS_FAILED`.
 - Vercel production storage flags remain disabled and no production Build Lab tables were created.
 

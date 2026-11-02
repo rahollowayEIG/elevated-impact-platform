@@ -27,7 +27,7 @@ function Signal({title,signal}){
   </div>:<small>{signal?.expected===0?'No checks specified in this scanner sample.':'No source sample saved.'}</small>}
  </div>;
 }
-export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
+export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}){
  const [history,setHistory]=useState([]);
  const [ledger,setLedger]=useState(null);
  const [error,setError]=useState('');
@@ -79,6 +79,7 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
     <option value="attention">Needs attention first</option><option value="name">App name</option><option value="group">App group</option>
    </select></label>
    <button type="button" className="platform-primary-button" onClick={onScan}>Continue to Scan</button>
+   <button type="button" className="platform-secondary-button" onClick={onHangars}>View Hangar Connections</button>
   </div>
   <div className="bl-stack-cards">
    {cards.map(card=><article key={card.id} className="bl-stack-card" aria-label={card.name+' completion overview'}>

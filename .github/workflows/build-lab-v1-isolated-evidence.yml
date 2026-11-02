@@ -4,6 +4,11 @@ on:
     branches: [release/build-lab-v1-owner-only-20261028]
     paths:
       - "src/lib/buildLab*.mjs"
+      - "src/lib/eigPlatformIntegrityClient.mjs"
+      - "server/eig-build-lab-integrity-*.cjs"
+      - "server/eig-build-lab-migration-baseline.json"
+      - "supabase/migrations/*.sql"
+      - "tests/build-lab-integrity.test.cjs"
       - "tests/build-lab-*.test.mjs"
       - "src/lib/buildChangeImpact.mjs"
       - "src/lib/eigBuildArchitect.mjs"
@@ -196,7 +201,7 @@ jobs:
       - name: Install locked runtime dependencies for package verification
         run: npm ci --ignore-scripts
       - name: Require reviewed protected owner server routes
-        run: node --test tests/build-lab-owner-release-readiness.test.cjs
+        run: node --test tests/build-lab-owner-release-readiness.test.cjs tests/build-lab-integrity.test.cjs
       - name: Verify disabled cloud records authorization and conflict handling
         run: node --test tests/eig-build-lab-durable-records.test.cjs tests/build-lab-preview-records.test.cjs
       - name: Verify scanner source files will be included in Vercel runtime

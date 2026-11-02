@@ -24,6 +24,9 @@ test('scanner inventories real approved sources and pinned version metadata with
  assert.ok(report.inventory.unresolvedImportCount>=0);
  assert.match(report.inventory.sourceInventoryFingerprint,/^[a-f0-9]{64}$/);
  assert.notEqual(report.inventory.sourceInventoryFingerprint,report.sourceFingerprint);
+ const sourceFinding=report.findings.find(x=>x.id==='bounded-source-import-review');
+ assert.ok(sourceFinding,'Actual source import candidates should be preserved for review');
+ assert.ok(['App.jsx','LegacyApp.jsx'].includes(sourceFinding.evidence[0].path),'Reference the actual legacy root source, not a fallback path');
  assert.equal(report.safety.deletedItems,0);
  assert.equal(report.safety.autoDeleted,false);
  assert.equal(report.safety.liveChanges,false);

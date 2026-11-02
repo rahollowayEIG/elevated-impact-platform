@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
- APP_STACK_CATALOG,NOT_IN_LIVE_SCANNER,appForWorkItem,latestMasterReport,buildAppStack
+ APP_STACK_CATALOG,APP_INTEGRATION_CANDIDATES,candidateIntegrations,NOT_IN_LIVE_SCANNER,appForWorkItem,latestMasterReport,buildAppStack
 } from '../src/lib/buildLabAppStack.mjs';
 const stamp='2026-11-02T22:30:00.000Z';
 const sha='a'.repeat(40);
@@ -32,6 +32,10 @@ test('App Stack starts with honest unscored gauges and no invented launch readin
  assert.equal(data.summary.open,0);
  assert.equal(data.cards.find(x=>x.id==='registration').build,null);
  assert.equal(data.cards.find(x=>x.id==='registration').verified,null);
+ assert.equal(data.cards.find(x=>x.id==='registration').integration,null);
+ assert.equal(data.cards.find(x=>x.id==='registration').overall,null);
+ assert.ok(data.cards.every(x=>x.standaloneReadiness==='Not assessed'));
+ assert.ok(data.cards.every(x=>x.ecosystemReadiness==='Not assessed'));
  assert.ok(data.cards.every(x=>x.readiness==='Not assessed'));
  assert.equal(data.cards.find(x=>x.id==='contracts').scannerScope,'Outside current live scanner scope');
  assert.equal(data.cards.find(x=>x.id==='contracts').stage,'Scope pending');
@@ -110,6 +114,11 @@ test('UI provides an App Stack entry, review navigation and clear verification c
  assert.match(workspace,/initialModule=\{focusedModule\}/);
  assert.match(panel,/Built %/);
  assert.match(panel,/Verified %/);
+ assert.match(panel,/Integration %/);
+ assert.match(panel,/Overall %/);
+ assert.match(panel,/Standalone readiness/);
+ assert.match(panel,/Ecosystem readiness/);
+ assert.match(panel,/App integrations to review/);
  assert.match(panel,/Launch readiness/);
  assert.match(panel,/Review this app/);
  assert.match(panel,/Continue to Scan/);
@@ -118,4 +127,41 @@ test('UI provides an App Stack entry, review navigation and clear verification c
  assert.match(buckets,/Filter work by app/);
  assert.doesNotMatch(panel,/OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY/);
  assert.doesNotMatch(panel,/fetch\(/);
+});
+
+test('cross-app integration candidates never count as verified connections',()=>{
+ const knownIds=new Set(APP_STACK_CATALOG.map(x=>x.id));
+ assert.deepEqual(candidateIntegrations('inception').map(x=>x.id),
+  ['event-packet','social','sponsors','product-registry']);
+ assert.deepEqual(candidateIntegrations('registration').map(x=>x.id),
+  ['accounts','roster','payments','squawk']);
+ for(const [appId,ids] of Object.entries(APP_INTEGRATION_CANDIDATES)){
+  assert.ok(knownIds.has(appId));
+  assert.equal(new Set(ids).size,ids.length);
+  for(const id of ids){
+   assert.ok(knownIds.has(id),appId+' points to unknown app '+id);
+   assert.notEqual(id,appId);
+  }
+ }
+ const cards=buildAppStack({history:[scan('s',stamp,[module('inception','evidence_present')])] }).cards;
+ const app=cards.find(x=>x.id==='inception');
+ assert.equal(app.integration,null);
+ assert.equal(app.integrationRequirements,null);
+ assert.equal(app.integrationDone,null);
+ assert.equal(app.overall,null);
+ assert.equal(app.standaloneReadiness,'Not assessed');
+ assert.equal(app.ecosystemReadiness,'Not assessed');
+ assert.equal(app.integrationCandidates.length,4);
+ assert.ok(app.integrationCandidates.every(x=>x.state.startsWith('Candidate;')));
+ assert.equal(app.readiness,'Not assessed');
+});
+test('standalone build readiness is not downgraded by unverified integration suggestions',()=>{
+ const stack=buildAppStack();
+ for(const item of stack.cards){
+  assert.equal(item.build,null);
+  assert.equal(item.verified,null);
+  assert.equal(item.integration,null);
+  assert.equal(item.overall,null);
+  assert.ok(item.integrationReason.includes('not been approved'));
+ }
 });

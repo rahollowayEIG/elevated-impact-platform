@@ -291,6 +291,19 @@
 .ia-connections span {
   color: #b7c5d8;
 }
+.ia-canva-pilot {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #7183a258;
+  border-radius: 8px;
+}
+.ia-canva-pilot span { color: #b7c5d8; }
+.ia-canva-pilot small { flex-basis: 100%; color: #b7c5d8; }
+.ia-canva-pilot button { font-size: 13px; }
 .ia-project-bar {
   background: #12213b;
   padding: 20px;

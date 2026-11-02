@@ -23,6 +23,8 @@ import {
 import "./inception-apex.css";
 import { creativeLinkProblem } from "../lib/creativeLink.mjs";
 import { designProductStore } from "../lib/designProductStore.js";
+import { canvaPilotEnabled } from "../lib/inceptionCanva.js";
+import CanvaConnect from "./CanvaConnect.jsx";
 import {
   designForProduct,
   catalogDesignProblem,
@@ -1342,7 +1344,11 @@ export default function InceptionApex({
               <strong>Creative tools</strong>
               <span>OpenAI · connection pending</span>
               <span>Adobe · connection pending</span>
-              <span>Canva · connection pending</span>
+              {canUseResizer && canvaPilotEnabled ? (
+                <CanvaConnect />
+              ) : (
+                <span>Canva · connection pending</span>
+              )}
               <span>Ordering · connection pending</span>
             </footer>
           </>

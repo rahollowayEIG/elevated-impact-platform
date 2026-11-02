@@ -10,7 +10,7 @@ import BuildLabCloudBackup from './BuildLabCloudBackup.jsx';
 // Owner-only Build Lab. Opt-in AI planning is disabled by default and never
 // grants builder, agent, source writer, payment or deployment privileges.
 // The backend verifies the owner and active session again on every request.
-const AI_REVIEW_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_AI_REVIEW_UI_ENABLED==='true'&&import.meta.env.MODE!=='production';
+const AI_REVIEW_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_AI_REVIEW_UI_ENABLED==='true';
 const RECORDS_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED==='true'||
  import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true';
 function downloadReport(report,kind){

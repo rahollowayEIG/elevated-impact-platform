@@ -13,6 +13,7 @@ const CHECKS = {
 };
 const BASES = {
  inspector:['source_sample','Only the approved source and test-script sample was inspected. No runtime or accessibility result is established.'],
+ integrity:['source_sample','Only approved owner-route and cloud-source samples plus dated migration metadata were inspected. No live deployments, databases or unused-file dependency graph was queried.'],
  master:['source_sample','Source markers and dated environment/schema snapshots are evidence to investigate, not proof of working or missing functionality.'],
  radar:['source_sample','A fixed rubric proposes opportunities from sampled source. It does not establish a missing capability or a current external comparison.'],
  ai:['scanner_metadata','AI reviewed bounded scanner metadata. Referenced filenames and model wording are not independent source inspection, runtime evidence or confirmed defects.'],

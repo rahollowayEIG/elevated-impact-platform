@@ -120,3 +120,4 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview}){
   {!cards.length&&<p>No apps match this filter. Clear the search to see the full stack.</p>}
   <p className="bl-stack-small">Launch Runway rule: no app is marked launch-ready from AI suggestions, source-file matches, planned batches, or test-script presence alone. Verified milestones, blockers, regression results and a release decision must be recorded first.</p>
  </section>;
+}

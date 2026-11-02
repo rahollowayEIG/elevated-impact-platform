@@ -1,0 +1,31 @@
+name: Build Lab Migration Recovery Audit
+on:
+  push:
+    branches: [audit/build-lab-migration-recovery-20261102]
+  pull_request:
+    branches: [release/build-lab-v1-owner-only-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  migration-recovery-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run offline migration manifest contracts
+        run: node --test tests/build-lab-migration-recovery.test.mjs
+      - name: Generate read-only migration comparison
+        run: node scripts/build-lab-compare-migration-manifest.mjs > migration-comparison.json
+      - name: Record evidence status without release approval
+        if: always()
+        run: echo "Offline fingerprint comparison only; historical SQL was not published, applied, or restored. All migration drift requires owner review." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload nonsecret comparison summary
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-recovery-comparison
+          path: migration-comparison.json

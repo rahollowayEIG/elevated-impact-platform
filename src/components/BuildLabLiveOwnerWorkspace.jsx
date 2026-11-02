@@ -33,8 +33,8 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
    setReports(previous=>({...previous,[kind]:report}));
    try{
     const stamp=report.inspectedAt||new Date().toISOString();
-    const entry={id:crypto.randomUUID(),type:kind==='master'?'master':'inspector',
-     scope:kind==='master'?'all':'inception-apex',
+    const entry={id:crypto.randomUUID(),type:kind==='master'?'master':kind==='integrity'?'integrity':'inspector',
+     scope:kind==='master'||kind==='integrity'?'all':'inception-apex',
      source:report.sourceVersion||report.sourceFingerprint||'unknown',
      savedAt:Number.isFinite(Date.parse(stamp))?stamp:new Date().toISOString(),
      snapshot:{report}};
@@ -67,7 +67,8 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
    <p>Every scan rechecks the owner session on the server. If the server is not enabled for Live, access is denied.</p>
    {[
     ['master','Master Scanner','Allowlisted ElevationPilot source and dated reference snapshots'],
-    ['inspector','IA Inspector','Allowlisted InceptionApex source and UI evidence']
+    ['inspector','IA Inspector','Allowlisted InceptionApex source and UI evidence'],
+    ['integrity','Platform Integrity & Cleanup','Read-only approved-route and migration-baseline inventory. No automated cleanup, deletion or production changes.']
    ].map(([kind,title,description])=><section key={kind} aria-label={title}>
     <h3>{title}</h3><p>{description}</p>
     <button className="platform-primary-button" type="button" disabled={!!working} onClick={()=>scan(kind)}>

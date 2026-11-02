@@ -1,4 +1,4 @@
-name: Build Lab Preview Live Negative Access
+name: Build Lab Preview Protection Probe
 on:
   push:
     branches: [release/build-lab-v1-owner-only-20261028]
@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 jobs:
-  preview-live-denials:
+  preview-perimeter-probe:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
@@ -17,11 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Test public negative access against pinned approved PREVIEW (read-only)
+      - name: Inspect protected PREVIEW response without any credentials or writes
         run: node tests/build-lab-preview-live-denials.mjs
       - name: Record boundary of live test
         if: always()
         run: |
           echo "Tests anonymous and intentionally invalid bearer requests against pinned preview SHA 1d6fb0015b71915bb3899a1d80b9cf7edb8c4c61." >> "$GITHUB_STEP_SUMMARY"
-          echo "Does not simulate a genuine nonowner login, revoked valid token or concurrent authorized saves." >> "$GITHUB_STEP_SUMMARY"
-          echo "No owner token is used and no writes are sent." >> "$GITHUB_STEP_SUMMARY"
+          echo "If Vercel Authentication blocks requests, this demonstrates the Vercel perimeter only. Application-owner gate remains untested live; use authenticated vc curl." >> "$GITHUB_STEP_SUMMARY"
+          echo "No owner token is used and no writes are sent. CI green is not app authorization certification." >> "$GITHUB_STEP_SUMMARY"

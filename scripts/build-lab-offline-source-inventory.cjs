@@ -23,7 +23,7 @@ function inventorySourceTree(root,options={}) {
   if(stat.isSymbolicLink()){ignored.push({path:relative,reason:'symlink'});return;}
   if(!stat.isFile())return;
   if(stat.size>LIMITS.maxFileBytes){ignored.push({path:relative,reason:'file-too-large'});return;}
-  if(++bytes>LIMITS.maxTotalBytes)throw Error('Source inventory byte cap exceeded');
+  if((bytes+=stat.size)>LIMITS.maxTotalBytes)throw Error('Source inventory byte cap exceeded');
   if(all.size>=LIMITS.maxFiles)throw Error('Source inventory file cap exceeded');
   all.set(relative.split(path.sep).join('/'),fs.readFileSync(full,'utf8'));
  }

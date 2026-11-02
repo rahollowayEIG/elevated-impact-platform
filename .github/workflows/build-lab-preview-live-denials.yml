@@ -1,0 +1,27 @@
+name: Build Lab Preview Live Negative Access
+on:
+  push:
+    branches: [release/build-lab-v1-owner-only-20261028]
+    paths:
+      - "tests/build-lab-preview-live-denials.mjs"
+      - ".github/workflows/build-lab-preview-live-denials.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-live-denials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test public negative access against pinned approved PREVIEW (read-only)
+        run: node tests/build-lab-preview-live-denials.mjs
+      - name: Record boundary of live test
+        if: always()
+        run: |
+          echo "Tests anonymous and intentionally invalid bearer requests against pinned preview SHA 1d6fb0015b71915bb3899a1d80b9cf7edb8c4c61." >> "$GITHUB_STEP_SUMMARY"
+          echo "Does not simulate a genuine nonowner login, revoked valid token or concurrent authorized saves." >> "$GITHUB_STEP_SUMMARY"
+          echo "No owner token is used and no writes are sent." >> "$GITHUB_STEP_SUMMARY"

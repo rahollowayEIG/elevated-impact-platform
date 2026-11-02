@@ -32,6 +32,15 @@ for(const entry of cases){
  const contentType=response.headers.get('content-type')||'';
  const content=await response.text();
  console.log(entry.name+': HTTP '+response.status+', application JSON '+contentType.includes('application/json'));
+ let outer;
+ try{outer=JSON.parse(content);}catch{outer=null;}
+ if(outer?.protection?.vercel_auth_enabled===true&&
+    outer?.error?.message==='Protected deployment'&&response.status===401){
+  assert.equal(entry.name,'No bearer token','Unexpected Vercel protection change during probe');
+  console.log('VERCEL PERIMETER PASS: Vercel Authentication refused the anonymous request before Build Lab.');
+  console.log('APPLICATION OWNER GATE INCONCLUSIVE: run signed vc curl from an authorized Vercel context.');
+  break;
+ }
  assert.equal(response.status,entry.expected,entry.name+' must fail with application-level rejection');
  assert.match(contentType,/application\/json/i,entry.name+' did not reach the protected Build Lab API');
  let json;
@@ -39,4 +48,4 @@ for(const entry of cases){
  assert.deepEqual(json,{ok:false},entry.name+' should receive no records or internal details');
  assert.match(response.headers.get('cache-control')||'',/no-store/);
 }
-console.log('Live negative preview requests all denied. No save/write request was issued.');
+console.log('Live preview perimeter probe completed. No save/write request was issued.');

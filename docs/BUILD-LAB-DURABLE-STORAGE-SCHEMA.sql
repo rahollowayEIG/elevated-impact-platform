@@ -1,5 +1,9 @@
--- PROPOSED Build Lab V1 storage schema. NOT APPLIED to any environment.
--- Reviewed migration required before rollout. Run only after owner/security approval.
+-- PROPOSED Build Lab V1 production storage schema. NOT APPLIED to production.
+-- The corresponding storage-only schema was tested on an isolated temporary Supabase branch.
+-- The full production migration baseline is not reconciled: see
+-- docs/Build-Lab-Production-Migration-Baseline-Audit-2026-11-02.md.
+-- Create a reviewed migration with Supabase CLI after history reconciliation.
+-- Run in production only after explicit owner/security approval.
 -- Sensitive Build Lab evidence is server-only; no anon/authenticated table grants.
 -- The existing central ElevationPilot Supabase project remains the sole database.
 --

@@ -111,14 +111,14 @@ function scanPlatformIntegrity(inputs,sourceVersion='local-unversioned',now='202
   if(sourceInventory.unresolvedCount){
    const first=sourceInventory.unresolved.find(x=>
     x&&typeof x.file==='string'&&
-    /^(src|api|server)\/[a-zA-Z0-9_/.-]+\.(jsx?|mjs|cjs|tsx?)$/.test(x.file)&&
+    /^(?:(?:src|api|server)\/[a-zA-Z0-9_/.-]+|(?:App|LegacyApp|main|vite.config))\.(jsx?|mjs|cjs|tsx?)$/.test(x.file)&&
     !x.file.includes('..')&&
     Number.isInteger(x.line)&&x.line>0&&x.line<=30000);
    add('bounded-source-import-review',
     'Review unresolved first-party source imports','medium',
     'Bounded read-only source inventory found '+sourceInventory.unresolvedCount+
      ' literal relative import candidates across '+sourceInventory.sourceFileCount+
-     ' first-party files. Static resolution is not proof of an active broken route.',
+     ' first-party files. Legacy root files can be inactive: static resolution is not proof of an active broken route.',
     'Check listed candidates against bundler aliases, generated files and actual entrypoint dependencies before editing or retiring code.',
     'Confirm each candidate is either intentionally resolved by tooling or corrected in source without breaking approved routes.',
     first?[{path:first.file,line:first.line}]:[{path:'src/PlatformApp.jsx',line:1}]);

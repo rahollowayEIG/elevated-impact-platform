@@ -33,3 +33,25 @@ Next follow-up is a requirement baseline and verifiable test receipt importer, t
 ## Evidence source proposal
 
 The current ElevationPilot Progress & Recovery Ledger on Google Drive includes automated GitHub checkpoint entries. It can be used for provenance and discovering changed requirements, but `DISCOVERED` entries are not evidence of a successful build, test, integration or release. Later authorized read-only ingestion should reconcile each ledger entry with exact GitHub commits, tests, verified Vercel release SHA and the approved feature/integration contract before changing a gauge. Until that connector is developed and authorized, the App Stack reads browser-local Build Lab scans and work records only.
+
+
+## Hangar Connections & Adoption: owner-only read-only inventory
+
+The owner console includes a separate **Hangar Connections** view, in addition to app-level Built / Verified / Integration / Overall gauges. This prevents a standalone app's development progress from being conflated with the adoption status of a specific business.
+
+The server authenticates the same **production EIG owner, active session, exact approved origin, and EIG admin membership** used by the existing live Build Lab. Only then does it read bounded organization metadata, Squawk channel status, Drive folder mappings and social campaign record counts using approved server-side credentials.
+
+- Real Hangars are shown by default. Demo Hangars and EIG HQ are separately labeled and hidden until the owner opts to include them.
+- For configured Squawk channels, show **verified / configured**, based on a connected state plus a recorded last verification time. Verification is a point-in-time record, not guaranteed present health.
+- For channels with setup required, missing verification or compliance work, show the recorded state and a plain-language next action. No access tokens, auth identities, recipients, message contents or personal contact fields are fetched.
+- Drive folder mappings are **inventory evidence only**, not proof that a Hangar has a valid Google OAuth connection.
+- The number of saved social campaigns is **activity evidence only**, not proof of posts sent, external platform permissions or published results.
+- The existing Social Media app lists Facebook, Instagram, LinkedIn, TikTok, YouTube and X. Those provider sign-in, consent, token storage and posting workflows are not currently wired. Report **Platform integration pending**, not **Hangar disconnected**, and exclude the six from the Hangar setup denominator until the connectors exist.
+- **Overall Hangar adoption %** stays **Not measured** until the required connector checklist is approved for that Hangar and verified actual provider connections are available.
+- No connector setup action, token exchange, release, data export, code modification or background monitoring is enabled by this view.
+
+### Future first-class Hangar connection workflow
+
+Hangar admins should eventually see a friendly **Connect** action for each supported provider. The user signs in *with the provider* via OAuth, sees scoped permissions, selects which managed Page/Channel belongs to the Hangar, and returns to ElevationPilot. Server-only credentials must be encrypted, renewable/revocable, tenant-scoped and audited. A provider's capabilities, consent, compliance and API status must be checked before posting. The connection status must be bound to that Hangar and not inherited from an EIG-wide token.
+
+Only after those requirements and provider test receipts are implemented should the Hangar card calculate required integrations, connection freshness, publish tests and overall adoption progress. Give the owner a way to help each Hangar adopt useful connections without penalizing businesses for connectors that ElevationPilot has not built.

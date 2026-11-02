@@ -120,7 +120,9 @@ test('UI provides an App Stack entry, review navigation and clear verification c
  assert.match(panel,/Ecosystem readiness/);
  assert.match(panel,/App integrations to review/);
  assert.match(panel,/Launch readiness/);
- assert.match(panel,/Review this app/);
+ assert.match(panel,/Review this component/);
+ assert.match(panel,/Open \{app.shortName\} components/);
+ assert.match(panel,/Back to all applications/);
  assert.match(panel,/Continue to Scan/);
  assert.match(panel,/No scanner activity recorded|Scan source|No saved Master Scan/);
  assert.match(buckets,/appForWorkItem\(j\)===appFilter/);

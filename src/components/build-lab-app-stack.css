@@ -41,3 +41,20 @@
 .bl-hangar-channel-list li small{color:#c6d8e6}
 .bl-app-stack .bl-stack-actions label:has(input[type=checkbox]){min-width:155px;display:flex;flex:0 1 auto;align-items:center;gap:8px;font-size:.84rem}
 .bl-app-stack .bl-stack-actions input[type=checkbox]{height:18px;width:18px}
+
+
+/* Product-first navigation: whole applications before their scanned parts. */
+.bl-app-family{display:flex;flex-direction:column;gap:7px}
+.bl-app-family .bl-stack-card-actions{margin-top:auto}
+.bl-app-family .bl-stack-meters{border-top:1px solid #365c7d;padding-top:12px}
+.bl-stack-breadcrumb{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0 18px}
+.bl-stack-breadcrumb strong{color:#d8ebfc}
+.bl-app-family-overview{padding:16px;border:1px solid #6586a9;background:#142e49;border-radius:14px;margin:20px 0;color:#eef5ff}
+.bl-app-family-overview h3{margin:0 0 12px}
+.bl-app-family-detail>h3{margin:22px 0 14px}
+.bl-stack-future-scope{background:#193853;padding:18px;margin:22px 0;border:1px solid #6586a9;border-radius:14px}
+.bl-stack-future-scope h3{margin:0 0 10px;color:#f0f7fe}
+.bl-stack-future-scope ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}
+.bl-stack-future-scope li{border:1px solid #527693;border-radius:9px;padding:10px;background:#22445f}
+.bl-stack-future-scope li span{font-size:.82rem;color:#c4d8e9}
+@media(max-width:700px){.bl-stack-future-scope ul{grid-template-columns:1fr}}

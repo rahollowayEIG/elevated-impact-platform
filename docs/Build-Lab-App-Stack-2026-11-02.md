@@ -55,3 +55,18 @@ The server authenticates the same **production EIG owner, active session, exact 
 Hangar admins should eventually see a friendly **Connect** action for each supported provider. The user signs in *with the provider* via OAuth, sees scoped permissions, selects which managed Page/Channel belongs to the Hangar, and returns to ElevationPilot. Server-only credentials must be encrypted, renewable/revocable, tenant-scoped and audited. A provider's capabilities, consent, compliance and API status must be checked before posting. The connection status must be bound to that Hangar and not inherited from an EIG-wide token.
 
 Only after those requirements and provider test receipts are implemented should the Hangar card calculate required integrations, connection freshness, publish tests and overall adoption progress. Give the owner a way to help each Hangar adopt useful connections without penalizing businesses for connectors that ElevationPilot has not built.
+
+
+## Application-first App Stack hierarchy
+
+The owner clarified that **EIE is the application**, not 7 separate apps. The App Stack's landing view therefore shows **top-level applications** with four whole-app gauges and their aggregated review counts. Clicking **EIE** opens its constituent scanner components: Event Builder, Registration & Main Cabin, Team Payments, Roster & Team Maintenance, Sponsor Management, Creative Event Packets, and Event Budget.
+
+The detail page keeps each component's existing source evidence, individual gauge placeholder, open/held findings, approved planning batches, proposed integration links, and a direct **Review this component** action that opens the scoped Work Buckets. A breadcrumb and Back button return to the main application stack.
+
+The product registry also groups scanner areas under InceptionApex, Social Media & Ads, Squawk Box, Commerce & Stores, EIG Platform & Accounts, EIG Golf Tools, and Build Lab. Each of the existing 17 scanner areas belongs to exactly one main application for count roll-ups.
+
+Known and planned EIE parts not yet separately defined in the current Master Scanner, including Event Directory & Outing Inquiries, Public Event Hub, ATC operations, Check-in, Vendors/Volunteers, and Donations/Raffles, appear under **Additional parts to map into scanner coverage**. These entries do NOT mean the features are missing, approved, implemented or verified. They are visibility reminders until their approved source/test coverage is registered.
+
+**Whole-app Built, Verified, Integration and Overall percentages remain Not measured** until an approved, versioned per-component requirements checklist, required integrations, passing exact-version test receipts, and an agreed whole-app weighting exist. Parent issue counts can be summed now without claiming finished work. New components and requirements will expand the scope denominator only when approved.
+
+No production scanners or customer data were changed by this hierarchy/navigation update.

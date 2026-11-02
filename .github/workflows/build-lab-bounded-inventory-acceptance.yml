@@ -25,6 +25,9 @@ jobs:
         run: |
           node scripts/build-lab-offline-source-inventory.cjs > bounded-source-inventory.json
           node -e 'const r=require("./bounded-source-inventory.json");if(!r.readOnly||r.safety.deletedItems!==0||r.safety.autoDeployed!==false||r.sourceFileCount<50)process.exit(1);console.log(JSON.stringify({sourceFiles:r.sourceFileCount,unresolvedCandidates:r.unresolvedCount,readOnly:r.readOnly}));'
+      - name: Inspect static import candidates for manual triage
+        run: |
+          node -e 'const r=require("./bounded-source-inventory.json");for(const x of r.unresolved){console.log(JSON.stringify({file:x.file,line:x.line,specifier:x.specifier,reason:x.reason}));}'
       - name: Publish safe inventory artifact
         uses: actions/upload-artifact@v4
         with:

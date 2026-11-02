@@ -4,11 +4,13 @@ import BuildLabScanHistory from './BuildLabScanHistory.jsx';
 import BuildLabWorkBuckets from './BuildLabWorkBuckets.jsx';
 import BuildLabLivePlanReview from './BuildLabLivePlanReview.jsx';
 import {requestLiveBuildLabScan} from '../lib/eigBuildLabLiveClient.mjs';
+import {requestBuildLabAiReview} from '../lib/eigBuildLabAiClient.mjs';
 import BuildLabCloudBackup from './BuildLabCloudBackup.jsx';
 
-// Production-only EIG owner surface. Does NOT import EigBuildLab, AI, builder,
-// agents, invoices, deployment controls or other preview-only features.
+// Owner-only Build Lab. Opt-in AI planning is disabled by default and never
+// grants builder, agent, source writer, payment or deployment privileges.
 // The backend verifies the owner and active session again on every request.
+const AI_REVIEW_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_AI_REVIEW_UI_ENABLED==='true'&&import.meta.env.MODE!=='production';
 const RECORDS_UI_ENABLED=import.meta.env.VITE_EIG_BUILD_LAB_CLOUD_RECORDS_UI_ENABLED==='true'||
  import.meta.env.VITE_EIG_BUILD_LAB_PREVIEW_CLOUD_RECORDS_UI_ENABLED==='true';
 function downloadReport(report,kind){
@@ -44,11 +46,28 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
   }catch(e){setError(e?.message||'Read-only scanner unavailable.');}
   finally{setWorking('');}
  }
+ async function reviewAI(){
+  if(working)return;
+  setWorking('ai');setError('');setRecordNotice('');
+  try{
+   const review=await requestBuildLabAiReview(supabaseClient);
+   setReports(prev=>({...prev,ai:review}));
+   try{
+    const entry={id:crypto.randomUUID(),type:'ai',scope:'all',
+     source:review.sourceVersion||'unknown',savedAt:review.reviewedAt,snapshot:{review}};
+    if(saveScanHistory(localStorage,ownerUserId,entry))window.dispatchEvent(new Event(HISTORY_EVENT));
+    setRecordNotice('AI suggestions saved to Scan History. Review them in Work Buckets before approving any work.');
+   }catch{
+    setRecordNotice('AI suggestions returned but browser history could not be saved. Download the review before leaving.');
+   }
+  }catch(e){setError(e?.message||'AI Review unavailable.');}
+  finally{setWorking('');}
+ }
  return <main className="platform-page" aria-label="EIG Build Lab production owner workspace">
   <section className="platform-hero organization">
    <div><p className="platform-eyebrow">EIG / BUILD LAB</p>
     <h1>Owner Console: Read-only Scanning &amp; Evidence</h1>
-    <p>This restricted production surface inspects allowlisted first-party source evidence. Reports do not prove real-world application behavior. No AI generation, automatic fixes, customer queries, writes to events, or deployments are available here.</p>
+    <p>This restricted owner surface inspects allowlisted first-party source evidence. Reports do not prove real-world application behavior. AI Review, when separately enabled, provides planning recommendations only. No automatic fixes, customer queries, writes to events, or deployments are available here.</p>
    </div>
    <button type="button" className="platform-secondary-button" onClick={onBack}>Back to Command Center</button>
   </section>
@@ -80,6 +99,18 @@ export default function BuildLabLiveOwnerWorkspace({ownerUserId,supabaseClient,o
      <details><summary>View report evidence</summary><pre style={{maxHeight:450,overflow:'auto',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(reports[kind],null,2)}</pre></details>
     </>}
    </section>)}
+   {AI_REVIEW_UI_ENABLED&&<section aria-label="AI Review planning only">
+    <h3>AI Review (planning only)</h3>
+    <p>Runs a fresh read-only Master Scanner and sends only bounded module metadata to OpenAI for up to five suggested improvements. This creates an API usage charge. AI cannot access customer records, edit code, approve changes or deploy.</p>
+    <button className="platform-primary-button" type="button" disabled={!!working} onClick={reviewAI}>
+     {working==='ai'?'Reviewing…':'Run AI Review of Master Scanner findings'}
+    </button>
+    {reports.ai&&<>
+     <p role="status">{reports.ai.recommendations.length} AI recommendation(s) returned. These are unverified planning candidates.</p>
+     <button type="button" className="platform-secondary-button" onClick={()=>downloadReport(reports.ai,'ai')}>Download AI review JSON</button>
+     <details><summary>View AI suggestions</summary><pre style={{maxHeight:450,overflow:'auto',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{JSON.stringify(reports.ai,null,2)}</pre></details>
+    </>}
+   </section>}
   </section>}
   {activeTool==='history'&&<BuildLabScanHistory key={ownerUserId} ownerUserId={ownerUserId} supabaseClient={supabaseClient}/>}
   {activeTool==='buckets'&&<BuildLabWorkBuckets key={ownerUserId} ownerUserId={ownerUserId} onOpenManager={()=>setActiveTool('plans')}/>}

@@ -28,17 +28,17 @@
       {
         "version": "20261009193756",
         "topic": "EIE staff roster operations",
-        "finding": "Text differs after whitespace/comment normalization; requires targeted semantic and privilege review."
+        "finding": "Differences include PostgreSQL-formatted function signature/default syntax. Semantic equivalence and workflow regression remain unverified."
       },
       {
         "version": "20261009194203",
         "topic": "EIE staff roster audit",
-        "finding": "Repository text extends beyond recorded production SQL, including GRANT/REVOKE terms absent from recorded SQL; permissions require explicit comparison."
+        "finding": "Repository appends REVOKE/GRANT statements absent from saved migration SQL. Current function privilege checks confirm anon/authenticated EXECUTE denied, service_role allowed."
       },
       {
         "version": "20261009200051",
         "topic": "Manual captain claim",
-        "finding": "Text differs after whitespace/comment normalization; requires targeted semantic and payment/authorization regression review."
+        "finding": "Differences include function formatting and explicit SECURITY INVOKER in stored SQL; current function is not SECURITY DEFINER. Requires regression verification."
       }
     ]
   },
@@ -81,5 +81,33 @@
     "Isolated full migration replay",
     "Review Supabase security-advisor findings",
     "Owner-approved deployment and rollback"
-  ]
+  ],
+  "privilegeVerification": {
+    "observedOn": "2026-11-02",
+    "method": "Read-only pg_proc and has_function_privilege checks",
+    "functions": [
+      {
+        "identity": "public.eie_staff_team_roster_update(uuid,text,uuid,uuid,jsonb,uuid,text)",
+        "securityDefiner": false,
+        "anonExecute": false,
+        "authenticatedExecute": false,
+        "serviceRoleExecute": true
+      },
+      {
+        "identity": "public.golf_claim_manual_captain_invitation(uuid,uuid,uuid)",
+        "securityDefiner": false,
+        "anonExecute": false,
+        "authenticatedExecute": false,
+        "serviceRoleExecute": true
+      },
+      {
+        "identity": "eig_private.event_budget_sources(uuid)",
+        "securityDefiner": true,
+        "anonExecute": false,
+        "authenticatedExecute": true,
+        "serviceRoleExecute": false
+      }
+    ],
+    "caveat": "Current privileges verified; migration semantic equivalence and business regressions remain unverified."
+  }
 }

@@ -20,6 +20,10 @@ test('scanner inventories real approved sources and pinned version metadata with
  assert.ok(report.findings.some(x=>x.id==='migration-history-parity'));
  assert.equal(report.safety.readOnly,true);
  assert.equal(report.safety.databaseQueried,false);
+ assert.ok(report.inventory.sourceFileCount>=50,'Broad first-party source inventory should run');
+ assert.ok(report.inventory.unresolvedImportCount>=0);
+ assert.match(report.inventory.sourceInventoryFingerprint,/^[a-f0-9]{64}$/);
+ assert.notEqual(report.inventory.sourceInventoryFingerprint,report.sourceFingerprint);
  assert.equal(report.safety.deletedItems,0);
  assert.equal(report.safety.autoDeleted,false);
  assert.equal(report.safety.liveChanges,false);
@@ -75,4 +79,21 @@ test('server endpoint denies unauthorized and invalid targets before source read
  assert.equal(reads,1);
  assert.equal(valid.data.report.safety.autoDeleted,false);
  assert.equal(valid.headers['Cache-Control'],'private, no-store, max-age=0');
+});
+
+test('bounded source candidate reaches protected report with review-only evidence',()=>{
+ const input=readApprovedIntegrityInputs();
+ input.sourceInventory={...input.sourceInventory,unresolvedCount:1,unresolved:[{file:'src/PlatformApp.jsx',line:2,specifier:'./missing'}]};
+ const report=run(input),finding=report.findings.find(x=>x.id==='bounded-source-import-review');
+ assert.ok(finding);
+ assert.equal(finding.priority,'medium');
+ assert.equal(finding.review,'pending');
+ assert.deepEqual(finding.evidence,[{path:'src/PlatformApp.jsx',line:2}]);
+ assert.equal(report.safety.deletedItems,0);
+ assert.equal(report.safety.autoApproved,false);
+});
+test('rejects tampered bounded inventory without generating report',()=>{
+ const input=readApprovedIntegrityInputs();
+ input.sourceInventory={...input.sourceInventory,safety:{...input.sourceInventory.safety,deletedItems:1}};
+ assert.throws(()=>run(input),/Invalid bounded source inventory/);
 });

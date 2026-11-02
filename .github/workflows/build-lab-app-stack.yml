@@ -24,6 +24,7 @@ jobs:
         run: |
           node --test \
             tests/build-lab-app-stack.test.mjs \
+            tests/build-lab-app-hierarchy.test.mjs \
             tests/build-lab-hangar-connections.test.cjs \
             tests/build-lab-hangar-connections-client.test.mjs \
             tests/build-lab-owner-explanations.test.mjs \

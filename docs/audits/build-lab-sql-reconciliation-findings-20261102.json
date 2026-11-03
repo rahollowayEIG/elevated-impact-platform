@@ -1,0 +1,145 @@
+{
+  "kind": "eig_build_lab_sql_reconciliation_evidence",
+  "schemaVersion": 1,
+  "observedOn": "2026-11-02",
+  "productionProject": "Elevated-Impact-Platform",
+  "releaseBranch": "release/build-lab-v1-owner-only-20261028",
+  "methodology": "Read-only comparison of GitHub release SQL files and SQL stored in Supabase migration history; no SQL text stored here.",
+  "migrationCounts": {
+    "production": 67,
+    "repository": 13,
+    "matchingVersion": 10,
+    "productionOnly": 57,
+    "repositoryOnly": 3
+  },
+  "sameVersion": {
+    "exactBytes": [
+      "20261007040355",
+      "20261007052358",
+      "20261008054858",
+      "20261008055348",
+      "20261008182645",
+      "20261008204951"
+    ],
+    "trailingWhitespaceOnly": [
+      "20261007040350"
+    ],
+    "substantiveDifference": [
+      {
+        "version": "20261009193756",
+        "topic": "EIE staff roster operations",
+        "finding": "Differences include PostgreSQL-formatted function signature/default syntax. Semantic equivalence and workflow regression remain unverified."
+      },
+      {
+        "version": "20261009194203",
+        "topic": "EIE staff roster audit",
+        "finding": "Repository appends REVOKE/GRANT statements absent from saved migration SQL. Current function privilege checks confirm anon/authenticated EXECUTE denied, service_role allowed."
+      },
+      {
+        "version": "20261009200051",
+        "topic": "Manual captain claim",
+        "finding": "Differences include function formatting and explicit SECURITY INVOKER in stored SQL; current function is not SECURITY DEFINER. Requires regression verification."
+      }
+    ]
+  },
+  "repositoryOnly": {
+    "exactSQLButDifferentVersion": [
+      {
+        "repository": "20261005175237",
+        "production": "20261005175759",
+        "name": "user_management_security_history"
+      },
+      {
+        "repository": "20261007064246",
+        "production": "20261007065652",
+        "name": "social_campaign_workspace"
+      }
+    ],
+    "additionalFunctionPresentButFullEquivalenceUnverified": [
+      {
+        "repository": "20261010052030",
+        "name": "eie_budget_comp_value_metric",
+        "function": "eig_private.event_budget_sources(target_event_id uuid)",
+        "deployedFunctionExists": true,
+        "exactFunctionBodyMatch": true,
+        "sourceBodyCharacters": 3956,
+        "liveBodyCharacters": 3956,
+        "securityDefiner": true,
+        "volatility": "stable",
+        "searchPath": "",
+        "caveat": "Exact current function body and attributes verified, but no exact historical migration version exists and full schema replay is not certified."
+      }
+    ]
+  },
+  "safety": {
+    "productionWrites": false,
+    "productionMigrationHistoryAltered": false,
+    "sqlBodiesPublished": false,
+    "publicRepoSqlExportAllowed": false,
+    "approvedForMigrationRepair": false
+  },
+  "blockers": [
+    "Secure historical SQL archival and review",
+    "Detailed differences of 3 roster/claim migration files",
+    "Isolated full migration replay",
+    "Review Supabase security-advisor findings",
+    "Owner-approved deployment and rollback"
+  ],
+  "privilegeVerification": {
+    "observedOn": "2026-11-02",
+    "method": "Read-only pg_proc and has_function_privilege checks",
+    "functions": [
+      {
+        "identity": "public.eie_staff_team_roster_update(uuid,text,uuid,uuid,jsonb,uuid,text)",
+        "securityDefiner": false,
+        "anonExecute": false,
+        "authenticatedExecute": false,
+        "serviceRoleExecute": true
+      },
+      {
+        "identity": "public.golf_claim_manual_captain_invitation(uuid,uuid,uuid)",
+        "securityDefiner": false,
+        "anonExecute": false,
+        "authenticatedExecute": false,
+        "serviceRoleExecute": true
+      },
+      {
+        "identity": "eig_private.event_budget_sources(uuid)",
+        "securityDefiner": true,
+        "anonExecute": false,
+        "authenticatedExecute": true,
+        "serviceRoleExecute": false
+      }
+    ],
+    "caveat": "Current privileges verified; migration semantic equivalence and business regressions remain unverified."
+  },
+  "functionBodyVerification": {
+    "method": "Read-only compare repository PL/pgSQL dollar-quoted function body with current pg_proc.prosrc",
+    "observedOn": "2026-11-02",
+    "results": [
+      {
+        "sourceVersion": "20261009200051",
+        "function": "public.golf_claim_manual_captain_invitation",
+        "exactCurrentBody": true,
+        "bodyCharacters": 2349,
+        "securityDefiner": false
+      },
+      {
+        "sourceVersion": "20261009193756",
+        "function": "public.eie_staff_team_roster_update",
+        "exactCurrentBody": false,
+        "sourceBodyCharacters": 10972,
+        "currentBodyCharacters": 12456,
+        "notes": "Later payment and roster migrations may alter current function; reconcile in chronological replay."
+      },
+      {
+        "sourceVersion": "20261009194203",
+        "function": "public.eie_staff_team_roster_update",
+        "exactCurrentBody": false,
+        "sourceBodyCharacters": 10986,
+        "currentBodyCharacters": 12456,
+        "notes": "Later payment and roster migrations may alter current function; reconcile in chronological replay."
+      }
+    ]
+  }
+}

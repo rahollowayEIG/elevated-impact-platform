@@ -4,6 +4,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
+const {inventorySourceTree}=require('../scripts/build-lab-offline-source-inventory.cjs');
 const root=path.resolve(__dirname,'..');
 const FILES=Object.freeze([
  'src/PlatformApp.jsx',
@@ -25,7 +26,8 @@ function readApprovedIntegrityInputs(){
  }
  const filenames=fs.readdirSync(path.resolve(root,REPO_MIGRATIONS))
   .filter(s=>/^[0-9]{14}_[a-z0-9_]+\.sql$/.test(s)).sort();
- return {sources,migrationFilenames:filenames};
+ const sourceInventory=inventorySourceTree(root);
+ return {sources,migrationFilenames:filenames,sourceInventory};
 }
 function location(s,search){
  const index=s.indexOf(search);
@@ -88,6 +90,40 @@ function scanPlatformIntegrity(inputs,sourceVersion='local-unversioned',now='202
     'No approved production navigation or active integration depends on a retired preview.',
     sourceEvidence(p,s,obsolete));
  }
+ // The broader inventory is fixed-scope, bounded, and read-only. A missing
+ // literal import is a candidate for review, never an automatic deletion.
+ const sourceInventory=inputs.sourceInventory;
+ if(sourceInventory!==undefined){
+  if(sourceInventory?.kind!=='eig_build_lab_offline_source_inventory'||
+     sourceInventory.schemaVersion!==1||sourceInventory.readOnly!==true||
+     sourceInventory.safety?.readOnly!==true||
+     sourceInventory.safety?.deletedItems!==0||
+     sourceInventory.safety?.autoDeleted!==false||
+     sourceInventory.safety?.autoDeployed!==false||
+     !Number.isInteger(sourceInventory.sourceFileCount)||
+     sourceInventory.sourceFileCount<0||sourceInventory.sourceFileCount>2500||
+     !Number.isInteger(sourceInventory.unresolvedCount)||
+     sourceInventory.unresolvedCount<0||sourceInventory.unresolvedCount>2500||
+     !Array.isArray(sourceInventory.unresolved)||
+     sourceInventory.unresolved.length>500||
+     !/^[a-f0-9]{64}$/i.test(sourceInventory.sourceFingerprint||''))
+   throw Error('Invalid bounded source inventory.');
+  if(sourceInventory.unresolvedCount){
+   const first=sourceInventory.unresolved.find(x=>
+    x&&typeof x.file==='string'&&
+    /^(?:(?:src|api|server)\/[a-zA-Z0-9_/.-]+|(?:App|LegacyApp|main|vite.config))\.(jsx?|mjs|cjs|tsx?)$/.test(x.file)&&
+    !x.file.includes('..')&&
+    Number.isInteger(x.line)&&x.line>0&&x.line<=30000);
+   add('bounded-source-import-review',
+    'Review unresolved first-party source imports','medium',
+    'Bounded read-only source inventory found '+sourceInventory.unresolvedCount+
+     ' literal relative import candidates across '+sourceInventory.sourceFileCount+
+     ' first-party files. Legacy root files can be inactive: static resolution is not proof of an active broken route.',
+    'Check listed candidates against bundler aliases, generated files and actual entrypoint dependencies before editing or retiring code.',
+    'Confirm each candidate is either intentionally resolved by tooling or corrected in source without breaking approved routes.',
+    first?[{path:first.file,line:first.line}]:[{path:'src/PlatformApp.jsx',line:1}]);
+  }
+ }
  const sourceVersions=inputs.migrationFilenames.map(f=>f.slice(0,14));
  if(sourceVersions.some(v=>!validVersion(v))||new Set(sourceVersions).size!==sourceVersions.length)
   throw Error('Invalid or duplicate local migration versions.');
@@ -104,17 +140,21 @@ function scanPlatformIntegrity(inputs,sourceVersion='local-unversioned',now='202
  const hash=createHash('sha256');
  for(const p of FILES){hash.update(p);hash.update(inputs.sources[p]);}
  hash.update(inputs.migrationFilenames.join('\n'));
+ if(sourceInventory)hash.update(sourceInventory.sourceFingerprint);
  return {
   kind:'eig_build_lab_platform_integrity',schemaVersion:1,target:'elevationpilot',inspectedAt:now,
   scannerVersion:'platform-integrity-v1',sourceVersion,sourceFingerprint:hash.digest('hex'),
   inventory:{sampledFiles:[...FILES],sourceMigrationCount:sourceVersions.length,
     baselineMigrationCount:baseline.versions.length,baselineCapturedOn:baseline.capturedOn,
-    sourceOnlyVersions:sourceOnly,baselineOnlyVersions:baselineOnly},
+    sourceOnlyVersions:sourceOnly,baselineOnlyVersions:baselineOnly,
+    ...(sourceInventory?{sourceFileCount:sourceInventory.sourceFileCount,
+     unresolvedImportCount:sourceInventory.unresolvedCount,
+     sourceInventoryFingerprint:sourceInventory.sourceFingerprint}:{} )},
   findings,
   limitations:[
-   'Only approved entrypoint/workspace/cloud sources and migration filenames were checked; other pages and dependencies were NOT inventoried.',
+   'Approved entrypoint guards and dated migration metadata were checked; a separate bounded source inventory checks literal imports, not route reachability or runtime dependencies.',
    'Migration history is compared with a dated read-only reference, not a fresh production database query.',
-   'Deployments, branches, live navigation, unused code, imports outside the allowlist, and database object dependencies were NOT inspected.',
+   'Deployments, branches, live navigation, unused code reachability, computed imports, and database object dependencies were NOT inspected.',
    'Static findings are retirement candidates for owner review, never evidence that an item can safely be deleted.'
   ],
   safety:{readOnly:true,serverOnly:true,liveChanges:false,databaseQueried:false,

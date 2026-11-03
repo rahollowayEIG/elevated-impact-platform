@@ -21,7 +21,10 @@ export function validatePlatformIntegrityReport(report){
    !Number.isFinite(Date.parse(inv.baselineCapturedOn))||
    !Array.isArray(inv.sourceOnlyVersions)||!Array.isArray(inv.baselineOnlyVersions)||
    inv.sourceOnlyVersions.length>300||inv.baselineOnlyVersions.length>300||
-   [...inv.sourceOnlyVersions,...inv.baselineOnlyVersions].some(v=>!version.test(v)))
+   [...inv.sourceOnlyVersions,...inv.baselineOnlyVersions].some(v=>!version.test(v))||
+   (inv.sourceFileCount!==undefined&&(!Number.isInteger(inv.sourceFileCount)||inv.sourceFileCount<0||inv.sourceFileCount>2500))||
+   (inv.unresolvedImportCount!==undefined&&(!Number.isInteger(inv.unresolvedImportCount)||inv.unresolvedImportCount<0||inv.unresolvedImportCount>2500))||
+   (inv.sourceInventoryFingerprint!==undefined&&!sha.test(inv.sourceInventoryFingerprint)))
   throw Error('Invalid integrity inventory.');
  if(!Array.isArray(report.findings)||report.findings.length>30||
     !Array.isArray(report.limitations)||report.limitations.length<3||report.limitations.length>8||

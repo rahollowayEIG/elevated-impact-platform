@@ -31,7 +31,8 @@ const { mkdir } = require('node:fs/promises');
     assert.equal(await page.getByRole('dialog').getByRole('button', { name: 'Sign Out All Sessions', exact: true }).isDisabled(), true);
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal((await writes()).length, 0);
-    assert.equal(await page.locator('#account-signout-button').evaluate((node) => node === document.activeElement), true);
+    // React unmounts the confirmation dialog asynchronously; wait for focus restoration.
+    await page.waitForFunction(() => document.getElementById('account-signout-button') === document.activeElement);
     await page.evaluate(() => { window.securityFixture.delay = 150; });
     const dialog = await confirm();
     await dialog.getByRole('button', { name: 'Sign Out All Sessions', exact: true }).click();

@@ -1,0 +1,66 @@
+name: Build Lab Integrity Acceptance - Isolated
+on:
+  push:
+    branches:
+      - test/build-lab-integrity-acceptance-20261102
+  pull_request:
+    branches:
+      - release/build-lab-v1-owner-only-20261028
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integrity-server-and-authorization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install pinned dependencies
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Integrity scanner and protected API contracts
+        run: node --test tests/build-lab-integrity.test.cjs tests/build-lab-owner-release-readiness.test.cjs tests/build-lab-v1-vercel-package.test.cjs
+      - name: Evidence boundary
+        if: always()
+        run: echo "Read-only synthetic code/tests. No live production access, deploy, or migration performed." >> "$GITHUB_STEP_SUMMARY"
+  history-and-work-buckets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install pinned dependencies
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Run end-to-end integrity client and history-buckets contracts
+        run: node --test tests/build-lab-integrity-client.test.mjs tests/build-lab-work-buckets.test.mjs tests/eig-build-lab-live-client.test.mjs tests/build-lab-cloud-records.test.mjs tests/build-lab-cloud-backup.test.mjs
+      - name: Evidence boundary
+        if: always()
+        run: echo "Synthetic client/history/buckets tests only; not live owner session verification." >> "$GITHUB_STEP_SUMMARY"
+  release-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install pinned dependencies
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts @babel/parser@7.29.9
+      - name: Validate source scope and complete source integration
+        run: node --test tests/build-lab-v1-source-scope.test.cjs tests/build-lab-master-source-integration.test.mjs
+      - name: Evidence boundary
+        if: always()
+        run: echo "Strict release source gate; report failures, do not replace missing sources with mocks." >> "$GITHUB_STEP_SUMMARY"

@@ -3,6 +3,7 @@ import {HISTORY_EVENT,readScanHistory} from '../lib/buildLabScanHistory.mjs';
 import {WORK_EVENT,readWorkLedger,collectScanWork,saveWorkLedger} from '../lib/buildLabWorkBuckets.mjs';
 import {buildAppStack} from '../lib/buildLabAppStack.mjs';
 import {buildApplicationHierarchy} from '../lib/buildLabAppHierarchy.mjs';
+import {eieRequirementOverview} from '../lib/buildLabEieRequirements.mjs';
 import './build-lab-app-stack.css';
 
 const stamp=value=>value?new Date(value).toLocaleString():'No saved Master Scan';
@@ -43,7 +44,40 @@ function FourMeters({data,parent=false}){
    'Awaiting measured build, verification and integration progress.'}/>)}
  </div>;
 }
-function AppPartCard({card,onReview}){
+const eiePlan=eieRequirementOverview();
+function EieScopePanel(){
+ return <section className="bl-eie-scope" aria-label="EIE requirement and test mapping baseline">
+  <h3>EIE | Functionality &amp; Test Coverage</h3>
+  <p><strong>Scope status:</strong> Draft requirements for owner review. These entries do not establish that a feature is finished, approved, or tested in the current release.</p>
+  <div className="bl-eie-scope-stats">
+   <div><strong>{eiePlan.total}</strong><span>Proposed requirements</span></div>
+   <div><strong>{eiePlan.mapped}</strong><span>Linked test scripts</span></div>
+   <div><strong>{eiePlan.unmapped}</strong><span>Tests still to map</span></div>
+  </div>
+  <div className="bl-stack-signal">
+   <div><strong>Test mapping coverage (not completion)</strong><span>{eiePlan.testMappingPercent}%</span></div>
+   <div className="bl-stack-track" role="progressbar" aria-label="EIE proposed requirement test mapping coverage" aria-valuemin={0} aria-valuemax={100} aria-valuenow={eiePlan.testMappingPercent}>
+    <span style={{width:eiePlan.testMappingPercent+'%'}}/>
+   </div>
+  </div>
+  <p className="bl-stack-small">The mapping indicator counts proposed requirements that name a test script. It does not mean those tests passed, or that the requirement is fully covered. Completion meters remain unmeasured until the scope is approved and exact-version implementation and test receipts are reconciled.</p>
+ </section>;
+}
+function EieComponentChecklist({requirements}){
+ if(!requirements?.length)return null;
+ const mapped=requirements.filter(r=>r.test).length;
+ return <details className="bl-stack-signals bl-eie-checklist">
+  <summary>Functionality checklist ({requirements.length} proposed; {mapped} test mappings)</summary>
+  <ul>{requirements.map(req=><li key={req.id}>
+   <strong>{req.id} · {req.title}</strong>
+   <p className="bl-stack-small">{req.acceptance}</p>
+   <small>{req.test?'Test script mapped: '+req.test.file+' ('+req.test.level+'). Passing version not verified.':'Test coverage needs mapping; no passing receipt.'}</small>
+   {req.integrationTargets.length>0&&<small>Related areas: {req.integrationTargets.join(', ')}</small>}
+  </li>)}</ul>
+  <p className="bl-stack-small">All checklist items are proposed, not approved release requirements or verified production behavior.</p>
+ </details>;
+}
+function AppPartCard({card,onReview,requirements=[]}){
  const [expanded,setExpanded]=useState(false);
  return <article className="bl-stack-card" aria-label={card.name+' component overview'}>
   <div className="bl-stack-card-head">
@@ -51,6 +85,7 @@ function AppPartCard({card,onReview}){
    <span className="bl-stack-stage">{card.stage}</span>
   </div>
   <FourMeters data={card}/>
+  <EieComponentChecklist requirements={requirements}/>
   <details className="bl-stack-signals">
    <summary>See available scan evidence</summary>
    <p className="bl-stack-small">The percentages below describe <strong>markers observed in sampled source and test scripts</strong>, not completed or passing functionality.</p>
@@ -192,9 +227,10 @@ export default function BuildLabAppStack({ownerUserId,onScan,onReview,onHangars}
     <FourMeters data={current} parent/>
     <p className="bl-stack-small">The whole-app meters will roll up the approved requirements and passing tests of its constituent parts. Matched source code alone cannot confirm completion. No percentages are invented.</p>
    </section>
+   {current.id==='eie'&&<EieScopePanel/>}
    <h3>Parts of {current.shortName} ({current.parts.length})</h3>
    <div className="bl-stack-cards">
-    {current.parts.map(part=><AppPartCard key={part.id} card={part} onReview={onReview}/>)}
+    {current.parts.map(part=><AppPartCard key={part.id} card={part} onReview={onReview} requirements={current.id==='eie'?(eiePlan.byComponent[part.id]||[]):[]}/>) }
    </div>
    {current.coverageCandidates.length>0&&<section className="bl-stack-future-scope" aria-label="Additional application parts to review">
     <h3>Additional parts to map into scanner coverage</h3>

@@ -87,3 +87,16 @@ The parent app inventory includes more feature-level candidates across EIE, Ince
 This is the first scanner-enrollment safety gate, not a full automatic scanner generator. Future work should add versioned feature requirement IDs, risk-based test mapping, controlled scope updates, and exact-commit passing test receipt reconciliation.
 
 No new production scanner permissions, external targets, customer database reads or auto-fix/release permissions are included. The owner-only Hangar Connections view is unaffected.
+
+
+## November 4: EIE feature requirement baseline (first measurable evidence step)
+
+The EIE application now has a **proposed** versioned requirement baseline, maintained in `src/lib/buildLabEieRequirements.mjs`, with 26 acceptance criteria spread across all seven existing EIE scanner components. Each requirement has a stable ID, component ownership, behavior that needs proving, and relevant cross-app integration candidates. Seventeen requirements have a mapped test-script reference; nine do not. The UI can therefore truthfully show **17/26 proposed requirements with a mapped test script (65% test-mapping coverage)**. This is NOT a Built, Verified, Integration, Overall or launch-readiness score.
+
+Mapped test references are checked by the GitHub App Stack CI workflow against exact script paths and anchors. The test suite intentionally verifies the **existence of the mapping**, not that the mapped scenario was run in the current deploy. It does not conflate source markers, unit-test text or plan approvals with independent passing regression receipts. Browser and unit tests still require actual CI execution and appropriate end-to-end testing before any feature is marked verified.
+
+Registration-to-universal-people reconciliation is explicitly called out, including captain/teammate claims, manual ATC registration, named players and safe TBA exclusions. These items currently have no accepted test mapping. There is **no** database reconciliation, user record change, production payment action or automatic fix in this increment.
+
+The EIE whole-app and each component's four completion gauges remain **Not measured** because this proposed baseline has not been approved as a complete release scope, additional EIE feature areas remain outside the 26-item denominator, implementation evidence is not yet tied to each requirement, and exact-version passing feature/integration test receipts are not yet linked. This avoids a misleading percentage.
+
+Next phase: reconcile the full owner-approved EIE functionality baseline (including existing unscoped EIE parts), create real safe tests for registration identity and TBA, capture independent passing receipts by exact commit, then calculate scoped component and whole-app meters using an owner-reviewed weight policy. Adding requirements to an approved denominator must never erase historical test results.

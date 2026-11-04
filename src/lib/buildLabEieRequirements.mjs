@@ -30,11 +30,11 @@ const entry=(id,component,title,acceptance,test=null,links=[])=>Object.freeze({
 
 export const EIE_REQUIREMENTS=Object.freeze([
  entry('EIE-SET-01','event-builder','Save event details','Event details persist after save and reopening.',
-  {file:'tests/event-builder-browser.cjs',marker:'Save Event Details',level:'browser'}),
+  null),
  entry('EIE-SET-02','event-builder','Save registration configuration','Registration configuration survives save and reopening.',
-  {file:'tests/event-builder-browser.cjs',marker:'Save Registration',level:'browser'},['registration']),
+  null,['registration']),
  entry('EIE-SET-03','event-builder','Team size configuration','Saved players-per-team setting controls the event registration.',
-  {file:'tests/event-builder-browser.cjs',marker:'Players per team',level:'browser'},['registration']),
+  null,['registration']),
  entry('EIE-SET-04','event-builder','Publish or unpublish event','Published event is public; draft event stays private.',null,['registration']),
  entry('EIE-REG-01','registration','Universal person identity','Every named player can be reconciled with one shared person record without cross-organization leakage.',null,['accounts']),
  entry('EIE-REG-02','registration','Captain and teammate invitations','Captain enters real teammates; invites and claims retain original team and entry number.',null,['accounts','squawk']),

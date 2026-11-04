@@ -16,5 +16,12 @@ export const APP_NEW_SOURCE_OWNERS=Object.freeze([
   component:'build-lab',
   scannerStatus:'review_pending',
   reason:'Coverage enrollment registry and CI guard; production source scope unchanged.'
+ },
+ {
+  path:'src/lib/buildLabEieRequirements.mjs',
+  appId:'eie',
+  component:'registration',
+  scannerStatus:'review_pending',
+  reason:'Proposed EIE requirement and test mapping inventory; not automatically allowlisted for live source scans.'
  }
 ]);

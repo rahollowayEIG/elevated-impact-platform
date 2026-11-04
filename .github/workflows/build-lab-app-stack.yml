@@ -27,6 +27,7 @@ jobs:
           node --test \
             tests/build-lab-app-stack.test.mjs \
             tests/build-lab-app-hierarchy.test.mjs \
+            tests/build-lab-eie-requirements.test.mjs \
             tests/build-lab-source-coverage-audit.test.mjs \
             tests/build-lab-hangar-connections.test.cjs \
             tests/build-lab-hangar-connections-client.test.mjs \

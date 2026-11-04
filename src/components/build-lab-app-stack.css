@@ -60,3 +60,19 @@
 @media(max-width:700px){.bl-stack-future-scope ul{grid-template-columns:1fr}}
 
 .bl-stack-future-scope .bl-scope-source-hint{display:block;margin-top:6px;font-size:.75rem;color:#c4d8e9;line-height:1.4;overflow-wrap:anywhere}
+
+
+/* EIE proposed feature baseline. Test mapping is NOT a completion meter. */
+.bl-eie-scope{padding:18px;margin:18px 0;border:1px solid #718fab;background:#173956;color:#eef6ff;border-radius:13px}
+.bl-eie-scope h3{margin:0 0 10px}
+.bl-eie-scope p{line-height:1.5}
+.bl-eie-scope-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.bl-eie-scope-stats>div{display:grid;gap:4px;padding:12px;border:1px solid #6686a4;background:#234664;border-radius:9px}
+.bl-eie-scope-stats strong{font-size:1.35rem;font-variant-numeric:tabular-nums}
+.bl-eie-scope-stats span{font-size:.8rem;color:#b9d3e7}
+.bl-eie-checklist ul{list-style:none;padding:0;display:grid;gap:10px}
+.bl-eie-checklist li{padding:11px;background:#234764;border:1px solid #567b98;border-radius:8px}
+.bl-eie-checklist li strong{display:block;font-size:.89rem}
+.bl-eie-checklist li p{margin:5px 0}
+.bl-eie-checklist li small{display:block;margin-top:6px;color:#cce0ee;overflow-wrap:anywhere}
+@media(max-width:550px){.bl-eie-scope-stats{grid-template-columns:1fr}}

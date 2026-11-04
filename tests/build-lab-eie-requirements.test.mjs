@@ -21,7 +21,7 @@ test('EIE baseline is a draft and all requirements have stable IDs, acceptance c
 test('every proposed requirement with a test mapping points to an existing exact test-script marker',()=>{
  const withTests=EIE_REQUIREMENTS.filter(r=>r.test);
  const without=EIE_REQUIREMENTS.filter(r=>!r.test);
- assert.ok(withTests.length>=15);
+ assert.ok(withTests.length>=14);
  assert.ok(without.length>=5);
  for(const r of withTests){
   const src=fs.readFileSync(path.join(root,r.test.file),'utf8');
@@ -41,7 +41,9 @@ test('EIE exposes real mapping counts, not invented build, pass, integration, or
  assert.ok(summary.linkedTargets.includes('accounts'));
  assert.equal(summary.byComponent.registration.filter(r=>r.test).length,0);
  assert.ok(summary.byComponent.roster.some(r=>r.test?.level==='unit'));
- assert.ok(summary.byComponent['event-builder'].some(r=>r.test?.level==='browser'));
+ assert.ok(summary.byComponent['event-builder'].every(r=>!r.test),
+  'Event Details and Registration saves do not yet have verified mapped tests');
+ assert.ok(summary.byComponent['event-packet'].some(r=>r.test?.level==='browser'));
 });
 test('missing mapping, expired version and invalid approval cannot quietly pass as complete',()=>{
  const missing=EIE_REQUIREMENTS.find(r=>r.id==='EIE-REG-05');

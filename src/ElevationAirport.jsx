@@ -3,6 +3,7 @@ import { useSquawk } from './SquawkCenter';
 import { supabase } from './lib/supabase';
 import TeamPaymentCart, { GLOW_GOLF_EVENT_ID } from './TeamPaymentCart';
 import { buildRosterEntryNumbers } from './rosterNumbering.mjs';
+import PassengerEmailSettings from './components/PassengerEmailSettings.jsx';
 
 function formatDate(dateValue) {
   if (!dateValue) return 'Date TBD';
@@ -262,6 +263,7 @@ export function PassengerProfilePage({
         <button className="platform-primary-button" type="submit" disabled={busy}>{busy ? 'Saving...' : 'Save My Profile'}</button>
       </div>
     </form>
+    <PassengerEmailSettings />
   </div>;
 }
 
